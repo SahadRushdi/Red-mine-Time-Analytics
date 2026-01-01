@@ -18,6 +18,7 @@ en:
   # Filter options
   label_today: "Today"
   label_this_week: "This Week"
+  label_last_week: "Last Week"
   label_this_month: "This Month"
   label_this_year: "This Year"
   label_custom_range: "Custom Range"

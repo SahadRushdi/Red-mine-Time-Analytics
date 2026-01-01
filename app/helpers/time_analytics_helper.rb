@@ -136,6 +136,7 @@ module TimeAnalyticsHelper
     [
       [l(:label_today), 'today'],
       [l(:label_this_week), 'this_week'],
+      [l(:label_last_week), 'last_week'],
       [l(:label_this_month), 'this_month'],
       [l(:label_this_year), 'this_year'],
       [l(:label_custom_range), 'custom']

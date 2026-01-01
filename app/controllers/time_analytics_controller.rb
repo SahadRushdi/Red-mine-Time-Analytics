@@ -182,6 +182,9 @@ class TimeAnalyticsController < ApplicationController
     when 'this_week'
       @from = Date.current.beginning_of_week
       @to = Date.current.end_of_week
+    when 'last_week'
+      @from = (Date.current - 1.week).beginning_of_week
+      @to = (Date.current - 1.week).end_of_week
     when 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
