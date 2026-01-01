@@ -332,11 +332,18 @@ class TimeAnalyticsController < ApplicationController
       data_hash.keys.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
-    # Calculate total for percentage calculation in JavaScript
+    # Calculate total for percentage calculation
     total_hours = data_hash.values.sum
     
+    # Format labels with percentages and hours for pie chart
+    labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
+      hours = data_hash.values[index]
+      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
+      "#{label} (#{percentage}%, #{hours.round(1)}h)"
+    end
+    
     chart_data = {
-      labels: formatted_labels,
+      labels: labels_with_percentages,
       datasets: [{
         data: data_hash.values,
         backgroundColor: generate_colors(data_hash.size),
@@ -354,6 +361,14 @@ class TimeAnalyticsController < ApplicationController
           labels: {
             padding: 15,
             boxWidth: 12
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: 'function(context) {
+              var label = context.label || "";
+              return label;
+            }'.html_safe
           }
         }
       },
@@ -711,11 +726,18 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_pie_chart_from_data(labels, data_values)
-    # Calculate total for percentage calculation in JavaScript
+    # Calculate total for percentage calculation
     total_hours = data_values.sum
     
+    # Format labels with percentages and hours for pie chart
+    labels_with_percentages = labels.each_with_index.map do |label, index|
+      hours = data_values[index]
+      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
+      "#{label} (#{percentage}%, #{hours.round(1)}h)"
+    end
+    
     chart_data = {
-      labels: labels,
+      labels: labels_with_percentages,
       datasets: [{
         data: data_values,
         backgroundColor: generate_colors(labels.size),
@@ -733,6 +755,14 @@ class TimeAnalyticsController < ApplicationController
           labels: {
             padding: 15,
             boxWidth: 12
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: 'function(context) {
+              var label = context.label || "";
+              return label;
+            }'.html_safe
           }
         }
       },
