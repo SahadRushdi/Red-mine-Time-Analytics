@@ -18,11 +18,11 @@
   <div class="box toggle-view-section">
     <h3>Toggle View:</h3>
     <div class="toggle-buttons">
-      <%= link_to 'Time Entries', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'time_entries')), 
+      <%= link_to 'Time Entries', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
           class: "button #{'button-active' if @view_mode == 'time_entries'}" %>
-      <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'activity')), 
+      <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
           class: "button #{'button-active' if @view_mode == 'activity'}" %>
-      <%= link_to 'Grouping', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'grouping')), 
+      <%= link_to 'Grouping', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'grouping')), 
           class: "button #{'button-active' if @view_mode == 'grouping'}" %>
     </div>
   </div>
@@ -31,7 +31,7 @@
   <div class="box filter-controls">
     <h3><%= l(:label_filters) %></h3>
     <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
-      <%= hidden_field_tag :chart_type, params[:chart_type] || 'bar' %>
+      <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode) %>
       <%= hidden_field_tag :view_mode, @view_mode %>
       <div class="filter-row">
         <div class="filter-group">
@@ -103,7 +103,7 @@
     <h3>
       <%= l(:label_visualization) %>
       <div class="visualization-controls">
-        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || 'bar'),
+        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
             onchange: 'updateChart()', class: 'chart-type-select', id: 'chart_type_select' %>
         <button type="button" onclick="toggleVisualization()" class="button button-small" id="toggle-chart-btn">
           Hide Chart

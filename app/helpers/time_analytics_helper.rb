@@ -235,4 +235,17 @@ module TimeAnalyticsHelper
   def project_link(project)
     link_to project.name, project_path(project), class: 'project-link'
   end
+
+  def default_chart_type(view_mode)
+    case view_mode
+    when 'time_entries'
+      'bar'
+    when 'activity'
+      'pie'
+    when 'grouping'
+      'pie'
+    else
+      'bar'
+    end
+  end
 end

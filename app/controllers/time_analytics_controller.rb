@@ -86,7 +86,8 @@ class TimeAnalyticsController < ApplicationController
     end
 
     # Generate chart data based on prepared data
-    chart_type = params[:chart_type] || 'bar'
+    # Set default chart type based on view mode if not specified
+    chart_type = params[:chart_type] || get_default_chart_type(@view_mode)
     Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}"
     
     if @view_mode == 'activity' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@activity_pivot_data)
@@ -156,6 +157,19 @@ class TimeAnalyticsController < ApplicationController
   end
 
   private
+
+  def get_default_chart_type(view_mode)
+    case view_mode
+    when 'time_entries'
+      'bar'
+    when 'activity'
+      'pie'
+    when 'grouping'
+      'pie'
+    else
+      'bar'
+    end
+  end
 
   def set_date_range
     case params[:filter]
