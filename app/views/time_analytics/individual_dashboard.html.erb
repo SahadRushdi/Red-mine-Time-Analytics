@@ -33,6 +33,7 @@
     <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
       <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode) %>
       <%= hidden_field_tag :view_mode, @view_mode %>
+      <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
       <div class="filter-row">
         <div class="filter-group">
           <%= label_tag :filter, l(:label_time_period) %>
@@ -702,19 +703,42 @@ function toggleActivityView() {
     return;
   }
   
+  var newViewState;
   if (detailedView.style.display === 'none') {
     // Currently showing summary, switch to detailed
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
     localStorage.setItem('activity_view_mode', 'detailed');
+    newViewState = 'detailed';
   } else {
     // Currently showing detailed, switch to summary
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
     localStorage.setItem('activity_view_mode', 'summary');
+    newViewState = 'summary';
   }
+  
+  // Regenerate chart with new view state
+  regenerateChartForViewState(newViewState);
+}
+
+// Regenerate chart based on activity view state (summary vs detailed)
+function regenerateChartForViewState(viewState) {
+  // Get current URL parameters
+  var urlParams = new URLSearchParams(window.location.search);
+  
+  // Add/update activity_view_state parameter
+  urlParams.set('activity_view_state', viewState);
+  
+  // Build new URL
+  var baseUrl = window.location.pathname;
+  var newUrl = baseUrl + '?' + urlParams.toString();
+  
+  // Reload page with new view state parameter
+  // This ensures proper authentication and chart regeneration
+  window.location.href = newUrl;
 }
 
 // Restore activity view preference
@@ -728,7 +752,10 @@ function restoreActivityViewState() {
     return;
   }
   
-  if (savedMode === 'summary') {
+  // Default to detailed view if no saved preference
+  var currentMode = savedMode || 'detailed';
+  
+  if (currentMode === 'summary') {
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
@@ -737,6 +764,12 @@ function restoreActivityViewState() {
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
+  }
+  
+  // Update hidden field with current state
+  var hiddenField = document.getElementById('activity_view_state_field');
+  if (hiddenField) {
+    hiddenField.value = currentMode;
   }
 }
 

@@ -88,12 +88,16 @@ class TimeAnalyticsController < ApplicationController
     # Generate chart data based on prepared data
     # Set default chart type based on view mode if not specified
     chart_type = params[:chart_type] || get_default_chart_type(@view_mode)
-    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}"
+    
+    # Track activity view state (summary vs detailed) for chart generation
+    @activity_view_state = params[:activity_view_state] || 'detailed'
+    
+    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}"
     
     if @view_mode == 'activity' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@activity_pivot_data)
-      @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type)
+      @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
     else
-      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode)
+      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -237,10 +241,13 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # Inline Chart Helper methods
-  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries')
+  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed')
     # Group data by the specified view mode and grouping
+    # For activity view, use activity_view_state to determine grouping
     if view_mode == 'activity'
-      grouped_data = group_time_entries(time_entries, 'activity')
+      # Summary view: always group by activity
+      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
+      grouped_data = activity_view_state == 'summary' ? group_time_entries(time_entries, 'activity') : group_time_entries(time_entries, grouping)
     else
       grouped_data = group_time_entries(time_entries, grouping)
     end
@@ -637,10 +644,17 @@ class TimeAnalyticsController < ApplicationController
     end
   end
 
-  def generate_activity_pivot_chart_data(pivot_data, chart_type)
-    # Use period totals for chart data
-    labels = pivot_data[:periods]
-    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+  def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
+    # Determine what data to use based on view state
+    if activity_view_state == 'summary'
+      # Summary view: group by activity
+      labels = pivot_data[:activities]
+      data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
+    else
+      # Detailed view: group by time period
+      labels = pivot_data[:periods]
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+    end
     
     case chart_type
     when 'pie'
