@@ -65,6 +65,29 @@ class TimeAnalyticsController < ApplicationController
           Struct.new(:period, :hours).new(activity_name || 'No Activity', hours)
         end
       end
+    elsif @view_mode == 'project'
+      # Generate Project × Time Period pivot table for ALL groupings (including daily)
+      @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
+      @time_periods = @project_pivot_data[:periods]
+      @projects = @project_pivot_data[:projects]
+      @matrix_data = @project_pivot_data[:matrix]
+      @period_totals = @project_pivot_data[:period_totals]
+      @project_totals = @project_pivot_data[:project_totals]
+      @grand_total = @project_pivot_data[:grand_total]
+      
+      # For pagination, use periods count
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit)
+      
+      # Also generate simple project summary for daily toggle view
+      if @grouping == 'daily'
+        grouped_data = group_time_entries(@time_entries, 'project')
+        # Sort by project name
+        sorted_data = grouped_data.sort_by { |project_name, _| project_name || 'No Project' }
+        @paginated_entries = sorted_data.slice(@offset, @limit).map do |project_name, hours|
+          Struct.new(:period, :hours).new(project_name || 'No Project', hours)
+        end
+      end
     elsif ['weekly', 'monthly', 'yearly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       @entry_count = grouped_data.count
@@ -89,15 +112,18 @@ class TimeAnalyticsController < ApplicationController
     # Set default chart type based on view mode if not specified
     chart_type = params[:chart_type] || get_default_chart_type(@view_mode)
     
-    # Track activity view state (summary vs detailed) for chart generation
+    # Track activity/project view state (summary vs detailed) for chart generation
     @activity_view_state = params[:activity_view_state] || 'detailed'
+    @project_view_state = params[:project_view_state] || 'detailed'
     
-    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}"
+    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}, project_view_state: #{@project_view_state}"
     
     if @view_mode == 'activity' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
+    elsif @view_mode == 'project' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@project_pivot_data)
+      @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
     else
-      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state)
+      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -150,6 +176,9 @@ class TimeAnalyticsController < ApplicationController
     if @view_mode == 'activity'
       csv_data = export_activity_analysis_to_csv(@time_entries)
       filename = "time_analytics_activity_#{@user.login}_#{@from}_#{@to}.csv"
+    elsif @view_mode == 'project'
+      csv_data = export_project_analysis_to_csv(@time_entries)
+      filename = "time_analytics_project_#{@user.login}_#{@from}_#{@to}.csv"
     else
       csv_data = export_time_entries_to_csv(@time_entries)
       filename = "time_analytics_#{@user.login}_#{@from}_#{@to}.csv"
@@ -168,7 +197,7 @@ class TimeAnalyticsController < ApplicationController
       'bar'
     when 'activity'
       'pie'
-    when 'grouping'
+    when 'project'
       'pie'
     else
       'bar'
@@ -244,13 +273,18 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # Inline Chart Helper methods
-  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed')
+  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed')
     # Group data by the specified view mode and grouping
     # For activity view, use activity_view_state to determine grouping
+    # For project view, use project_view_state to determine grouping
     if view_mode == 'activity'
       # Summary view: always group by activity
       # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
       grouped_data = activity_view_state == 'summary' ? group_time_entries(time_entries, 'activity') : group_time_entries(time_entries, grouping)
+    elsif view_mode == 'project'
+      # Summary view: always group by project
+      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
+      grouped_data = project_view_state == 'summary' ? group_time_entries(time_entries, 'project') : group_time_entries(time_entries, grouping)
     else
       grouped_data = group_time_entries(time_entries, grouping)
     end
@@ -277,6 +311,11 @@ class TimeAnalyticsController < ApplicationController
       # Group by activity name - join with enumerations table to get activity names
       base_query.joins('LEFT JOIN enumerations ON time_entries.activity_id = enumerations.id')
                 .group('enumerations.name')
+                .sum(:hours)
+    when 'project'
+      # Group by project name - join with projects table to get project names
+      base_query.joins('LEFT JOIN projects ON time_entries.project_id = projects.id')
+                .group('projects.name')
                 .sum(:hours)
     when 'daily'
       base_query.group(:spent_on).sum(:hours)
@@ -568,6 +607,32 @@ class TimeAnalyticsController < ApplicationController
     end
   end
 
+  def export_project_analysis_to_csv(time_entries)
+    require 'csv'
+    
+    # Group by project
+    grouped_data = group_time_entries(time_entries, 'project')
+    
+    CSV.generate(headers: true) do |csv|
+      # Add headers
+      csv << ['Project', 'Total Hours']
+      
+      # Sort by project name and add data rows
+      sorted_data = grouped_data.sort_by { |project_name, _| project_name || 'No Project' }
+      sorted_data.each do |project_name, hours|
+        csv << [
+          project_name || 'No Project',
+          sprintf('%.2f', hours)
+        ]
+      end
+      
+      # Add summary row
+      total_hours = grouped_data.values.sum
+      csv << []
+      csv << ['TOTAL', sprintf('%.2f', total_hours)]
+    end
+  end
+
   def generate_activity_pivot_table(time_entries, grouping)
     Rails.logger.info "Generating activity pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
     
@@ -661,6 +726,83 @@ class TimeAnalyticsController < ApplicationController
       # Summary view: group by activity
       labels = pivot_data[:activities]
       data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
+    else
+      # Detailed view: group by time period
+      labels = pivot_data[:periods]
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+    end
+    
+    case chart_type
+    when 'pie'
+      generate_pie_chart_from_data(labels, data_values)
+    when 'line'
+      generate_line_chart_from_data(labels, data_values)
+    else
+      generate_bar_chart_from_data(labels, data_values)
+    end
+  end
+
+  def generate_project_pivot_table(time_entries, grouping)
+    Rails.logger.info "Generating project pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
+    
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:project).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping) # Reuse same period key logic
+      project_name = entry.project&.name || 'No Project'
+      {
+        period_key: period_key,
+        project_name: project_name,
+        hours: entry.hours
+      }
+    end
+    
+    # Get unique periods and projects
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    projects = entries_with_details.map { |e| e[:project_name] }.uniq.sort
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      project = entry[:project_name]
+      matrix_data[period][project] ||= 0
+      matrix_data[period][project] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    project_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = projects.sum { |project| matrix_data[period][project] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    projects.each do |project|
+      project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
+    end
+    
+    {
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      projects: projects,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      project_totals: project_totals,
+      grand_total: grand_total,
+      raw_periods: periods # Keep original keys for matrix lookup
+    }
+  end
+
+  def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
+    # Determine what data to use based on view state
+    if project_view_state == 'summary'
+      # Summary view: group by project
+      labels = pivot_data[:projects]
+      data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
     else
       # Detailed view: group by time period
       labels = pivot_data[:periods]
