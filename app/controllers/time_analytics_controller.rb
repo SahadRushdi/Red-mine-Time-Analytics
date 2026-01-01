@@ -333,9 +333,16 @@ class TimeAnalyticsController < ApplicationController
   def generate_pie_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('pie') if data_hash.empty?
 
-    formatted_labels = if view_mode == 'activity'
+    # Format labels based on the actual data type, not just view_mode
+    # Check if keys are activity names (strings) or dates/periods
+    first_key = data_hash.keys.first
+    is_activity_data = first_key.is_a?(String)
+    
+    formatted_labels = if is_activity_data
+      # Data grouped by activity names
       data_hash.keys.map { |key| key || 'No Activity' }
     else
+      # Data grouped by time periods (dates, weeks, months, years)
       data_hash.keys.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
@@ -640,7 +647,8 @@ class TimeAnalyticsController < ApplicationController
     when 'yearly'
       period_key.strftime('%Y')
     else
-      period_key.strftime('%Y-%m-%d')
+      # Daily: Use same format as Time Entries section for consistency
+      helpers.format_chart_label(period_key)
     end
   end
 
