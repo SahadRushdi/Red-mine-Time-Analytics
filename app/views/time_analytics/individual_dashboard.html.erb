@@ -1,0 +1,785 @@
+<%= render 'includes' %>
+
+<div class="contextual">
+  <a href="#" id="toggle-filters-btn" role="button" title="<%= l(:label_filters) %>" class="toggle-filters-button">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" class="filter-icon-svg">
+      <path d="M0 0h24v24H0z" fill="none"/>
+      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+    </svg>
+  </a>
+  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode)), 
+      method: :post, class: 'icon icon-download' %>
+</div>
+
+<h2><%= l(:label_individual_dashboard) %></h2>
+
+<div id="collapsible-filters" class="collapsible-section">
+  <!-- Toggle View Section -->
+  <div class="box toggle-view-section">
+    <h3>Toggle View:</h3>
+    <div class="toggle-buttons">
+      <%= link_to 'Time Entries', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'time_entries')), 
+          class: "button #{'button-active' if @view_mode == 'time_entries'}" %>
+      <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'activity')), 
+          class: "button #{'button-active' if @view_mode == 'activity'}" %>
+      <%= link_to 'Grouping', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page).merge(view_mode: 'grouping')), 
+          class: "button #{'button-active' if @view_mode == 'grouping'}" %>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="box filter-controls">
+    <h3><%= l(:label_filters) %></h3>
+    <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
+      <%= hidden_field_tag :chart_type, params[:chart_type] || 'bar' %>
+      <%= hidden_field_tag :view_mode, @view_mode %>
+      <div class="filter-row">
+        <div class="filter-group">
+          <%= label_tag :filter, l(:label_time_period) %>
+          <%= select_tag :filter, options_for_select(time_filter_options, params[:filter]), 
+              onchange: 'toggleCustomDateRange()', class: 'filter-select' %>
+        </div>
+
+        <div class="filter-group" id="custom-date-range" style="<%= 'display: none;' unless params[:filter] == 'custom' %>">
+          <%= label_tag :from, l(:label_from) %>
+          <%= date_field_tag :from, params[:from] || @from, class: 'date-input' %>
+          <%= label_tag :to, l(:label_to) %>
+          <%= date_field_tag :to, params[:to] || @to, class: 'date-input' %>
+        </div>
+
+        <div class="filter-group">
+          <%= label_tag :grouping, l(:label_grouping) %>
+          <%= select_tag :grouping, options_for_select(grouping_options, @grouping), 
+              class: 'filter-select' %>
+        </div>
+
+        <div class="filter-group">
+          <%= label_tag :search, l(:label_search) %>
+          <%= text_field_tag :search, params[:search], placeholder: l(:text_search_placeholder), 
+              class: 'search-input' %>
+        </div>
+
+        <div class="filter-group">
+          <%= submit_tag l(:button_apply), class: 'button button-small' %>
+          <%= link_to l(:button_clear), time_analytics_individual_dashboard_path, 
+              class: 'button button-small' %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Dashboard Analytics Section - Summary and Visualization Side by Side -->
+<div class="analytics-section">
+  <!-- Statistics Summary -->
+  <div class="box stats-summary">
+    <h3><%= l(:label_summary) %></h3>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@total_hours) %></div>
+        <div class="summary-label"><%= l(:label_total_hours) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= @entry_count %></div>
+        <div class="summary-label"><%= l(:label_entries_count) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@avg_hours_per_day) %></div>
+        <div class="summary-label"><%= l(:label_avg_per_day) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@max_daily_hours) %></div>
+        <div class="summary-label"><%= l(:label_max_daily) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@min_daily_hours) %></div>
+        <div class="summary-label"><%= l(:label_min_daily) %></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visualization Section -->
+  <div class="box visualization-section">
+    <h3>
+      <%= l(:label_visualization) %>
+      <div class="visualization-controls">
+        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || 'bar'),
+            onchange: 'updateChart()', class: 'chart-type-select', id: 'chart_type_select' %>
+        <button type="button" onclick="toggleVisualization()" class="button button-small" id="toggle-chart-btn">
+          Hide Chart
+        </button>
+      </div>
+    </h3>
+    
+    <div id="chart-container" style="display: block;">
+      <div class="chart-wrapper">
+        <canvas id="time-chart" class="chart" data-chart='<%= @chart_data %>'></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results Table -->
+<div class="box">
+  <h3>
+    <% case @view_mode %>
+    <% when 'activity' %>
+      Activity Analysis
+      <div class="view-toggle-controls">
+        <button type="button" id="toggle-activity-view-btn" class="button button-small" onclick="toggleActivityView()">
+          <span id="view-toggle-text">Show Summary View</span>
+        </button>
+      </div>
+    <% when 'grouping' %>
+      <%= l("label_#{@grouping}") %> Analysis
+    <% else %>
+      <%= l(:label_time_entries) %>
+    <% end %>
+    <div class="table-controls">
+      <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, 
+          class: 'pagination-form' do %>
+        <%= hidden_field_tag :filter, params[:filter] %>
+        <%= hidden_field_tag :from, params[:from] %>
+        <%= hidden_field_tag :to, params[:to] %>
+        <%= hidden_field_tag :grouping, params[:grouping] %>
+        <%= hidden_field_tag :search, params[:search] %>
+        <%= hidden_field_tag :chart_type, params[:chart_type] %>
+        <%= hidden_field_tag :view_mode, @view_mode %>
+        <%= label_tag :per_page, l(:label_per_page) %>
+        <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+            onchange: 'this.form.submit()' %>
+      <% end %>
+    </div>
+  </h3>
+
+  <% # Check for data based on view mode and grouping %>
+  <% has_data = if @view_mode == 'activity'
+       @paginated_periods&.any?
+     else
+       @paginated_entries&.any?
+     end %>
+  
+  <% if has_data %>
+    <% if @view_mode == 'activity' %>
+      <% if ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
+        <%# Activity pivot table for cross-tabulation (Activity × Time Period matrix) - Dual View System %>
+        
+        <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
+        <div id="daily-detailed-view" class="pivot-table-wrapper">
+          <table class="list pivot-table">
+            <thead>
+              <tr>
+                <th class="period-header"><%= l("label_#{@grouping}") %></th>
+                <% @activities.each do |activity| %>
+                  <th class="activity-header"><%= activity %></th>
+                <% end %>
+                <th class="total-header">Grand Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @paginated_periods.each_with_index do |period_display, index| %>
+                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
+                <tr>
+                  <td class="period-cell"><%= period_display %></td>
+                  <% @activities.each do |activity| %>
+                    <td class="hours-cell">
+                      <% hours = @matrix_data[period_key][activity] || 0 %>
+                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                    </td>
+                  <% end %>
+                  <td class="total-cell">
+                    <%= format_hours(@period_totals[period_key] || 0) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td class="period-cell"><strong>Grand Total</strong></td>
+                <% @activities.each do |activity| %>
+                  <td class="total-cell">
+                    <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
+                  </td>
+                <% end %>
+                <td class="grand-total-cell">
+                  <strong><%= format_hours(@grand_total || 0) %></strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <%# Summary View: Simple Activity Table (Hidden by default) %>
+        <div id="daily-summary-view" style="display: none;">
+          <table class="list time-entries-grouped-table">
+            <thead>
+              <tr>
+                <th>Activity</th>
+                <th class="hours-column">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @activities.each do |activity| %>
+                <tr>
+                  <td><%= activity %></td>
+                  <td class="hours-column"><%= format_hours(@activity_totals[activity] || 0) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong><%= l(:label_total) %></strong></td>
+                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% elsif @grouping == 'daily' %>
+        <%# Daily Activity Analysis - Dual View System %>
+        
+        <%# Detailed View: Daily Pivot Table (Date × Activity matrix) - Default %>
+        <div id="daily-detailed-view" class="pivot-table-wrapper">
+          <table class="list pivot-table">
+            <thead>
+              <tr>
+                <th class="period-header">Date</th>
+                <% @activities.each do |activity| %>
+                  <th class="activity-header"><%= activity %></th>
+                <% end %>
+                <th class="total-header">Daily Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @paginated_periods.each_with_index do |period_display, index| %>
+                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
+                <tr>
+                  <td class="period-cell"><%= period_display %></td>
+                  <% @activities.each do |activity| %>
+                    <td class="hours-cell">
+                      <% hours = @matrix_data[period_key][activity] || 0 %>
+                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                    </td>
+                  <% end %>
+                  <td class="total-cell">
+                    <%= format_hours(@period_totals[period_key] || 0) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td class="period-cell"><strong>Activity Total</strong></td>
+                <% @activities.each do |activity| %>
+                  <td class="total-cell">
+                    <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
+                  </td>
+                <% end %>
+                <td class="grand-total-cell">
+                  <strong><%= format_hours(@grand_total || 0) %></strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <%# Summary View: Simple Activity Table (Hidden by default) %>
+        <div id="daily-summary-view" style="display: none;">
+          <table class="list time-entries-grouped-table">
+            <thead>
+              <tr>
+                <th>Activity</th>
+                <th class="hours-column">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @activities.each do |activity| %>
+                <tr>
+                  <td><%= activity %></td>
+                  <td class="hours-column"><%= format_hours(@activity_totals[activity] || 0) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong><%= l(:label_total) %></strong></td>
+                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% end %>
+    <% elsif @view_mode == 'grouping' || ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
+      <%# Grouped table for weekly, monthly, yearly %>
+      <table class="list time-entries-grouped-table">
+        <thead>
+          <tr>
+            <th><%= l("label_#{@grouping}") %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @paginated_entries.each do |entry| %>
+            <tr>
+              <td><%= entry.period %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% else %>
+      <%# Time entries table for daily view %>
+      <table class="list time-entries-table">
+        <thead>
+          <tr>
+            <th><%= l(:label_date) %></th>
+            <th><%= l(:label_project) %></th>
+            <th><%= l(:label_activity) %></th>
+            <th><%= l(:label_issue) %></th>
+            <th><%= l(:label_comment) %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @paginated_entries.each do |entry| %>
+            <tr>
+              <td class="date-column"><%= entry.spent_on.strftime('%Y-%m-%d') %></td>
+              <td class="project-column"><%= project_link(entry.project) %></td>
+              <td class="activity-column"><%= activity_name(entry.activity) %></td>
+              <td class="issue-column"><%= issue_link_or_text(entry.issue) %></td>
+              <td class="comment-column">
+                <%= truncate(entry.comments, length: 100) if entry.comments.present? %>
+              </td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="5"><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% end %>
+
+    <!-- Pagination -->
+    <div class="pagination-wrapper">
+      <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+      <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
+      <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+      
+      <div class="pagination-info">
+        <%= l(:text_pagination_info, 
+            from: (@offset + 1), 
+            to: [@offset + @limit, @entry_count].min, 
+            total: @entry_count) %>
+      </div>
+    </div>
+
+  <% else %>
+    <p class="nodata"><%= l(:label_no_data) %></p>
+  <% end %>
+</div>
+
+<!-- Chart.js loaded via includes partial -->
+
+<script>
+// Global chart instance
+var timeAnalyticsChart = null;
+
+function toggleCustomDateRange() {
+  var filter = document.getElementById('filter').value;
+  var customRange = document.getElementById('custom-date-range');
+  if (filter === 'custom') {
+    customRange.style.display = 'block';
+  } else {
+    customRange.style.display = 'none';
+  }
+}
+
+function toggleVisualization() {
+  var container = document.getElementById('chart-container');
+  var btn = document.getElementById('toggle-chart-btn');
+  
+  if (container.style.display === 'none' || container.style.display === '') {
+    container.style.display = 'block';
+    btn.textContent = 'Hide Chart';
+    // Initialize chart if not already done
+    if (!timeAnalyticsChart) {
+      initChart();
+    }
+  } else {
+    container.style.display = 'none';
+    btn.textContent = 'Show Chart';
+  }
+}
+
+function initChart() {
+  var chartElement = document.getElementById('time-chart');
+  if (!chartElement) {
+    console.log('Chart element not found');
+    return;
+  }
+
+  // Prevent multiple chart creation
+  if (timeAnalyticsChart) {
+    timeAnalyticsChart.destroy();
+    timeAnalyticsChart = null;
+  }
+
+  try {
+    var chartData = chartElement.getAttribute('data-chart');
+    if (!chartData || chartData === 'null' || chartData === '') {
+      console.log('No chart data available');
+      chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No data available for chart</p>';
+      return;
+    }
+
+    var config = JSON.parse(chartData);
+    
+    // Ensure responsive configuration
+    if (!config.options) {
+      config.options = {};
+    }
+    config.options.responsive = true;
+    config.options.maintainAspectRatio = false;
+    
+    console.log('Creating chart with config:', config);
+    timeAnalyticsChart = new Chart(chartElement, config);
+    console.log('Chart created successfully');
+    
+    // Enhance legend for pie charts
+    if (config.type === 'pie') {
+      setTimeout(function() {
+        if (typeof TimeAnalytics !== 'undefined' && TimeAnalytics.enhancePieLegend) {
+          TimeAnalytics.enhancePieLegend(chartElement);
+        }
+      }, 200);
+    }
+    
+  } catch (error) {
+    console.error('Error creating chart:', error);
+    chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart: ' + error.message + '</p>';
+  }
+}
+
+function updateChart() {
+  var chartTypeDropdown = document.getElementById('chart_type_select');
+  
+  if (!chartTypeDropdown) {
+    console.error('Chart type dropdown not found!');
+    return;
+  }
+  
+  var chartType = chartTypeDropdown.value;
+  console.log('Switching to chart type:', chartType);
+  
+  // Get the current chart element and its data
+  var chartElement = document.getElementById('time-chart');
+  if (!chartElement) {
+    console.error('Chart element not found');
+    return;
+  }
+  
+  var currentChartData = chartElement.getAttribute('data-chart');
+  if (!currentChartData) {
+    console.error('No chart data found');
+    return;
+  }
+  
+  try {
+    // Parse the current chart configuration
+    var chartConfig = JSON.parse(currentChartData);
+    console.log('Current chart config:', chartConfig);
+    
+    // Transform the chart type while keeping the same data
+    var newChartConfig = transformChartType(chartConfig, chartType);
+    
+    // Update the chart element with new configuration
+    chartElement.setAttribute('data-chart', JSON.stringify(newChartConfig));
+    
+    // Reinitialize the chart
+    initChart();
+    
+    console.log('Chart successfully switched to:', chartType);
+    
+  } catch (error) {
+    console.error('Error transforming chart:', error);
+  }
+}
+
+function transformChartType(originalConfig, newType) {
+  // Create a new config based on the original data but with different chart type
+  var newConfig = JSON.parse(JSON.stringify(originalConfig)); // Deep copy
+  
+  console.log('Transforming chart to type:', newType);
+  console.log('Original labels:', newConfig.data.labels);
+  
+  // Change the chart type
+  newConfig.type = newType;
+  
+  // Adjust configuration based on chart type
+  if (newType === 'pie') {
+    // Calculate total for percentage calculation
+    var total = newConfig.data.datasets[0].data.reduce(function(sum, val) { return sum + val; }, 0);
+    
+    // Modify labels to include percentage and hours (key fix!)
+    var originalLabels = newConfig.data.labels.slice();
+    var modifiedLabels = [];
+    
+    // Check if labels are already modified (contain parentheses)
+    var needsModification = !originalLabels[0] || originalLabels[0].indexOf('(') === -1;
+    
+    if (needsModification) {
+      for (var i = 0; i < originalLabels.length; i++) {
+        var value = newConfig.data.datasets[0].data[i];
+        var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+        var hours = value.toFixed(1);
+        
+        // Format: "Development (68.9%, 31.1h)"
+        var labelWithInfo = originalLabels[i] + ' (' + percentage + '%, ' + hours + 'h)';
+        modifiedLabels.push(labelWithInfo);
+      }
+      
+      // Update chart labels
+      newConfig.data.labels = modifiedLabels;
+      console.log('Modified labels for pie chart:', modifiedLabels);
+    }
+    
+    // Pie chart specific configuration
+    newConfig.options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            padding: 15,
+            boxWidth: 12
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var label = context.label || '';
+              var value = context.parsed;
+              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              // Extract original label (before parentheses) for cleaner tooltip
+              var originalLabel = label.split(' (')[0];
+              return originalLabel + ': ' + value.toFixed(1) + 'h (' + percentage + '%)';
+            }
+          }
+        }
+      },
+      total_hours: total
+    };
+    
+    // For pie charts, we need different colors for each slice
+    if (newConfig.data && newConfig.data.datasets && newConfig.data.datasets[0]) {
+      var dataCount = newConfig.data.labels.length;
+      var colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#8AC249', '#EA5F89', '#00D1B2', '#958AF7'
+      ];
+      
+      newConfig.data.datasets[0].backgroundColor = colors.slice(0, dataCount);
+      newConfig.data.datasets[0].borderColor = '#fff';
+      newConfig.data.datasets[0].borderWidth = 1;
+    }
+    
+  } else if (newType === 'line') {
+    // For non-pie charts, restore original labels if they were modified
+    if (newConfig.data && newConfig.data.labels && newConfig.data.labels.length > 0) {
+      var currentLabels = newConfig.data.labels.slice();
+      var restoredLabels = [];
+      
+      for (var i = 0; i < currentLabels.length; i++) {
+        var label = currentLabels[i];
+        // If label contains parentheses, extract original part
+        if (label.indexOf(' (') !== -1) {
+          restoredLabels.push(label.split(' (')[0]);
+        } else {
+          restoredLabels.push(label);
+        }
+      }
+      
+      newConfig.data.labels = restoredLabels;
+    }
+    
+    // Line chart specific configuration
+    newConfig.options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true
+        },
+        x: {
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    };
+    
+    // Line chart styling
+    if (newConfig.data && newConfig.data.datasets && newConfig.data.datasets[0]) {
+      newConfig.data.datasets[0].borderColor = '#36a2eb';
+      newConfig.data.datasets[0].backgroundColor = 'rgba(54, 162, 235, 0.1)';
+      newConfig.data.datasets[0].fill = true;
+      newConfig.data.datasets[0].tension = 0.2;
+      newConfig.data.datasets[0].borderWidth = 2;
+      newConfig.data.datasets[0].pointRadius = 3;
+      newConfig.data.datasets[0].pointHoverRadius = 5;
+    }
+    
+  } else {
+    // For non-pie charts, restore original labels if they were modified
+    if (newConfig.data && newConfig.data.labels && newConfig.data.labels.length > 0) {
+      var currentLabels = newConfig.data.labels.slice();
+      var restoredLabels = [];
+      
+      for (var i = 0; i < currentLabels.length; i++) {
+        var label = currentLabels[i];
+        // If label contains parentheses, extract original part
+        if (label.indexOf(' (') !== -1) {
+          restoredLabels.push(label.split(' (')[0]);
+        } else {
+          restoredLabels.push(label);
+        }
+      }
+      
+      newConfig.data.labels = restoredLabels;
+    }
+    
+    // Bar chart (default) configuration
+    newConfig.options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true
+        },
+        x: {
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    };
+    
+    // Bar chart styling
+    if (newConfig.data && newConfig.data.datasets && newConfig.data.datasets[0]) {
+      var dataCount = newConfig.data.labels.length;
+      var colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#8AC249', '#EA5F89', '#00D1B2', '#958AF7'
+      ];
+      
+      newConfig.data.datasets[0].backgroundColor = colors.slice(0, dataCount);
+      newConfig.data.datasets[0].borderWidth = 1;
+    }
+  }
+  
+  return newConfig;
+}
+
+// Toggle between detailed and summary views for daily activity analysis
+function toggleActivityView() {
+  var detailedView = document.getElementById('daily-detailed-view');
+  var summaryView = document.getElementById('daily-summary-view');
+  var toggleText = document.getElementById('view-toggle-text');
+  
+  if (!detailedView || !summaryView || !toggleText) {
+    return;
+  }
+  
+  if (detailedView.style.display === 'none') {
+    // Currently showing summary, switch to detailed
+    detailedView.style.display = 'block';
+    summaryView.style.display = 'none';
+    toggleText.textContent = 'Show Summary View';
+    localStorage.setItem('activity_view_mode', 'detailed');
+  } else {
+    // Currently showing detailed, switch to summary
+    detailedView.style.display = 'none';
+    summaryView.style.display = 'block';
+    toggleText.textContent = 'Show Detailed View';
+    localStorage.setItem('activity_view_mode', 'summary');
+  }
+}
+
+// Restore activity view preference
+function restoreActivityViewState() {
+  var savedMode = localStorage.getItem('activity_view_mode');
+  var detailedView = document.getElementById('daily-detailed-view');
+  var summaryView = document.getElementById('daily-summary-view');
+  var toggleText = document.getElementById('view-toggle-text');
+  
+  if (!detailedView || !summaryView || !toggleText) {
+    return;
+  }
+  
+  if (savedMode === 'summary') {
+    detailedView.style.display = 'none';
+    summaryView.style.display = 'block';
+    toggleText.textContent = 'Show Detailed View';
+  } else {
+    // Default to detailed view
+    detailedView.style.display = 'block';
+    summaryView.style.display = 'none';
+    toggleText.textContent = 'Show Summary View';
+  }
+}
+
+// Preserve form state in localStorage
+function preserveFormState() {
+  var groupingSelect = document.getElementById('grouping');
+  if (groupingSelect) {
+    localStorage.setItem('time_analytics_grouping', groupingSelect.value);
+  }
+}
+
+// Restore form state from localStorage
+function restoreFormState() {
+  var storedGrouping = localStorage.getItem('time_analytics_grouping');
+  var groupingSelect = document.getElementById('grouping');
+  if (storedGrouping && groupingSelect) {
+    groupingSelect.value = storedGrouping;
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, initializing chart...');
+  toggleCustomDateRange();
+  restoreFormState();
+  restoreActivityViewState();
+  
+  // Add event listeners to preserve state
+  var groupingSelect = document.getElementById('grouping');
+  if (groupingSelect) {
+    groupingSelect.addEventListener('change', preserveFormState);
+  }
+  
+  // Initialize chart after a small delay to ensure DOM is fully rendered
+  setTimeout(function() {
+    initChart();
+  }, 100);
+});
+
+// Also initialize if page is already loaded
+if (document.readyState === 'complete') {
+  setTimeout(function() {
+    initChart();
+  }, 100);
+}
+</script>
