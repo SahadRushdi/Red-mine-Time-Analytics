@@ -11,26 +11,37 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 
 ### Individual Dashboard
 - **Personal Time Analytics**: View your own logged time with comprehensive filtering
-- **Multiple View Modes**: Switch between Time Entries, Activity Analysis, and Grouping views
+- **Multiple View Modes**: Switch between Time Entries, Activity Analysis, and Project views
 - **Multiple Time Periods**: Today, this week, last week, this month, this year, or custom date ranges
 - **Flexible Grouping**: Group data by daily, weekly, monthly, or yearly periods
 - **Interactive Charts**: Bar, line, and pie charts powered by Chart.js with real-time switching
-- **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Grouping)
+- **Modern Chart Controls**: Custom-styled dropdown with hover/focus states and matching button sizes
+- **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Project)
 - **Optimized Layout**: Side-by-side summary and visualization for maximum screen utilization
 - **Compact Statistics**: 2x2 grid layout showing total hours, entry counts, daily averages, max/min daily hours
-- **Activity Analysis**: Cross-tabulation matrix showing activity distribution across time periods
+- **Activity & Project Analysis**: Cross-tabulation matrix showing distribution across time periods
   - **Dual View System**: Toggle between detailed pivot table and summary view for all groupings
-  - **Context-Aware Charts**: Pie charts show activities in summary view, time periods in detailed view
+  - **Context-Aware Charts**: Pie charts show activities/projects in summary view, time periods in detailed view
+  - **Horizontal Distribution Bars**: Visual percentage bars in summary tables showing proportional time distribution
 - **Advanced Search**: Search across projects, issues, and comments
 - **Export Functionality**: Export data and visualizations as CSV
 - **Responsive Design**: Works on desktop and mobile devices with adaptive layouts
 - **Percentage Display**: Pie charts show percentages and hours for each segment (e.g., "Development (68.9%, 31.1h)")
 
 ### UI/UX Improvements
+- **Modern Button System**: Unified button styling with shared base classes for consistency
+  - Primary blue buttons for main actions (Apply, Show Summary View, Active toggle)
+  - Secondary gray buttons for alternate actions (Clear, Hide Chart)
+  - Consistent sizing and alignment across all controls
 - **Space-Optimized Layout**: Summary section (280px) + Visualization section (remaining space)
+- **Enhanced Summary Tables**: Horizontal distribution bars with percentages (40% column width)
+  - Time Entries grouped view (Weekly/Monthly/Yearly)
+  - Activity summary view
+  - Project summary view
 - **Information Density**: All key metrics visible without scrolling
 - **Consistent Date Formatting**: Unified date format across all views (e.g., "Dec 29, 2025")
-- **Collapsible Filters**: Toggle filter visibility to maximize content area
+- **Collapsible Filters**: Toggle filter visibility to maximize content area with aligned action buttons
+- **Modern Form Controls**: Styled dropdowns with custom arrows and hover effects
 - **Mobile-First Design**: Sections stack vertically on smaller screens
 - **Smart Chart Switching**: Charts automatically update when toggling between summary and detailed views
 
@@ -108,6 +119,9 @@ The plugin implements a modern, space-optimized design:
 - **Responsive Breakpoints**: Desktop side-by-side, mobile stacked layout
 - **Information Hierarchy**: Analytics first, detailed data second
 - **Consistent Formatting**: Unified Sunday-Saturday week display across all views
+- **Modern Button System**: Shared base classes (button-base, button-primary, button-secondary) for consistent styling
+- **Visual Data Representation**: Horizontal distribution bars in summary tables with 40% column width
+- **Professional Controls**: Custom-styled form elements with hover/focus states
 
 ### Chart Integration
 Advanced Chart.js integration with custom wrapper and intelligent defaults:
@@ -155,9 +169,9 @@ The Activity view offers two complementary perspectives on your time data:
 Charts automatically select the best type for each view:
 - **Time Entries View**: Bar chart (default) - ideal for comparing daily/periodic values
 - **Activity View**: Pie chart (default) - perfect for showing activity distribution
-- **Grouping View**: Pie chart (default) - great for proportional analysis
+- **Project View**: Pie chart (default) - great for proportional project analysis
 
-You can still manually switch between bar, line, and pie charts using the dropdown.
+You can still manually switch between bar, line, and pie charts using the modern custom dropdown.
 
 ### 3. Enhanced Pie Charts
 All pie charts now display rich information:
@@ -165,7 +179,15 @@ All pie charts now display rich information:
 - **Hours**: View actual time spent (e.g., 31.1h)
 - **Combined Labels**: "Development (68.9%, 31.1h)" provides complete context at a glance
 
-### 4. Flexible Time Period Filters
+### 4. Visual Distribution Bars
+Summary tables include horizontal bar charts showing percentage distribution:
+- **40% column width** for spacious, easy-to-read bars
+- **Blue gradient fill** matching the plugin's color scheme
+- **Percentage labels** displayed on the right side of each bar
+- **Instant visual comparison** of time allocation across activities, projects, or time periods
+- Available in Time Entries (grouped), Activity, and Project summary views
+
+### 5. Flexible Time Period Filters
 Choose from various time ranges:
 - **Today**: Current day
 - **This Week**: Current week (Sunday to Saturday)
@@ -174,7 +196,7 @@ Choose from various time ranges:
 - **This Year**: Current year
 - **Custom Range**: Select any date range
 
-### 5. Consistent Date Formatting
+### 6. Consistent Date Formatting
 All dates display in a user-friendly format:
 - **Daily views**: "Dec 29, 2025"
 - **Weekly views**: "12/22/2025 to 12/28/2025"
@@ -210,10 +232,41 @@ redmine_time_analytics/
 ```
 
 ### Recent Improvements (January 2026)
+
+#### UI/UX Enhancements (January 2, 2026)
+- **Unified Button System**: Refactored all buttons to use shared base classes for consistency
+  - `.button-base`: Common button properties (transitions, border-radius, text alignment)
+  - `.button-primary`: Bright blue (#007cba) for primary actions
+  - `.button-secondary`: Light gray for secondary actions
+  - `.button-neutral`: White background for inactive toggle states
+  - Reduced CSS by 54+ lines through code reuse
+- **Filter Section Improvements**: 
+  - Aligned Apply and Clear buttons horizontally with other filter fields
+  - Matching heights and consistent sizing across all filter controls
+  - Apply button now uses primary blue color for better visual hierarchy
+  - Clear button styled as secondary action with neutral gray
+- **Enhanced Toggle Buttons**:
+  - Increased font size to 15px with bold weight for better readability
+  - Wider buttons (flex: 1) with 15px gap between each
+  - Consistent blue active state matching the Apply button
+- **Modern Chart Controls**:
+  - Custom-styled dropdown with SVG arrow (removed browser defaults)
+  - Matching heights (34px) for chart type dropdown and Hide Chart button
+  - Hover and focus states with smooth transitions
+  - Professional appearance matching modern design standards
+- **Horizontal Distribution Bars**: Added visual percentage bars to all summary tables
+  - 40% column width for spacious bar visualization
+  - Blue gradient fill (#007cba to #36a2eb) with smooth animations
+  - Percentage labels positioned on the right side of bars
+  - Applied to: Time Entries (grouped), Activity summary, Project summary
+  - Optimized table layout: left-aligned names, right-aligned hours, wide distribution column
+  - Eliminates wasted space in summary views with informative visual data
+
+#### Core Features (Early January 2026)
 - **Last Week Filter**: Added "Last Week" option to time period filters for quick access to previous week's data
 - **Summary View for All Groupings**: Extended summary/detailed view toggle to work with all groupings (daily, weekly, monthly, yearly)
 - **Context-Aware Charts**: Pie charts now intelligently show activities in summary view and time periods in detailed view
-- **View-Specific Chart Defaults**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Grouping)
+- **View-Specific Chart Defaults**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Project)
 - **Enhanced Pie Chart Labels**: Added percentage and hours display to all pie chart segments (e.g., "Development (68.9%, 31.1h)")
 - **Unified Date Formatting**: Consistent date format across tables and charts (e.g., "Dec 29, 2025")
 - **Smart Chart Data Detection**: Charts automatically adapt to data type (activities vs. time periods) for proper formatting
