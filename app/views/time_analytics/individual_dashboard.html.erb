@@ -34,7 +34,7 @@
     background-color: #e7e7e7;
     border-radius: 12px;
     padding: 4px 10px;
-    font-size: 0.85em;
+    font-size: 1em;
     white-space: nowrap;
     border: 1px solid #dcdcdc;
   }
@@ -389,7 +389,7 @@
                   <% @activities.each do |activity| %>
                     <td class="hours-cell">
                       <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                      <%= hours > 0 ? format_hours(hours) : '' %>
                     </td>
                   <% end %>
                   <td class="total-cell">
@@ -462,7 +462,7 @@
                   <% @activities.each do |activity| %>
                     <td class="hours-cell">
                       <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                      <%= hours > 0 ? format_hours(hours) : '' %>
                     </td>
                   <% end %>
                   <td class="total-cell">
@@ -537,7 +537,7 @@
                   <% @projects.each do |project| %>
                     <td class="hours-cell">
                       <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                      <%= hours > 0 ? format_hours(hours) : '' %>
                     </td>
                   <% end %>
                   <td class="total-cell">
@@ -610,7 +610,7 @@
                   <% @projects.each do |project| %>
                     <td class="hours-cell">
                       <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                      <%= hours > 0 ? format_hours(hours) : '' %>
                     </td>
                   <% end %>
                   <td class="total-cell">
