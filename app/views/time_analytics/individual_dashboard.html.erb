@@ -31,7 +31,7 @@
   <div class="box filter-controls">
     <h3><%= l(:label_filters) %></h3>
     <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
-      <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode) %>
+      <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
       <%= hidden_field_tag :view_mode, @view_mode %>
       <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
       <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
@@ -635,6 +635,13 @@ function updateChart() {
   var chartType = chartTypeDropdown.value;
   console.log('Switching to chart type:', chartType);
   
+  // Update hidden field with new chart type
+  var hiddenChartTypeField = document.getElementById('chart_type_hidden');
+  if (hiddenChartTypeField) {
+    hiddenChartTypeField.value = chartType;
+    console.log('Updated hidden chart type field to:', chartType);
+  }
+  
   // Get the current chart element and its data
   var chartElement = document.getElementById('time-chart');
   if (!chartElement) {
@@ -1022,6 +1029,39 @@ function restoreFormState() {
   }
 }
 
+// Sync chart type dropdown with actual chart type from backend
+function syncChartTypeDropdown() {
+  var chartElement = document.getElementById('time-chart');
+  var chartTypeDropdown = document.getElementById('chart_type_select');
+  
+  if (!chartElement || !chartTypeDropdown) {
+    return;
+  }
+  
+  try {
+    var chartData = chartElement.getAttribute('data-chart');
+    if (chartData && chartData !== 'null' && chartData !== '') {
+      var config = JSON.parse(chartData);
+      var actualChartType = config.type || 'bar';
+      
+      // Update dropdown to match actual chart type
+      if (chartTypeDropdown.value !== actualChartType) {
+        chartTypeDropdown.value = actualChartType;
+        console.log('Synced chart type dropdown to:', actualChartType);
+      }
+      
+      // Also update the hidden field in the form
+      var hiddenChartTypeField = document.getElementById('chart_type_hidden');
+      if (hiddenChartTypeField && hiddenChartTypeField.value !== actualChartType) {
+        hiddenChartTypeField.value = actualChartType;
+        console.log('Updated hidden chart_type field to:', actualChartType);
+      }
+    }
+  } catch (e) {
+    console.error('Error syncing chart type:', e);
+  }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded, initializing chart...');
@@ -1039,6 +1079,8 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize chart after a small delay to ensure DOM is fully rendered
   setTimeout(function() {
     initChart();
+    // Sync chart type dropdown after chart is initialized
+    syncChartTypeDropdown();
   }, 100);
 });
 
