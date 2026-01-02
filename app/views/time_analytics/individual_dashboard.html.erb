@@ -703,18 +703,26 @@
       <% end %>
     <% elsif ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
       <%# Grouped table for weekly, monthly, yearly %>
-      <table class="list time-entries-grouped-table">
+      <table class="list time-entries-grouped-table summary-with-bars">
         <thead>
           <tr>
             <th><%= l("label_#{@grouping}") %></th>
             <th class="hours-column"><%= l(:label_hours) %></th>
+            <th class="bar-column">Distribution</th>
           </tr>
         </thead>
         <tbody>
           <% @paginated_entries.each do |entry| %>
+            <% percentage = @total_hours > 0 ? (entry.hours / @total_hours * 100) : 0 %>
             <tr>
               <td><%= entry.period %></td>
               <td class="hours-column"><%= format_hours(entry.hours) %></td>
+              <td class="bar-column">
+                <div class="bar-container">
+                  <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                  <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </td>
             </tr>
           <% end %>
         </tbody>
@@ -722,6 +730,7 @@
           <tr class="total-row">
             <td><strong><%= l(:label_total) %></strong></td>
             <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+            <td class="bar-column"><strong>100%</strong></td>
           </tr>
         </tfoot>
       </table>
