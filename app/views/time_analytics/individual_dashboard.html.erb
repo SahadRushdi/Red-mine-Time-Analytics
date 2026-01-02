@@ -110,7 +110,7 @@
       <div class="visualization-controls">
         <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
             onchange: 'updateChart()', class: 'chart-type-select', id: 'chart_type_select' %>
-        <button type="button" onclick="toggleVisualization()" class="button button-small" id="toggle-chart-btn">
+        <button type="button" onclick="toggleVisualization()" class="button button-base button-secondary" id="toggle-chart-btn">
           Hide Chart
         </button>
       </div>
@@ -131,14 +131,14 @@
     <% when 'activity' %>
       Activity Analysis
       <div class="view-toggle-controls">
-        <button type="button" id="toggle-activity-view-btn" class="button button-small" onclick="toggleActivityView()">
+        <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
           <span id="view-toggle-text">Show Summary View</span>
         </button>
       </div>
     <% when 'project' %>
       Project Analysis
       <div class="view-toggle-controls">
-        <button type="button" id="toggle-project-view-btn" class="button button-small" onclick="toggleProjectView()">
+        <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
           <span id="project-view-toggle-text">Show Summary View</span>
         </button>
       </div>
