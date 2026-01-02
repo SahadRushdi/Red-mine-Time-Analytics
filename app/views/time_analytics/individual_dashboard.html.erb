@@ -11,20 +11,22 @@
       method: :post, class: 'icon icon-download' %>
 </div>
 
-<h2><%= l(:label_individual_dashboard) %></h2>
-
-<%# START: New Context Pills Bar %>
+<%# START: Dashboard Header with Context Pills %>
 <style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px; /* Keep the space below the header */
+  }
+  .dashboard-header h2 {
+    margin: 0; /* Remove default h2 margin to help with alignment */
+  }
   .context-pills-bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    margin-bottom: 15px;
   }
   .context-pill {
     display: flex;
@@ -58,31 +60,35 @@
   }
 </style>
 
-<div class="context-pills-bar">
-  <div class="context-pill">
-    <span class="pill-label">View:</span>
-    <span class="pill-value"><%= @view_mode.humanize %></span>
-  </div>
+<div class="dashboard-header">
+  <h2><%= l(:label_individual_dashboard) %></h2>
 
-  <div class="context-pill">
-    <span class="pill-label">Period:</span>
-    <span class="pill-value"><%= (params[:filter] || 'Default').humanize %></span>
-  </div>
-
-  <div class="context-pill">
-    <span class="pill-label">Grouped By:</span>
-    <span class="pill-value"><%= @grouping.humanize %></span>
-  </div>
-
-  <% if params[:search].present? %>
+  <div class="context-pills-bar">
     <div class="context-pill">
-      <span class="pill-label">Search:</span>
-      <span class="pill-value">'<%= params[:search] %>'</span>
-      <%= link_to '×', url_for(params.to_unsafe_h.except(:search)), class: 'remove-pill', title: 'Remove Search Filter' %>
+      <span class="pill-label">View:</span>
+      <span class="pill-value"><%= @view_mode.humanize %></span>
     </div>
-  <% end %>
+
+    <div class="context-pill">
+      <span class="pill-label">Period:</span>
+      <span class="pill-value"><%= (params[:filter] || 'Default').humanize %></span>
+    </div>
+
+    <div class="context-pill">
+      <span class="pill-label">Grouped By:</span>
+      <span class="pill-value"><%= @grouping.humanize %></span>
+    </div>
+
+    <% if params[:search].present? %>
+      <div class="context-pill">
+        <span class="pill-label">Search:</span>
+        <span class="pill-value">'<%= params[:search] %>'</span>
+        <%= link_to '×', url_for(params.to_unsafe_h.except(:search)), class: 'remove-pill', title: 'Remove Search Filter' %>
+      </div>
+    <% end %>
+  </div>
 </div>
-<%# END: New Context Pills Bar %>
+<%# END: Dashboard Header with Context Pills %>
 
 <div id="collapsible-filters" class="collapsible-section">
   <!-- Toggle View Section -->
