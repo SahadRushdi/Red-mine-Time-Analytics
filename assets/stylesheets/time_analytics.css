@@ -350,8 +350,20 @@
 
 /* === Summary Table with Horizontal Bars === */
 .summary-with-bars .bar-column {
-  width: 300px;
-  min-width: 300px;
+  width: 40%;
+  min-width: 350px;
+}
+
+.summary-with-bars th:first-child,
+.summary-with-bars td:first-child {
+  text-align: left;
+  padding-left: 12px;
+}
+
+.summary-with-bars .hours-column {
+  width: 120px;
+  text-align: right;
+  padding-right: 20px;
 }
 
 .bar-container {
