@@ -416,18 +416,27 @@
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <table class="list time-entries-grouped-table">
+          <table class="list time-entries-grouped-table summary-with-bars">
             <thead>
               <tr>
                 <th>Activity</th>
                 <th class="hours-column">Total Hours</th>
+                <th class="bar-column">Distribution</th>
               </tr>
             </thead>
             <tbody>
               <% @activities.each do |activity| %>
+                <% hours = @activity_totals[activity] || 0 %>
+                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
                 <tr>
                   <td><%= activity %></td>
-                  <td class="hours-column"><%= format_hours(@activity_totals[activity] || 0) %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -435,6 +444,7 @@
               <tr class="total-row">
                 <td><strong><%= l(:label_total) %></strong></td>
                 <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+                <td class="bar-column"><strong>100%</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -489,18 +499,27 @@
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <table class="list time-entries-grouped-table">
+          <table class="list time-entries-grouped-table summary-with-bars">
             <thead>
               <tr>
                 <th>Activity</th>
                 <th class="hours-column">Total Hours</th>
+                <th class="bar-column">Distribution</th>
               </tr>
             </thead>
             <tbody>
               <% @activities.each do |activity| %>
+                <% hours = @activity_totals[activity] || 0 %>
+                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
                 <tr>
                   <td><%= activity %></td>
-                  <td class="hours-column"><%= format_hours(@activity_totals[activity] || 0) %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -508,6 +527,7 @@
               <tr class="total-row">
                 <td><strong><%= l(:label_total) %></strong></td>
                 <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+                <td class="bar-column"><strong>100%</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -564,18 +584,27 @@
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <table class="list time-entries-grouped-table">
+          <table class="list time-entries-grouped-table summary-with-bars">
             <thead>
               <tr>
                 <th>Project</th>
                 <th class="hours-column">Total Hours</th>
+                <th class="bar-column">Distribution</th>
               </tr>
             </thead>
             <tbody>
               <% @projects.each do |project| %>
+                <% hours = @project_totals[project] || 0 %>
+                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
                 <tr>
                   <td><%= project %></td>
-                  <td class="hours-column"><%= format_hours(@project_totals[project] || 0) %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -583,6 +612,7 @@
               <tr class="total-row">
                 <td><strong><%= l(:label_total) %></strong></td>
                 <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+                <td class="bar-column"><strong>100%</strong></td>
               </tr>
             </tfoot>
           </table>
@@ -637,18 +667,27 @@
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <table class="list time-entries-grouped-table">
+          <table class="list time-entries-grouped-table summary-with-bars">
             <thead>
               <tr>
                 <th>Project</th>
                 <th class="hours-column">Total Hours</th>
+                <th class="bar-column">Distribution</th>
               </tr>
             </thead>
             <tbody>
               <% @projects.each do |project| %>
+                <% hours = @project_totals[project] || 0 %>
+                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
                 <tr>
                   <td><%= project %></td>
-                  <td class="hours-column"><%= format_hours(@project_totals[project] || 0) %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -656,6 +695,7 @@
               <tr class="total-row">
                 <td><strong><%= l(:label_total) %></strong></td>
                 <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+                <td class="bar-column"><strong>100%</strong></td>
               </tr>
             </tfoot>
           </table>
