@@ -802,6 +802,18 @@ function initChart() {
     }
     config.options.responsive = true;
     config.options.maintainAspectRatio = false;
+
+    // START FIX: Dynamically add tooltip callbacks on the client-side to prevent errors
+    if (config.type === 'pie' && config.options.plugins && config.options.plugins.tooltip) {
+      config.options.plugins.tooltip.callbacks = {
+        label: function(context) {
+          // The pre-formatted label from the backend already contains all info.
+          // e.g., "Development (50%, 25.0h)"
+          return context.label || '';
+        }
+      };
+    }
+    // END FIX
     
     console.log('Creating chart with config:', config);
     timeAnalyticsChart = new Chart(chartElement, config);

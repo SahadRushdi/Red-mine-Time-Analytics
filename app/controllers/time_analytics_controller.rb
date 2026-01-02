@@ -420,12 +420,6 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         tooltip: {
-          callbacks: {
-            label: 'function(context) {
-              var label = context.label || "";
-              return label;
-            }'.html_safe
-          }
         }
       },
       # Add total hours for percentage calculation in JavaScript
@@ -925,12 +919,6 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         tooltip: {
-          callbacks: {
-            label: 'function(context) {
-              var label = context.label || "";
-              return label;
-            }'.html_safe
-          }
         }
       },
       # Add total hours for percentage calculation in JavaScript
