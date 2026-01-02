@@ -19,11 +19,11 @@
     <h3>Toggle View:</h3>
     <div class="toggle-buttons">
       <%= link_to 'Time Entries', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
-          class: "button #{'button-active' if @view_mode == 'time_entries'}" %>
+          class: "button button-base button-toggle #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
-          class: "button #{'button-active' if @view_mode == 'activity'}" %>
+          class: "button button-base button-toggle #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Project', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
-          class: "button #{'button-active' if @view_mode == 'project'}" %>
+          class: "button button-base button-toggle #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
     </div>
   </div>
 
@@ -62,9 +62,12 @@
         </div>
 
         <div class="filter-group">
-          <%= submit_tag l(:button_apply), class: 'button button-small' %>
+          <%= submit_tag l(:button_apply), class: 'button button-base button-primary button-apply' %>
+        </div>
+
+        <div class="filter-group">
           <%= link_to l(:button_clear), time_analytics_individual_dashboard_path, 
-              class: 'button button-small' %>
+              class: 'button button-base button-secondary button-clear' %>
         </div>
       </div>
     <% end %>

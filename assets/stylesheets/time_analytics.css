@@ -14,38 +14,66 @@
   font-weight: bold;
 }
 
-/* === Buttons === */
+/* === Shared Button Base Styles === */
+.button-base {
+  box-sizing: border-box;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+/* Neutral/Default Button State (White background) */
+.button-neutral {
+  background-color: #fff !important;
+  color: #333 !important;
+  border: 1px solid #ccc !important;
+}
+
+.button-neutral:hover {
+  background-color: #f0f0f0 !important;
+  border-color: #999 !important;
+}
+
+/* Primary/Active Button State (Bright Blue) */
+.button-primary {
+  background-color: #007cba !important;
+  color: white !important;
+  border: 1px solid #007cba !important;
+}
+
+.button-primary:hover {
+  background-color: #005a87 !important;
+  border-color: #005a87 !important;
+}
+
+/* Secondary Button State (Light Gray) */
+.button-secondary {
+  background-color: #f0f0f0 !important;
+  color: #333 !important;
+  border: 1px solid #ccc !important;
+}
+
+.button-secondary:hover {
+  background-color: #e0e0e0 !important;
+  border-color: #999 !important;
+}
+
+/* === Toggle View Buttons === */
 .toggle-buttons {
   display: flex;
-  gap: 10px;
+  gap: 40px;
   flex-wrap: wrap;
 }
 
-.toggle-buttons .button {
-  padding: 8px 16px;
-  border: 1px solid #ccc;
-  background-color: #fff;
-  color: #333;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 13px;
-  transition: all 0.2s ease;
-}
-
-.toggle-buttons .button:hover {
-  background-color: #f0f0f0;
-  border-color: #999;
-}
-
-.toggle-buttons .button.button-active {
-  background-color: #36a2eb;
-  color: white;
-  border-color: #36a2eb;
-}
-
-.toggle-buttons .button.button-active:hover {
-  background-color: #2e8bc9;
-  border-color: #2e8bc9;
+.button-toggle {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  font-weight: bold !important;
 }
 
 /* === View Toggle Controls === */
@@ -87,6 +115,27 @@
   border-radius: 3px;
   overflow: visible;
   background-clip: padding-box;
+}
+
+/* === Filter Action Buttons === */
+.button-apply,
+.button-clear {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 38px !important;
+  padding: 0 20px !important;
+  line-height: 1 !important;
+  margin: 0;
+  font-size: 14px !important;
+}
+
+.button-apply {
+  font-weight: 600 !important;
+}
+
+.button-clear {
+  font-size: 13px !important;
 }
 
 .search-input {
