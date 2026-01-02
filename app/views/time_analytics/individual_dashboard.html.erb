@@ -108,11 +108,129 @@
     <h3>
       <%= l(:label_visualization) %>
       <div class="visualization-controls">
+        <%# START: New Custom Dropdown for Chart Type %>
+        <style>
+          /* Placed here to be self-contained */
+          .visualization-controls .custom-chart-dropdown {
+            position: relative;
+            display: inline-block;
+          }
+          .visualization-controls .dropdown-toggle {
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            min-width: 100px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #333;
+          }
+          .visualization-controls .dropdown-toggle:hover {
+            background-color: #eee;
+            border-color: #999;
+          }
+          .visualization-controls .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            list-style: none;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            min-width: 120px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .visualization-controls .dropdown-menu.show {
+            display: block;
+          }
+          .visualization-controls .dropdown-menu li a {
+            display: block;
+            padding: 8px 12px;
+            color: #333;
+            text-decoration: none;
+            font-size: 0.9em;
+            white-space: nowrap;
+          }
+          .visualization-controls .dropdown-menu li a:hover {
+            background-color: #f0f0f0;
+          }
+          .visualization-controls .arrow-down {
+            border: solid #555;
+            border-width: 0 1.5px 1.5px 0;
+            display: inline-block;
+            padding: 2.5px;
+            transform: rotate(45deg);
+            margin-left: 8px;
+          }
+        </style>
+
+        <div class="custom-chart-dropdown">
+          <button type="button" class="dropdown-toggle" id="custom-chart-toggle">
+            <span id="custom-chart-label"><%= (params[:chart_type] || default_chart_type(@view_mode)).capitalize %></span>
+            <i class="arrow-down"></i>
+          </button>
+          <ul class="dropdown-menu" id="custom-chart-menu">
+            <% chart_type_options.each do |option| %>
+              <li><a href="#" data-value="<%= option[1] %>"><%= option[0] %></a></li>
+            <% end %>
+          </ul>
+        </div>
+
+        <%# Hide the original select but keep it for the updateChart() function to work %>
         <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
-            onchange: 'updateChart()', class: 'chart-type-select', id: 'chart_type_select' %>
-        <button type="button" onclick="toggleVisualization()" class="button button-base button-secondary" id="toggle-chart-btn">
-          Hide Chart
-        </button>
+            onchange: 'updateChart()', id: 'chart_type_select', style: 'display: none;' %>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const toggleBtn = document.getElementById('custom-chart-toggle');
+          const menu = document.getElementById('custom-chart-menu');
+          const label = document.getElementById('custom-chart-label');
+          const originalSelect = document.getElementById('chart_type_select');
+
+          if (toggleBtn && menu && originalSelect) {
+            // Toggle menu visibility
+            toggleBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              menu.classList.toggle('show');
+            });
+
+            // Handle item selection
+            menu.addEventListener('click', function(e) {
+              if (e.target.tagName === 'A') {
+                e.preventDefault();
+                const value = e.target.getAttribute('data-value');
+                const text = e.target.textContent;
+
+                // Update the hidden original select and our new button's label
+                originalSelect.value = value;
+                if(label) {
+                  label.textContent = text;
+                }
+                
+                // Programmatically trigger the onchange event on the original select
+                originalSelect.dispatchEvent(new Event('change'));
+
+                menu.classList.remove('show');
+              }
+            });
+
+            // Hide menu if clicking outside
+            document.addEventListener('click', function(e) {
+              if (!toggleBtn.contains(e.target)) {
+                menu.classList.remove('show');
+              }
+            });
+          }
+        });
+        </script>
+        <%# END: New Custom Dropdown for Chart Type %>
       </div>
     </h3>
     
