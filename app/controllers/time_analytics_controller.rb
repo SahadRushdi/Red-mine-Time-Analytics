@@ -1,3 +1,7 @@
+# Require gems for working days calculation
+require 'business_time'
+require 'holidays'
+
 class TimeAnalyticsController < ApplicationController
   before_action :require_login
   before_action :set_date_range
@@ -252,11 +256,39 @@ class TimeAnalyticsController < ApplicationController
   def calculate_avg_hours_per_day
     return 0 if @time_entries.empty?
     
-    # Remove order clause to avoid ambiguity in GROUP BY
-    days_with_entries = @time_entries.reorder(nil).group(:spent_on).sum(:hours).keys.count
-    return 0 if days_with_entries.zero?
+    # Calculate based on Sri Lankan working days (excluding weekends and holidays)
+    # Get the date range from time entries
+    dates = @time_entries.pluck(:spent_on)
+    return 0 if dates.empty?
     
-    (@total_hours / days_with_entries).round(2)
+    earliest_date = dates.min
+    latest_date = dates.max
+    
+    # Calculate working days between earliest and latest date using business_time gem
+    # This automatically excludes weekends (Saturday, Sunday) and Sri Lankan holidays
+    working_days = calculate_working_days(earliest_date, latest_date)
+    
+    # Handle edge case where no working days exist
+    return 0 if working_days.zero?
+    
+    (@total_hours / working_days).round(2)
+  end
+  
+  # Helper method to calculate working days between two dates
+  # Uses business_time gem configured for Sri Lankan holidays
+  def calculate_working_days(start_date, end_date)
+    return 0 if start_date.nil? || end_date.nil?
+    return 1 if start_date == end_date
+    
+    # business_time gem's business_days_between excludes both start and end dates
+    # We need to add 1 to include both dates in the calculation
+    # Also handle single day case
+    working_days = start_date.business_days_until(end_date)
+    
+    # Add 1 if the start date itself is a working day
+    working_days += 1 if start_date.workday?
+    
+    working_days
   end
 
   def calculate_max_daily_hours
