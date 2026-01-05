@@ -257,7 +257,7 @@
 .pivot-table th.period-header {
   background-color: #e8f4f8;
   min-width: 120px;
-  text-align: left;
+  text-align: center;
 }
 
 .pivot-table th.activity-header {
@@ -286,6 +286,7 @@
   padding: 8px;
   border-right: 2px solid #ddd;
   white-space: nowrap;
+  text-align: center;
 }
 
 .pivot-table .hours-cell,
