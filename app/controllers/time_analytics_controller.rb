@@ -252,11 +252,11 @@ class TimeAnalyticsController < ApplicationController
   def calculate_avg_hours_per_day
     return 0 if @time_entries.empty?
     
-    # Remove order clause to avoid ambiguity in GROUP BY
-    days_with_entries = @time_entries.reorder(nil).group(:spent_on).sum(:hours).keys.count
-    return 0 if days_with_entries.zero?
+    # Calculate working days in the date range (excluding weekends and Sri Lankan holidays)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+    return 0 if working_days.zero?
     
-    (@total_hours / days_with_entries).round(2)
+    (@total_hours / working_days).round(2)
   end
 
   def calculate_max_daily_hours
