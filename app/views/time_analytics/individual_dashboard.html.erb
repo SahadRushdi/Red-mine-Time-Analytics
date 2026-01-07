@@ -152,7 +152,7 @@
 </div>
 
 <!-- Dashboard Analytics Section - Summary and Visualization Side by Side -->
-<div class="analytics-section">
+<div class="analytics-section <%= 'three-column-layout' if @entry_count < 20 %>">
   <!-- Statistics Summary -->
   <div class="box stats-summary">
     <h3><%= l(:label_summary) %></h3>
@@ -317,45 +317,30 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- Results Table -->
-<div class="box">
-  <h3>
-    <% case @view_mode %>
-    <% when 'activity' %>
-      Activity Analysis
-      <div class="view-toggle-controls">
-        <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
-          <span id="view-toggle-text">Show Summary View</span>
-        </button>
-      </div>
-    <% when 'project' %>
-      Project Analysis
-      <div class="view-toggle-controls">
-        <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
-          <span id="project-view-toggle-text">Show Summary View</span>
-        </button>
-      </div>
-    <% else %>
-      <%= l(:label_time_entries) %>
-    <% end %>
-    <div class="table-controls">
-      <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, 
-          class: 'pagination-form' do %>
-        <%= hidden_field_tag :filter, params[:filter] %>
-        <%= hidden_field_tag :from, params[:from] %>
-        <%= hidden_field_tag :to, params[:to] %>
-        <%= hidden_field_tag :grouping, params[:grouping] %>
-        <%= hidden_field_tag :search, params[:search] %>
-        <%= hidden_field_tag :chart_type, params[:chart_type] %>
-        <%= hidden_field_tag :view_mode, @view_mode %>
-        <%= label_tag :per_page, l(:label_per_page) %>
-        <%= select_tag :per_page, options_for_select(per_page_options, @limit),
-            onchange: 'this.form.submit()' %>
+  
+<% if @entry_count < 20 %>
+  <!-- Table section moved inside analytics-section for 3-column layout -->
+  <div class="box table-section-compact">
+    <h3>
+      <% case @view_mode %>
+      <% when 'activity' %>
+        Activity Analysis
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
+            <span id="view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+      <% when 'project' %>
+        Project Analysis
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
+            <span id="project-view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+      <% else %>
+        <%= l(:label_time_entries) %>
       <% end %>
-    </div>
-  </h3>
+    </h3>
 
   <% # Check for data based on view mode and grouping %>
   <% has_data = if @view_mode == 'activity' || @view_mode == 'project'
@@ -783,7 +768,305 @@
   <% else %>
     <p class="nodata"><%= l(:label_no_data) %></p>
   <% end %>
+  </div> <!-- End of table-section-compact -->
+</div> <!-- End of analytics-section with 3-column layout -->
+<% else %>
+</div> <!-- End of analytics-section (2-column layout) -->
+
+<!-- Results Table (displayed below for 20+ entries) -->
+<div class="box">
+  <h3>
+    <% case @view_mode %>
+    <% when 'activity' %>
+      Activity Analysis
+      <div class="view-toggle-controls">
+        <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
+          <span id="view-toggle-text">Show Summary View</span>
+        </button>
+      </div>
+    <% when 'project' %>
+      Project Analysis
+      <div class="view-toggle-controls">
+        <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
+          <span id="project-view-toggle-text">Show Summary View</span>
+        </button>
+      </div>
+    <% else %>
+      <%= l(:label_time_entries) %>
+    <% end %>
+    <div class="table-controls">
+      <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, 
+          class: 'pagination-form' do %>
+        <%= hidden_field_tag :filter, params[:filter] %>
+        <%= hidden_field_tag :from, params[:from] %>
+        <%= hidden_field_tag :to, params[:to] %>
+        <%= hidden_field_tag :grouping, params[:grouping] %>
+        <%= hidden_field_tag :search, params[:search] %>
+        <%= hidden_field_tag :chart_type, params[:chart_type] %>
+        <%= hidden_field_tag :view_mode, params[:view_mode] %>
+        <%= hidden_field_tag :page, params[:page] %>
+        
+        <label for="per_page" style="margin-right: 10px;">Per page:</label>
+        <%= select_tag :per_page, 
+            options_for_select([['25', 25], ['50', 50], ['100', 100], ['200', 200]], @limit), 
+            onchange: 'this.form.submit()', 
+            class: 'per-page-select' %>
+      <% end %>
+    </div>
+  </h3>
+
+  <% if @entry_count > 0 %>
+    <% if @view_mode == 'activity' %>
+      <%# Activity Analysis View %>
+      <div id="daily-detailed-view">
+        <% if @activity_pivot_data && @activity_pivot_data[:periods].any? %>
+          <table class="list time-entries-grouped-table">
+            <thead>
+              <tr>
+                <th><%= l(:label_activity) %></th>
+                <% @activity_pivot_data[:periods].each do |period| %>
+                  <th class="hours-column">
+                    <%= helpers.format_period_for_table(period, @grouping, @from, @to) %>
+                  </th>
+                <% end %>
+                <th class="hours-column"><strong><%= l(:label_total) %></strong></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @activity_pivot_data[:activities].each do |activity| %>
+                <% activity_name = activity || 'No Activity' %>
+                <tr>
+                  <td><%= activity_name %></td>
+                  <% @activity_pivot_data[:periods].each do |period| %>
+                    <% hours = @activity_pivot_data[:matrix][[activity, period]] || 0 %>
+                    <td class="hours-column">
+                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                    </td>
+                  <% end %>
+                  <% row_total = @activity_pivot_data[:periods].sum { |period| @activity_pivot_data[:matrix][[activity, period]] || 0 } %>
+                  <td class="hours-column"><strong><%= format_hours(row_total) %></strong></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong><%= l(:label_total) %></strong></td>
+                <% @activity_pivot_data[:periods].each do |period| %>
+                  <% period_total = @activity_pivot_data[:activities].sum { |activity| @activity_pivot_data[:matrix][[activity, period]] || 0 } %>
+                  <td class="hours-column"><strong><%= format_hours(period_total) %></strong></td>
+                <% end %>
+                <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        <% else %>
+          <p class="nodata"><%= l(:label_no_data) %></p>
+        <% end %>
+      </div>
+
+      <div id="daily-summary-view" style="display: none;">
+        <table class="list time-entries-grouped-table summary-with-bars">
+          <thead>
+            <tr>
+              <th><%= l(:label_activity) %></th>
+              <th class="hours-column"><%= l(:label_hours) %></th>
+              <th class="bar-column">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @activity_summary_data.present? %>
+              <% @activity_summary_data.sort_by { |name, _| name || 'No Activity' }.each do |activity_name, hours| %>
+                <% percentage = @total_hours > 0 ? (hours / @total_hours * 100) : 0 %>
+                <tr>
+                  <td><%= activity_name || 'No Activity' %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong><%= l(:label_total) %></strong></td>
+              <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+              <td class="bar-column"><strong>100%</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+    <% elsif @view_mode == 'project' %>
+      <%# Project Analysis View %>
+      <div id="project-detailed-view">
+        <% if @project_pivot_data && @project_pivot_data[:periods].any? %>
+          <table class="list time-entries-grouped-table">
+            <thead>
+              <tr>
+                <th><%= l(:label_project) %></th>
+                <% @project_pivot_data[:periods].each do |period| %>
+                  <th class="hours-column">
+                    <%= helpers.format_period_for_table(period, @grouping, @from, @to) %>
+                  </th>
+                <% end %>
+                <th class="hours-column"><strong><%= l(:label_total) %></strong></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @project_pivot_data[:projects].each do |project| %>
+                <% project_name = project || 'No Project' %>
+                <tr>
+                  <td><%= project_name %></td>
+                  <% @project_pivot_data[:periods].each do |period| %>
+                    <% hours = @project_pivot_data[:matrix][[project, period]] || 0 %>
+                    <td class="hours-column">
+                      <%= hours > 0 ? format_hours(hours) : '-' %>
+                    </td>
+                  <% end %>
+                  <% row_total = @project_pivot_data[:periods].sum { |period| @project_pivot_data[:matrix][[project, period]] || 0 } %>
+                  <td class="hours-column"><strong><%= format_hours(row_total) %></strong></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong><%= l(:label_total) %></strong></td>
+                <% @project_pivot_data[:periods].each do |period| %>
+                  <% period_total = @project_pivot_data[:projects].sum { |project| @project_pivot_data[:matrix][[project, period]] || 0 } %>
+                  <td class="hours-column"><strong><%= format_hours(period_total) %></strong></td>
+                <% end %>
+                <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+              </tr>
+            </tfoot>
+          </table>
+        <% else %>
+          <p class="nodata"><%= l(:label_no_data) %></p>
+        <% end %>
+      </div>
+
+      <div id="project-summary-view" style="display: none;">
+        <table class="list time-entries-grouped-table summary-with-bars">
+          <thead>
+            <tr>
+              <th><%= l(:label_project) %></th>
+              <th class="hours-column"><%= l(:label_hours) %></th>
+              <th class="bar-column">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @project_summary_data.present? %>
+              <% @project_summary_data.sort_by { |name, _| name || 'No Project' }.each do |project_name, hours| %>
+                <% percentage = @total_hours > 0 ? (hours / @total_hours * 100) : 0 %>
+                <tr>
+                  <td><%= project_name || 'No Project' %></td>
+                  <td class="hours-column"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong><%= l(:label_total) %></strong></td>
+              <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+              <td class="bar-column"><strong>100%</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <% elsif ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
+      <%# Grouped table for weekly, monthly, yearly %>
+      <table class="list time-entries-grouped-table summary-with-bars">
+        <thead>
+          <tr>
+            <th><%= l("label_#{@grouping}") %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+            <th class="bar-column">Distribution</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @paginated_entries.each do |entry| %>
+            <% percentage = @total_hours > 0 ? (entry.hours / @total_hours * 100) : 0 %>
+            <tr>
+              <td><%= entry.period %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+              <td class="bar-column">
+                <div class="bar-container">
+                  <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                  <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+            <td class="bar-column"><strong>100%</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% else %>
+      <%# Time entries table for daily view %>
+      <table class="list time-entries-table">
+        <thead>
+          <tr>
+            <th><%= l(:label_date) %></th>
+            <th><%= l(:label_project) %></th>
+            <th><%= l(:label_activity) %></th>
+            <th><%= l(:label_issue) %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @paginated_entries.each do |entry| %>
+            <tr>
+              <td class="date-column"><%= entry.spent_on.strftime('%Y-%m-%d') %></td>
+              <td class="project-column"><%= project_link(entry.project) %></td>
+              <td class="activity-column"><%= activity_name(entry.activity) %></td>
+              <td class="issue-column"><%= issue_link_or_text(entry.issue) %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="4"><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    <% end %>
+
+    <!-- Pagination -->
+    <div class="pagination-wrapper">
+      <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+      <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
+      <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+      
+      <div class="pagination-info">
+        <%= l(:text_pagination_info, 
+            from: (@offset + 1), 
+            to: [@offset + @limit, @entry_count].min, 
+            total: @entry_count) %>
+      </div>
+    </div>
+
+  <% else %>
+    <p class="nodata"><%= l(:label_no_data) %></p>
+  <% end %>
 </div>
+<% end %> <!-- End of entry_count conditional -->
 
 <!-- Chart.js loaded via includes partial -->
 

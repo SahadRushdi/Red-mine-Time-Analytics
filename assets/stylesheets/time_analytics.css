@@ -181,6 +181,48 @@
   max-width: none;
 }
 
+/* === Three Column Layout (for < 20 entries) === */
+.analytics-section.three-column-layout {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.analytics-section.three-column-layout .stats-summary {
+  flex: 0 0 280px;
+  min-width: 0;
+}
+
+.analytics-section.three-column-layout .visualization-section {
+  flex: 1;
+  min-width: 400px;
+}
+
+.analytics-section.three-column-layout .table-section-compact {
+  flex: 0 0 450px;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.analytics-section.three-column-layout .table-section-compact h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.analytics-section.three-column-layout .table-section-compact table {
+  font-size: 0.85em;
+}
+
+.analytics-section.three-column-layout .table-section-compact .view-toggle-controls,
+.analytics-section.three-column-layout .table-section-compact .table-controls {
+  display: none;
+}
+
+.analytics-section.three-column-layout .chart-wrapper {
+  min-height: 300px;
+  height: 400px;
+}
+
 /* === Stats Summary Grid === */
 .summary-grid {
   display: grid;
