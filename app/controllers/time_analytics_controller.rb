@@ -455,9 +455,18 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
           ticks: {
@@ -506,9 +515,18 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
           ticks: {
