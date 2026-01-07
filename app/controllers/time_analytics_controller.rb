@@ -209,11 +209,11 @@ class TimeAnalyticsController < ApplicationController
     when 'today'
       @from = @to = Date.current
     when 'this_week'
-      @from = Date.current.beginning_of_week
-      @to = Date.current.end_of_week
+      @from = Date.current.beginning_of_week(:monday)
+      @to = Date.current.end_of_week(:monday)
     when 'last_week'
-      @from = (Date.current - 1.week).beginning_of_week
-      @to = (Date.current - 1.week).end_of_week
+      @from = (Date.current - 1.week).beginning_of_week(:monday)
+      @to = (Date.current - 1.week).end_of_week(:monday)
     when 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
@@ -226,8 +226,8 @@ class TimeAnalyticsController < ApplicationController
     else
       # Default to this week
       params[:filter] = 'this_week'
-      @from = Date.current.beginning_of_week
-      @to = Date.current.end_of_week
+      @from = Date.current.beginning_of_week(:monday)
+      @to = Date.current.end_of_week(:monday)
     end
   rescue ArgumentError
     # Handle invalid date format
@@ -685,8 +685,11 @@ class TimeAnalyticsController < ApplicationController
   def get_activity_period_key(date, grouping)
     case grouping
     when 'weekly'
-      # Use Sunday-based week start to match Time Entries format
-      start_of_week = date - date.wday  # Sunday = 0, so this gives Sunday
+      # Use Monday-based week start to match Time Entries format
+      # wday: 0=Sunday, 1=Monday, ..., 6=Saturday
+      # Convert to Monday-based: (wday - 1) % 7 gives days since Monday
+      days_since_monday = (date.wday - 1) % 7
+      start_of_week = date - days_since_monday
       start_of_week
     when 'monthly'
       # Use first day of month as key

@@ -118,7 +118,7 @@ The plugin implements a modern, space-optimized design:
 - **Analytics Section**: Flexbox layout with summary (280px fixed) + visualization (flex-grow)
 - **Responsive Breakpoints**: Desktop side-by-side, mobile stacked layout
 - **Information Hierarchy**: Analytics first, detailed data second
-- **Consistent Formatting**: Unified Sunday-Saturday week display across all views
+- **Consistent Formatting**: Unified Monday-Sunday week display across all views
 - **Modern Button System**: Shared base classes (button-base, button-primary, button-secondary) for consistent styling
 - **Visual Data Representation**: Horizontal distribution bars in summary tables with 40% column width
 - **Professional Controls**: Custom-styled form elements with hover/focus states
@@ -190,8 +190,8 @@ Summary tables include horizontal bar charts showing percentage distribution:
 ### 5. Flexible Time Period Filters
 Choose from various time ranges:
 - **Today**: Current day
-- **This Week**: Current week (Sunday to Saturday)
-- **Last Week**: Previous week (Sunday to Saturday)
+- **This Week**: Current week (Monday to Sunday)
+- **Last Week**: Previous week (Monday to Sunday)
 - **This Month**: Current month
 - **This Year**: Current year
 - **Custom Range**: Select any date range
@@ -275,7 +275,7 @@ redmine_time_analytics/
 - **Optimized Layout**: Implemented side-by-side analytics layout for maximum information density
 - **Compact Summary**: Redesigned statistics as 2x2 grid for better space utilization
 - **Chart Optimization**: Reduced chart height and margins to eliminate empty space
-- **Consistent Date Logic**: Unified Sunday-Saturday week formatting across Time Entries and Activity views
+- **Consistent Date Logic**: Unified Monday-Sunday week formatting across Time Entries and Activity views
 - **Enhanced Responsiveness**: Improved mobile layout with proper section stacking
 - **Performance**: Optimized chart rendering and reduced visual gaps
 

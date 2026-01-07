@@ -111,9 +111,11 @@ module TimeAnalyticsHelper
       # Fallback if key parsing fails
       return format_chart_label(key) unless date_in_week
 
-      # Assuming weeks start on Sunday for display purposes, as requested.
+      # Assuming weeks start on Monday for display purposes, as requested.
       # date.wday is 0 for Sunday, 1 for Monday, etc.
-      start_of_week = date_in_week - date_in_week.wday
+      # Adjust to Monday-based week: (wday - 1) % 7 gives days since Monday
+      days_since_monday = (date_in_week.wday - 1) % 7
+      start_of_week = date_in_week - days_since_monday
       end_of_week = start_of_week + 6
 
       # The visible range should not extend beyond the user's selected filter range
