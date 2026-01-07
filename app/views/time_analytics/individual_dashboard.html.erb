@@ -743,7 +743,6 @@
             <th><%= l(:label_project) %></th>
             <th><%= l(:label_activity) %></th>
             <th><%= l(:label_issue) %></th>
-            <th><%= l(:label_comment) %></th>
             <th class="hours-column"><%= l(:label_hours) %></th>
           </tr>
         </thead>
@@ -754,16 +753,13 @@
               <td class="project-column"><%= project_link(entry.project) %></td>
               <td class="activity-column"><%= activity_name(entry.activity) %></td>
               <td class="issue-column"><%= issue_link_or_text(entry.issue) %></td>
-              <td class="comment-column">
-                <%= truncate(entry.comments, length: 100) if entry.comments.present? %>
-              </td>
               <td class="hours-column"><%= format_hours(entry.hours) %></td>
             </tr>
           <% end %>
         </tbody>
         <tfoot>
           <tr class="total-row">
-            <td colspan="5"><strong><%= l(:label_total) %></strong></td>
+            <td colspan="4"><strong><%= l(:label_total) %></strong></td>
             <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
           </tr>
         </tfoot>
