@@ -1037,9 +1037,18 @@ function transformChartType(originalConfig, newType) {
     newConfig.options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
           ticks: {
@@ -1084,9 +1093,18 @@ function transformChartType(originalConfig, newType) {
     newConfig.options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
           ticks: {

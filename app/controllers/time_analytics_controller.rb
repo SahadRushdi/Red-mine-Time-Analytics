@@ -375,25 +375,41 @@ class TimeAnalyticsController < ApplicationController
   def generate_pie_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('pie') if data_hash.empty?
 
-    # Format labels based on the actual data type, not just view_mode
-    # Check if keys are activity names (strings) or dates/periods
+    # Sort data based on data type
     first_key = data_hash.keys.first
     is_activity_data = first_key.is_a?(String)
     
+    sorted_data = if is_activity_data
+      # Sort by activity/project name
+      data_hash.sort_by { |key, _| key || 'No Activity' }
+    else
+      # Sort by date for proper chronological order
+      data_hash.sort_by do |key, _|
+        case key
+        when Date
+          key
+        when String
+          Date.parse(key) rescue key
+        else
+          key.to_s
+        end
+      end
+    end
+    
     formatted_labels = if is_activity_data
       # Data grouped by activity names
-      data_hash.keys.map { |key| key || 'No Activity' }
+      sorted_data.map { |key, _| key || 'No Activity' }
     else
       # Data grouped by time periods (dates, weeks, months, years)
-      data_hash.keys.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
     # Calculate total for percentage calculation
-    total_hours = data_hash.values.sum
+    total_hours = sorted_data.map { |_, value| value }.sum
     
     # Format labels with percentages and hours for pie chart
     labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
-      hours = data_hash.values[index]
+      hours = sorted_data[index][1]
       percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
       "#{label} (#{percentage}%, #{hours.round(1)}h)"
     end
@@ -401,8 +417,8 @@ class TimeAnalyticsController < ApplicationController
     chart_data = {
       labels: labels_with_percentages,
       datasets: [{
-        data: data_hash.values,
-        backgroundColor: generate_colors(data_hash.size),
+        data: sorted_data.map { |_, value| value },
+        backgroundColor: generate_colors(sorted_data.size),
         borderWidth: 1,
         borderColor: '#fff'
       }]
@@ -436,18 +452,34 @@ class TimeAnalyticsController < ApplicationController
   def generate_bar_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('bar') if data_hash.empty?
 
-    formatted_labels = if view_mode == 'activity'
-      data_hash.keys.map { |key| key || 'No Activity' }
+    # Sort data by date keys for proper chronological order (except for activity/project views)
+    sorted_data = if view_mode == 'activity' || view_mode == 'project'
+      data_hash.sort_by { |key, _| key || '' }
     else
-      data_hash.keys.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      data_hash.sort_by do |key, _|
+        case key
+        when Date
+          key
+        when String
+          Date.parse(key) rescue key
+        else
+          key.to_s
+        end
+      end
+    end
+
+    formatted_labels = if view_mode == 'activity'
+      sorted_data.map { |key, _| key || 'No Activity' }
+    else
+      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
     chart_data = {
       labels: formatted_labels,
       datasets: [{
         label: 'Hours',
-        data: data_hash.values,
-        backgroundColor: generate_colors(data_hash.size),
+        data: sorted_data.map { |_, value| value },
+        backgroundColor: generate_colors(sorted_data.size),
         borderWidth: 1
       }]
     }
@@ -487,13 +519,22 @@ class TimeAnalyticsController < ApplicationController
   def generate_line_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('line') if data_hash.empty?
 
-    if view_mode == 'activity'
-      # For activity view, sort by activity name
+    if view_mode == 'activity' || view_mode == 'project'
+      # For activity/project view, sort by name
       sorted_data = data_hash.sort_by { |key, _| key || 'No Activity' }
       formatted_labels = sorted_data.map { |key, _| key || 'No Activity' }
     else
       # Sort data by date for proper line chart display
-      sorted_data = data_hash.sort_by { |key, _| key.is_a?(Date) ? key : Date.parse(key.to_s) rescue Date.current }
+      sorted_data = data_hash.sort_by do |key, _|
+        case key
+        when Date
+          key
+        when String
+          Date.parse(key) rescue key
+        else
+          key.to_s
+        end
+      end
       formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
