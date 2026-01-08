@@ -137,26 +137,40 @@
 
 .search-input {
   min-width: 220px;
+  /* Added to prevent shrinking in flex containers */
+  flex-shrink: 0; 
 }
 
 /* === Filter Section === */
+/* NEW: Modified to ensure high-priority alignment for Search/Filters */
 .filter-row {
-  display: flex;
+  display: flex !important;
   flex-wrap: wrap;
   gap: 15px;
   align-items: flex-end;
+  width: 100%;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
   min-width: 160px;
+  /* Ensure Select2 boxes don't force break lines on Redmine 5.1 server */
+  flex-shrink: 1;
 }
 
 .filter-group label {
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 12px;
+}
+
+/* NEW: Safety wrapper for Search + Range to prevent them splitting */
+.search-range-wrapper {
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 15px;
+  flex-wrap: nowrap !important;
 }
 
 /* === Analytics Section === */
@@ -589,6 +603,11 @@
     align-items: stretch;
   }
 
+  .search-range-wrapper {
+    flex-direction: column; /* Allows stacking only on mobile */
+    align-items: stretch !important;
+  }
+
   .filter-group,
   .filter-select,
   .date-input,
@@ -624,31 +643,5 @@
 
   .chart-wrapper {
     height: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .summary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .time-entries-table .issue-column {
-    display: none;
-  }
-  
-  .chart-wrapper {
-    height: 250px;
-  }
-  
-  .pivot-table th.activity-header {
-    font-size: 11px;
-    padding: 8px 4px;
-    min-width: 80px;
-  }
-  
-  .pivot-table .hours-cell,
-  .pivot-table .total-cell {
-    padding: 4px;
-    font-size: 11px;
   }
 }
