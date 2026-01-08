@@ -821,7 +821,20 @@ function initChart() {
     config.options.responsive = true;
     config.options.maintainAspectRatio = false;
 
-    // START FIX: Dynamically add tooltip callbacks on the client-side to prevent errors
+    // Add custom tooltip callback for weekly grouping (bar and line charts)
+    if ((config.type === 'bar' || config.type === 'line') && config.data.datasets[0].tooltipLabels) {
+      if (!config.options.plugins) config.options.plugins = {};
+      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
+      
+      config.options.plugins.tooltip.callbacks.title = function(context) {
+        var index = context[0].dataIndex;
+        var tooltipLabels = context[0].dataset.tooltipLabels;
+        return tooltipLabels ? tooltipLabels[index] : context[0].label;
+      };
+    }
+
+    // Dynamically add tooltip callbacks on the client-side for pie charts
     if (config.type === 'pie' && config.options.plugins && config.options.plugins.tooltip) {
       config.options.plugins.tooltip.callbacks = {
         label: function(context) {
@@ -831,7 +844,6 @@ function initChart() {
         }
       };
     }
-    // END FIX
     
     console.log('Creating chart with config:', config);
     timeAnalyticsChart = new Chart(chartElement, config);

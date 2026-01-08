@@ -478,10 +478,18 @@ class TimeAnalyticsController < ApplicationController
       end
     end
 
+    # Generate labels and tooltip data
     formatted_labels = if view_mode == 'activity'
       sorted_data.map { |key, _| key || 'No Activity' }
     else
       sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    end
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly' && view_mode != 'activity'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
     end
     
     chart_data = {
@@ -490,7 +498,8 @@ class TimeAnalyticsController < ApplicationController
         label: 'Hours',
         data: sorted_data.map { |_, value| value },
         backgroundColor: generate_colors(sorted_data.size),
-        borderWidth: 1
+        borderWidth: 1,
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels
       }]
     }
 
@@ -500,6 +509,12 @@ class TimeAnalyticsController < ApplicationController
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (@grouping == 'weekly' && view_mode != 'activity') ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
         }
       },
       scales: {
@@ -533,6 +548,7 @@ class TimeAnalyticsController < ApplicationController
       # For activity/project view, sort by name
       sorted_data = data_hash.sort_by { |key, _| key || 'No Activity' }
       formatted_labels = sorted_data.map { |key, _| key || 'No Activity' }
+      tooltip_labels = formatted_labels
     else
       # Sort data by date for proper line chart display
       sorted_data = data_hash.sort_by do |key, _|
@@ -546,6 +562,13 @@ class TimeAnalyticsController < ApplicationController
         end
       end
       formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      
+      # Generate detailed tooltip labels for weekly grouping
+      tooltip_labels = if @grouping == 'weekly'
+        sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+      else
+        formatted_labels
+      end
     end
     
     chart_data = {
@@ -559,7 +582,8 @@ class TimeAnalyticsController < ApplicationController
         tension: 0.2,
         borderWidth: 2,
         pointRadius: 3,
-        pointHoverRadius: 5
+        pointHoverRadius: 5,
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels
       }]
     }
 
@@ -569,6 +593,12 @@ class TimeAnalyticsController < ApplicationController
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (@grouping == 'weekly' && view_mode != 'activity' && view_mode != 'project') ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
         }
       },
       scales: {

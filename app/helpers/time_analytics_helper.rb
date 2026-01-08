@@ -111,9 +111,48 @@ module TimeAnalyticsHelper
       # Fallback if key parsing fails
       return format_chart_label(key) unless date_in_week
 
-      # Assuming weeks start on Monday for display purposes, as requested.
-      # date.wday is 0 for Sunday, 1 for Monday, etc.
-      # Adjust to Monday-based week: (wday - 1) % 7 gives days since Monday
+      # Calculate ISO week number (Redmine format: YYYY-W)
+      week_number = date_in_week.cweek
+      year = date_in_week.cwyear
+      
+      "#{year}-#{week_number}"
+    elsif grouping == 'monthly'
+      # The key from the controller is now consistently a Date or a 'YYYY-MM-DD' string
+      date = key.is_a?(String) ? Date.parse(key) : key.to_date
+      return date.strftime('%B %Y')
+    else
+      # For daily, yearly, and any other case, use the old chart label format
+      format_chart_label(key)
+    end
+  end
+
+  def format_period_for_tooltip(key, grouping, from_date, to_date)
+    # This helper is used for chart tooltips to show detailed date ranges
+    
+    if grouping == 'weekly'
+      date_in_week = nil
+      
+      # Determine a representative date from the database key
+      case key
+      when Date, Time, DateTime
+        date_in_week = key.to_date
+      when String
+        if key.match?(/^\d{6}$/)
+          year = key[0..3].to_i
+          week_num = key[4..5].to_i
+          date_in_week = Date.commercial(year, week_num, 1)
+        end
+      when Integer
+        if key > 100000 && key.to_s.length == 6
+          year = key / 100
+          week_num = key % 100
+          date_in_week = Date.commercial(year, week_num, 1)
+        end
+      end
+
+      return key.to_s unless date_in_week
+
+      # Calculate week start (Monday) and end (Sunday)
       days_since_monday = (date_in_week.wday - 1) % 7
       start_of_week = date_in_week - days_since_monday
       end_of_week = start_of_week + 6
@@ -122,15 +161,11 @@ module TimeAnalyticsHelper
       display_start = [start_of_week, from_date].max
       display_end = [end_of_week, to_date].min
 
-      # Use a consistent, clear format for the date range
+      # Use a consistent, clear format for the date range (for tooltips)
       "#{display_start.strftime('%m/%d/%Y')} to #{display_end.strftime('%m/%d/%Y')}"
-    elsif grouping == 'monthly'
-      # The key from the controller is now consistently a Date or a 'YYYY-MM-DD' string
-      date = key.is_a?(String) ? Date.parse(key) : key.to_date
-      return date.strftime('%B %Y')
     else
-      # For daily, yearly, and any other case, use the old chart label format
-      format_chart_label(key)
+      # For other groupings, use the standard table format
+      format_period_for_table(key, grouping, from_date, to_date)
     end
   end
 
