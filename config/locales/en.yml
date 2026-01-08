@@ -1,7 +1,7 @@
 en:
   # Plugin labels
   label_time_analytics: "Time Analytics"
-  label_individual_dashboard: "Individual Dashboard"
+  label_individual_dashboard: "My Time Dashboard"
   label_team_dashboard: "Team Dashboard"
   label_custom_dashboard: "Custom Dashboard"
   
@@ -26,9 +26,9 @@ en:
   
   # Grouping options
   label_daily: "Daily"
-  label_weekly: "Weekly"
-  label_monthly: "Monthly"
-  label_yearly: "Yearly"
+  label_weekly: "Week"
+  label_monthly: "Month"
+  label_yearly: "Year"
   
   # Chart types
   label_bar_chart: "Bar Chart"
