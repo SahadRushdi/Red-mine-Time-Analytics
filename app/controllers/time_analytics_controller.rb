@@ -42,6 +42,9 @@ class TimeAnalyticsController < ApplicationController
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
 
+    # Generate Time Overview data (always grouped by date for consistency across all views)
+    @time_overview_data = generate_time_overview_data(@time_entries, @grouping)
+
     if @view_mode == 'activity'
       # Generate Activity × Time Period pivot table for ALL groupings (including daily)
       @activity_pivot_data = generate_activity_pivot_table(@time_entries, @grouping)
@@ -102,10 +105,17 @@ class TimeAnalyticsController < ApplicationController
         # Use a Struct for easier access in the view, like an object
         Struct.new(:period, :hours).new(helpers.format_period_for_table(period, @grouping, @from, @to), hours)
       end
-    else # Daily grouping
-      # This is the original logic for daily entries
-      @entry_count = @time_entries.count
-      @paginated_entries = @time_entries.limit(@limit).offset(@offset)
+    else # Daily grouping in time_entries view
+      # Group by date and sum hours
+      grouped_data = group_time_entries(@time_entries, 'daily')
+      @entry_count = grouped_data.count
+
+      # Sort by date
+      sorted_data = grouped_data.sort_by { |date, _| date }
+
+      @paginated_entries = sorted_data.slice(@offset, @limit).map do |date, hours|
+        Struct.new(:period, :hours, :date).new(helpers.format_chart_label(date), hours, date)
+      end
     end
 
     # Generate chart data based on prepared data
@@ -992,5 +1002,24 @@ class TimeAnalyticsController < ApplicationController
       data: chart_data,
       options: chart_options
     }.to_json.html_safe
+  end
+
+  def generate_time_overview_data(time_entries, grouping)
+    # Always group by date/period for Time Overview (consistent across all views)
+    grouped_data = group_time_entries(time_entries, grouping)
+    
+    # Sort by date
+    sorted_data = grouped_data.sort_by { |key, _| key }
+    
+    # Format data with proper date display
+    sorted_data.map do |period, hours|
+      formatted_period = if grouping == 'daily'
+        helpers.format_chart_label(period)
+      else
+        helpers.format_period_for_table(period, grouping, @from, @to)
+      end
+      
+      Struct.new(:period, :hours, :date).new(formatted_period, hours, period)
+    end
   end
 end

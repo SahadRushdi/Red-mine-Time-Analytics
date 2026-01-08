@@ -181,59 +181,33 @@
   </div>
 
   <!-- Time Overview Section - Between Summary and Visualization -->
-  <% if @paginated_entries&.any? %>
+  <% if @time_overview_data&.any? %>
     <div class="box time-overview-box">
       <h3><%= l(:label_time_overview) %></h3>
       
-      <% if ['weekly', 'monthly', 'yearly'].include?(@grouping) || @view_mode == 'activity' || @view_mode == 'project' %>
-        <%# Grouped time overview table - for weekly/monthly/yearly or activity/project views %>
-        <table class="time-overview-table">
-          <thead>
+      <%# Always show Date format (consistent across all views) %>
+      <table class="time-overview-table">
+        <thead>
+          <tr>
+            <th><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @time_overview_data.slice(@offset, @limit).each do |entry| %>
             <tr>
-              <th><%= l("label_#{@grouping}") %></th>
-              <th class="hours-column"><%= l(:label_hours) %></th>
+              <td><%= entry.period %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
             </tr>
-          </thead>
-          <tbody>
-            <% @paginated_entries.each do |entry| %>
-              <tr>
-                <td><%= entry.period %></td>
-                <td class="hours-column"><%= format_hours(entry.hours) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong><%= l(:label_total) %></strong></td>
-              <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
-            </tr>
-          </tfoot>
-        </table>
-      <% else %>
-        <%# Daily time overview table - only for time_entries view with daily grouping %>
-        <table class="time-overview-table">
-          <thead>
-            <tr>
-              <th><%= l(:label_date) %></th>
-              <th class="hours-column"><%= l(:label_hours) %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @paginated_entries.each do |entry| %>
-              <tr>
-                <td><%= entry.spent_on.strftime('%Y-%m-%d') %></td>
-                <td class="hours-column"><%= format_hours(entry.hours) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong><%= l(:label_total) %></strong></td>
-              <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
-            </tr>
-          </tfoot>
-        </table>
-      <% end %>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
       
       <!-- Pagination -->
       <div class="pagination-wrapper">
