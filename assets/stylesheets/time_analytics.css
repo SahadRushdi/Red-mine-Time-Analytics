@@ -168,8 +168,16 @@
 }
 
 .analytics-section .stats-summary {
-  flex: 0 0 280px;
+  flex: 0 0 150px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.analytics-section .stats-summary h3 {
+  text-align: center;
+  margin-bottom: 15px;
 }
 
 .analytics-section .time-overview-box {
@@ -233,10 +241,10 @@
 
 /* === Stats Summary Grid === */
 .summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin: 10px 0 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 0;
 }
 
 .summary-item {
