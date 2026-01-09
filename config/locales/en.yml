@@ -25,7 +25,7 @@ en:
   label_custom_range: "Custom Range"
   
   # Grouping options
-  label_daily: "Daily"
+  label_daily: "Days"
   label_weekly: "Week"
   label_monthly: "Month"
   label_yearly: "Year"
