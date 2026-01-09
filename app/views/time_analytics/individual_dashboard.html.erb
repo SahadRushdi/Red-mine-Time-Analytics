@@ -1069,6 +1069,10 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Get current grouping from the select element
+    var groupingSelect = document.getElementById('grouping');
+    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    
     // Line chart specific configuration
     newConfig.options = {
       responsive: true,
@@ -1087,6 +1091,10 @@ function transformChartType(originalConfig, newType) {
           }
         },
         x: {
+          title: {
+            display: true,
+            text: grouping
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45
@@ -1125,6 +1133,10 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Get current grouping from the select element
+    var groupingSelect = document.getElementById('grouping');
+    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    
     // Bar chart (default) configuration
     newConfig.options = {
       responsive: true,
@@ -1143,6 +1155,10 @@ function transformChartType(originalConfig, newType) {
           }
         },
         x: {
+          title: {
+            display: true,
+            text: grouping
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45

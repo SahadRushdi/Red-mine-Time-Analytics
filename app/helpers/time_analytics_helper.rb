@@ -277,7 +277,7 @@ module TimeAnalyticsHelper
   def default_chart_type(view_mode)
     case view_mode
     when 'time_entries'
-      'bar'
+      'line'
     when 'activity'
       'pie'
     when 'grouping'

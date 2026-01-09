@@ -204,7 +204,7 @@ class TimeAnalyticsController < ApplicationController
   def get_default_chart_type(view_mode)
     case view_mode
     when 'time_entries'
-      'bar'
+      'line'
     when 'activity'
       'pie'
     when 'project'
@@ -526,6 +526,10 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         x: {
+          title: {
+            display: true,
+            text: @grouping.capitalize
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45
@@ -610,6 +614,10 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         x: {
+          title: {
+            display: true,
+            text: @grouping.capitalize
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45
