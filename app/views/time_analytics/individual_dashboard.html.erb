@@ -892,10 +892,23 @@ function initChart() {
     // Dynamically add tooltip callbacks on the client-side for pie charts
     if (config.type === 'pie' && config.options.plugins && config.options.plugins.tooltip) {
       config.options.plugins.tooltip.callbacks = {
+        title: function(context) {
+          // Check if custom tooltip labels exist for detailed weekly format
+          var index = context[0].dataIndex;
+          var tooltipLabels = context[0].dataset.tooltipLabels;
+          if (tooltipLabels && tooltipLabels[index]) {
+            return tooltipLabels[index];
+          }
+          // Otherwise, extract the label part before percentage (e.g., "2026-2" from "2026-2 (33.6%, 29.0h)")
+          var label = context[0].label || '';
+          return label.split(' (')[0];
+        },
         label: function(context) {
-          // The pre-formatted label from the backend already contains all info.
-          // e.g., "Development (50%, 25.0h)"
-          return context.label || '';
+          // Extract just the percentage and hours part
+          // e.g., "Development (50%, 25.0h)" -> "50%, 25.0h"
+          var label = context.label || '';
+          var match = label.match(/\(([^)]+)\)/);
+          return match ? match[1] : label;
         }
       };
     }
@@ -1023,13 +1036,22 @@ function transformChartType(originalConfig, newType) {
         },
         tooltip: {
           callbacks: {
+            title: function(context) {
+              // Check if custom tooltip labels exist for detailed weekly format
+              var index = context[0].dataIndex;
+              var tooltipLabels = context[0].dataset.tooltipLabels;
+              if (tooltipLabels && tooltipLabels[index]) {
+                return tooltipLabels[index];
+              }
+              // Otherwise, extract the label part before percentage
+              var label = context[0].label || '';
+              return label.split(' (')[0];
+            },
             label: function(context) {
+              // Extract just the percentage and hours part
               var label = context.label || '';
-              var value = context.parsed;
-              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              // Extract original label (before parentheses) for cleaner tooltip
-              var originalLabel = label.split(' (')[0];
-              return originalLabel + ': ' + value.toFixed(1) + 'h (' + percentage + '%)';
+              var match = label.match(/\(([^)]+)\)/);
+              return match ? match[1] : label;
             }
           }
         }

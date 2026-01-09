@@ -414,6 +414,13 @@ class TimeAnalyticsController < ApplicationController
       sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     end
     
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if !is_activity_data && @grouping == 'weekly'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
     # Calculate total for percentage calculation
     total_hours = sorted_data.map { |_, value| value }.sum
     
@@ -430,7 +437,8 @@ class TimeAnalyticsController < ApplicationController
         data: sorted_data.map { |_, value| value },
         backgroundColor: generate_colors(sorted_data.size),
         borderWidth: 1,
-        borderColor: '#fff'
+        borderColor: '#fff',
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
       }]
     }
 
@@ -446,6 +454,10 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         tooltip: {
+          callbacks: {
+            title: (@grouping == 'weekly' && !is_activity_data) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
         }
       },
       # Add total hours for percentage calculation in JavaScript
@@ -830,19 +842,21 @@ class TimeAnalyticsController < ApplicationController
       # Summary view: group by activity
       labels = pivot_data[:activities]
       data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
+      raw_keys = nil  # No raw keys for activity names
     else
       # Detailed view: group by time period
       labels = pivot_data[:periods]
       data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
     end
     
     case chart_type
     when 'pie'
-      generate_pie_chart_from_data(labels, data_values)
+      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
-      generate_line_chart_from_data(labels, data_values)
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
-      generate_bar_chart_from_data(labels, data_values)
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
   end
 
@@ -907,41 +921,70 @@ class TimeAnalyticsController < ApplicationController
       # Summary view: group by project
       labels = pivot_data[:projects]
       data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
+      raw_keys = nil  # No raw keys for project names
     else
       # Detailed view: group by time period
       labels = pivot_data[:periods]
       data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
     end
     
     case chart_type
     when 'pie'
-      generate_pie_chart_from_data(labels, data_values)
+      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
-      generate_line_chart_from_data(labels, data_values)
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
-      generate_bar_chart_from_data(labels, data_values)
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
   end
 
-  def generate_bar_chart_from_data(labels, data_values)
+  def generate_bar_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
+    
     chart_data = {
       labels: labels,
       datasets: [{
         label: 'Hours',
         data: data_values,
         backgroundColor: generate_colors(labels.size),
-        borderWidth: 1
+        borderWidth: 1,
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels
       }]
     }
 
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
+          title: {
+            display: true,
+            text: grouping ? grouping.capitalize : ''
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45
@@ -957,7 +1000,14 @@ class TimeAnalyticsController < ApplicationController
     }.to_json.html_safe
   end
 
-  def generate_line_chart_from_data(labels, data_values)
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
+    
     chart_data = {
       labels: labels,
       datasets: [{
@@ -969,18 +1019,38 @@ class TimeAnalyticsController < ApplicationController
         tension: 0.2,
         borderWidth: 2,
         pointRadius: 3,
-        pointHoverRadius: 5
+        pointHoverRadius: 5,
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels
       }]
     }
 
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
+        }
+      },
       scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
         },
         x: {
+          title: {
+            display: true,
+            text: grouping ? grouping.capitalize : ''
+          },
           ticks: {
             maxRotation: 45,
             minRotation: 45
@@ -996,9 +1066,16 @@ class TimeAnalyticsController < ApplicationController
     }.to_json.html_safe
   end
 
-  def generate_pie_chart_from_data(labels, data_values)
+  def generate_pie_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
     # Calculate total for percentage calculation
     total_hours = data_values.sum
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
     
     # Format labels with percentages and hours for pie chart
     labels_with_percentages = labels.each_with_index.map do |label, index|
@@ -1013,7 +1090,8 @@ class TimeAnalyticsController < ApplicationController
         data: data_values,
         backgroundColor: generate_colors(labels.size),
         borderWidth: 1,
-        borderColor: '#fff'
+        borderColor: '#fff',
+        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
       }]
     }
 
@@ -1029,6 +1107,10 @@ class TimeAnalyticsController < ApplicationController
           }
         },
         tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
         }
       },
       # Add total hours for percentage calculation in JavaScript
