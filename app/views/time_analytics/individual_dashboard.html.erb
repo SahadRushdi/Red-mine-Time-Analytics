@@ -142,7 +142,7 @@
   <div class="box toggle-view-section">
     <h3>Toggle View:</h3>
     <div class="toggle-buttons">
-      <%= link_to 'Time Entries', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
+      <%= link_to 'Time Overview', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
           class: "button button-base button-toggle #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
           class: "button button-base button-toggle #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>

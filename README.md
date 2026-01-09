@@ -11,12 +11,12 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 
 ### Individual Dashboard
 - **Personal Time Analytics**: View your own logged time with comprehensive filtering
-- **Multiple View Modes**: Switch between Time Entries, Activity Analysis, and Project views
+- **Multiple View Modes**: Switch between Time Overview, Activity Analysis, and Project views
 - **Multiple Time Periods**: Today, this week, last week, this month, this year, or custom date ranges
 - **Flexible Grouping**: Group data by daily, weekly, monthly, or yearly periods
 - **Interactive Charts**: Bar, line, and pie charts powered by Chart.js with real-time switching
 - **Modern Chart Controls**: Custom-styled dropdown with hover/focus states and matching button sizes
-- **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Project)
+- **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
 - **Optimized Layout**: Side-by-side summary and visualization for maximum screen utilization
 - **Compact Statistics**: 2x2 grid layout showing total hours, entry counts, daily averages, max/min daily hours
 - **Activity & Project Analysis**: Cross-tabulation matrix showing distribution across time periods
@@ -35,7 +35,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - Consistent sizing and alignment across all controls
 - **Space-Optimized Layout**: Summary section (280px) + Visualization section (remaining space)
 - **Enhanced Summary Tables**: Horizontal distribution bars with percentages (40% column width)
-  - Time Entries grouped view (Weekly/Monthly/Yearly)
+  - Time Overview grouped view (Weekly/Monthly/Yearly)
   - Activity summary view
   - Project summary view
 - **Information Density**: All key metrics visible without scrolling
@@ -75,7 +75,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 1. After installation, you'll see "Time Analytics" in the top menu
 2. Click on "Time Analytics" to access the Individual Dashboard
 3. Use the toggle buttons to switch between view modes:
-   - **Time Entries**: Detailed list of individual time entries
+   - **Time Overview**: Detailed list of individual time entries
    - **Activity**: Analysis grouped by activity types with cross-tabulation for weekly/monthly/yearly views
    - **Grouping**: Time data grouped by selected time period
 
@@ -95,7 +95,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
 
 ### Chart Interaction
-- **View-Specific Defaults**: Time Entries use bar charts, Activity and Grouping views use pie charts by default
+- **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default
 - Use the chart type dropdown to switch between bar, line, and pie charts
 - Toggle chart visibility using the "Show/Hide Chart" button
 - **Context-Aware Pie Charts**: 
@@ -126,7 +126,7 @@ The plugin implements a modern, space-optimized design:
 ### Chart Integration
 Advanced Chart.js integration with custom wrapper and intelligent defaults:
 - Initializes charts from HTML data attributes
-- **View-specific default chart types**: Bar for Time Entries, Pie for Activity and Grouping views
+- **View-specific default chart types**: Bar for Time Overview, Pie for Activity and Grouping views
 - Real-time chart type switching (bar ↔ line ↔ pie)
 - **Context-aware data grouping**: Charts show activities in summary view, time periods in detailed view
 - **Enhanced pie chart labels**: Automatic percentage and hours display (e.g., "Development (68.9%, 31.1h)")
@@ -167,7 +167,7 @@ The Activity view offers two complementary perspectives on your time data:
 
 ### 2. Intelligent Chart Defaults
 Charts automatically select the best type for each view:
-- **Time Entries View**: Bar chart (default) - ideal for comparing daily/periodic values
+- **Time Overview View**: Bar chart (default) - ideal for comparing daily/periodic values
 - **Activity View**: Pie chart (default) - perfect for showing activity distribution
 - **Project View**: Pie chart (default) - great for proportional project analysis
 
@@ -185,7 +185,7 @@ Summary tables include horizontal bar charts showing percentage distribution:
 - **Blue gradient fill** matching the plugin's color scheme
 - **Percentage labels** displayed on the right side of each bar
 - **Instant visual comparison** of time allocation across activities, projects, or time periods
-- Available in Time Entries (grouped), Activity, and Project summary views
+- Available in Time Overview (grouped), Activity, and Project summary views
 
 ### 5. Flexible Time Period Filters
 Choose from various time ranges:
@@ -258,7 +258,7 @@ redmine_time_analytics/
   - 40% column width for spacious bar visualization
   - Blue gradient fill (#007cba to #36a2eb) with smooth animations
   - Percentage labels positioned on the right side of bars
-  - Applied to: Time Entries (grouped), Activity summary, Project summary
+  - Applied to: Time Overview (grouped), Activity summary, Project summary
   - Optimized table layout: left-aligned names, right-aligned hours, wide distribution column
   - Eliminates wasted space in summary views with informative visual data
 
@@ -266,7 +266,7 @@ redmine_time_analytics/
 - **Last Week Filter**: Added "Last Week" option to time period filters for quick access to previous week's data
 - **Summary View for All Groupings**: Extended summary/detailed view toggle to work with all groupings (daily, weekly, monthly, yearly)
 - **Context-Aware Charts**: Pie charts now intelligently show activities in summary view and time periods in detailed view
-- **View-Specific Chart Defaults**: Automatic chart type selection based on view mode (Bar for Time Entries, Pie for Activity/Project)
+- **View-Specific Chart Defaults**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
 - **Enhanced Pie Chart Labels**: Added percentage and hours display to all pie chart segments (e.g., "Development (68.9%, 31.1h)")
 - **Unified Date Formatting**: Consistent date format across tables and charts (e.g., "Dec 29, 2025")
 - **Smart Chart Data Detection**: Charts automatically adapt to data type (activities vs. time periods) for proper formatting
@@ -275,7 +275,7 @@ redmine_time_analytics/
 - **Optimized Layout**: Implemented side-by-side analytics layout for maximum information density
 - **Compact Summary**: Redesigned statistics as 2x2 grid for better space utilization
 - **Chart Optimization**: Reduced chart height and margins to eliminate empty space
-- **Consistent Date Logic**: Unified Monday-Sunday week formatting across Time Entries and Activity views
+- **Consistent Date Logic**: Unified Monday-Sunday week formatting across Time Overview and Activity views
 - **Enhanced Responsiveness**: Improved mobile layout with proper section stacking
 - **Performance**: Optimized chart rendering and reduced visual gaps
 
