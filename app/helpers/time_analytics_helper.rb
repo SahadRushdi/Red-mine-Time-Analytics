@@ -286,4 +286,43 @@ module TimeAnalyticsHelper
       'bar'
     end
   end
+
+  def avg_label_for_grouping(grouping)
+    case grouping
+    when 'weekly'
+      l(:label_avg_per_week)
+    when 'monthly'
+      l(:label_avg_per_month)
+    when 'yearly'
+      l(:label_avg_per_year)
+    else
+      l(:label_avg_per_day)
+    end
+  end
+
+  def max_label_for_grouping(grouping)
+    case grouping
+    when 'weekly'
+      l(:label_max_weekly)
+    when 'monthly'
+      l(:label_max_monthly)
+    when 'yearly'
+      l(:label_max_yearly)
+    else
+      l(:label_max_daily)
+    end
+  end
+
+  def min_label_for_grouping(grouping)
+    case grouping
+    when 'weekly'
+      l(:label_min_weekly)
+    when 'monthly'
+      l(:label_min_monthly)
+    when 'yearly'
+      l(:label_min_yearly)
+    else
+      l(:label_min_daily)
+    end
+  end
 end

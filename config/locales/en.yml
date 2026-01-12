@@ -1,7 +1,7 @@
 en:
   # Plugin labels
   label_time_analytics: "My Time"
-  label_individual_dashboard: "My Time Dashboard"
+  label_individual_dashboard: "My Time"
   label_team_dashboard: "Team Dashboard"
   label_custom_dashboard: "Custom Dashboard"
   
@@ -48,8 +48,17 @@ en:
   label_total_hours: "Total Hours"
   label_entries_count: "Entries"
   label_avg_per_day: "Avg/Day"
+  label_avg_per_week: "Avg/Week"
+  label_avg_per_month: "Avg/Month"
+  label_avg_per_year: "Avg/Year"
   label_max_daily: "Max Daily"
+  label_max_weekly: "Max Week"
+  label_max_monthly: "Max Month"
+  label_max_yearly: "Max Year"
   label_min_daily: "Min Daily"
+  label_min_weekly: "Min Week"
+  label_min_monthly: "Min Month"
+  label_min_yearly: "Min Year"
   
   # Buttons
   button_apply: "Apply"

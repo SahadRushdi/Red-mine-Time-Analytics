@@ -18,7 +18,11 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Modern Chart Controls**: Custom-styled dropdown with hover/focus states and matching button sizes
 - **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
 - **Optimized Layout**: Side-by-side summary and visualization for maximum screen utilization
-- **Compact Statistics**: 2x2 grid layout showing total hours, entry counts, daily averages, max/min daily hours
+- **Dynamic Summary Statistics**: Context-aware 2x2 grid layout that adapts to selected grouping
+  - **Daily**: Shows Avg/Day, Max Daily, Min Daily (excludes holidays and weekends)
+  - **Weekly**: Shows Avg/Week, Max Week, Min Week
+  - **Monthly**: Shows Avg/Month, Max Month, Min Month
+  - **Yearly**: Shows Avg/Year, Max Year, Min Year
 - **Activity & Project Analysis**: Cross-tabulation matrix showing distribution across time periods
   - **Dual View System**: Toggle between detailed pivot table and summary view for all groupings
   - **Context-Aware Charts**: Pie charts show activities/projects in summary view, time periods in detailed view
@@ -232,6 +236,14 @@ redmine_time_analytics/
 ```
 
 ### Recent Improvements (January 2026)
+
+#### Summary Statistics Enhancement (January 12, 2026)
+- **Grouping-Aware Summary Section**: Summary statistics now dynamically adapt based on selected grouping
+  - Daily grouping: Shows Avg/Day, Max Daily, Min Daily (excludes holidays and weekends using working days calculation)
+  - Weekly grouping: Shows Avg/Week, Max Week, Min Week
+  - Monthly grouping: Shows Avg/Month, Max Month, Min Month
+  - Yearly grouping: Shows Avg/Year, Max Year, Min Year
+  - Provides more meaningful insights when analyzing time data at different granularities
 
 #### UI/UX Enhancements (January 2, 2026)
 - **Unified Button System**: Refactored all buttons to use shared base classes for consistency

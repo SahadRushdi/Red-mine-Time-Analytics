@@ -35,9 +35,26 @@ class TimeAnalyticsController < ApplicationController
     # Calculate totals and statistics
     @total_hours = @time_entries.sum(:hours)
     @entry_count = @time_entries.count
-    @avg_hours_per_day = calculate_avg_hours_per_day
-    @max_daily_hours = calculate_max_daily_hours
-    @min_daily_hours = calculate_min_daily_hours
+    
+    # Calculate summary statistics based on grouping
+    case @grouping
+    when 'weekly'
+      @avg_hours_per_period = calculate_avg_hours_per_week
+      @max_period_hours = calculate_max_weekly_hours
+      @min_period_hours = calculate_min_weekly_hours
+    when 'monthly'
+      @avg_hours_per_period = calculate_avg_hours_per_month
+      @max_period_hours = calculate_max_monthly_hours
+      @min_period_hours = calculate_min_monthly_hours
+    when 'yearly'
+      @avg_hours_per_period = calculate_avg_hours_per_year
+      @max_period_hours = calculate_max_yearly_hours
+      @min_period_hours = calculate_min_yearly_hours
+    else # daily
+      @avg_hours_per_period = calculate_avg_hours_per_day
+      @max_period_hours = calculate_max_daily_hours
+      @min_period_hours = calculate_min_daily_hours
+    end
 
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
@@ -280,6 +297,99 @@ class TimeAnalyticsController < ApplicationController
     daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours).values
     return 0 if daily_totals.empty?
     daily_totals.min
+  end
+
+  # Weekly grouping calculations
+  def calculate_avg_hours_per_week
+    return 0 if @time_entries.empty?
+    
+    weekly_totals = get_weekly_totals(@time_entries)
+    return 0 if weekly_totals.empty?
+    
+    (weekly_totals.values.sum / weekly_totals.count).round(2)
+  end
+
+  def calculate_max_weekly_hours
+    weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals.values.max || 0
+  end
+
+  def calculate_min_weekly_hours
+    weekly_totals = get_weekly_totals(@time_entries)
+    return 0 if weekly_totals.empty?
+    weekly_totals.values.min
+  end
+
+  def get_weekly_totals(time_entries)
+    weekly_data = {}
+    time_entries.each do |entry|
+      week_start = get_activity_period_key(entry.spent_on, 'weekly')
+      weekly_data[week_start] ||= 0
+      weekly_data[week_start] += entry.hours
+    end
+    weekly_data
+  end
+
+  # Monthly grouping calculations
+  def calculate_avg_hours_per_month
+    return 0 if @time_entries.empty?
+    
+    monthly_totals = get_monthly_totals(@time_entries)
+    return 0 if monthly_totals.empty?
+    
+    (monthly_totals.values.sum / monthly_totals.count).round(2)
+  end
+
+  def calculate_max_monthly_hours
+    monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals.values.max || 0
+  end
+
+  def calculate_min_monthly_hours
+    monthly_totals = get_monthly_totals(@time_entries)
+    return 0 if monthly_totals.empty?
+    monthly_totals.values.min
+  end
+
+  def get_monthly_totals(time_entries)
+    monthly_data = {}
+    time_entries.each do |entry|
+      month_start = get_activity_period_key(entry.spent_on, 'monthly')
+      monthly_data[month_start] ||= 0
+      monthly_data[month_start] += entry.hours
+    end
+    monthly_data
+  end
+
+  # Yearly grouping calculations
+  def calculate_avg_hours_per_year
+    return 0 if @time_entries.empty?
+    
+    yearly_totals = get_yearly_totals(@time_entries)
+    return 0 if yearly_totals.empty?
+    
+    (yearly_totals.values.sum / yearly_totals.count).round(2)
+  end
+
+  def calculate_max_yearly_hours
+    yearly_totals = get_yearly_totals(@time_entries)
+    yearly_totals.values.max || 0
+  end
+
+  def calculate_min_yearly_hours
+    yearly_totals = get_yearly_totals(@time_entries)
+    return 0 if yearly_totals.empty?
+    yearly_totals.values.min
+  end
+
+  def get_yearly_totals(time_entries)
+    yearly_data = {}
+    time_entries.each do |entry|
+      year_start = get_activity_period_key(entry.spent_on, 'yearly')
+      yearly_data[year_start] ||= 0
+      yearly_data[year_start] += entry.hours
+    end
+    yearly_data
   end
 
   # Inline Chart Helper methods

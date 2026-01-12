@@ -209,16 +209,16 @@
         <div class="summary-label"><%= l(:label_total_hours) %></div>
       </div>
       <div class="summary-item">
-        <div class="summary-value"><%= format_hours(@avg_hours_per_day) %></div>
-        <div class="summary-label"><%= l(:label_avg_per_day) %></div>
+        <div class="summary-value"><%= format_hours(@avg_hours_per_period) %></div>
+        <div class="summary-label"><%= avg_label_for_grouping(@grouping) %></div>
       </div>
       <div class="summary-item">
-        <div class="summary-value"><%= format_hours(@max_daily_hours) %></div>
-        <div class="summary-label"><%= l(:label_max_daily) %></div>
+        <div class="summary-value"><%= format_hours(@max_period_hours) %></div>
+        <div class="summary-label"><%= max_label_for_grouping(@grouping) %></div>
       </div>
       <div class="summary-item">
-        <div class="summary-value"><%= format_hours(@min_daily_hours) %></div>
-        <div class="summary-label"><%= l(:label_min_daily) %></div>
+        <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
+        <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
       </div>
     </div>
   </div>
