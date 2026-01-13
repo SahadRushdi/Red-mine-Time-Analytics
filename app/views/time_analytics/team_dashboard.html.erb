@@ -1,0 +1,228 @@
+<%= render 'includes' %>
+
+<div class="contextual">
+  <a href="#" id="toggle-filters-btn" role="button" title="<%= l(:label_filters) %>" class="toggle-filters-button">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" class="filter-icon-svg">
+      <path d="M0 0h24v24H0z" fill="none"/>
+      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+    </svg>
+  </a>
+  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode, :team_id)), 
+      method: :post, class: 'icon icon-download' %>
+</div>
+
+<h2><%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %></h2>
+
+<%# Team Selector (if user leads multiple teams) %>
+<% if @teams.size > 1 %>
+  <div class="box" style="margin-bottom: 15px; padding: 10px;">
+    <%= form_tag(time_analytics_team_dashboard_path, method: :get, style: 'margin: 0;') do %>
+      <label for="team_id" style="font-weight: bold; margin-right: 10px;"><%= l(:label_team) || "Select Team" %>:</label>
+      <%= select_tag :team_id, 
+          options_from_collection_for_select(@teams, :id, :name, @selected_team&.id),
+          onchange: 'this.form.submit();',
+          style: 'padding: 5px 10px; min-width: 250px;' %>
+      <%= hidden_field_tag :filter, params[:filter] %>
+      <%= hidden_field_tag :from, params[:from] %>
+      <%= hidden_field_tag :to, params[:to] %>
+      <%= hidden_field_tag :grouping, params[:grouping] %>
+      <%= hidden_field_tag :view_mode, params[:view_mode] %>
+    <% end %>
+  </div>
+<% end %>
+
+<%# Context Pills showing current view/period/grouping %>
+<div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
+    <strong>View:</strong> <%= @view_mode.capitalize %>
+  </span>
+  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
+    <strong>Period:</strong> <%= params[:filter]&.humanize || 'This week' %>
+  </span>
+  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
+    <strong>Grouped By:</strong> <%= @grouping.capitalize %>
+  </span>
+</div>
+
+<%# Toggle View Buttons (Large Buttons like Individual Dashboard) %>
+<div id="collapsible-filters" class="collapsible-section">
+  <div class="box toggle-view-section">
+    <h3>Toggle View:</h3>
+    <div class="toggle-buttons">
+      <%= link_to 'Time Overview', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'time_entries')), 
+          class: "button button-base button-toggle #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Activity', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'activity')), 
+          class: "button button-base button-toggle #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Project', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'project')), 
+          class: "button button-base button-toggle #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Members', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'members')), 
+          class: "button button-base button-toggle #{@view_mode == 'members' ? 'button-primary' : 'button-neutral'}" %>
+    </div>
+  </div>
+
+  <%# Filters Section %>
+  <%= render partial: 'time_analytics/filters_panel', locals: { is_team_dashboard: true } %>
+</div>
+
+<%# Dashboard Analytics Section - Summary, Time Overview, and Visualization %>
+<div class="analytics-section">
+  <%# Team Statistics Summary Box (Left Side) %>
+  <div class="box stats-summary">
+    <h3><%= l(:label_summary) %></h3>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@total_hours) %></div>
+        <div class="summary-label"><%= l(:label_total_hours) || 'TOTAL HOURS' %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@avg_hours_per_period) %></div>
+        <div class="summary-label"><%= avg_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@max_period_hours) %></div>
+        <div class="summary-label"><%= max_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
+        <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= @team_size %></div>
+        <div class="summary-label">TEAM SIZE</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@avg_hours_per_member) %></div>
+        <div class="summary-label">AVG/MEMBER</div>
+      </div>
+    </div>
+  </div>
+
+  <%# Time Overview Box (Middle) %>
+  <% if @time_overview_data&.any? %>
+    <div class="box time-overview-box">
+      <h3><%= l(:label_time_overview) %></h3>
+      
+      <table class="time-overview-table">
+        <thead>
+          <tr>
+            <th><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @time_overview_data.slice(@offset, @limit).each do |entry| %>
+            <tr>
+              <td><%= entry.period %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      <%# Pagination %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :team_id) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info">
+          <%= l(:text_pagination_info, 
+              from: (@offset + 1), 
+              to: [@offset + @limit, @entry_count].min, 
+              total: @entry_count) %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Visualization Section (Right Side) %>
+  <div class="box visualization-section">
+    <h3>Visualization</h3>
+    <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
+      <div style="text-align: center; padding: 40px; color: #666;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <p style="margin: 0; font-size: 1.1em; font-weight: 500;">Chart Visualization</p>
+        <p style="margin: 10px 0 0 0; font-size: 0.9em;">Chart will be displayed here once data is available</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# Activity/Project/Members Analysis Section %>
+<% if @view_mode == 'activity' || @view_mode == 'project' %>
+  <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px; margin-top: 20px;">
+    <strong>Note:</strong> <%= @view_mode.capitalize %> view for Team Dashboard coming soon. 
+    Switch to Members view to see detailed team member analytics.
+  </p>
+<% elsif @view_mode == 'members' %>
+  <%= render partial: 'time_analytics/members_view' %>
+<% end %>
+
+<script>
+  // Auto-submit team selector on change
+  document.addEventListener('DOMContentLoaded', function() {
+    const teamSelect = document.getElementById('team_id');
+    if (teamSelect) {
+      teamSelect.addEventListener('change', function() {
+        this.form.submit();
+      });
+    }
+    
+    // Custom chart dropdown functionality (without auto-rendering)
+    const toggleBtn = document.getElementById('custom-chart-toggle');
+    const menu = document.getElementById('custom-chart-menu');
+    
+    if (toggleBtn && menu) {
+      toggleBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        menu.classList.toggle('show');
+      });
+      
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!toggleBtn.contains(e.target) && !menu.contains(e.target)) {
+          menu.classList.remove('show');
+        }
+      });
+      
+      // Handle chart type selection - just update the form
+      const menuLinks = menu.querySelectorAll('a');
+      menuLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          const chartType = this.getAttribute('data-value');
+          
+          // Update hidden field
+          const hiddenField = document.getElementById('chart_type_hidden');
+          if (hiddenField) {
+            hiddenField.value = chartType;
+          }
+          
+          // Update label
+          const label = document.getElementById('custom-chart-label');
+          if (label) {
+            label.textContent = chartType.charAt(0).toUpperCase() + chartType.slice(1);
+          }
+          
+          menu.classList.remove('show');
+          
+          // Submit the form to reload with new chart type
+          const form = document.getElementById('time-analytics-form');
+          if (form) {
+            form.submit();
+          }
+        });
+      });
+    }
+  });
+</script>
