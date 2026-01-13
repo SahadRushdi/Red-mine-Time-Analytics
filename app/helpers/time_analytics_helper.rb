@@ -278,9 +278,7 @@ module TimeAnalyticsHelper
     case view_mode
     when 'time_entries'
       'line'
-    when 'activity'
-      'pie'
-    when 'grouping'
+    when 'activity', 'project'
       'pie'
     else
       'bar'
