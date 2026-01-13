@@ -323,4 +323,19 @@ module TimeAnalyticsHelper
       l(:label_min_daily)
     end
   end
+
+  def grouping_label(grouping)
+    case grouping
+    when 'daily'
+      l(:label_daily)
+    when 'weekly'
+      l(:label_weekly)
+    when 'monthly'
+      l(:label_monthly)
+    when 'yearly'
+      l(:label_yearly)
+    else
+      grouping.humanize
+    end
+  end
 end

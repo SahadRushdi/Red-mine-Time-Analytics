@@ -123,7 +123,7 @@
 
     <div class="context-pill">
       <span class="pill-label">Grouped By:</span>
-      <span class="pill-value"><%= @grouping.humanize %></span>
+      <span class="pill-value"><%= grouping_label(@grouping) %></span>
     </div>
 
     <% if params[:search].present? %>

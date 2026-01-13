@@ -650,7 +650,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: @grouping.capitalize
+            text: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
@@ -738,7 +738,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: @grouping.capitalize
+            text: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
@@ -1093,7 +1093,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: grouping ? grouping.capitalize : ''
+            text: grouping ? helpers.grouping_label(grouping) : ''
           },
           ticks: {
             maxRotation: 45,
@@ -1159,7 +1159,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: grouping ? grouping.capitalize : ''
+            text: grouping ? helpers.grouping_label(grouping) : ''
           },
           ticks: {
             maxRotation: 45,
