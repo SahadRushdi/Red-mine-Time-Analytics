@@ -3,21 +3,30 @@
 # TaTeam model represents a team/department in the organizational hierarchy
 # Teams can have parent-child relationships (e.g., Organization → Department → Team)
 class TaTeam < ActiveRecord::Base
+  include Redmine::SafeAttributes
+  
   self.table_name = 'ta_teams'
 
   # Associations
   belongs_to :parent_team, class_name: 'TaTeam', optional: true
   has_many :child_teams, class_name: 'TaTeam', foreign_key: 'parent_team_id', dependent: :restrict_with_error
-  has_many :team_memberships, class_name: 'TaTeamMembership', foreign_key: 'team_id', dependent: :destroy
-  has_many :users, through: :team_memberships
-  has_many :team_projects, class_name: 'TaTeamProject', foreign_key: 'team_id', dependent: :destroy
-  has_many :projects, through: :team_projects
-  has_many :team_access_permissions, class_name: 'TaTeamAccessPermission', foreign_key: 'team_id', dependent: :destroy
+  has_many :ta_team_memberships, class_name: 'TaTeamMembership', foreign_key: 'team_id', dependent: :destroy
+  has_many :users, through: :ta_team_memberships
+  has_many :ta_team_projects, class_name: 'TaTeamProject', foreign_key: 'team_id', dependent: :destroy
+  has_many :projects, through: :ta_team_projects
+  has_many :ta_team_access_permissions, class_name: 'TaTeamAccessPermission', foreign_key: 'team_id', dependent: :destroy
+
+  alias_method :children, :child_teams
+  alias_method :team_memberships, :ta_team_memberships
+  alias_method :team_projects, :ta_team_projects
 
   # Validations
   validates :name, presence: true, uniqueness: true, length: { maximum: 255 }
   validate :cannot_be_own_parent
   validate :cannot_create_circular_hierarchy
+
+  # Safe attributes for mass assignment
+  safe_attributes 'name', 'parent_team_id', 'description'
 
   # Scopes
   scope :root_teams, -> { where(parent_team_id: nil) }

@@ -10,6 +10,12 @@ Redmine::Plugin.register :redmine_time_analytics do
   menu :top_menu, :time_analytics, { controller: 'time_analytics', action: 'index' }, 
        caption: :label_time_analytics, after: :my_page
 
+  # Add to admin menu
+  menu :admin_menu, :team_analytics_configuration,
+       { controller: 'admin_ta_teams', action: 'index' },
+       caption: 'Team Analytics Configuration',
+       html: { class: 'icon icon-group' }
+
   # Add permissions
   project_module :time_analytics do
     permission :view_time_analytics, { time_analytics: [:index, :individual_dashboard] }

@@ -1,0 +1,117 @@
+<% html_title "Team Analytics Settings" %>
+
+<div class="contextual">
+  <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'icon icon-cancel' %>
+</div>
+
+<h2>Team Analytics Settings</h2>
+
+<div class="splitcontentleft">
+  <h3>Exclusion List</h3>
+  <p class="subtitle">
+    Users in the exclusion list will not appear in team analytics reports.<br/>
+    Typically used for C-level executives, consultants, or contractors.
+  </p>
+
+  <% if @excluded_users.any? %>
+    <table class="list">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @excluded_users.each do |user| %>
+          <% setting = TaTeamSetting.exclusions.find_by(user_id: user.id) %>
+          <tr class="<%= cycle('odd', 'even') %>">
+            <td><%= link_to user.name, user_path(user) %></td>
+            <td><%= user.mail %></td>
+            <td class="buttons">
+              <%= link_to 'Remove', admin_ta_team_settings_path(id: setting.id), 
+                          method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="nodata">No users in exclusion list</p>
+  <% end %>
+
+  <h4>Add User to Exclusion List</h4>
+  <%= form_tag admin_ta_team_settings_path, method: :post, class: 'tabular' do %>
+    <%= hidden_field_tag :setting_type, 'exclusion' %>
+    <p>
+      <%= label_tag :user_id, 'User' %>
+      <%= select_tag :user_id, 
+                     options_from_collection_for_select(@available_users, :id, :name),
+                     { prompt: 'Select a user', class: 'select2' } %>
+      <%= submit_tag 'Add to Exclusion List', class: 'button-small' %>
+    </p>
+  <% end %>
+</div>
+
+<div class="splitcontentright">
+  <h3>Super Users</h3>
+  <p class="subtitle">
+    Super users can view analytics for all teams, regardless of their team membership.<br/>
+    Typically used for managers or administrators.
+  </p>
+
+  <% if @super_users.any? %>
+    <table class="list">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @super_users.each do |user| %>
+          <% setting = TaTeamSetting.super_users.find_by(user_id: user.id) %>
+          <tr class="<%= cycle('odd', 'even') %>">
+            <td><%= link_to user.name, user_path(user) %></td>
+            <td><%= user.mail %></td>
+            <td class="buttons">
+              <%= link_to 'Remove', admin_ta_team_settings_path(id: setting.id), 
+                          method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="nodata">No super users</p>
+  <% end %>
+
+  <h4>Add Super User</h4>
+  <%= form_tag admin_ta_team_settings_path, method: :post, class: 'tabular' do %>
+    <%= hidden_field_tag :setting_type, 'super_user' %>
+    <p>
+      <%= label_tag :user_id, 'User' %>
+      <%= select_tag :user_id, 
+                     options_from_collection_for_select(@available_users, :id, :name),
+                     { prompt: 'Select a user', class: 'select2' } %>
+      <%= submit_tag 'Add as Super User', class: 'button-small' %>
+    </p>
+  <% end %>
+</div>
+
+<style>
+  .splitcontentleft, .splitcontentright {
+    width: 48%;
+  }
+  .splitcontentleft {
+    float: left;
+  }
+  .splitcontentright {
+    float: right;
+  }
+  .button-small {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+</style>

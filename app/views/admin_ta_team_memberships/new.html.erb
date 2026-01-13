@@ -1,0 +1,38 @@
+<% html_title "Add Team Member" %>
+
+<h2>Add Team Member: <%= @team.name %></h2>
+<p class="subtitle"><%= ta_team_breadcrumb(@team) %></p>
+
+<%= form_for @membership, url: admin_ta_team_memberships_path(@team), html: { class: 'tabular' } do |f| %>
+  <%= error_messages_for 'ta_team_membership' %>
+
+  <div class="box tabular">
+    <p>
+      <%= f.label :user_id, 'User', class: 'required' %>
+      <%= f.select :user_id, 
+                   options_from_collection_for_select(@available_users, :id, :name),
+                   { prompt: 'Select a user' },
+                   { required: true, class: 'select2' } %>
+    </p>
+
+    <p>
+      <%= f.label :role, 'Role', class: 'required' %>
+      <%= f.select :role, role_options_for_select, {}, { required: true } %>
+      <em class="info">Team leads can view team analytics</em>
+    </p>
+
+    <p>
+      <%= f.label :start_date, 'Start Date', class: 'required' %>
+      <%= f.date_field :start_date, required: true, value: Date.today %>
+    </p>
+
+    <p>
+      <%= f.label :end_date, 'End Date' %>
+      <%= f.date_field :end_date %>
+      <em class="info">Leave empty for active members</em>
+    </p>
+  </div>
+
+  <%= submit_tag l(:button_create) %>
+  <%= link_to l(:button_cancel), admin_ta_team_memberships_path(@team) %>
+<% end %>

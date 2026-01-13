@@ -1,0 +1,9 @@
+<% html_title "Edit Team" %>
+
+<h2>Edit Team: <%= @team.name %></h2>
+
+<%= form_for @team, url: admin_ta_team_path(@team), method: :put, html: { class: 'tabular' } do |f| %>
+  <%= render partial: 'form', locals: { f: f } %>
+  <%= submit_tag l(:button_save) %>
+  <%= link_to l(:button_cancel), admin_ta_teams_path %>
+<% end %>

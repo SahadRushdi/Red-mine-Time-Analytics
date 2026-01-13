@@ -1,0 +1,23 @@
+<%= error_messages_for 'ta_team' %>
+
+<div class="box tabular">
+  <p>
+    <%= f.label :name, 'Team Name', class: 'required' %>
+    <%= f.text_field :name, required: true, size: 60 %>
+  </p>
+
+  <p>
+    <%= f.label :parent_team_id, 'Parent Team' %>
+    <%= f.select :parent_team_id, 
+                 ta_team_select_options(@team.parent_team_id, [@team.id]),
+                 { include_blank: '(None - Root Team)' },
+                 { class: 'select2' } %>
+    <em class="info">Select parent team to create a hierarchical structure</em>
+  </p>
+
+  <p>
+    <%= f.label :description, 'Description' %>
+    <%= f.text_area :description, rows: 4, cols: 60 %>
+    <em class="info">Optional description of the team</em>
+  </p>
+</div>

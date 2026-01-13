@@ -1,0 +1,100 @@
+<% html_title "Team Details" %>
+
+<div class="contextual">
+  <%= link_to 'Edit', edit_admin_ta_team_path(@team), class: 'icon icon-edit' %>
+  <%= link_to 'Delete', admin_ta_team_path(@team), method: :delete, 
+              data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
+  <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'icon icon-cancel' %>
+</div>
+
+<h2><%= @team.name %></h2>
+
+<div class="box">
+  <p><strong>Full Path:</strong> <%= @team.full_path %></p>
+  <% if @team.description.present? %>
+    <p><strong>Description:</strong> <%= @team.description %></p>
+  <% end %>
+  <% if @team.parent_team %>
+    <p><strong>Parent Team:</strong> <%= link_to @team.parent_team.name, admin_ta_team_path(@team.parent_team) %></p>
+  <% end %>
+</div>
+
+<h3>Team Members (<%= @memberships.count %>)</h3>
+<div class="contextual">
+  <%= link_to 'Manage Members', admin_ta_team_memberships_path(@team), class: 'icon icon-user' %>
+</div>
+
+<% if @memberships.any? %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @memberships.limit(10).each do |membership| %>
+        <tr>
+          <td><%= link_to membership.user.name, user_path(membership.user) %></td>
+          <td><%= membership.role.titleize %></td>
+          <td><%= format_date(membership.start_date) %></td>
+          <td><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></td>
+          <td>
+            <% if membership.active? %>
+              <span class="badge badge-success">Active</span>
+            <% else %>
+              <span class="badge">Inactive</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @memberships.count > 10 %>
+    <p><%= link_to "View all #{@memberships.count} members", admin_ta_team_memberships_path(@team) %></p>
+  <% end %>
+<% else %>
+  <p class="nodata">No team members</p>
+<% end %>
+
+<h3>Assigned Projects (<%= @projects.count %>)</h3>
+<div class="contextual">
+  <%= link_to 'Manage Projects', admin_ta_team_team_projects_path(@team), class: 'icon icon-projects' %>
+</div>
+
+<% if @projects.any? %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Project</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @projects.limit(10).each do |team_project| %>
+        <tr>
+          <td><%= link_to team_project.project.name, project_path(team_project.project) %></td>
+          <td><%= format_date(team_project.start_date) %></td>
+          <td><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
+          <td>
+            <% if team_project.active? %>
+              <span class="badge badge-success">Active</span>
+            <% else %>
+              <span class="badge">Inactive</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @projects.count > 10 %>
+    <p><%= link_to "View all #{@projects.count} projects", admin_ta_team_team_projects_path(@team) %></p>
+  <% end %>
+<% else %>
+  <p class="nodata">No assigned projects</p>
+<% end %>

@@ -1,0 +1,79 @@
+<% html_title "Team Members - #{@team.name}" %>
+
+<div class="contextual">
+  <%= link_to 'Add Member', new_admin_ta_team_membership_path(@team), class: 'icon icon-add' %>
+  <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'icon icon-cancel' %>
+</div>
+
+<h2>Team Members: <%= @team.name %></h2>
+<p class="subtitle"><%= ta_team_breadcrumb(@team) %></p>
+
+<h3>Active Members (<%= @active_memberships.count %>)</h3>
+
+<% if @active_memberships.any? %>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @active_memberships.each do |membership| %>
+        <tr class="<%= cycle('odd', 'even') %>">
+          <td><%= link_to membership.user.name, user_path(membership.user) %></td>
+          <td><%= membership.user.mail %></td>
+          <td>
+            <% if membership.lead? %>
+              <strong><%= membership.role.titleize %></strong>
+            <% else %>
+              <%= membership.role.titleize %>
+            <% end %>
+          </td>
+          <td><%= format_date(membership.start_date) %></td>
+          <td><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></td>
+          <td class="buttons">
+            <%= link_to 'Edit', edit_admin_ta_team_membership_path(@team, membership), class: 'icon icon-edit' %>
+            <%= link_to 'Remove', admin_ta_team_membership_path(@team, membership), 
+                        method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="nodata">No active members</p>
+<% end %>
+
+<% if @inactive_memberships.any? %>
+  <h3>Inactive Members (<%= @inactive_memberships.count %>)</h3>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @inactive_memberships.each do |membership| %>
+        <tr class="<%= cycle('odd', 'even') %>">
+          <td><%= link_to membership.user.name, user_path(membership.user) %></td>
+          <td><%= membership.role.titleize %></td>
+          <td><%= format_date(membership.start_date) %></td>
+          <td><%= format_date(membership.end_date) %></td>
+          <td class="buttons">
+            <%= link_to 'Delete', admin_ta_team_membership_path(@team, membership), 
+                        method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

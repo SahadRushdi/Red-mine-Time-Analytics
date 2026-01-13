@@ -1,0 +1,39 @@
+<% html_title "Edit Team Member" %>
+
+<h2>Edit Team Member: <%= @team.name %></h2>
+<p class="subtitle"><%= ta_team_breadcrumb(@team) %></p>
+
+<%= form_for @membership, url: admin_ta_team_membership_path(@team, @membership), method: :put, html: { class: 'tabular' } do |f| %>
+  <%= error_messages_for 'ta_team_membership' %>
+
+  <div class="box tabular">
+    <p>
+      <%= f.label :user_id, 'User' %>
+      <%= f.select :user_id, 
+                   options_from_collection_for_select(@available_users, :id, :name, @membership.user_id),
+                   {},
+                   { disabled: true, class: 'select2' } %>
+      <%= f.hidden_field :user_id %>
+      <em class="info">User cannot be changed. Create a new membership instead.</em>
+    </p>
+
+    <p>
+      <%= f.label :role, 'Role', class: 'required' %>
+      <%= f.select :role, role_options_for_select(@membership.role), {}, { required: true } %>
+    </p>
+
+    <p>
+      <%= f.label :start_date, 'Start Date', class: 'required' %>
+      <%= f.date_field :start_date, required: true %>
+    </p>
+
+    <p>
+      <%= f.label :end_date, 'End Date' %>
+      <%= f.date_field :end_date %>
+      <em class="info">Leave empty for active members</em>
+    </p>
+  </div>
+
+  <%= submit_tag l(:button_save) %>
+  <%= link_to l(:button_cancel), admin_ta_team_memberships_path(@team) %>
+<% end %>
