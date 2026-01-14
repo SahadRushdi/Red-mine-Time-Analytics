@@ -91,16 +91,16 @@
 
 .toggle-buttons {
   display: flex;
-  gap: 40px;
+  gap: 15px;
   flex-wrap: wrap;
 }
 
 .button-toggle {
   flex: 1;
-  min-width: 120px;
-  padding: 10px 20px !important;
-  font-size: 14px !important;
-  font-weight: bold !important;
+  min-width: 100px;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
 }
 
 /* === View Toggle Controls === */
@@ -128,8 +128,8 @@
   box-sizing: border-box;
   font-size: 13px;
   line-height: 1.4;
-  height: auto;
-  padding: 8px 10px;
+  height: 30px;
+  padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 3px;
   overflow: visible;
@@ -142,11 +142,11 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 38px !important;
-  padding: 0 20px !important;
+  height: 30px !important;
+  padding: 0 15px !important;
   line-height: 1 !important;
   margin: 0;
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
 .button-apply {
