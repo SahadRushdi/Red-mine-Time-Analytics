@@ -1238,8 +1238,8 @@ class TimeAnalyticsController < ApplicationController
     # Always group by date/period for Time Overview (consistent across all views)
     grouped_data = group_time_entries(time_entries, grouping)
     
-    # Sort by date
-    sorted_data = grouped_data.sort_by { |key, _| key }
+    # Sort by date in descending order (latest first)
+    sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
     # Format data with proper date display
     sorted_data.map do |period, hours|
