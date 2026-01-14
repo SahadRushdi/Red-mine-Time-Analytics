@@ -222,8 +222,8 @@ fieldset.box legend {
 /* Ensure the fieldset has enough top padding so the buttons don't 
    crash into the newly positioned legend */
 fieldset.box {
-  padding-top: 25px !important;
-  margin-top: 15px;
+  padding-top: 8px !important;
+  margin-top: 8px;
   border: 1px solid #d7d7d7;
   border-radius: 4px;
 }
