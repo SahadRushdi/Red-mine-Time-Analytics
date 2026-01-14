@@ -3,20 +3,43 @@
   display: none !important;
 }
 
-/* === Layout Sections === */
-.toggle-view-section,
-.filter-controls {
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 20px;
+/* === Redmine-style Collapsible Filter Toggle === */
+.filters-toggle-wrapper fieldset {
+  border: none;
+  border-top: 1px solid #d7d7d7;
+  background-color: transparent;
+  padding: 0;
+  margin: 0 0 10px 0;
 }
 
-.toggle-view-section h3 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  font-weight: bold;
+.filters-toggle-wrapper legend {
+  cursor: pointer;
+  color: #555;
+  font-weight: normal;
+  font-size: 13px;
+  padding: 5px 10px 5px 20px;
+  margin: 0;
+  background-color: transparent;
+  position: relative;
+}
+
+.filters-toggle-wrapper legend:hover {
+  color: #000;
+  text-decoration: underline;
+}
+
+.filters-toggle-wrapper legend.collapsed::before {
+  content: '▸';
+  position: absolute;
+  left: 6px;
+  font-size: 11px;
+}
+
+.filters-toggle-wrapper legend:not(.collapsed)::before {
+  content: '▾';
+  position: absolute;
+  left: 6px;
+  font-size: 11px;
 }
 
 /* === Shared Button Base Styles === */
@@ -66,7 +89,6 @@
   border-color: #999 !important;
 }
 
-/* === Toggle View Buttons === */
 .toggle-buttons {
   display: flex;
   gap: 40px;
@@ -137,12 +159,10 @@
 
 .search-input {
   min-width: 220px;
-  /* Added to prevent shrinking in flex containers */
   flex-shrink: 0; 
 }
 
 /* === Filter Section === */
-/* NEW: Modified to ensure high-priority alignment for Search/Filters */
 .filter-row {
   display: flex !important;
   flex-wrap: wrap;
@@ -155,7 +175,6 @@
   display: flex;
   flex-direction: column;
   min-width: 160px;
-  /* Ensure Select2 boxes don't force break lines on Redmine 5.1 server */
   flex-shrink: 1;
 }
 
@@ -163,14 +182,6 @@
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 12px;
-}
-
-/* NEW: Safety wrapper for Search + Range to prevent them splitting */
-.search-range-wrapper {
-  display: flex !important;
-  align-items: flex-end !important;
-  gap: 15px;
-  flex-wrap: nowrap !important;
 }
 
 /* === Analytics Section === */
@@ -563,38 +574,7 @@
   padding: 20px;
 }
 
-/* === Collapsible Filters === */
-.toggle-filters-button {
-  display: inline-block;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  cursor: pointer;
-  margin-right: 10px;
-  line-height: 0;
-}
 
-.toggle-filters-button:hover {
-  background-color: #f0f0f0;
-}
-
-.toggle-filters-button.active {
-  background-color: #36a2eb;
-  border-color: #36a2eb;
-}
-
-.collapsible-section {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.5s ease-out, opacity 0.3s ease-out;
-}
-
-.collapsible-section.open {
-  max-height: 500px;
-  opacity: 1;
-  transition: max-height 0.5s ease-in, opacity 0.5s ease-in;
-}
 
 /* === Responsive === */
 @media (max-width: 768px) {
