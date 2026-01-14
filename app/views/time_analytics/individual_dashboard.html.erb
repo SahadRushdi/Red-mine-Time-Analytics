@@ -411,14 +411,14 @@
   <div class="box">
     <h3>
       <% if @view_mode == 'activity' %>
-        Activity Analysis
+        Time by Activity
         <div class="view-toggle-controls">
           <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
             <span id="view-toggle-text">Show Summary View</span>
           </button>
         </div>
       <% elsif @view_mode == 'project' %>
-        Project Analysis
+        Time by Project
         <div class="view-toggle-controls">
           <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
             <span id="project-view-toggle-text">Show Summary View</span>
