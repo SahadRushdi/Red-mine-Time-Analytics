@@ -89,26 +89,37 @@
   border-color: #999 !important;
 }
 
+/* === Toggle Buttons Wrapper === */
+.toggle-buttons-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toggle-label {
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
+
 .toggle-buttons {
   display: flex;
-  gap: 10px; 
+  gap: 10px;
   flex-wrap: wrap;
-  justify-content: flex-start; 
 }
 
 .button-toggle {
-  flex: 0 0 auto; 
-  padding: 6px 20px !important; 
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 4px 12px !important;
   font-size: 13px !important;
   font-weight: normal !important;
-  text-align: center;
-  border: 1px solid #ccc; /* Matches the grey border in your image */
-  border-radius: 4px;
-  background-color: #fff;
-}
-
-.button-toggle {
-  min-width: 120px; 
+  height: 30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* === View Toggle Controls === */
