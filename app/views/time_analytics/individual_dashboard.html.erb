@@ -117,7 +117,7 @@
   <div class="context-pills-bar">
     <div class="context-pill">
       <span class="pill-label">View:</span>
-      <span class="pill-value"><%= @view_mode.humanize %></span>
+      <span class="pill-value"><%= l("label_#{@view_mode}") %></span>
     </div>
 
     <div class="context-pill">
@@ -188,7 +188,7 @@
 
         <div class="filter-group">
           <%= link_to l(:button_clear), time_analytics_individual_dashboard_path, 
-              class: 'button-small' %>
+              class: 'button-base button-neutral button-small button-clear' %>
         </div>
       </div>
     </fieldset>
@@ -196,7 +196,7 @@
       <div class="toggle-buttons-wrapper">
         <label class="toggle-label">Group results by:</label>
         <div class="toggle-buttons">
-          <%= link_to 'Time Overview', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
+          <%= link_to 'Time', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
           <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
