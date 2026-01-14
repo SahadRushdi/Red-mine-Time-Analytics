@@ -91,16 +91,24 @@
 
 .toggle-buttons {
   display: flex;
-  gap: 15px;
+  gap: 10px; 
   flex-wrap: wrap;
+  justify-content: flex-start; 
 }
 
 .button-toggle {
-  flex: 1;
-  min-width: 100px;
-  padding: 6px 12px !important;
+  flex: 0 0 auto; 
+  padding: 6px 20px !important; 
   font-size: 13px !important;
   font-weight: normal !important;
+  text-align: center;
+  border: 1px solid #ccc; /* Matches the grey border in your image */
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+.button-toggle {
+  min-width: 120px; 
 }
 
 /* === View Toggle Controls === */
@@ -182,6 +190,40 @@
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 12px;
+}
+
+/* === Fieldset Box Legend Styling === */
+/* === Fieldset Box Legend Styling Fix === */
+fieldset.box legend {
+  padding: 0 5px;          /* Adjusted padding */
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+  margin-left: 10px;
+  
+  /* The Fix: This pushes the text down into the box space 
+     to align with the 'Time Period' label above it */
+  position: relative;
+  top: 12px;               
+  background-color: #fff;  /* Ensures the background covers the border line */
+}
+
+/* Ensure the fieldset has enough top padding so the buttons don't 
+   crash into the newly positioned legend */
+fieldset.box {
+  padding-top: 25px !important;
+  margin-top: 15px;
+  border: 1px solid #d7d7d7;
+  border-radius: 4px;
+}
+
+/* Ensure the button container inside doesn't have extra top margin */
+.toggle-buttons {
+  display: flex;
+  gap: 10px; 
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 5px; 
 }
 
 /* === Analytics Section === */
