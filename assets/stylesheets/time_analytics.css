@@ -14,42 +14,38 @@
 
 .filters-toggle-wrapper legend {
   cursor: pointer;
-  color: #0957cd; /*#0065ff;  Changed to blue */
+  color: #0957cd;
   font-weight: normal;
   font-size: 13px;
-  padding: 5px 10px 5px 20px;
+  padding: 0 10px 0 24px; /* Top/bottom padding removed, left padding for icon space */
   margin: 0;
   background-color: transparent;
   position: relative;
+  display: inline-flex;
+  align-items: center; /* Align icon and text vertically */
+  height: 24px; /* Optional: ensures consistent height */
 }
 
 .filters-toggle-wrapper legend:hover {
-  color: #004dcc; /* Darker shade for hover */
+  color: #004dcc;
   text-decoration: underline;
 }
 
-.filters-toggle-wrapper legend.collapsed::before {
-  content: '';
+.filters-toggle-wrapper legend.collapsed::before,
+.filters-toggle-wrapper legend:not(.collapsed)::before {
+  content: 'chevron_right'; /* Will be overridden below */
+  font-family: 'Material Icons';
   position: absolute;
-  left: 6px;
-  font-size: 0;
-  border-style: solid;
-  border-width: 4px 0 4px 6px;
-  border-color: transparent transparent transparent currentColor;
+  left: 0;
+  font-size: 18px;
+  font-weight: normal;
   top: 50%;
   transform: translateY(-50%);
+  line-height: 1;
 }
 
 .filters-toggle-wrapper legend:not(.collapsed)::before {
-  content: '';
-  position: absolute;
-  left: 6px;
-  font-size: 0;
-  border-style: solid;
-  border-width: 6px 4px 0 4px;
-  border-color: currentColor transparent transparent transparent;
-  top: 50%;
-  transform: translateY(-50%);
+  content: 'expand_more';
 }
 
 /* === Shared Button Base Styles === */
