@@ -241,6 +241,7 @@ fieldset.box legend {
 fieldset.box {
   padding-top: 8px !important;
   margin-top: 8px;
+  margin-bottom: 20px;
   border: 1px solid #d7d7d7;
   border-radius: 4px;
 }
@@ -260,6 +261,7 @@ fieldset.box {
   gap: 15px;
   margin-bottom: 20px;
   width: 100%;
+  align-items: flex-start;
 }
 
 .analytics-section .stats-summary {
@@ -268,6 +270,7 @@ fieldset.box {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  align-self: stretch;
 }
 
 .analytics-section .stats-summary h3 {
@@ -280,6 +283,7 @@ fieldset.box {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-self: stretch;
 }
 
 .analytics-section .time-overview-box h3 {
@@ -332,6 +336,7 @@ fieldset.box {
   min-width: 0;
   width: 100%;
   max-width: none;
+  align-self: stretch;
 }
 
 /* === Stats Summary Grid === */
