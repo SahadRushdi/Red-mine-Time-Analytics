@@ -246,7 +246,12 @@ fieldset.box {
 }
 
 /* Force consistent spacing - override theme conflicts */
-fieldset.box.toggle-buttons-wrapper {
+fieldset.box {
+  margin-bottom: 20px !important;
+  padding-bottom: 15px !important;
+}
+
+#filters fieldset.box {
   margin-bottom: 20px !important;
 }
 
@@ -256,19 +261,25 @@ fieldset.box.toggle-buttons-wrapper {
   gap: 15px;
   margin-bottom: 20px;
   width: 100%;
-  align-items: flex-start;
+  align-items: stretch !important;
 }
 
-/* Force top alignment for analytics boxes - override theme conflicts */
-.analytics-section > .box {
-  align-self: flex-start !important;
-}
-
+/* Force top alignment for all analytics boxes - override ALL theme conflicts */
+.analytics-section > .box,
+.analytics-section > div.box,
 .analytics-section .stats-summary,
 .analytics-section .time-overview-box,
 .analytics-section .visualization-section {
-  margin-top: 0 !important;
+  margin: 0 !important;
+  padding: 15px !important;
+  box-sizing: border-box !important;
   align-self: stretch !important;
+}
+
+/* Reset ALL h3 margins inside analytics boxes */
+.analytics-section h3 {
+  margin: 0 0 15px 0 !important;
+  padding: 0 !important;
 }
 
 .analytics-section .stats-summary {
