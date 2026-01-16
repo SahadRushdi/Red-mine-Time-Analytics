@@ -17,18 +17,13 @@
   color: #0957cd;
   font-weight: normal;
   font-size: 13px;
-  padding: 0 10px 0 24px; /* Top/bottom padding removed, left padding for icon space */
   margin: 0;
+  padding: 0 10px 0 18px; /* Reduce left padding to shift text left */
   background-color: transparent;
   position: relative;
-  display: inline-flex;
-  align-items: center; /* Align icon and text vertically */
-  height: 24px; /* Optional: ensures consistent height */
-}
-
-.filters-toggle-wrapper legend:hover {
-  color: #004dcc;
-  text-decoration: underline;
+  display: inline-block;
+  line-height: 24px;
+  vertical-align: middle;
 }
 
 .filters-toggle-wrapper legend.collapsed::before,
@@ -36,11 +31,10 @@
   content: 'chevron_right'; /* Will be overridden below */
   font-family: 'Material Icons';
   position: absolute;
-  left: 0;
-  font-size: 18px;
-  font-weight: normal;
+  left: -5px; /* Shift icon left to match My Time baseline */
   top: 50%;
   transform: translateY(-50%);
+  font-size: 18px;
   line-height: 1;
 }
 
