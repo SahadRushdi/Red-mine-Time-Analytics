@@ -812,7 +812,11 @@
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
-        <div class="pagination-info">
+        <div class="pagination-info" id="pagination-info-text" 
+             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-activity-count="<%= @activities&.count || 0 %>"
+             data-project-count="<%= @projects&.count || 0 %>"
+             data-view-mode="<%= @view_mode %>">
           <%= l(:text_pagination_info, 
               from: (@offset + 1), 
               to: [@offset + @limit, @entry_count].min, 
@@ -1219,6 +1223,33 @@ function transformChartType(originalConfig, newType) {
   return newConfig;
 }
 
+// Update pagination info text based on view state
+function updatePaginationInfo(viewState) {
+  var paginationInfo = document.getElementById('pagination-info-text');
+  if (!paginationInfo) {
+    return;
+  }
+  
+  var detailedText = paginationInfo.getAttribute('data-detailed-text');
+  var viewMode = paginationInfo.getAttribute('data-view-mode');
+  
+  if (viewState === 'detailed') {
+    // Show detailed view pagination (based on time periods)
+    paginationInfo.textContent = detailedText;
+  } else {
+    // Show summary view pagination (based on activities or projects)
+    var count;
+    if (viewMode === 'activity') {
+      count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
+    } else if (viewMode === 'project') {
+      count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
+    }
+    
+    // Format: "Showing 1 to X of X entries"
+    paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' entries';
+  }
+}
+
 // Toggle between detailed and summary views for daily activity analysis
 function toggleActivityView() {
   var detailedView = document.getElementById('daily-detailed-view');
@@ -1237,6 +1268,7 @@ function toggleActivityView() {
     toggleText.textContent = 'Show Summary View';
     localStorage.setItem('activity_view_mode', 'detailed');
     newViewState = 'detailed';
+    updatePaginationInfo('detailed');
   } else {
     // Currently showing detailed, switch to summary
     detailedView.style.display = 'none';
@@ -1244,6 +1276,7 @@ function toggleActivityView() {
     toggleText.textContent = 'Show Detailed View';
     localStorage.setItem('activity_view_mode', 'summary');
     newViewState = 'summary';
+    updatePaginationInfo('summary');
   }
   
   // Regenerate chart with new view state
@@ -1267,6 +1300,7 @@ function toggleProjectView() {
     toggleText.textContent = 'Show Summary View';
     localStorage.setItem('project_view_mode', 'detailed');
     newViewState = 'detailed';
+    updatePaginationInfo('detailed');
   } else {
     // Currently showing detailed, switch to summary
     detailedView.style.display = 'none';
@@ -1274,6 +1308,7 @@ function toggleProjectView() {
     toggleText.textContent = 'Show Detailed View';
     localStorage.setItem('project_view_mode', 'summary');
     newViewState = 'summary';
+    updatePaginationInfo('summary');
   }
   
   // Regenerate chart with new view state
@@ -1331,11 +1366,13 @@ function restoreActivityViewState() {
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
+    updatePaginationInfo('summary');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
+    updatePaginationInfo('detailed');
   }
   
   // Update hidden field with current state
@@ -1363,11 +1400,13 @@ function restoreProjectViewState() {
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
+    updatePaginationInfo('summary');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
+    updatePaginationInfo('detailed');
   }
   
   // Update hidden field with current state
