@@ -413,7 +413,9 @@
     
     <div id="chart-container" style="display: block;">
       <div class="chart-wrapper">
-        <canvas id="time-chart" class="chart" data-chart='<%= @chart_data %>'></canvas>
+        <canvas id="time-chart" class="chart" 
+                data-chart='<%= @chart_data %>' 
+                data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
     </div>
   </div>
@@ -837,6 +839,20 @@
 // Global chart instance
 var timeAnalyticsChart = null;
 
+// Get localized grouping label from chart element data attribute
+function getGroupingLabel() {
+  var chartElement = document.getElementById('time-chart');
+  if (chartElement) {
+    var label = chartElement.getAttribute('data-grouping-label');
+    if (label) {
+      return label;
+    }
+  }
+  // Fallback to capitalizing grouping value if data attribute not found
+  var groupingSelect = document.getElementById('grouping');
+  return groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+}
+
 function toggleCustomDateRange() {
   var filter = document.getElementById('filter').value;
   var customRange = document.getElementById('custom-date-range');
@@ -1109,9 +1125,8 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
-    // Get current grouping from the select element
-    var groupingSelect = document.getElementById('grouping');
-    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    // Get localized grouping label from data attribute
+    var grouping = getGroupingLabel();
     
     // Line chart specific configuration
     newConfig.options = {
@@ -1173,9 +1188,8 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
-    // Get current grouping from the select element
-    var groupingSelect = document.getElementById('grouping');
-    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    // Get localized grouping label from data attribute
+    var grouping = getGroupingLabel();
     
     // Bar chart (default) configuration
     newConfig.options = {
