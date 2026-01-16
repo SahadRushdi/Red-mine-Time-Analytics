@@ -14,7 +14,7 @@
 
 .filters-toggle-wrapper legend {
   cursor: pointer;
-  color: #555;
+  color: #0957cd; /*#0065ff;  Changed to blue */
   font-weight: normal;
   font-size: 13px;
   padding: 5px 10px 5px 20px;
@@ -24,22 +24,32 @@
 }
 
 .filters-toggle-wrapper legend:hover {
-  color: #000;
+  color: #004dcc; /* Darker shade for hover */
   text-decoration: underline;
 }
 
 .filters-toggle-wrapper legend.collapsed::before {
-  content: '▸';
+  content: '';
   position: absolute;
   left: 6px;
-  font-size: 11px;
+  font-size: 0;
+  border-style: solid;
+  border-width: 4px 0 4px 6px;
+  border-color: transparent transparent transparent currentColor;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .filters-toggle-wrapper legend:not(.collapsed)::before {
-  content: '▾';
+  content: '';
   position: absolute;
   left: 6px;
-  font-size: 11px;
+  font-size: 0;
+  border-style: solid;
+  border-width: 6px 4px 0 4px;
+  border-color: currentColor transparent transparent transparent;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* === Shared Button Base Styles === */
@@ -67,14 +77,14 @@
 
 /* Primary/Active Button State (Bright Blue) */
 .button-primary {
-  background-color: #007cba !important;
+  background-color: #0065ff !important;
   color: white !important;
-  border: 1px solid #007cba !important;
+  border: 1px solid #0065ff !important;
 }
 
 .button-primary:hover {
-  background-color: #005a87 !important;
-  border-color: #005a87 !important;
+  background-color: #0052cc !important;
+  border-color: #0052cc !important;
 }
 
 /* Secondary Button State (Light Gray) */
@@ -170,6 +180,13 @@
 
 .button-apply {
   font-weight: 600 !important;
+  background-color: #0065ff !important;
+  border: 1px solid #0065ff !important;
+}
+
+.button-apply:hover {
+  background-color: #0052cc !important;
+  border-color: #0052cc !important;
 }
 
 .button-clear {
@@ -626,8 +643,6 @@ fieldset.box {
   font-style: italic;
   padding: 20px;
 }
-
-
 
 /* === Responsive === */
 @media (max-width: 768px) {
