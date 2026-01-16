@@ -245,6 +245,11 @@ fieldset.box {
   margin-top: 5px; 
 }
 
+/* Force consistent spacing - override theme conflicts */
+fieldset.box.toggle-buttons-wrapper {
+  margin-bottom: 20px !important;
+}
+
 /* === Analytics Section === */
 .analytics-section {
   display: flex;
@@ -252,6 +257,18 @@ fieldset.box {
   margin-bottom: 20px;
   width: 100%;
   align-items: flex-start;
+}
+
+/* Force top alignment for analytics boxes - override theme conflicts */
+.analytics-section > .box {
+  align-self: flex-start !important;
+}
+
+.analytics-section .stats-summary,
+.analytics-section .time-overview-box,
+.analytics-section .visualization-section {
+  margin-top: 0 !important;
+  align-self: stretch !important;
 }
 
 .analytics-section .stats-summary {
