@@ -7,7 +7,7 @@ class TimeAnalyticsController < ApplicationController
   def index
     # Default to individual dashboard
     permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page)
-    redirect_to time_analytics_individual_dashboard_path(permitted_params)
+    redirect_to my_time_path(permitted_params)
   end
 
   def individual_dashboard

@@ -149,7 +149,7 @@
 </div>
 
 <div id="filters" class="collapsible" style="display:none;">
-  <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
+  <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form' do %>
     <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
@@ -187,7 +187,7 @@
         </div>
 
         <div class="filter-group">
-          <%= link_to l(:button_clear), time_analytics_individual_dashboard_path, 
+          <%= link_to l(:button_clear), my_time_path, 
               class: 'button-base button-neutral button-small button-clear' %>
         </div>
       </div>
@@ -196,11 +196,11 @@
       <div class="toggle-buttons-wrapper">
         <label class="toggle-label">Group results by:</label>
         <div class="toggle-buttons">
-          <%= link_to 'Time', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
+          <%= link_to 'Time', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
+          <%= link_to 'Activity', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Project', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
+          <%= link_to 'Project', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
         </div>
       </div>
@@ -441,7 +441,7 @@
         </div>
       <% end %>
       <div class="table-controls">
-        <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, 
+        <%= form_tag my_time_path, method: :get, local: true, 
             class: 'pagination-form' do %>
           <%= hidden_field_tag :filter, params[:filter] %>
           <%= hidden_field_tag :from, params[:from] %>
