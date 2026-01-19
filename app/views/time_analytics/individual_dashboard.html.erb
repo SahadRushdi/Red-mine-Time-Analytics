@@ -14,19 +14,23 @@
       justify-content: flex-end;
       margin-bottom: 10px;
     }
-    .contextual a {
-      font-size: 0.9em;
-    }
   }
 </style>
 
+<script type="text/javascript">
+  function toggle_filters(element) {
+    var filters = $('#filters');
+    if (filters.css('display') == 'none') {
+      filters.slideDown();
+      $(element).removeClass('collapsed');
+    } else {
+      filters.slideUp();
+      $(element).addClass('collapsed');
+    }
+  }
+</script>
+
 <div class="contextual">
-  <a href="#" id="toggle-filters-btn" role="button" title="<%= l(:label_filters) %>" class="toggle-filters-button">
-    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" class="filter-icon-svg">
-      <path d="M0 0h24v24H0z" fill="none"/>
-      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
-    </svg>
-  </a>
   <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode)), 
       method: :post, class: 'icon icon-download' %>
 </div>
@@ -113,7 +117,7 @@
   <div class="context-pills-bar">
     <div class="context-pill">
       <span class="pill-label">View:</span>
-      <span class="pill-value"><%= @view_mode.humanize %></span>
+      <span class="pill-value"><%= l("label_#{@view_mode}") %></span>
     </div>
 
     <div class="context-pill">
@@ -123,7 +127,7 @@
 
     <div class="context-pill">
       <span class="pill-label">Grouped By:</span>
-      <span class="pill-value"><%= @grouping.humanize %></span>
+      <span class="pill-value"><%= grouping_label(@grouping) %></span>
     </div>
 
     <% if params[:search].present? %>
@@ -136,29 +140,22 @@
   </div>
 </div>
 <%# END: Dashboard Header with Context Pills %>
+<div class="filters-toggle-wrapper">
+  <fieldset>
+    <legend onclick="toggle_filters(this);" class="collapsible collapsed">
+      <%= l(:label_filter_plural) %>
+    </legend>
+  </fieldset>
+</div>
 
-<div id="collapsible-filters" class="collapsible-section">
-  <!-- Toggle View Section -->
-  <div class="box toggle-view-section">
-    <h3>Toggle View:</h3>
-    <div class="toggle-buttons">
-      <%= link_to 'Time Overview', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
-          class: "button button-base button-toggle #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
-      <%= link_to 'Activity', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
-          class: "button button-base button-toggle #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
-      <%= link_to 'Project', time_analytics_individual_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
-          class: "button button-base button-toggle #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
-    </div>
-  </div>
-
-  <!-- Filters Section -->
-  <div class="box filter-controls">
-    <h3><%= l(:label_filters) %></h3>
-    <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
-      <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
-      <%= hidden_field_tag :view_mode, @view_mode %>
-      <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
-      <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
+<div id="filters" class="collapsible" style="display:none;">
+  <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form' do %>
+    <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
+    <%= hidden_field_tag :view_mode, @view_mode %>
+    <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
+    <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
+    <fieldset class="box">
+      
       <div class="filter-row">
         <div class="filter-group">
           <%= label_tag :filter, l(:label_time_period) %>
@@ -186,16 +183,29 @@
         </div>
 
         <div class="filter-group">
-          <%= submit_tag l(:button_apply), class: 'button button-base button-primary button-apply' %>
+          <%= submit_tag l(:button_apply), class: 'button-small' %>
         </div>
 
         <div class="filter-group">
-          <%= link_to l(:button_clear), time_analytics_individual_dashboard_path, 
-              class: 'button button-base button-secondary button-clear' %>
+          <%= link_to l(:button_clear), my_time_path, 
+              class: 'button-base button-neutral button-small button-clear' %>
         </div>
       </div>
-    <% end %>
-  </div>
+    </fieldset>
+    <fieldset class="box">
+      <div class="toggle-buttons-wrapper">
+        <label class="toggle-label">Group results by:</label>
+        <div class="toggle-buttons">
+          <%= link_to 'Time', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
+              class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
+          <%= link_to 'Activity', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
+              class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
+          <%= link_to 'Project', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
+              class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
+        </div>
+      </div>
+    </fieldset>
+  <% end %>
 </div>
 
 <!-- Dashboard Analytics Section - Summary and Visualization Side by Side -->
@@ -270,7 +280,8 @@
 
   <!-- Visualization Section -->
   <div class="box visualization-section">
-    <div class="visualization-controls">
+    <h3 style="display: flex; justify-content: flex-end;">
+      <div class="visualization-controls">
         <%# START: New Custom Dropdown for Chart Type %>
         <style>
           /* Placed here to be self-contained */
@@ -281,15 +292,17 @@
           .visualization-controls .dropdown-toggle {
             background-color: #f5f5f5;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 5px 10px;
+            border-radius: 3px;
+            padding: 4px 8px;
             cursor: pointer;
             min-width: 100px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.9em;
+            font-size: 13px;
+            font-family: inherit;
             color: #333;
+            height: 30px;
           }
           .visualization-controls .dropdown-toggle:hover {
             background-color: #eee;
@@ -302,7 +315,7 @@
             left: 0;
             background-color: #fff;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 3px;
             list-style: none;
             padding: 5px 0;
             margin: 2px 0 0;
@@ -318,7 +331,8 @@
             padding: 8px 12px;
             color: #333;
             text-decoration: none;
-            font-size: 0.9em;
+            font-size: 13px;
+            font-family: inherit;
             white-space: nowrap;
           }
           .visualization-controls .dropdown-menu li a:hover {
@@ -399,7 +413,9 @@
     
     <div id="chart-container" style="display: block;">
       <div class="chart-wrapper">
-        <canvas id="time-chart" class="chart" data-chart='<%= @chart_data %>'></canvas>
+        <canvas id="time-chart" class="chart" 
+                data-chart='<%= @chart_data %>' 
+                data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
     </div>
   </div>
@@ -410,14 +426,14 @@
   <div class="box">
     <h3>
       <% if @view_mode == 'activity' %>
-        Activity Analysis
+        Time by Activity
         <div class="view-toggle-controls">
           <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
             <span id="view-toggle-text">Show Summary View</span>
           </button>
         </div>
       <% elsif @view_mode == 'project' %>
-        Project Analysis
+        Time by Project
         <div class="view-toggle-controls">
           <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
             <span id="project-view-toggle-text">Show Summary View</span>
@@ -425,7 +441,7 @@
         </div>
       <% end %>
       <div class="table-controls">
-        <%= form_tag time_analytics_individual_dashboard_path, method: :get, local: true, 
+        <%= form_tag my_time_path, method: :get, local: true, 
             class: 'pagination-form' do %>
           <%= hidden_field_tag :filter, params[:filter] %>
           <%= hidden_field_tag :from, params[:from] %>
@@ -798,7 +814,11 @@
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
-        <div class="pagination-info">
+        <div class="pagination-info" id="pagination-info-text" 
+             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-activity-count="<%= @activities&.count || 0 %>"
+             data-project-count="<%= @projects&.count || 0 %>"
+             data-view-mode="<%= @view_mode %>">
           <%= l(:text_pagination_info, 
               from: (@offset + 1), 
               to: [@offset + @limit, @entry_count].min, 
@@ -818,6 +838,20 @@
 <script>
 // Global chart instance
 var timeAnalyticsChart = null;
+
+// Get localized grouping label from chart element data attribute
+function getGroupingLabel() {
+  var chartElement = document.getElementById('time-chart');
+  if (chartElement) {
+    var label = chartElement.getAttribute('data-grouping-label');
+    if (label) {
+      return label;
+    }
+  }
+  // Fallback to capitalizing grouping value if data attribute not found
+  var groupingSelect = document.getElementById('grouping');
+  return groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+}
 
 function toggleCustomDateRange() {
   var filter = document.getElementById('filter').value;
@@ -1091,9 +1125,8 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
-    // Get current grouping from the select element
-    var groupingSelect = document.getElementById('grouping');
-    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    // Get localized grouping label from data attribute
+    var grouping = getGroupingLabel();
     
     // Line chart specific configuration
     newConfig.options = {
@@ -1155,9 +1188,8 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
-    // Get current grouping from the select element
-    var groupingSelect = document.getElementById('grouping');
-    var grouping = groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
+    // Get localized grouping label from data attribute
+    var grouping = getGroupingLabel();
     
     // Bar chart (default) configuration
     newConfig.options = {
@@ -1205,6 +1237,33 @@ function transformChartType(originalConfig, newType) {
   return newConfig;
 }
 
+// Update pagination info text based on view state
+function updatePaginationInfo(viewState) {
+  var paginationInfo = document.getElementById('pagination-info-text');
+  if (!paginationInfo) {
+    return;
+  }
+  
+  var detailedText = paginationInfo.getAttribute('data-detailed-text');
+  var viewMode = paginationInfo.getAttribute('data-view-mode');
+  
+  if (viewState === 'detailed') {
+    // Show detailed view pagination (based on time periods)
+    paginationInfo.textContent = detailedText;
+  } else {
+    // Show summary view pagination (based on activities or projects)
+    var count;
+    if (viewMode === 'activity') {
+      count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
+    } else if (viewMode === 'project') {
+      count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
+    }
+    
+    // Format: "Showing 1 to X of X entries"
+    paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' entries';
+  }
+}
+
 // Toggle between detailed and summary views for daily activity analysis
 function toggleActivityView() {
   var detailedView = document.getElementById('daily-detailed-view');
@@ -1223,6 +1282,7 @@ function toggleActivityView() {
     toggleText.textContent = 'Show Summary View';
     localStorage.setItem('activity_view_mode', 'detailed');
     newViewState = 'detailed';
+    updatePaginationInfo('detailed');
   } else {
     // Currently showing detailed, switch to summary
     detailedView.style.display = 'none';
@@ -1230,6 +1290,7 @@ function toggleActivityView() {
     toggleText.textContent = 'Show Detailed View';
     localStorage.setItem('activity_view_mode', 'summary');
     newViewState = 'summary';
+    updatePaginationInfo('summary');
   }
   
   // Regenerate chart with new view state
@@ -1253,6 +1314,7 @@ function toggleProjectView() {
     toggleText.textContent = 'Show Summary View';
     localStorage.setItem('project_view_mode', 'detailed');
     newViewState = 'detailed';
+    updatePaginationInfo('detailed');
   } else {
     // Currently showing detailed, switch to summary
     detailedView.style.display = 'none';
@@ -1260,6 +1322,7 @@ function toggleProjectView() {
     toggleText.textContent = 'Show Detailed View';
     localStorage.setItem('project_view_mode', 'summary');
     newViewState = 'summary';
+    updatePaginationInfo('summary');
   }
   
   // Regenerate chart with new view state
@@ -1317,11 +1380,13 @@ function restoreActivityViewState() {
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
+    updatePaginationInfo('summary');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
+    updatePaginationInfo('detailed');
   }
   
   // Update hidden field with current state
@@ -1349,11 +1414,13 @@ function restoreProjectViewState() {
     detailedView.style.display = 'none';
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
+    updatePaginationInfo('summary');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
     summaryView.style.display = 'none';
     toggleText.textContent = 'Show Summary View';
+    updatePaginationInfo('detailed');
   }
   
   // Update hidden field with current state
@@ -1363,22 +1430,7 @@ function restoreProjectViewState() {
   }
 }
 
-// Preserve form state in localStorage
-function preserveFormState() {
-  var groupingSelect = document.getElementById('grouping');
-  if (groupingSelect) {
-    localStorage.setItem('time_analytics_grouping', groupingSelect.value);
-  }
-}
 
-// Restore form state from localStorage
-function restoreFormState() {
-  var storedGrouping = localStorage.getItem('time_analytics_grouping');
-  var groupingSelect = document.getElementById('grouping');
-  if (storedGrouping && groupingSelect) {
-    groupingSelect.value = storedGrouping;
-  }
-}
 
 // Sync chart type dropdown with actual chart type from backend
 function syncChartTypeDropdown() {
@@ -1417,15 +1469,8 @@ function syncChartTypeDropdown() {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded, initializing chart...');
   toggleCustomDateRange();
-  restoreFormState();
   restoreActivityViewState();
   restoreProjectViewState();
-  
-  // Add event listeners to preserve state
-  var groupingSelect = document.getElementById('grouping');
-  if (groupingSelect) {
-    groupingSelect.addEventListener('change', preserveFormState);
-  }
   
   // Initialize chart after a small delay to ensure DOM is fully rendered
   setTimeout(function() {

@@ -7,7 +7,7 @@ class TimeAnalyticsController < ApplicationController
   def index
     # Default to individual dashboard
     permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page)
-    redirect_to time_analytics_individual_dashboard_path(permitted_params)
+    redirect_to my_time_path(permitted_params)
   end
 
   def individual_dashboard
@@ -839,7 +839,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: @grouping.capitalize
+            text: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
@@ -927,7 +927,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: @grouping.capitalize
+            text: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
@@ -1360,7 +1360,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: grouping ? grouping.capitalize : ''
+            text: grouping ? helpers.grouping_label(grouping) : ''
           },
           ticks: {
             maxRotation: 45,
@@ -1426,7 +1426,7 @@ class TimeAnalyticsController < ApplicationController
         x: {
           title: {
             display: true,
-            text: grouping ? grouping.capitalize : ''
+            text: grouping ? helpers.grouping_label(grouping) : ''
           },
           ticks: {
             maxRotation: 45,
@@ -1505,8 +1505,8 @@ class TimeAnalyticsController < ApplicationController
     # Always group by date/period for Time Overview (consistent across all views)
     grouped_data = group_time_entries(time_entries, grouping)
     
-    # Sort by date
-    sorted_data = grouped_data.sort_by { |key, _| key }
+    # Sort by date in descending order (latest first)
+    sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
     # Format data with proper date display
     sorted_data.map do |period, hours|

@@ -3,20 +3,43 @@
   display: none !important;
 }
 
-/* === Layout Sections === */
-.toggle-view-section,
-.filter-controls {
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 20px;
+/* === Redmine-style Collapsible Filter Toggle === */
+.filters-toggle-wrapper fieldset {
+  border: none;
+  border-top: 1px solid #d7d7d7;
+  background-color: transparent;
+  padding: 0;
+  margin: 0 0 10px 0;
 }
 
-.toggle-view-section h3 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  font-weight: bold;
+.filters-toggle-wrapper legend {
+  cursor: pointer;
+  color: #0957cd;
+  font-weight: normal;
+  font-size: 13px;
+  margin: 0;
+  padding: 0 10px 0 18px; /* Reduce left padding to shift text left */
+  background-color: transparent;
+  position: relative;
+  display: inline-block;
+  line-height: 24px;
+  vertical-align: middle;
+}
+
+.filters-toggle-wrapper legend.collapsed::before,
+.filters-toggle-wrapper legend:not(.collapsed)::before {
+  content: 'chevron_right'; /* Will be overridden below */
+  font-family: 'Material Icons';
+  position: absolute;
+  left: -5px; /* Shift icon left to match My Time baseline */
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.filters-toggle-wrapper legend:not(.collapsed)::before {
+  content: 'expand_more';
 }
 
 /* === Shared Button Base Styles === */
@@ -44,14 +67,14 @@
 
 /* Primary/Active Button State (Bright Blue) */
 .button-primary {
-  background-color: #007cba !important;
+  background-color: #0065ff !important;
   color: white !important;
-  border: 1px solid #007cba !important;
+  border: 1px solid #0065ff !important;
 }
 
 .button-primary:hover {
-  background-color: #005a87 !important;
-  border-color: #005a87 !important;
+  background-color: #0052cc !important;
+  border-color: #0052cc !important;
 }
 
 /* Secondary Button State (Light Gray) */
@@ -66,19 +89,37 @@
   border-color: #999 !important;
 }
 
-/* === Toggle View Buttons === */
+/* === Toggle Buttons Wrapper === */
+.toggle-buttons-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.toggle-label {
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
+
 .toggle-buttons {
   display: flex;
-  gap: 40px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .button-toggle {
-  flex: 1;
-  min-width: 120px;
-  padding: 10px 20px !important;
-  font-size: 14px !important;
-  font-weight: bold !important;
+  flex: 0 0 auto;
+  min-width: auto;
+  padding: 4px 12px !important;
+  font-size: 13px !important;
+  font-weight: normal !important;
+  height: 30px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* === View Toggle Controls === */
@@ -106,8 +147,8 @@
   box-sizing: border-box;
   font-size: 13px;
   line-height: 1.4;
-  height: auto;
-  padding: 8px 10px;
+  height: 30px;
+  padding: 4px 8px;
   border: 1px solid #ccc;
   border-radius: 3px;
   overflow: visible;
@@ -120,15 +161,22 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  height: 38px !important;
-  padding: 0 20px !important;
+  height: 30px !important;
+  padding: 0 15px !important;
   line-height: 1 !important;
   margin: 0;
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
 .button-apply {
   font-weight: 600 !important;
+  background-color: #0065ff !important;
+  border: 1px solid #0065ff !important;
+}
+
+.button-apply:hover {
+  background-color: #0052cc !important;
+  border-color: #0052cc !important;
 }
 
 .button-clear {
@@ -137,12 +185,10 @@
 
 .search-input {
   min-width: 220px;
-  /* Added to prevent shrinking in flex containers */
   flex-shrink: 0; 
 }
 
 /* === Filter Section === */
-/* NEW: Modified to ensure high-priority alignment for Search/Filters */
 .filter-row {
   display: flex !important;
   flex-wrap: wrap;
@@ -155,7 +201,6 @@
   display: flex;
   flex-direction: column;
   min-width: 160px;
-  /* Ensure Select2 boxes don't force break lines on Redmine 5.1 server */
   flex-shrink: 1;
 }
 
@@ -165,12 +210,49 @@
   font-size: 12px;
 }
 
-/* NEW: Safety wrapper for Search + Range to prevent them splitting */
-.search-range-wrapper {
-  display: flex !important;
-  align-items: flex-end !important;
-  gap: 15px;
-  flex-wrap: nowrap !important;
+/* === Fieldset Box Legend Styling === */
+/* === Fieldset Box Legend Styling Fix === */
+fieldset.box legend {
+  padding: 0 5px;          /* Adjusted padding */
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+  margin-left: 10px;
+  
+  /* The Fix: This pushes the text down into the box space 
+     to align with the 'Time Period' label above it */
+  position: relative;
+  top: 12px;               
+  background-color: #fff;  /* Ensures the background covers the border line */
+}
+
+/* Ensure the fieldset has enough top padding so the buttons don't 
+   crash into the newly positioned legend */
+fieldset.box {
+  padding-top: 8px !important;
+  margin-top: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #d7d7d7;
+  border-radius: 4px;
+}
+
+/* Ensure the button container inside doesn't have extra top margin */
+.toggle-buttons {
+  display: flex;
+  gap: 10px; 
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 5px; 
+}
+
+/* Force consistent spacing - override theme conflicts */
+fieldset.box {
+  margin-bottom: 20px !important;
+  padding-bottom: 15px !important;
+}
+
+#filters fieldset.box {
+  margin-bottom: 20px !important;
 }
 
 /* === Analytics Section === */
@@ -179,6 +261,25 @@
   gap: 15px;
   margin-bottom: 20px;
   width: 100%;
+  align-items: stretch !important;
+}
+
+/* Force top alignment for all analytics boxes - override ALL theme conflicts */
+.analytics-section > .box,
+.analytics-section > div.box,
+.analytics-section .stats-summary,
+.analytics-section .time-overview-box,
+.analytics-section .visualization-section {
+  margin: 0 !important;
+  padding: 15px !important;
+  box-sizing: border-box !important;
+  align-self: stretch !important;
+}
+
+/* Reset ALL h3 margins inside analytics boxes */
+.analytics-section h3 {
+  margin: 0 0 15px 0 !important;
+  padding: 0 !important;
 }
 
 .analytics-section .stats-summary {
@@ -187,6 +288,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  align-self: stretch;
 }
 
 .analytics-section .stats-summary h3 {
@@ -199,12 +301,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-self: stretch;
 }
 
 .analytics-section .time-overview-box h3 {
   text-align: center;
   margin-bottom: 10px;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .analytics-section .time-overview-table {
@@ -251,6 +354,7 @@
   min-width: 0;
   width: 100%;
   max-width: none;
+  align-self: stretch;
 }
 
 /* === Stats Summary Grid === */
@@ -561,39 +665,6 @@
   color: #999;
   font-style: italic;
   padding: 20px;
-}
-
-/* === Collapsible Filters === */
-.toggle-filters-button {
-  display: inline-block;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  cursor: pointer;
-  margin-right: 10px;
-  line-height: 0;
-}
-
-.toggle-filters-button:hover {
-  background-color: #f0f0f0;
-}
-
-.toggle-filters-button.active {
-  background-color: #36a2eb;
-  border-color: #36a2eb;
-}
-
-.collapsible-section {
-  max-height: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.5s ease-out, opacity 0.3s ease-out;
-}
-
-.collapsible-section.open {
-  max-height: 500px;
-  opacity: 1;
-  transition: max-height 0.5s ease-in, opacity 0.5s ease-in;
 }
 
 /* === Responsive === */

@@ -11,7 +11,7 @@ en:
   label_grouping: "Grouping"
   label_search: "Search"
   label_visualization: "Visualization"
-  label_time_entries: "Time-Overview"
+  label_time_entries: "Time"
   label_time_overview: "Time Overview"
   label_summary: "Summary"
   label_export_csv: "Export CSV"
