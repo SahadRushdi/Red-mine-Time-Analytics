@@ -171,11 +171,11 @@ module TimeAnalyticsHelper
 
   def time_filter_options
     [
-      [l(:label_today), 'today'],
+      [l(:label_last_7_days), 'last_7_days'],
+      [l(:label_last_14_days), 'last_14_days'],
       [l(:label_this_week), 'this_week'],
       [l(:label_last_week), 'last_week'],
       [l(:label_this_month), 'this_month'],
-      [l(:label_this_year), 'this_year'],
       [l(:label_custom_range), 'custom']
     ]
   end
@@ -184,8 +184,7 @@ module TimeAnalyticsHelper
     [
       [l(:label_daily), 'daily'],
       [l(:label_weekly), 'weekly'],
-      [l(:label_monthly), 'monthly'],
-      [l(:label_yearly), 'yearly']
+      [l(:label_monthly), 'monthly']
     ]
   end
 
