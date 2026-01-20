@@ -1239,6 +1239,11 @@ class TimeAnalyticsController < ApplicationController
     # Always group by date/period for Time Overview (consistent across all views)
     grouped_data = group_time_entries(time_entries, grouping)
     
+    # For daily grouping, fill in missing working days with 0.00 hours
+    if grouping == 'daily'
+      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+    end
+    
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
@@ -1252,5 +1257,21 @@ class TimeAnalyticsController < ApplicationController
       
       Struct.new(:period, :hours, :date).new(formatted_period, hours, period)
     end
+  end
+
+  def fill_missing_working_days(grouped_data, from_date, to_date)
+    # Create a hash with all dates in range initialized to 0.00
+    all_dates = {}
+    
+    (from_date..to_date).each do |date|
+      # Include the date if:
+      # 1. It's a working day (not weekend, not holiday), OR
+      # 2. User has logged time on it (even if weekend/holiday)
+      if RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) || grouped_data.key?(date)
+        all_dates[date] = grouped_data[date] || 0.0
+      end
+    end
+    
+    all_dates
   end
 end
