@@ -108,7 +108,7 @@ class TimeAnalyticsController < ApplicationController
           Struct.new(:period, :hours).new(project_name || 'No Project', hours)
         end
       end
-    elsif ['weekly', 'monthly', 'yearly'].include?(@grouping)
+    elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       @entry_count = grouped_data.count
 
@@ -145,9 +145,9 @@ class TimeAnalyticsController < ApplicationController
     
     Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}, project_view_state: #{@project_view_state}"
     
-    if @view_mode == 'activity' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@activity_pivot_data)
+    if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
-    elsif @view_mode == 'project' && ['weekly', 'monthly', 'yearly'].include?(@grouping) && defined?(@project_pivot_data)
+    elsif @view_mode == 'project' && ['weekly', 'monthly'].include?(@grouping) && defined?(@project_pivot_data)
       @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
     else
       @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state)
@@ -422,8 +422,12 @@ class TimeAnalyticsController < ApplicationController
 
   def set_date_range
     case params[:filter]
-    when 'today'
-      @from = @to = Date.current
+    when 'last_7_days'
+      @from = Date.current - 6.days
+      @to = Date.current
+    when 'last_14_days'
+      @from = Date.current - 13.days
+      @to = Date.current
     when 'this_week'
       @from = Date.current.beginning_of_week(:monday)
       @to = Date.current.end_of_week(:monday)
@@ -433,21 +437,18 @@ class TimeAnalyticsController < ApplicationController
     when 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
-    when 'this_year'
-      @from = Date.current.beginning_of_year
-      @to = Date.current.end_of_year
     when 'custom'
-      @from = params[:from].present? ? Date.parse(params[:from]) : (Date.current - 30.days)
+      @from = params[:from].present? ? Date.parse(params[:from]) : (Date.current - 6.days)
       @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
     else
-      # Default to this week
-      params[:filter] = 'this_week'
-      @from = Date.current.beginning_of_week(:monday)
-      @to = Date.current.end_of_week(:monday)
+      # Default to last 7 days
+      params[:filter] = 'last_7_days'
+      @from = Date.current - 6.days
+      @to = Date.current
     end
   rescue ArgumentError
     # Handle invalid date format
-    @from = Date.current - 30.days
+    @from = Date.current - 6.days
     @to = Date.current
   end
 
@@ -459,7 +460,7 @@ class TimeAnalyticsController < ApplicationController
     
     # Use session grouping if no parameter provided
     @grouping = params[:grouping].presence || session[:time_analytics_grouping] || 'daily'
-    @grouping = 'daily' unless %w[daily weekly monthly yearly].include?(@grouping)
+    @grouping = 'daily' unless %w[daily weekly monthly].include?(@grouping)
     
     # Update session with valid grouping
     session[:time_analytics_grouping] = @grouping
@@ -1505,6 +1506,11 @@ class TimeAnalyticsController < ApplicationController
     # Always group by date/period for Time Overview (consistent across all views)
     grouped_data = group_time_entries(time_entries, grouping)
     
+    # For daily grouping, fill in missing working days with 0.00 hours
+    if grouping == 'daily'
+      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+    end
+    
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
@@ -1518,5 +1524,21 @@ class TimeAnalyticsController < ApplicationController
       
       Struct.new(:period, :hours, :date).new(formatted_period, hours, period)
     end
+  end
+
+  def fill_missing_working_days(grouped_data, from_date, to_date)
+    # Create a hash with all dates in range initialized to 0.00
+    all_dates = {}
+    
+    (from_date..to_date).each do |date|
+      # Include the date if:
+      # 1. It's a working day (not weekend, not holiday), OR
+      # 2. User has logged time on it (even if weekend/holiday)
+      if RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) || grouped_data.key?(date)
+        all_dates[date] = grouped_data[date] || 0.0
+      end
+    end
+    
+    all_dates
   end
 end

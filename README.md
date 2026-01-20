@@ -12,8 +12,8 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 ### Individual Dashboard
 - **Personal Time Analytics**: View your own logged time with comprehensive filtering
 - **Multiple View Modes**: Switch between Time Overview, Activity Analysis, and Project views
-- **Multiple Time Periods**: Today, this week, last week, this month, this year, or custom date ranges
-- **Flexible Grouping**: Group data by daily, weekly, monthly, or yearly periods
+- **Multiple Time Periods**: Last 7 days, last 14 days, this week, last week, this month, or custom date ranges
+- **Flexible Grouping**: Group data by daily, weekly, or monthly periods
 - **Interactive Charts**: Bar, line, and pie charts powered by Chart.js with real-time switching
 - **Modern Chart Controls**: Custom-styled dropdown with hover/focus states and matching button sizes
 - **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
@@ -22,7 +22,6 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - **Daily**: Shows Avg/Day, Max Daily, Min Daily (excludes holidays and weekends)
   - **Weekly**: Shows Avg/Week, Max Week, Min Week
   - **Monthly**: Shows Avg/Month, Max Month, Min Month
-  - **Yearly**: Shows Avg/Year, Max Year, Min Year
 - **Activity & Project Analysis**: Cross-tabulation matrix showing distribution across time periods
   - **Dual View System**: Toggle between detailed pivot table and summary view for all groupings
   - **Context-Aware Charts**: Pie charts show activities/projects in summary view, time periods in detailed view
@@ -32,6 +31,15 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Responsive Design**: Works on desktop and mobile devices with adaptive layouts
 - **Percentage Display**: Pie charts show percentages and hours for each segment (e.g., "Development (68.9%, 31.1h)")
 
+### Holiday Management (Admin)
+- **Custom Holiday UI**: Web-based interface for managing holidays without code changes
+- **Flexible Holiday Types**: Support for single-day holidays or continuous periods (e.g., 2-week closures)
+- **Admin Access**: Available under Administration → Holidays menu
+- **Easy Management**: Add, edit, delete, and temporarily disable holidays
+- **Automatic Integration**: Custom holidays are automatically excluded from working days calculations
+- **Pre-defined Holidays**: Includes Sri Lankan public holidays, Poya days, and Islamic holidays
+- **See**: [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
+
 ### UI/UX Improvements
 - **Modern Button System**: Unified button styling with shared base classes for consistency
   - Primary blue buttons for main actions (Apply, Show Summary View, Active toggle)
@@ -39,7 +47,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - Consistent sizing and alignment across all controls
 - **Space-Optimized Layout**: Summary section (280px) + Visualization section (remaining space)
 - **Enhanced Summary Tables**: Horizontal distribution bars with percentages (40% column width)
-  - Time Overview grouped view (Weekly/Monthly/Yearly)
+  - Time Overview grouped view (Weekly/Monthly)
   - Activity summary view
   - Project summary view
 - **Information Density**: All key metrics visible without scrolling
@@ -80,13 +88,13 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 2. Click on "Time Analytics" to access the Individual Dashboard
 3. Use the toggle buttons to switch between view modes:
    - **Time Overview**: Detailed list of individual time entries
-   - **Activity**: Analysis grouped by activity types with cross-tabulation for weekly/monthly/yearly views
+   - **Activity**: Analysis grouped by activity types with cross-tabulation for weekly/monthly views
    - **Grouping**: Time data grouped by selected time period
 
 ### Dashboard Features
 4. **Filter Controls**: Click the filter icon to show/hide advanced filters
    - Select time period (today, this week, last week, this month, this year, or custom range)
-   - Choose grouping (daily, weekly, monthly, yearly)
+   - Choose grouping (daily, weekly, monthly)
    - Search for specific projects, issues, or comments
 5. **Analytics Section**: View summary statistics and interactive charts side-by-side
    - **Summary**: Compact 2x2 grid showing key metrics
@@ -193,11 +201,11 @@ Summary tables include horizontal bar charts showing percentage distribution:
 
 ### 5. Flexible Time Period Filters
 Choose from various time ranges:
-- **Today**: Current day
+- **Last 7 days** (default): Previous 7 days including today
+- **Last 14 days**: Previous 14 days including today
 - **This Week**: Current week (Monday to Sunday)
 - **Last Week**: Previous week (Monday to Sunday)
 - **This Month**: Current month
-- **This Year**: Current year
 - **Custom Range**: Select any date range
 
 ### 6. Consistent Date Formatting
@@ -205,7 +213,6 @@ All dates display in a user-friendly format:
 - **Daily views**: "Dec 29, 2025"
 - **Weekly views**: "12/22/2025 to 12/28/2025"
 - **Monthly views**: "December 2025"
-- **Yearly views**: "2025"
 
 Consistent formatting across tables, charts, and exports ensures clarity and professionalism.
 
@@ -237,12 +244,23 @@ redmine_time_analytics/
 
 ### Recent Improvements (January 2026)
 
+#### Custom Holiday Management UI (January 20, 2026)
+- **Admin Interface**: Web-based UI for managing holidays without code changes
+  - Add, edit, delete, and disable holidays through Administration menu
+  - Support for single-day and multi-day continuous holidays (e.g., 2-week office closures)
+  - Database-backed holiday storage with full CRUD operations
+  - Automatic integration with working days calculations
+  - Active/inactive toggle for temporary holiday disabling
+- **Enhanced Holiday System**: Custom holidays work alongside pre-defined Sri Lankan holidays
+  - No double-counting of holidays that fall on weekends
+  - Efficient date range queries with indexed database lookups
+  - See [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
+
 #### Summary Statistics Enhancement (January 12, 2026)
 - **Grouping-Aware Summary Section**: Summary statistics now dynamically adapt based on selected grouping
   - Daily grouping: Shows Avg/Day, Max Daily, Min Daily (excludes holidays and weekends using working days calculation)
   - Weekly grouping: Shows Avg/Week, Max Week, Min Week
   - Monthly grouping: Shows Avg/Month, Max Month, Min Month
-  - Yearly grouping: Shows Avg/Year, Max Year, Min Year
   - Provides more meaningful insights when analyzing time data at different granularities
 
 #### UI/UX Enhancements (January 2, 2026)
@@ -276,7 +294,7 @@ redmine_time_analytics/
 
 #### Core Features (Early January 2026)
 - **Last Week Filter**: Added "Last Week" option to time period filters for quick access to previous week's data
-- **Summary View for All Groupings**: Extended summary/detailed view toggle to work with all groupings (daily, weekly, monthly, yearly)
+- **Summary View for All Groupings**: Extended summary/detailed view toggle to work with all groupings (daily, weekly, monthly)
 - **Context-Aware Charts**: Pie charts now intelligently show activities in summary view and time periods in detailed view
 - **View-Specific Chart Defaults**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
 - **Enhanced Pie Chart Labels**: Added percentage and hours display to all pie chart segments (e.g., "Development (68.9%, 31.1h)")

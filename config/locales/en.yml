@@ -17,6 +17,8 @@ en:
   label_export_csv: "Export CSV"
   
   # Filter options
+  label_last_7_days: "Last 7 days"
+  label_last_14_days: "Last 14 days"
   label_today: "Today"
   label_this_week: "This Week"
   label_last_week: "Last Week"

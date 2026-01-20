@@ -1,0 +1,7 @@
+<h2>Edit Holiday</h2>
+
+<%= labelled_form_for @holiday, url: custom_holiday_path(@holiday), method: :patch do |f| %>
+  <%= render partial: 'form', locals: { f: f } %>
+  <%= submit_tag 'Save' %>
+  <%= link_to 'Cancel', custom_holidays_path, class: 'button' %>
+<% end %>

@@ -14,4 +14,6 @@ RedmineApp::Application.routes.draw do
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection
   end
+  
+  resources :custom_holidays
 end

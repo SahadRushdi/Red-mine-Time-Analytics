@@ -462,7 +462,7 @@
   
   <% if has_data %>
     <% if @view_mode == 'activity' %>
-      <% if ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
+      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Activity pivot table for cross-tabulation (Activity × Time Period matrix) - Dual View System %>
         
         <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
@@ -634,7 +634,7 @@
         </div>
       <% end %>
     <% elsif @view_mode == 'project' %>
-      <% if ['weekly', 'monthly', 'yearly'].include?(@grouping) %>
+      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Project pivot table for cross-tabulation (Project × Time Period matrix) - Dual View System %>
         
         <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
