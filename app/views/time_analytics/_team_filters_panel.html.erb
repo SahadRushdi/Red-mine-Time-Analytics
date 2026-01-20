@@ -1,0 +1,46 @@
+<%= form_tag time_analytics_team_dashboard_path, method: :get, local: true, id: 'time-analytics-form' do %>
+  <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
+  <%= hidden_field_tag :view_mode, @view_mode %>
+  <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' if defined?(@activity_view_state) %>
+  <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' if defined?(@project_view_state) %>
+  <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' if defined?(@member_view_state) %>
+  <%= hidden_field_tag :team_id, params[:team_id] %>
+  <fieldset class="box">
+    
+    <div class="filter-row">
+      <div class="filter-group">
+        <%= label_tag :filter, l(:label_time_period) %>
+        <%= select_tag :filter, options_for_select(time_filter_options, params[:filter]), 
+            onchange: 'toggleCustomDateRange()', class: 'filter-select' %>
+      </div>
+
+      <div class="filter-group" id="custom-date-range" style="<%= 'display: none;' unless params[:filter] == 'custom' %>">
+        <%= label_tag :from, l(:label_from) %>
+        <%= date_field_tag :from, params[:from] || @from, class: 'date-input' %>
+        <%= label_tag :to, l(:label_to) %>
+        <%= date_field_tag :to, params[:to] || @to, class: 'date-input' %>
+      </div>
+
+      <div class="filter-group">
+        <%= label_tag :grouping, l(:label_grouping) %>
+        <%= select_tag :grouping, options_for_select(grouping_options, @grouping), 
+            class: 'filter-select' %>
+      </div>
+
+      <div class="filter-group">
+        <%= label_tag :search, l(:label_search) %>
+        <%= text_field_tag :search, params[:search], placeholder: l(:text_search_placeholder), 
+            class: 'search-input' %>
+      </div>
+
+      <div class="filter-group">
+        <%= submit_tag l(:button_apply), class: 'button-small' %>
+      </div>
+
+      <div class="filter-group">
+        <%= link_to l(:button_clear), time_analytics_team_dashboard_path(team_id: params[:team_id]), 
+            class: 'button-base button-neutral button-small button-clear' %>
+      </div>
+    </div>
+  </fieldset>
+<% end %>

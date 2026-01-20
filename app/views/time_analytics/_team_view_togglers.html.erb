@@ -1,0 +1,15 @@
+<fieldset class="box">
+  <div class="toggle-buttons-wrapper">
+    <label class="toggle-label">Group results by:</label>
+    <div class="toggle-buttons">
+      <%= link_to 'Time', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'time_entries')), 
+          class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Activity', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'activity')), 
+          class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Project', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'project')), 
+          class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
+      <%= link_to 'Members', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'members')), 
+          class: "button button-base button-toggle button-small #{@view_mode == 'members' ? 'button-primary' : 'button-neutral'}" %>
+    </div>
+  </div>
+</fieldset>

@@ -1,67 +1,130 @@
 <%= render 'includes' %>
 
+<style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .dashboard-header h2 {
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .context-pills-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    justify-content: flex-end;
+  }
+  .context-pill {
+    display: flex;
+    align-items: center;
+    background-color: #e7e7e7;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    border: 1px solid #dcdcdc;
+  }
+  .context-pill .pill-label {
+    color: #555;
+    margin-right: 6px;
+    font-weight: bold;
+  }
+  .context-pill .pill-value {
+    color: #111;
+  }
+  .context-pill .remove-pill {
+    margin-left: 8px;
+    color: #777;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.2em;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .context-pill .remove-pill:hover {
+    color: #d00;
+  }
+  
+  /* Responsive styles for mobile */
+  @media (max-width: 920px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .context-pills-bar {
+      justify-content: flex-start;
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .dashboard-header h2 {
+      font-size: 1.3em;
+    }
+    .context-pill {
+      font-size: 0.85em;
+      padding: 3px 8px;
+    }
+  }
+</style>
+
+<script type="text/javascript">
+  function toggle_filters(element) {
+    var filters = $('#filters');
+    if (filters.css('display') == 'none') {
+      filters.slideDown();
+      $(element).removeClass('collapsed');
+    } else {
+      filters.slideUp();
+      $(element).addClass('collapsed');
+    }
+  }
+</script>
+
 <div class="contextual">
-  <a href="#" id="toggle-filters-btn" role="button" title="<%= l(:label_filters) %>" class="toggle-filters-button">
-    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" class="filter-icon-svg">
-      <path d="M0 0h24v24H0z" fill="none"/>
-      <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
-    </svg>
-  </a>
   <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode, :team_id)), 
       method: :post, class: 'icon icon-download' %>
 </div>
 
-<h2><%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %></h2>
+<div class="dashboard-header">
+  <h2><%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %></h2>
+  <div class="context-pills-bar">
+    <div class="context-pill">
+      <span class="pill-label">View:</span>
+      <span class="pill-value"><%= @view_mode.capitalize %></span>
+    </div>
 
-<%# Team Selector (if user leads multiple teams) %>
-<% if @teams.size > 1 %>
-  <div class="box" style="margin-bottom: 15px; padding: 10px;">
-    <%= form_tag(time_analytics_team_dashboard_path, method: :get, style: 'margin: 0;') do %>
-      <label for="team_id" style="font-weight: bold; margin-right: 10px;"><%= l(:label_team) || "Select Team" %>:</label>
-      <%= select_tag :team_id, 
-          options_from_collection_for_select(@teams, :id, :name, @selected_team&.id),
-          onchange: 'this.form.submit();',
-          style: 'padding: 5px 10px; min-width: 250px;' %>
-      <%= hidden_field_tag :filter, params[:filter] %>
-      <%= hidden_field_tag :from, params[:from] %>
-      <%= hidden_field_tag :to, params[:to] %>
-      <%= hidden_field_tag :grouping, params[:grouping] %>
-      <%= hidden_field_tag :view_mode, params[:view_mode] %>
-    <% end %>
+    <div class="context-pill">
+      <span class="pill-label">Period:</span>
+      <span class="pill-value"><%= (params[:filter] || 'Default').humanize %></span>
+    </div>
+
+    <div class="context-pill">
+      <span class="pill-label">Grouped By:</span>
+      <span class="pill-value"><%= @grouping.capitalize %></span>
+    </div>
   </div>
-<% end %>
+</div>
 
-<%# Context Pills showing current view/period/grouping %>
-<div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
-    <strong>View:</strong> <%= @view_mode.capitalize %>
-  </span>
-  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
-    <strong>Period:</strong> <%= params[:filter]&.humanize || 'This week' %>
-  </span>
-  <span style="background: #e0e0e0; padding: 5px 12px; border-radius: 3px; font-size: 0.9em;">
-    <strong>Grouped By:</strong> <%= @grouping.capitalize %>
-  </span>
+<div class="filters-toggle-wrapper">
+  <fieldset>
+    <legend onclick="toggle_filters(this);" class="collapsible collapsed">
+      <%= l(:label_filter_plural) %>
+    </legend>
+  </fieldset>
 </div>
 
 <%# Toggle View Buttons (Large Buttons like Individual Dashboard) %>
-<div id="collapsible-filters" class="collapsible-section">
-  <div class="box toggle-view-section">
-    <h3>Toggle View:</h3>
-    <div class="toggle-buttons">
-      <%= link_to 'Time Overview', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'time_entries')), 
-          class: "button button-base button-toggle #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
-      <%= link_to 'Activity', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'activity')), 
-          class: "button button-base button-toggle #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
-      <%= link_to 'Project', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'project')), 
-          class: "button button-base button-toggle #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
-      <%= link_to 'Members', time_analytics_team_dashboard_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'members')), 
-          class: "button button-base button-toggle #{@view_mode == 'members' ? 'button-primary' : 'button-neutral'}" %>
-    </div>
-  </div>
-
-  <%# Filters Section %>
-  <%= render partial: 'time_analytics/filters_panel', locals: { is_team_dashboard: true } %>
+<div id="filters" class="collapsible" style="display:none;">
+  <%= render(partial: 'team_filters_panel') %>
+  <%= render(partial: 'team_view_togglers') %>
 </div>
 
 <%# Dashboard Analytics Section - Summary, Time Overview, and Visualization %>
