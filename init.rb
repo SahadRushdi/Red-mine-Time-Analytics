@@ -10,6 +10,10 @@ Redmine::Plugin.register :redmine_time_analytics do
   menu :top_menu, :time_analytics, { controller: 'time_analytics', action: 'index' }, 
        caption: :label_time_analytics, after: :my_page
 
+  # Add to admin menu
+  menu :admin_menu, :custom_holidays, { controller: 'custom_holidays', action: 'index' },
+       caption: 'Holidays', html: { class: 'icon icon-time' }
+
   # Add permissions
   project_module :time_analytics do
     permission :view_time_analytics, { time_analytics: [:index, :individual_dashboard] }

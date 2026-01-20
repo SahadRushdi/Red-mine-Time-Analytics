@@ -1,0 +1,38 @@
+<%= error_messages_for 'custom_holiday' %>
+
+<div class="box tabular">
+  <p>
+    <%= f.text_field :name, required: true, size: 60 %>
+  </p>
+  
+  <p>
+    <%= f.text_field :start_date, required: true, size: 10, value: f.object.start_date %>
+    <%= calendar_for('custom_holiday_start_date') %>
+    <em class="info">Format: YYYY-MM-DD</em>
+  </p>
+  
+  <p>
+    <%= f.text_field :end_date, required: true, size: 10, value: f.object.end_date %>
+    <%= calendar_for('custom_holiday_end_date') %>
+    <em class="info">Format: YYYY-MM-DD. For single-day holidays, use the same date as start date.</em>
+  </p>
+  
+  <p>
+    <%= f.text_area :description, rows: 4, cols: 60 %>
+    <em class="info">Optional description or notes about this holiday</em>
+  </p>
+  
+  <p>
+    <%= f.check_box :active %>
+    <em class="info">Uncheck to temporarily disable this holiday without deleting it</em>
+  </p>
+</div>
+
+<style>
+  .info {
+    display: block;
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 3px;
+  }
+</style>

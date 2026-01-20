@@ -81,12 +81,23 @@ module RedmineTimeAnalytics
     ].freeze
 
     class << self
-      # Check if a given date is a holiday in Sri Lanka
+      # Check if a given date is a holiday in Sri Lanka (includes custom holidays)
       def holiday?(date)
         fixed_public_holiday?(date) || 
         mercantile_holiday?(date) || 
         poya_day?(date) || 
-        islamic_holiday?(date)
+        islamic_holiday?(date) ||
+        custom_holiday?(date)
+      end
+
+      # Check if a date is a custom holiday (from database)
+      def custom_holiday?(date)
+        # Check if CustomHoliday model exists and has the method
+        if defined?(CustomHoliday) && CustomHoliday.respond_to?(:is_holiday?)
+          CustomHoliday.is_holiday?(date)
+        else
+          false
+        end
       end
 
       # Check if a date is a fixed public holiday
@@ -146,7 +157,14 @@ module RedmineTimeAnalytics
         (from_date..to_date).each do |date|
           holidays << date if holiday?(date)
         end
-        holidays
+        
+        # Also get custom holidays
+        if defined?(CustomHoliday) && CustomHoliday.respond_to?(:holidays_between)
+          custom_holidays = CustomHoliday.holidays_between(from_date, to_date)
+          holidays.concat(custom_holidays)
+        end
+        
+        holidays.uniq.sort
       end
 
       # Count holidays between two dates

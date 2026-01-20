@@ -31,6 +31,15 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Responsive Design**: Works on desktop and mobile devices with adaptive layouts
 - **Percentage Display**: Pie charts show percentages and hours for each segment (e.g., "Development (68.9%, 31.1h)")
 
+### Holiday Management (Admin)
+- **Custom Holiday UI**: Web-based interface for managing holidays without code changes
+- **Flexible Holiday Types**: Support for single-day holidays or continuous periods (e.g., 2-week closures)
+- **Admin Access**: Available under Administration → Holidays menu
+- **Easy Management**: Add, edit, delete, and temporarily disable holidays
+- **Automatic Integration**: Custom holidays are automatically excluded from working days calculations
+- **Pre-defined Holidays**: Includes Sri Lankan public holidays, Poya days, and Islamic holidays
+- **See**: [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
+
 ### UI/UX Improvements
 - **Modern Button System**: Unified button styling with shared base classes for consistency
   - Primary blue buttons for main actions (Apply, Show Summary View, Active toggle)
@@ -234,6 +243,18 @@ redmine_time_analytics/
 ```
 
 ### Recent Improvements (January 2026)
+
+#### Custom Holiday Management UI (January 20, 2026)
+- **Admin Interface**: Web-based UI for managing holidays without code changes
+  - Add, edit, delete, and disable holidays through Administration menu
+  - Support for single-day and multi-day continuous holidays (e.g., 2-week office closures)
+  - Database-backed holiday storage with full CRUD operations
+  - Automatic integration with working days calculations
+  - Active/inactive toggle for temporary holiday disabling
+- **Enhanced Holiday System**: Custom holidays work alongside pre-defined Sri Lankan holidays
+  - No double-counting of holidays that fall on weekends
+  - Efficient date range queries with indexed database lookups
+  - See [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
 
 #### Summary Statistics Enhancement (January 12, 2026)
 - **Grouping-Aware Summary Section**: Summary statistics now dynamically adapt based on selected grouping

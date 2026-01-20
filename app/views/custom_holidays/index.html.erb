@@ -1,0 +1,78 @@
+<div class="contextual">
+  <%= link_to 'New Holiday', new_custom_holiday_path, class: 'icon icon-add' %>
+</div>
+
+<h2>Manage Holidays</h2>
+
+<p class="subtitle">
+  Define custom holidays and office closures. These will be excluded from working days calculations.
+</p>
+
+<% if @holidays.any? %>
+  <table class="list holidays">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Duration</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @holidays.each do |holiday| %>
+        <tr class="<%= cycle('odd', 'even') %> <%= 'inactive' unless holiday.active %>">
+          <td><%= holiday.name %></td>
+          <td><%= format_date(holiday.start_date) %></td>
+          <td><%= format_date(holiday.end_date) %></td>
+          <td class="center">
+            <%= holiday.duration_days %> 
+            <%= holiday.duration_days == 1 ? 'day' : 'days' %>
+          </td>
+          <td><%= truncate(holiday.description, length: 50) %></td>
+          <td class="center">
+            <%= holiday.active ? content_tag(:span, 'Active', class: 'badge badge-success') : content_tag(:span, 'Inactive', class: 'badge badge-secondary') %>
+          </td>
+          <td class="buttons">
+            <%= link_to 'Edit', edit_custom_holiday_path(holiday), class: 'icon icon-edit' %>
+            <%= link_to 'Delete', custom_holiday_path(holiday), 
+                method: :delete, 
+                data: { confirm: 'Are you sure you want to delete this holiday?' },
+                class: 'icon icon-del' %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <p class="pagination"><%= pagination_links_full @holiday_pages, @holiday_count %></p>
+<% else %>
+  <p class="nodata">No holidays have been defined yet.</p>
+<% end %>
+
+<style>
+  table.holidays td.center { text-align: center; }
+  table.holidays tr.inactive { opacity: 0.6; }
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 3px;
+  }
+  .badge-success {
+    background-color: #28a745;
+    color: white;
+  }
+  .badge-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+  .subtitle {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 20px;
+  }
+</style>
