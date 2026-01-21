@@ -77,7 +77,17 @@
     padding: 8px;
     border-bottom: 1px solid #eee;
   }
-  .team-time-overview-table .member-count-column,
+  .team-time-overview-table .date-column {
+    width: 130px;
+    min-width: 130px;
+    white-space: nowrap;
+  }
+  .team-time-overview-table .member-count-column {
+    text-align: center;
+    width: 100px;
+    padding-left: 0px;
+    padding-right: -6px;
+  }
   .team-time-overview-table .hours-column {
     text-align: right;
     width: 120px;
@@ -183,7 +193,7 @@
       <table class="team-time-overview-table">
         <thead>
           <tr>
-            <th><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+            <th class="date-column"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
             <th class="member-count-column">Team Members</th>
             <th class="hours-column"><%= l(:label_hours) %></th>
           </tr>
@@ -191,7 +201,7 @@
         <tbody>
           <% @paginated_entries.each do |entry| %>
             <tr>
-              <td><%= entry.period %></td>
+              <td class="date-column"><%= entry.period %></td>
               <td class="member-count-column"><%= entry.member_count %></td>
               <td class="hours-column"><%= format_hours(entry.hours) %></td>
             </tr>
@@ -199,7 +209,7 @@
         </tbody>
         <tfoot>
           <tr class="total-row">
-            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="date-column"><strong><%= l(:label_total) %></strong></td>
             <td class="member-count-column"><strong><%= @team_size %></strong></td>
             <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
           </tr>
