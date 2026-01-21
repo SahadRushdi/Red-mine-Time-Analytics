@@ -27,9 +27,11 @@ class TeamAnalyticsController < ApplicationController
     # Get excluded user IDs from settings
     excluded_ids = TaTeamSetting.excluded_user_ids
     
-    # Get active team members for selected date range
+    # Get team members - consider team configuration as retroactive
+    # If a member is in the team now (or was during analysis period), 
+    # we should be able to analyze their historical data
+    # Only exclude members who left BEFORE the analysis period starts
     @team_members = TaTeamMembership.where(team: @selected_team)
-                                    .where('start_date <= ?', @to)
                                     .where('end_date IS NULL OR end_date >= ?', @from)
                                     .includes(:user)
     
@@ -41,9 +43,9 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}"
     
-    # Get team projects
+    # Get team projects - also consider retroactive
+    # Only exclude projects that were removed BEFORE the analysis period
     team_project_ids = TaTeamProject.where(team: @selected_team)
-                                    .where('start_date <= ?', @to)
                                     .where('end_date IS NULL OR end_date >= ?', @from)
                                     .pluck(:project_id)
     
@@ -161,9 +163,8 @@ class TeamAnalyticsController < ApplicationController
     # Get excluded user IDs
     excluded_ids = TaTeamSetting.excluded_user_ids
     
-    # Get team members and projects
+    # Get team members and projects - retroactive configuration
     @team_members = TaTeamMembership.where(team: @selected_team)
-                                    .where('start_date <= ?', @to)
                                     .where('end_date IS NULL OR end_date >= ?', @from)
                                     .includes(:user)
     
@@ -171,7 +172,6 @@ class TeamAnalyticsController < ApplicationController
     @active_member_ids = @member_ids - excluded_ids
     
     team_project_ids = TaTeamProject.where(team: @selected_team)
-                                    .where('start_date <= ?', @to)
                                     .where('end_date IS NULL OR end_date >= ?', @from)
                                     .pluck(:project_id)
     
