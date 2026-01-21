@@ -1,0 +1,72 @@
+<%= form_tag team_analytics_path, method: :get, local: true, id: 'team-analytics-form' do %>
+  <%= hidden_field_tag :chart_type, params[:chart_type] || 'line', id: 'chart_type_hidden' %>
+  <%= hidden_field_tag :view_mode, @view_mode %>
+  <%= hidden_field_tag :team_id, params[:team_id] %>
+  
+  <fieldset class="box">
+    <div class="filter-row">
+      <%# Team Selector %>
+      <% if @teams.count > 1 %>
+        <div class="filter-group">
+          <%= label_tag :team_id, 'Team' %>
+          <%= select_tag :team_id, 
+              options_for_select(@teams.map { |t| [t.name, t.id] }, @selected_team&.id),
+              class: 'filter-select' %>
+        </div>
+      <% end %>
+      
+      <%# Time Period Filter %>
+      <div class="filter-group">
+        <%= label_tag :filter, l(:label_time_period) %>
+        <%= select_tag :filter, options_for_select(time_filter_options, params[:filter] || 'last_7_days'), 
+            onchange: 'toggleCustomDateRange()', class: 'filter-select' %>
+      </div>
+
+      <%# Custom Date Range %>
+      <div class="filter-group" id="custom-date-range" style="<%= 'display: none;' unless params[:filter] == 'custom' %>">
+        <%= label_tag :from, l(:label_from) %>
+        <%= date_field_tag :from, params[:from] || @from, class: 'date-input' %>
+        <%= label_tag :to, l(:label_to) %>
+        <%= date_field_tag :to, params[:to] || @to, class: 'date-input' %>
+      </div>
+
+      <%# Grouping Filter %>
+      <div class="filter-group">
+        <%= label_tag :grouping, l(:label_grouping) %>
+        <%= select_tag :grouping, options_for_select(grouping_options, @grouping), 
+            class: 'filter-select' %>
+      </div>
+
+      <%# Search Field %>
+      <div class="filter-group">
+        <%= label_tag :search, l(:label_search) %>
+        <%= text_field_tag :search, params[:search], placeholder: 'Search projects, issues, members...', 
+            class: 'search-input' %>
+      </div>
+
+      <%# Action Buttons %>
+      <div class="filter-group">
+        <%= submit_tag l(:button_apply), class: 'button-base button-primary button-small' %>
+      </div>
+
+      <div class="filter-group">
+        <%= link_to l(:button_clear), team_analytics_path(team_id: params[:team_id]), 
+            class: 'button-base button-neutral button-small button-clear' %>
+      </div>
+    </div>
+  </fieldset>
+<% end %>
+
+<script type="text/javascript">
+  function toggleCustomDateRange() {
+    var filter = document.getElementById('filter');
+    var customRange = document.getElementById('custom-date-range');
+    if (filter && customRange) {
+      if (filter.value === 'custom') {
+        customRange.style.display = 'block';
+      } else {
+        customRange.style.display = 'none';
+      }
+    }
+  }
+</script>

@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   document.addEventListener('click', function(event) {
-    if (collapsibleSection.classList.contains('open') && !collapsibleSection.contains(event.target) && !toggleBtn.contains(event.target)) {
+    if (collapsibleSection && collapsibleSection.classList.contains('open') && !collapsibleSection.contains(event.target) && !toggleBtn.contains(event.target)) {
       collapsibleSection.classList.remove('open');
       toggleBtn.classList.remove('active');
     }

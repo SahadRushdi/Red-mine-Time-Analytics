@@ -1,0 +1,438 @@
+<%= render 'time_analytics/includes' %>
+
+<style>
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .dashboard-header h2 {
+    margin: 0;
+    flex-shrink: 0;
+  }
+  .context-pills-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+    justify-content: flex-end;
+  }
+  .context-pill {
+    display: flex;
+    align-items: center;
+    background-color: #e7e7e7;
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 0.9em;
+    white-space: nowrap;
+    border: 1px solid #dcdcdc;
+  }
+  .context-pill .pill-label {
+    color: #555;
+    margin-right: 6px;
+    font-weight: bold;
+  }
+  .context-pill .pill-value {
+    color: #111;
+  }
+  
+  /* Responsive styles for mobile */
+  @media (max-width: 920px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .context-pills-bar {
+      justify-content: flex-start;
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .dashboard-header h2 {
+      font-size: 1.3em;
+    }
+    .context-pill {
+      font-size: 0.85em;
+      padding: 3px 8px;
+    }
+  }
+  
+  /* Team-specific table styling */
+  .team-time-overview-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .team-time-overview-table th {
+    background-color: #f5f5f5;
+    padding: 8px;
+    text-align: left;
+    border-bottom: 2px solid #ddd;
+  }
+  .team-time-overview-table td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+  }
+  .team-time-overview-table .member-count-column,
+  .team-time-overview-table .hours-column {
+    text-align: right;
+    width: 120px;
+  }
+</style>
+
+<script type="text/javascript">
+  function toggle_filters(element) {
+    var filters = $('#filters');
+    if (filters.css('display') == 'none') {
+      filters.slideDown();
+      $(element).removeClass('collapsed');
+    } else {
+      filters.slideUp();
+      $(element).addClass('collapsed');
+    }
+  }
+</script>
+
+<div class="contextual">
+  <%= link_to l(:label_export_csv), team_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode, :team_id)), 
+      method: :post, class: 'icon icon-download' %>
+</div>
+
+<div class="dashboard-header">
+  <h2><%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %></h2>
+  <div class="context-pills-bar">
+    <div class="context-pill">
+      <span class="pill-label">View:</span>
+      <span class="pill-value"><%= l("label_#{@view_mode}") rescue @view_mode.capitalize %></span>
+    </div>
+
+    <div class="context-pill">
+      <span class="pill-label">Period:</span>
+      <span class="pill-value"><%= (params[:filter] || 'Last 7 days').humanize %></span>
+    </div>
+
+    <div class="context-pill">
+      <span class="pill-label">Grouped By:</span>
+      <span class="pill-value"><%= grouping_label(@grouping) %></span>
+    </div>
+    
+    <% if params[:search].present? %>
+      <div class="context-pill">
+        <span class="pill-label">Search:</span>
+        <span class="pill-value">'<%= params[:search] %>'</span>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="filters-toggle-wrapper">
+  <fieldset>
+    <legend onclick="toggle_filters(this);" class="collapsible collapsed">
+      <%= l(:label_filter_plural) %>
+    </legend>
+  </fieldset>
+</div>
+
+<div id="filters" class="collapsible" style="display:none;">
+  <%= render(partial: 'team_analytics/filters_panel') %>
+  <%= render(partial: 'team_analytics/view_togglers') %>
+</div>
+
+<%# Dashboard Analytics Section - Summary, Time Overview, and Visualization %>
+<div class="analytics-section">
+  <%# Team Statistics Summary Box (Left Side) %>
+  <div class="box stats-summary">
+    <h3><%= l(:label_summary) %></h3>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@total_hours) %></div>
+        <div class="summary-label"><%= l(:label_total_hours) || 'TOTAL HOURS' %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@avg_hours_per_period) %></div>
+        <div class="summary-label"><%= avg_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@max_period_hours) %></div>
+        <div class="summary-label"><%= max_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
+        <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= @team_size %></div>
+        <div class="summary-label">TEAM SIZE</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= format_hours(@avg_hours_per_member) %></div>
+        <div class="summary-label">AVG/MEMBER</div>
+      </div>
+    </div>
+  </div>
+
+  <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
+  <% if @view_mode == 'time_entries' && @paginated_entries&.any? %>
+    <div class="box time-overview-box">
+      <h3><%= l(:label_time_overview) %></h3>
+      
+      <table class="team-time-overview-table">
+        <thead>
+          <tr>
+            <th><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+            <th class="member-count-column">Team Members</th>
+            <th class="hours-column"><%= l(:label_hours) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @paginated_entries.each do |entry| %>
+            <tr>
+              <td><%= entry.period %></td>
+              <td class="member-count-column"><%= entry.member_count %></td>
+              <td class="hours-column"><%= format_hours(entry.hours) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td><strong><%= l(:label_total) %></strong></td>
+            <td class="member-count-column"><strong><%= @team_size %></strong></td>
+            <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
+          </tr>
+        </tfoot>
+      </table>
+      
+      <%# Pagination %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :team_id) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info">
+          <%= l(:text_pagination_info, 
+              from: (@offset + 1), 
+              to: [@offset + @limit, @entry_count].min, 
+              total: @entry_count) %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Visualization Section (Right Side) %>
+  <div class="box visualization-section">
+    <h3 style="display: flex; justify-content: flex-end;">
+      <div class="visualization-controls">
+        <%# Chart Type Dropdown %>
+        <style>
+          .visualization-controls .custom-chart-dropdown {
+            position: relative;
+            display: inline-block;
+          }
+          .visualization-controls .dropdown-toggle {
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 4px 8px;
+            cursor: pointer;
+            min-width: 100px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            font-family: inherit;
+            color: #333;
+            height: 30px;
+          }
+          .visualization-controls .dropdown-toggle:hover {
+            background-color: #eee;
+            border-color: #999;
+          }
+          .visualization-controls .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            list-style: none;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            min-width: 120px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .visualization-controls .dropdown-menu.show {
+            display: block;
+          }
+          .visualization-controls .dropdown-menu li a {
+            display: block;
+            padding: 8px 12px;
+            color: #333;
+            text-decoration: none;
+            font-size: 13px;
+            font-family: inherit;
+            white-space: nowrap;
+          }
+          .visualization-controls .dropdown-menu li a:hover {
+            background-color: #f0f0f0;
+          }
+          .visualization-controls .arrow-down {
+            border: solid #555;
+            border-width: 0 1.5px 1.5px 0;
+            display: inline-block;
+            padding: 2.5px;
+            transform: rotate(45deg);
+            margin-left: 8px;
+          }
+        </style>
+
+        <% if @view_mode == 'time_entries' %>
+          <div class="custom-chart-dropdown">
+            <button type="button" class="dropdown-toggle" id="team-chart-toggle">
+              <span id="team-chart-label"><%= (params[:chart_type] || 'line').capitalize %></span>
+              <i class="arrow-down"></i>
+            </button>
+            <ul class="dropdown-menu" id="team-chart-menu">
+              <li><a href="#" data-value="line">Line</a></li>
+              <li><a href="#" data-value="bar">Bar</a></li>
+              <li><a href="#" data-value="pie">Pie</a></li>
+            </ul>
+          </div>
+        <% end %>
+      </div>
+    </h3>
+    
+    <% if @view_mode == 'time_entries' %>
+      <% if @chart_data.present? && @entry_count > 0 %>
+        <div id="chart-container" style="display: block;">
+          <div class="chart-wrapper">
+            <canvas id="time-chart" class="chart" 
+                    data-chart='<%= @chart_data %>' 
+                    data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
+          </div>
+        </div>
+      <% else %>
+        <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
+          <div style="text-align: center; padding: 40px; color: #666;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No Data Available</p>
+            <p style="margin: 10px 0 0 0; font-size: 0.9em;">
+              <% if @team_size == 0 %>
+                No active team members found for this period
+              <% elsif @time_entries.empty? %>
+                No time entries found for the selected period and team
+              <% else %>
+                Adjust filters to view chart
+              <% end %>
+            </p>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <p style="margin: 0; font-size: 1.1em; font-weight: 500;">Chart Visualization</p>
+          <p style="margin: 10px 0 0 0; font-size: 0.9em;">Switch to Time view to see team chart</p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Additional View-Specific Content %>
+<% if @view_mode == 'activity' %>
+  <div class="box" style="margin-top: 20px;">
+    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
+      <strong>Note:</strong> Activity pivot table will be implemented in Phase 5.
+      Switch to Time view to see team time overview.
+    </p>
+  </div>
+<% elsif @view_mode == 'project' %>
+  <div class="box" style="margin-top: 20px;">
+    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
+      <strong>Note:</strong> Project pivot table will be implemented in Phase 6.
+      Switch to Time view to see team time overview.
+    </p>
+  </div>
+<% elsif @view_mode == 'members' %>
+  <div class="box" style="margin-top: 20px;">
+    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
+      <strong>Note:</strong> Members pivot table will be implemented in Phase 7.
+      Switch to Time view to see team time overview.
+    </p>
+  </div>
+<% end %>
+
+<script>
+  // Auto-submit team selector on change
+  document.addEventListener('DOMContentLoaded', function() {
+    const teamSelect = document.getElementById('team_id');
+    if (teamSelect) {
+      teamSelect.addEventListener('change', function() {
+        this.form.submit();
+      });
+    }
+    
+    // Chart type dropdown functionality for Team Analytics
+    const toggleBtn = document.getElementById('team-chart-toggle');
+    const menu = document.getElementById('team-chart-menu');
+    const label = document.getElementById('team-chart-label');
+    
+    if (toggleBtn && menu) {
+      // Toggle menu visibility
+      toggleBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        menu.classList.toggle('show');
+      });
+      
+      // Handle item selection
+      menu.addEventListener('click', function(e) {
+        if (e.target.tagName === 'A') {
+          e.preventDefault();
+          const chartType = e.target.getAttribute('data-value');
+          const text = e.target.textContent;
+          
+          // Update label
+          if(label) {
+            label.textContent = text;
+          }
+          
+          // Update hidden field and submit form
+          const hiddenField = document.getElementById('chart_type_hidden');
+          if (hiddenField) {
+            hiddenField.value = chartType;
+          }
+          
+          menu.classList.remove('show');
+          
+          // Submit the form to reload with new chart type
+          const form = document.getElementById('team-analytics-form');
+          if (form) {
+            form.submit();
+          }
+        }
+      });
+      
+      // Hide menu if clicking outside
+      document.addEventListener('click', function(e) {
+        if (!toggleBtn.contains(e.target)) {
+          menu.classList.remove('show');
+        }
+      });
+    }
+  });
+</script>
