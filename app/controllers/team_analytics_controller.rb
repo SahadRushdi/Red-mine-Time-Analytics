@@ -389,7 +389,16 @@ class TeamAnalyticsController < ApplicationController
     
     # Return structured data with period, member_count, and hours
     sorted_data.map do |period, hours|
-      period_label = helpers.format_period_for_table(period, grouping, @from, @to)
+      # Convert period key to appropriate format for the helper
+      period_for_display = case grouping
+                           when 'monthly'
+                             # Convert [year, month] array to first day of month
+                             Date.new(period[0], period[1], 1)
+                           else
+                             period
+                           end
+      
+      period_label = helpers.format_period_for_table(period_for_display, grouping, @from, @to)
       member_count = member_counts[period].size
       
       Struct.new(:period, :member_count, :hours).new(period_label, member_count, hours)
