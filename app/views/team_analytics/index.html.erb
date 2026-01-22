@@ -186,10 +186,11 @@
   </div>
 
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
-  <% if @view_mode == 'time_entries' && @paginated_entries&.any? %>
+  <% if (@view_mode == 'time_entries' || @view_mode == 'activity') && @time_overview_data&.any? %>
     <div class="box time-overview-box">
       <h3><%= l(:label_time_overview) %></h3>
       
+      <%# Both Time and Activity views use the same 3-column table structure %>
       <table class="team-time-overview-table">
         <thead>
           <tr>
@@ -199,7 +200,7 @@
           </tr>
         </thead>
         <tbody>
-          <% @paginated_entries.each do |entry| %>
+          <% @time_overview_data.slice(@offset, @limit).each do |entry| %>
             <tr>
               <td class="date-column"><%= entry.period %></td>
               <td class="member-count-column"><%= entry.member_count %></td>
