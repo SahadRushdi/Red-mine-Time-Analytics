@@ -12,7 +12,7 @@
       <%= f.select :project_id, 
                    options_from_collection_for_select(@available_projects, :id, :name),
                    { prompt: 'Select a project' },
-                   { required: true, class: 'select2' } %>
+                   { required: true, class: 'select2-project-dropdown', style: 'width: 100%;' } %>
     </p>
 
     <p>
@@ -30,3 +30,66 @@
   <%= submit_tag l(:button_create) %>
   <%= link_to l(:button_cancel), admin_ta_team_team_projects_path(@team) %>
 <% end %>
+
+<!-- Include Select2 CSS and JS from CDN -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+  /* Custom styling to match Redmine theme */
+  .select2-container--default .select2-selection--single {
+    height: 28px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+  
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 26px;
+    padding-left: 8px;
+  }
+  
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 26px;
+  }
+  
+  .select2-dropdown {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+  }
+  
+  .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background-color: #3875d7;
+  }
+</style>
+
+<script>
+  $(document).ready(function() {
+    $('.select2-project-dropdown').select2({
+      placeholder: 'Search and select a project',
+      allowClear: false,
+      width: '100%',
+      minimumInputLength: 0,
+      theme: 'default',
+      matcher: function(params, data) {
+        // If there are no search terms, return all data
+        if ($.trim(params.term) === '') {
+          return data;
+        }
+        
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+          return null;
+        }
+        
+        // Check if the text contains the term (case-insensitive)
+        if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+          return data;
+        }
+        
+        // Return null if the term doesn't match
+        return null;
+      }
+    });
+  });
+</script>
