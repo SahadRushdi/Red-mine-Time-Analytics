@@ -301,10 +301,11 @@
           }
         </style>
 
-        <% if @view_mode == 'time_entries' %>
+        <% if @view_mode == 'time_entries' || @view_mode == 'activity' %>
           <div class="custom-chart-dropdown">
             <button type="button" class="dropdown-toggle" id="team-chart-toggle">
-              <span id="team-chart-label"><%= (params[:chart_type] || 'line').capitalize %></span>
+              <% default_chart_type = @view_mode == 'activity' ? 'pie' : 'line' %>
+              <span id="team-chart-label"><%= (params[:chart_type] || default_chart_type).capitalize %></span>
               <i class="arrow-down"></i>
             </button>
             <ul class="dropdown-menu" id="team-chart-menu">
@@ -317,36 +318,34 @@
       </div>
     </h3>
     
-    <% if @view_mode == 'time_entries' %>
-      <% if @chart_data.present? && @entry_count > 0 %>
-        <div id="chart-container" style="display: block;">
-          <div class="chart-wrapper">
-            <canvas id="time-chart" class="chart" 
-                    data-chart='<%= @chart_data %>' 
-                    data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
-          </div>
+    <% if (@view_mode == 'time_entries' || @view_mode == 'activity') && @chart_data.present? && @entry_count > 0 %>
+      <div id="chart-container" style="display: block;">
+        <div class="chart-wrapper">
+          <canvas id="time-chart" class="chart" 
+                  data-chart='<%= @chart_data %>' 
+                  data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
-      <% else %>
-        <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
-          <div style="text-align: center; padding: 40px; color: #666;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-            <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No Data Available</p>
-            <p style="margin: 10px 0 0 0; font-size: 0.9em;">
-              <% if @team_size == 0 %>
-                No active team members found for this period
-              <% elsif @time_entries.empty? %>
-                No time entries found for the selected period and team
-              <% else %>
-                Adjust filters to view chart
-              <% end %>
-            </p>
-          </div>
+      </div>
+    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' %>
+      <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
+        <div style="text-align: center; padding: 40px; color: #666;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No Data Available</p>
+          <p style="margin: 10px 0 0 0; font-size: 0.9em;">
+            <% if @team_size == 0 %>
+              No active team members found for this period
+            <% elsif @time_entries.empty? %>
+              No time entries found for the selected period and team
+            <% else %>
+              Adjust filters to view chart
+            <% end %>
+          </p>
         </div>
-      <% end %>
+      </div>
     <% else %>
       <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
         <div style="text-align: center; padding: 40px; color: #666;">
@@ -356,7 +355,7 @@
             <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
           <p style="margin: 0; font-size: 1.1em; font-weight: 500;">Chart Visualization</p>
-          <p style="margin: 10px 0 0 0; font-size: 0.9em;">Switch to Time view to see team chart</p>
+          <p style="margin: 10px 0 0 0; font-size: 0.9em;">Chart will be available for this view soon</p>
         </div>
       </div>
     <% end %>
@@ -365,12 +364,140 @@
 
 <%# Additional View-Specific Content %>
 <% if @view_mode == 'activity' %>
-  <div class="box" style="margin-top: 20px;">
-    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
-      <strong>Note:</strong> Activity pivot table will be implemented in Phase 5.
-      Switch to Time view to see team time overview.
-    </p>
-  </div>
+  <%# Activity Analysis Tables - Show pivot table for Activity × Time Period %>
+  <% if @activities&.any? %>
+    <div class="box">
+      <h3>
+        Time by Activity
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
+            <span id="view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+        <div class="table-controls">
+          <%= form_tag team_analytics_path, method: :get, local: true, 
+              class: 'pagination-form' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :search, params[:search] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
+            <%= label_tag :per_page, l(:label_per_page) %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()' %>
+          <% end %>
+        </div>
+      </h3>
+
+      <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
+      <div id="team-activity-detailed-view" class="pivot-table-wrapper">
+        <table class="list pivot-table">
+          <thead>
+            <tr>
+              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @activities.each do |activity| %>
+                <th class="activity-header"><%= activity %></th>
+              <% end %>
+              <th class="total-header">Grand Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr>
+                <td class="period-cell"><%= period_display %></td>
+                <% @activities.each do |activity| %>
+                  <td class="hours-cell">
+                    <% hours = @matrix_data[period_key][activity] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '' %>
+                  </td>
+                <% end %>
+                <td class="total-cell">
+                  <%= format_hours(@period_totals[period_key] || 0) %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Activity Total' : 'Grand Total' %></strong></td>
+              <% @activities.each do |activity| %>
+                <td class="total-cell">
+                  <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
+                </td>
+              <% end %>
+              <td class="grand-total-cell">
+                <strong><%= format_hours(@grand_total || 0) %></strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Activity Table (Hidden by default) %>
+      <div id="team-activity-summary-view" style="display: none;">
+        <table class="list time-entries-grouped-table summary-with-bars">
+          <thead>
+            <tr>
+              <th>Activity</th>
+              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-activity-summary-view')" title="Click to sort">
+                Total Hours <span class="sort-indicator">⇅</span>
+              </th>
+              <th class="bar-column">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @activities.each do |activity| %>
+              <% hours = @activity_totals[activity] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <tr>
+                <td><%= activity %></td>
+                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
+                <td class="bar-column">
+                  <div class="bar-container">
+                    <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong><%= l(:label_total) %></strong></td>
+              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+              <td class="bar-column"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <%# Pagination for Activity view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="pagination-info-text" 
+             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-activity-count="<%= @activities&.count || 0 %>"
+             data-view-mode="<%= @view_mode %>">
+          <%= l(:text_pagination_info, 
+              from: (@offset + 1), 
+              to: [@offset + @limit, @entry_count].min, 
+              total: @entry_count) %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="box" style="margin-top: 20px;">
+      <p class="nodata"><%= l(:label_no_data) %></p>
+    </div>
+  <% end %>
 <% elsif @view_mode == 'project' %>
   <div class="box" style="margin-top: 20px;">
     <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
@@ -444,5 +571,265 @@
         }
       });
     }
+
+    // Initialize chart
+    initChart();
+    
+    // Restore activity view state
+    restoreActivityViewState();
   });
+
+  // Chart initialization
+  var teamChart = null;
+
+  function initChart() {
+    var chartElement = document.getElementById('time-chart');
+    if (!chartElement) {
+      console.log('Chart element not found');
+      return;
+    }
+
+    // Prevent multiple chart creation
+    if (teamChart) {
+      teamChart.destroy();
+      teamChart = null;
+    }
+
+    try {
+      var chartData = chartElement.getAttribute('data-chart');
+      if (!chartData || chartData === 'null' || chartData === '') {
+        console.log('No chart data available');
+        return;
+      }
+
+      var config = JSON.parse(chartData);
+      
+      // Ensure responsive configuration
+      if (!config.options) {
+        config.options = {};
+      }
+      config.options.responsive = true;
+      config.options.maintainAspectRatio = false;
+
+      // Add custom tooltip callback for weekly grouping (bar and line charts)
+      if ((config.type === 'bar' || config.type === 'line') && config.data.datasets[0].tooltipLabels) {
+        if (!config.options.plugins) config.options.plugins = {};
+        if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+        if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
+        
+        config.options.plugins.tooltip.callbacks.title = function(context) {
+          var index = context[0].dataIndex;
+          var tooltipLabels = context[0].dataset.tooltipLabels;
+          return tooltipLabels ? tooltipLabels[index] : context[0].label;
+        };
+      }
+
+      // Dynamically add tooltip callbacks on the client-side for pie charts
+      if (config.type === 'pie' && config.options.plugins && config.options.plugins.tooltip) {
+        config.options.plugins.tooltip.callbacks = {
+          title: function(context) {
+            // Check if custom tooltip labels exist for detailed weekly format
+            var index = context[0].dataIndex;
+            var tooltipLabels = context[0].dataset.tooltipLabels;
+            if (tooltipLabels && tooltipLabels[index]) {
+              return tooltipLabels[index];
+            }
+            // Otherwise, extract the label part before percentage
+            var label = context[0].label || '';
+            return label.split(' (')[0];
+          },
+          label: function(context) {
+            // Extract just the percentage and hours part
+            var label = context.label || '';
+            var match = label.match(/\(([^)]+)\)/);
+            return match ? match[1] : label;
+          }
+        };
+      }
+      
+      console.log('Creating chart with config:', config);
+      teamChart = new Chart(chartElement, config);
+      console.log('Chart created successfully');
+      
+    } catch (error) {
+      console.error('Error creating chart:', error);
+    }
+  }
+
+  // Toggle between detailed and summary views for activity analysis
+  function toggleActivityView() {
+    var detailedView = document.getElementById('team-activity-detailed-view');
+    var summaryView = document.getElementById('team-activity-summary-view');
+    var toggleText = document.getElementById('view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    var newViewState;
+    if (detailedView.style.display === 'none') {
+      // Currently showing summary, switch to detailed
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      localStorage.setItem('team_activity_view_mode', 'detailed');
+      newViewState = 'detailed';
+      updatePaginationInfo('detailed');
+    } else {
+      // Currently showing detailed, switch to summary
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      localStorage.setItem('team_activity_view_mode', 'summary');
+      newViewState = 'summary';
+      updatePaginationInfo('summary');
+    }
+    
+    // Regenerate chart with new view state
+    regenerateChartForViewState(newViewState);
+  }
+
+  // Update pagination info text based on view state
+  function updatePaginationInfo(viewState) {
+    var paginationInfo = document.getElementById('pagination-info-text');
+    if (!paginationInfo) {
+      return;
+    }
+    
+    var detailedText = paginationInfo.getAttribute('data-detailed-text');
+    var viewMode = paginationInfo.getAttribute('data-view-mode');
+    
+    if (viewState === 'detailed') {
+      // Show detailed view pagination (based on time periods)
+      paginationInfo.textContent = detailedText;
+    } else {
+      // Show summary view pagination (based on activities)
+      var count;
+      if (viewMode === 'activity') {
+        count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
+      }
+      
+      // Format: "Showing 1 to X of X entries"
+      paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' entries';
+    }
+  }
+
+  // Regenerate chart based on activity view state (summary vs detailed)
+  function regenerateChartForViewState(viewState) {
+    // Get current URL parameters
+    var urlParams = new URLSearchParams(window.location.search);
+    
+    // Add/update activity_view_state parameter
+    urlParams.set('activity_view_state', viewState);
+    
+    // Build new URL
+    var baseUrl = window.location.pathname;
+    var newUrl = baseUrl + '?' + urlParams.toString();
+    
+    // Reload page with new view state parameter
+    window.location.href = newUrl;
+  }
+
+  // Restore activity view preference
+  function restoreActivityViewState() {
+    var savedMode = localStorage.getItem('team_activity_view_mode');
+    var detailedView = document.getElementById('team-activity-detailed-view');
+    var summaryView = document.getElementById('team-activity-summary-view');
+    var toggleText = document.getElementById('view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    // Default to detailed view if no saved preference
+    var currentMode = savedMode || 'detailed';
+    
+    if (currentMode === 'summary') {
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      updatePaginationInfo('summary');
+    } else {
+      // Default to detailed view
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      updatePaginationInfo('detailed');
+    }
+    
+    // Update hidden field with current state
+    var hiddenField = document.getElementById('activity_view_state_field');
+    if (hiddenField) {
+      hiddenField.value = currentMode;
+    }
+  }
+
+  // Table sorting function for summary views
+  function sortTable(header, columnIndex, tableContainerId) {
+    var container = document.getElementById(tableContainerId);
+    var table = container.querySelector('table');
+    var tbody = table.querySelector('tbody');
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Determine current sort direction
+    var currentSort = header.getAttribute('data-sort') || 'none';
+    var newSort = currentSort === 'asc' ? 'desc' : 'asc';
+    
+    // Remove sort indicators from all headers
+    var allHeaders = table.querySelectorAll('th.sortable');
+    allHeaders.forEach(function(th) {
+      th.setAttribute('data-sort', 'none');
+      var indicator = th.querySelector('.sort-indicator');
+      if (indicator) indicator.textContent = '⇅';
+    });
+    
+    // Sort rows
+    rows.sort(function(a, b) {
+      var aCell = a.cells[columnIndex];
+      var bCell = b.cells[columnIndex];
+      
+      // Get numeric value from data-value attribute
+      var aVal = parseFloat(aCell.getAttribute('data-value') || aCell.textContent);
+      var bVal = parseFloat(bCell.getAttribute('data-value') || bCell.textContent);
+      
+      if (newSort === 'asc') {
+        return aVal - bVal;
+      } else {
+        return bVal - aVal;
+      }
+    });
+    
+    // Reappend sorted rows
+    rows.forEach(function(row) {
+      tbody.appendChild(row);
+    });
+    
+    // Update sort indicator
+    header.setAttribute('data-sort', newSort);
+    var indicator = header.querySelector('.sort-indicator');
+    if (indicator) {
+      indicator.textContent = newSort === 'asc' ? '▲' : '▼';
+    }
+  }
 </script>
+
+<style>
+  .sortable {
+    cursor: pointer;
+    user-select: none;
+  }
+  .sortable:hover {
+    background-color: #e8e8e8;
+  }
+  .sort-indicator {
+    font-size: 0.8em;
+    margin-left: 5px;
+    color: #999;
+  }
+  
+  /* View toggle controls styling */
+  .view-toggle-controls {
+    display: inline-block;
+    margin-left: 15px;
+  }
+</style>

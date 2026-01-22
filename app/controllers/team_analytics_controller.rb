@@ -116,9 +116,27 @@ class TeamAnalyticsController < ApplicationController
       Rails.logger.info "Team Analytics: Chart data generated, length: #{@chart_data&.length}, type: #{chart_type}"
       
     elsif @view_mode == 'activity'
-      # Activity view - to be implemented
-      @entry_count = 0
-      @paginated_entries = []
+      # Activity view - Generate pivot table for Activity × Time Period matrix
+      @activity_pivot_data = generate_activity_pivot_table(@time_entries, @grouping)
+      @time_periods = @activity_pivot_data[:periods]
+      @activities = @activity_pivot_data[:activities]
+      @matrix_data = @activity_pivot_data[:matrix]
+      @period_totals = @activity_pivot_data[:period_totals]
+      @activity_totals = @activity_pivot_data[:activity_totals]
+      @grand_total = @activity_pivot_data[:grand_total]
+      
+      # For pagination, use periods count
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit)
+      
+      # Track activity view state for chart generation
+      @activity_view_state = params[:activity_view_state] || 'detailed'
+      
+      # Generate chart data
+      chart_type = params[:chart_type] || 'pie'
+      @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
+      
+      Rails.logger.info "Team Analytics: Activity pivot data generated, activities: #{@activities.count}, periods: #{@time_periods.count}"
       
     elsif @view_mode == 'project'
       # Project view - to be implemented
@@ -571,5 +589,309 @@ class TeamAnalyticsController < ApplicationController
         ]
       end
     end
+  end
+
+  # Generate Activity × Time Period pivot table (reused from individual dashboard logic)
+  def generate_activity_pivot_table(time_entries, grouping)
+    Rails.logger.info "Generating activity pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
+    
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:activity).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      activity_name = entry.activity&.name || 'No Activity'
+      {
+        period_key: period_key,
+        activity_name: activity_name,
+        hours: entry.hours
+      }
+    end
+    
+    # Get unique periods and activities
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    activities = entries_with_details.map { |e| e[:activity_name] }.uniq.sort
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      activity = entry[:activity_name]
+      matrix_data[period][activity] ||= 0
+      matrix_data[period][activity] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    activity_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = activities.sum { |activity| matrix_data[period][activity] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    activities.each do |activity|
+      activity_totals[activity] = periods.sum { |period| matrix_data[period][activity] || 0 }
+    end
+    
+    {
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      activities: activities,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      activity_totals: activity_totals,
+      grand_total: grand_total,
+      raw_periods: periods # Keep original keys for matrix lookup
+    }
+  end
+
+  # Get period key for activity grouping (matches Time Entries format)
+  def get_activity_period_key(date, grouping)
+    case grouping
+    when 'weekly'
+      # Use Monday-based week start to match Time Entries format
+      days_since_monday = (date.wday - 1) % 7
+      start_of_week = date - days_since_monday
+      start_of_week
+    when 'monthly'
+      # Use first day of month as key
+      Date.new(date.year, date.month, 1)
+    when 'yearly'
+      # Use first day of year as key
+      Date.new(date.year, 1, 1)
+    else
+      date
+    end
+  end
+
+  # Format period display for activity tables
+  def format_activity_period_display(period_key, grouping)
+    case grouping
+    when 'weekly'
+      # Reuse the same logic as Time Entries section for consistency
+      helpers.format_period_for_table(period_key, grouping, @from, @to)
+    when 'monthly'
+      period_key.strftime('%B %Y') # "October 2025"
+    when 'yearly'
+      period_key.strftime('%Y')
+    else
+      # Daily: Use same format as Time Entries section for consistency
+      helpers.format_chart_label(period_key)
+    end
+  end
+
+  # Generate chart data for activity pivot table
+  def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
+    # Determine what data to use based on view state
+    if activity_view_state == 'summary'
+      # Summary view: group by activity
+      labels = pivot_data[:activities]
+      data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
+      raw_keys = nil  # No raw keys for activity names
+    else
+      # Detailed view: group by time period
+      labels = pivot_data[:periods]
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
+    end
+    
+    case chart_type
+    when 'pie'
+      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
+    when 'line'
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    end
+  end
+
+  # Generate bar chart from data arrays
+  def generate_bar_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
+    
+    chart_data = {
+      labels: labels,
+      datasets: [{
+        label: 'Hours',
+        data: data_values,
+        backgroundColor: generate_colors(labels.size),
+        borderWidth: 1,
+        tooltipLabels: tooltip_labels
+      }]
+    }
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: grouping ? helpers.grouping_label(grouping) : ''
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Generate line chart from data arrays
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
+    
+    chart_data = {
+      labels: labels,
+      datasets: [{
+        label: 'Hours',
+        data: data_values,
+        borderColor: '#36a2eb',
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        fill: true,
+        tension: 0.2,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tooltipLabels: tooltip_labels
+      }]
+    }
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: grouping ? helpers.grouping_label(grouping) : ''
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+
+    {
+      type: 'line',
+      data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Generate pie chart from data arrays
+  def generate_pie_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+    # Calculate total for percentage calculation
+    total_hours = data_values.sum
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if raw_keys && grouping == 'weekly'
+      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      labels
+    end
+    
+    # Format labels with percentages and hours for pie chart
+    labels_with_percentages = labels.each_with_index.map do |label, index|
+      hours = data_values[index]
+      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
+      "#{label} (#{percentage}%, #{hours.round(1)}h)"
+    end
+    
+    chart_data = {
+      labels: labels_with_percentages,
+      datasets: [{
+        data: data_values,
+        backgroundColor: generate_colors(labels.size),
+        borderWidth: 1,
+        borderColor: '#fff',
+        tooltipLabels: tooltip_labels
+      }]
+    }
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            padding: 15,
+            boxWidth: 12
+          }
+        },
+        tooltip: {
+          callbacks: {
+            title: (grouping == 'weekly' && raw_keys) ? 
+              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
+          }.compact
+        }
+      },
+      # Add total hours for percentage calculation in JavaScript
+      total_hours: total_hours
+    }
+
+    {
+      type: 'pie',
+      data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
   end
 end

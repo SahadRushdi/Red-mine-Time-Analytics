@@ -2,6 +2,7 @@
   <%= hidden_field_tag :chart_type, params[:chart_type] || 'line', id: 'chart_type_hidden' %>
   <%= hidden_field_tag :view_mode, @view_mode %>
   <%= hidden_field_tag :team_id, params[:team_id] %>
+  <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
   
   <fieldset class="box">
     <div class="filter-row">
