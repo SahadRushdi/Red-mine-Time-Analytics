@@ -186,11 +186,11 @@
   </div>
 
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
-  <% if (@view_mode == 'time_entries' || @view_mode == 'activity') && @time_overview_data&.any? %>
+  <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project') && @time_overview_data&.any? %>
     <div class="box time-overview-box">
       <h3><%= l(:label_time_overview) %></h3>
       
-      <%# Both Time and Activity views use the same 3-column table structure %>
+      <%# Both Time, Activity, and Project views use the same 3-column table structure %>
       <table class="team-time-overview-table">
         <thead>
           <tr>
@@ -302,10 +302,10 @@
           }
         </style>
 
-        <% if @view_mode == 'time_entries' || @view_mode == 'activity' %>
+        <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' %>
           <div class="custom-chart-dropdown">
             <button type="button" class="dropdown-toggle" id="team-chart-toggle">
-              <% default_chart_type = @view_mode == 'activity' ? 'pie' : 'line' %>
+              <% default_chart_type = (@view_mode == 'activity' || @view_mode == 'project') ? 'pie' : 'line' %>
               <span id="team-chart-label"><%= (params[:chart_type] || default_chart_type).capitalize %></span>
               <i class="arrow-down"></i>
             </button>
@@ -319,7 +319,7 @@
       </div>
     </h3>
     
-    <% if (@view_mode == 'time_entries' || @view_mode == 'activity') && @chart_data.present? && @entry_count > 0 %>
+    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project') && @chart_data.present? && @entry_count > 0 %>
       <div id="chart-container" style="display: block;">
         <div class="chart-wrapper">
           <canvas id="time-chart" class="chart" 
@@ -327,7 +327,7 @@
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
       </div>
-    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' %>
+    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' %>
       <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
         <div style="text-align: center; padding: 40px; color: #666;">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
@@ -500,12 +500,140 @@
     </div>
   <% end %>
 <% elsif @view_mode == 'project' %>
-  <div class="box" style="margin-top: 20px;">
-    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
-      <strong>Note:</strong> Project pivot table will be implemented in Phase 6.
-      Switch to Time view to see team time overview.
-    </p>
-  </div>
+  <%# Project Analysis Tables - Show pivot table for Project × Time Period %>
+  <% if @projects&.any? %>
+    <div class="box">
+      <h3>
+        Time by Project
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
+            <span id="project-view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+        <div class="table-controls">
+          <%= form_tag team_analytics_path, method: :get, local: true, 
+              class: 'pagination-form' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :search, params[:search] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
+            <%= label_tag :per_page, l(:label_per_page) %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()' %>
+          <% end %>
+        </div>
+      </h3>
+
+      <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
+      <div id="team-project-detailed-view" class="pivot-table-wrapper">
+        <table class="list pivot-table">
+          <thead>
+            <tr>
+              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @projects.each do |project| %>
+                <th class="project-header"><%= project %></th>
+              <% end %>
+              <th class="total-header">Grand Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr>
+                <td class="period-cell"><%= period_display %></td>
+                <% @projects.each do |project| %>
+                  <td class="hours-cell">
+                    <% hours = @matrix_data[period_key][project] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '' %>
+                  </td>
+                <% end %>
+                <td class="total-cell">
+                  <%= format_hours(@period_totals[period_key] || 0) %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Project Total' : 'Grand Total' %></strong></td>
+              <% @projects.each do |project| %>
+                <td class="total-cell">
+                  <strong><%= format_hours(@project_totals[project] || 0) %></strong>
+                </td>
+              <% end %>
+              <td class="grand-total-cell">
+                <strong><%= format_hours(@grand_total || 0) %></strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Project Table (Hidden by default) %>
+      <div id="team-project-summary-view" style="display: none;">
+        <table class="list time-entries-grouped-table summary-with-bars">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-project-summary-view')" title="Click to sort">
+                Total Hours <span class="sort-indicator">⇅</span>
+              </th>
+              <th class="bar-column">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @projects.each do |project| %>
+              <% hours = @project_totals[project] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <tr>
+                <td><%= project %></td>
+                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
+                <td class="bar-column">
+                  <div class="bar-container">
+                    <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong><%= l(:label_total) %></strong></td>
+              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+              <td class="bar-column"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <%# Pagination for Project view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :team_id, :project_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="pagination-info-text" 
+             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-project-count="<%= @projects&.count || 0 %>"
+             data-view-mode="<%= @view_mode %>">
+          <%= l(:text_pagination_info, 
+              from: (@offset + 1), 
+              to: [@offset + @limit, @entry_count].min, 
+              total: @entry_count) %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="box" style="margin-top: 20px;">
+      <p class="nodata"><%= l(:label_no_data) %></p>
+    </div>
+  <% end %>
 <% elsif @view_mode == 'members' %>
   <div class="box" style="margin-top: 20px;">
     <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
@@ -578,6 +706,9 @@
     
     // Restore activity view state
     restoreActivityViewState();
+    
+    // Restore project view state
+    restoreProjectViewState();
   });
 
   // Chart initialization
@@ -760,6 +891,114 @@
     
     // Update hidden field with current state
     var hiddenField = document.getElementById('activity_view_state_field');
+    if (hiddenField) {
+      hiddenField.value = currentMode;
+    }
+  }
+
+  // Toggle between detailed and summary views for project analysis
+  function toggleProjectView() {
+    var detailedView = document.getElementById('team-project-detailed-view');
+    var summaryView = document.getElementById('team-project-summary-view');
+    var toggleText = document.getElementById('project-view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    var newViewState;
+    if (detailedView.style.display === 'none') {
+      // Currently showing summary, switch to detailed
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      localStorage.setItem('team_project_view_mode', 'detailed');
+      newViewState = 'detailed';
+      updateProjectPaginationInfo('detailed');
+    } else {
+      // Currently showing detailed, switch to summary
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      localStorage.setItem('team_project_view_mode', 'summary');
+      newViewState = 'summary';
+      updateProjectPaginationInfo('summary');
+    }
+    
+    // Regenerate chart with new view state
+    regenerateChartForProjectViewState(newViewState);
+  }
+
+  // Update pagination info for project view
+  function updateProjectPaginationInfo(viewState) {
+    var paginationInfo = document.getElementById('pagination-info-text');
+    if (!paginationInfo) {
+      return;
+    }
+    
+    var detailedText = paginationInfo.getAttribute('data-detailed-text');
+    var viewMode = paginationInfo.getAttribute('data-view-mode');
+    
+    if (viewState === 'detailed') {
+      // Show detailed view pagination (based on time periods)
+      paginationInfo.textContent = detailedText;
+    } else {
+      // Show summary view pagination (based on projects)
+      var count;
+      if (viewMode === 'project') {
+        count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
+      }
+      
+      // Format: "Showing 1 to X of X entries"
+      paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' entries';
+    }
+  }
+
+  // Regenerate chart based on project view state (summary vs detailed)
+  function regenerateChartForProjectViewState(viewState) {
+    // Get current URL parameters
+    var urlParams = new URLSearchParams(window.location.search);
+    
+    // Add/update project_view_state parameter
+    urlParams.set('project_view_state', viewState);
+    
+    // Build new URL
+    var baseUrl = window.location.pathname;
+    var newUrl = baseUrl + '?' + urlParams.toString();
+    
+    // Reload page with new view state parameter
+    window.location.href = newUrl;
+  }
+
+  // Restore project view preference
+  function restoreProjectViewState() {
+    var savedMode = localStorage.getItem('team_project_view_mode');
+    var detailedView = document.getElementById('team-project-detailed-view');
+    var summaryView = document.getElementById('team-project-summary-view');
+    var toggleText = document.getElementById('project-view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    // Default to detailed view if no saved preference
+    var currentMode = savedMode || 'detailed';
+    
+    if (currentMode === 'summary') {
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      updateProjectPaginationInfo('summary');
+    } else {
+      // Default to detailed view
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      updateProjectPaginationInfo('detailed');
+    }
+    
+    // Update hidden field with current state
+    var hiddenField = document.getElementById('project_view_state_field');
     if (hiddenField) {
       hiddenField.value = currentMode;
     }

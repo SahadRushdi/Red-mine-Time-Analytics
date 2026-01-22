@@ -139,9 +139,27 @@ class TeamAnalyticsController < ApplicationController
       Rails.logger.info "Team Analytics: Activity pivot data generated, activities: #{@activities.count}, periods: #{@time_periods.count}"
       
     elsif @view_mode == 'project'
-      # Project view - to be implemented
-      @entry_count = 0
-      @paginated_entries = []
+      # Project view - Generate pivot table for Project × Time Period matrix
+      @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
+      @time_periods = @project_pivot_data[:periods]
+      @projects = @project_pivot_data[:projects]
+      @matrix_data = @project_pivot_data[:matrix]
+      @period_totals = @project_pivot_data[:period_totals]
+      @project_totals = @project_pivot_data[:project_totals]
+      @grand_total = @project_pivot_data[:grand_total]
+      
+      # For pagination, use periods count
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit)
+      
+      # Track project view state for chart generation
+      @project_view_state = params[:project_view_state] || 'detailed'
+      
+      # Generate chart data
+      chart_type = params[:chart_type] || 'pie'
+      @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
+      
+      Rails.logger.info "Team Analytics: Project pivot data generated, projects: #{@projects.count}, periods: #{@time_periods.count}"
       
     elsif @view_mode == 'members'
       # Members view - to be implemented
@@ -893,5 +911,86 @@ class TeamAnalyticsController < ApplicationController
       data: chart_data,
       options: chart_options
     }.to_json.html_safe
+  end
+
+  # Generate Project × Time Period pivot table
+  def generate_project_pivot_table(time_entries, grouping)
+    Rails.logger.info "Generating project pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
+    
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:project).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      project_name = entry.project&.name || 'No Project'
+      {
+        period_key: period_key,
+        project_name: project_name,
+        hours: entry.hours
+      }
+    end
+    
+    # Get unique periods and projects
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    projects = entries_with_details.map { |e| e[:project_name] }.uniq.sort
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      project = entry[:project_name]
+      matrix_data[period][project] ||= 0
+      matrix_data[period][project] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    project_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = projects.sum { |project| matrix_data[period][project] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    projects.each do |project|
+      project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
+    end
+    
+    {
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      projects: projects,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      project_totals: project_totals,
+      grand_total: grand_total,
+      raw_periods: periods # Keep original keys for matrix lookup
+    }
+  end
+
+  # Generate chart data for project pivot table
+  def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
+    # Determine what data to use based on view state
+    if project_view_state == 'summary'
+      # Summary view: group by project
+      labels = pivot_data[:projects]
+      data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
+      raw_keys = nil  # No raw keys for project names
+    else
+      # Detailed view: group by time period
+      labels = pivot_data[:periods]
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
+    end
+    
+    case chart_type
+    when 'pie'
+      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
+    when 'line'
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    end
   end
 end
