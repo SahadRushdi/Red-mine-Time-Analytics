@@ -3,16 +3,16 @@
     <label class="toggle-label">Group results by:</label>
     <div class="toggle-buttons">
       <%= link_to 'Time', 
-          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'time_entries')), 
+          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'time_entries', chart_type: 'line')), 
           class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Activity', 
-          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'activity')), 
+          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'activity', chart_type: 'pie')), 
           class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Project', 
-          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'project')), 
+          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'project', chart_type: 'pie')), 
           class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
       <%= link_to 'Members', 
-          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'members')), 
+          team_analytics_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :team_id).merge(view_mode: 'members', chart_type: 'pie')), 
           class: "button button-base button-toggle button-small #{@view_mode == 'members' ? 'button-primary' : 'button-neutral'}" %>
     </div>
   </div>

@@ -1,5 +1,7 @@
 <%= form_tag team_analytics_path, method: :get, local: true, id: 'team-analytics-form' do %>
-  <%= hidden_field_tag :chart_type, params[:chart_type] || 'line', id: 'chart_type_hidden' %>
+  <% # Set default chart type based on view mode if not explicitly provided %>
+  <% default_chart_type = @view_mode == 'activity' ? 'pie' : 'line' %>
+  <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type, id: 'chart_type_hidden' %>
   <%= hidden_field_tag :view_mode, @view_mode %>
   <%= hidden_field_tag :team_id, params[:team_id] %>
   <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
