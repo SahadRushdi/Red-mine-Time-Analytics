@@ -12,7 +12,7 @@ Redmine::Plugin.register :redmine_time_analytics do
 
   # Add to admin menu
   menu :admin_menu, :custom_holidays, { controller: 'custom_holidays', action: 'index' },
-       caption: 'Holidays', html: { class: 'icon icon-time' }
+       caption: 'Holidays'
 
   # Add permissions
   project_module :time_analytics do
