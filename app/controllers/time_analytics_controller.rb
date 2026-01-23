@@ -408,6 +408,10 @@ class TimeAnalyticsController < ApplicationController
       grouped_data = project_view_state == 'summary' ? group_time_entries(time_entries, 'project') : group_time_entries(time_entries, grouping)
     else
       grouped_data = group_time_entries(time_entries, grouping)
+      # For daily time overview, fill in missing working days to ensure chart matches table
+      if grouping == 'daily'
+        grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+      end
     end
     
     case chart_type
