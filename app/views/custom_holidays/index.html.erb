@@ -2,11 +2,9 @@
   <%= link_to 'New Holiday', new_custom_holiday_path, class: 'icon icon-add' %>
 </div>
 
-<h2>Manage Holidays</h2>
+<h2>Holidays</h2>
 
-<p class="subtitle">
-  Define custom holidays and office closures. These will be excluded from working days calculations.
-</p>
+<p class="subtitle"> Define custom holidays and office closures. </p>
 
 <% if @holidays.any? %>
   <table class="list holidays">
