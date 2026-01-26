@@ -110,6 +110,15 @@ class TimeAnalyticsController < ApplicationController
       end
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
+      
+      # Fill missing periods before counting
+      case @grouping
+      when 'weekly'
+        grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+      when 'monthly'
+        grouped_data = fill_missing_months(grouped_data, @from, @to)
+      end
+      
       @entry_count = grouped_data.count
 
       # Sort by the key (which is the date/period) to ensure chronological order
@@ -125,6 +134,10 @@ class TimeAnalyticsController < ApplicationController
     else # Daily grouping in time_entries view
       # Group by date and sum hours
       grouped_data = group_time_entries(@time_entries, 'daily')
+      
+      # Fill missing working days before counting
+      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+      
       @entry_count = grouped_data.count
 
       # Sort by date
