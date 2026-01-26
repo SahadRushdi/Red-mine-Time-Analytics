@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class CustomHolidaysController < ApplicationController
+  layout 'admin'
+  self.main_menu = false
+  menu_item :custom_holidays
+  
   before_action :require_admin
   before_action :find_holiday, only: [:edit, :update, :destroy]
 
