@@ -18,13 +18,14 @@ Redmine::Plugin.register :redmine_time_analytics do
        after: :time_analytics
 
   # Add to admin menu
-  menu :admin_menu, :team_analytics_configuration,
-       { controller: 'admin_ta_teams', action: 'index' },
-       caption: 'Team Analytics Configuration'
+  menu :admin_menu, :team_analytics_configuration, { controller: 'admin_ta_teams', action: 'index' },
+       caption: 'Team Analytics Configuration',
+       html: { class: 'icon', style: 'background-image: url(/images/group.png)' }
 
   # Add to admin menu
   menu :admin_menu, :custom_holidays, { controller: 'custom_holidays', action: 'index' },
-       caption: 'Holidays'
+       caption: 'Holidays',
+       html: { class: 'icon', style: 'background-image: url(/images/calendar.png)' }
 
   # Add permissions
   project_module :time_analytics do
