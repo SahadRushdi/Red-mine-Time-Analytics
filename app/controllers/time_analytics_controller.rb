@@ -318,6 +318,8 @@ class TimeAnalyticsController < ApplicationController
     return 0 if @time_entries.empty?
     
     weekly_totals = get_weekly_totals(@time_entries)
+    # Fill missing weeks to include 0.00 weeks in average calculation
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
     
     (weekly_totals.values.sum / weekly_totals.count).round(2)
@@ -325,11 +327,13 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     weekly_totals.values.max || 0
   end
 
   def calculate_min_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
     weekly_totals.values.min
   end
@@ -349,6 +353,8 @@ class TimeAnalyticsController < ApplicationController
     return 0 if @time_entries.empty?
     
     monthly_totals = get_monthly_totals(@time_entries)
+    # Fill missing months to include 0.00 months in average calculation
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
     
     (monthly_totals.values.sum / monthly_totals.count).round(2)
@@ -356,11 +362,13 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     monthly_totals.values.max || 0
   end
 
   def calculate_min_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
     monthly_totals.values.min
   end
