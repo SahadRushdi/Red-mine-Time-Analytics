@@ -110,6 +110,15 @@ class TimeAnalyticsController < ApplicationController
       end
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
+      
+      # Fill missing periods before counting
+      case @grouping
+      when 'weekly'
+        grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+      when 'monthly'
+        grouped_data = fill_missing_months(grouped_data, @from, @to)
+      end
+      
       @entry_count = grouped_data.count
 
       # Sort by the key (which is the date/period) to ensure chronological order
@@ -125,6 +134,10 @@ class TimeAnalyticsController < ApplicationController
     else # Daily grouping in time_entries view
       # Group by date and sum hours
       grouped_data = group_time_entries(@time_entries, 'daily')
+      
+      # Fill missing working days before counting
+      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+      
       @entry_count = grouped_data.count
 
       # Sort by date
@@ -494,6 +507,8 @@ class TimeAnalyticsController < ApplicationController
     return 0 if @time_entries.empty?
     
     weekly_totals = get_weekly_totals(@time_entries)
+    # Fill missing weeks to include 0.00 weeks in average calculation
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
     
     (weekly_totals.values.sum / weekly_totals.count).round(2)
@@ -501,11 +516,13 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     weekly_totals.values.max || 0
   end
 
   def calculate_min_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
     weekly_totals.values.min
   end
@@ -525,6 +542,8 @@ class TimeAnalyticsController < ApplicationController
     return 0 if @time_entries.empty?
     
     monthly_totals = get_monthly_totals(@time_entries)
+    # Fill missing months to include 0.00 months in average calculation
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
     
     (monthly_totals.values.sum / monthly_totals.count).round(2)
@@ -532,11 +551,13 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     monthly_totals.values.max || 0
   end
 
   def calculate_min_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
     monthly_totals.values.min
   end
@@ -597,9 +618,14 @@ class TimeAnalyticsController < ApplicationController
       grouped_data = project_view_state == 'summary' ? group_time_entries(time_entries, 'project') : group_time_entries(time_entries, grouping)
     else
       grouped_data = group_time_entries(time_entries, grouping)
-      # For daily time overview, fill in missing working days to ensure chart matches table
-      if grouping == 'daily'
+      # Fill in missing periods to ensure chart matches table
+      case grouping
+      when 'daily'
         grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+      when 'weekly'
+        grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+      when 'monthly'
+        grouped_data = fill_missing_months(grouped_data, @from, @to)
       end
     end
     
@@ -1510,9 +1536,14 @@ class TimeAnalyticsController < ApplicationController
     # Always group by date/period for Time Overview (consistent across all views)
     grouped_data = group_time_entries(time_entries, grouping)
     
-    # For daily grouping, fill in missing working days with 0.00 hours
-    if grouping == 'daily'
+    # Fill in missing periods with 0.00 hours based on grouping
+    case grouping
+    when 'daily'
       grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+    when 'weekly'
+      grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+    when 'monthly'
+      grouped_data = fill_missing_months(grouped_data, @from, @to)
     end
     
     # Sort by date in descending order (latest first)
@@ -1544,5 +1575,130 @@ class TimeAnalyticsController < ApplicationController
     end
     
     all_dates
+  end
+
+  def fill_missing_weeks(grouped_data, from_date, to_date)
+    # First, normalize the grouped_data keys to Date objects (week start Mondays)
+    normalized_data = {}
+    adapter_name = ActiveRecord::Base.connection.adapter_name.downcase
+    
+    grouped_data.each do |key, hours|
+      week_start = case key
+      when Date, Time, DateTime
+        # PostgreSQL/SQLite returns Date - find the Monday of that week
+        date = key.to_date
+        days_since_monday = (date.wday - 1) % 7
+        date - days_since_monday
+      when String
+        # MySQL can return string like '202605' (YEARWEEK) or date string
+        if key.match?(/^\d{6}$/)
+          year = key[0..3].to_i
+          week_num = key[4..5].to_i
+          Date.commercial(year, week_num, 1) # Monday of ISO week
+        else
+          Date.parse(key)
+        end
+      when Integer
+        # MySQL YEARWEEK as integer
+        if key > 100000 && key.to_s.length == 6
+          year = key / 100
+          week_num = key % 100
+          Date.commercial(year, week_num, 1)
+        else
+          Date.parse(key.to_s)
+        end
+      else
+        key
+      end
+      
+      normalized_data[week_start] = hours
+    end
+    
+    # Now create a hash with all weeks in range
+    all_weeks = {}
+    
+    # Get the week start (Monday) for the from_date
+    days_since_monday = (from_date.wday - 1) % 7
+    current_week_start = from_date - days_since_monday
+    
+    # Iterate through all weeks until we pass to_date
+    while current_week_start <= to_date
+      week_end = current_week_start + 6
+      
+      # Check if the week has any working days
+      has_working_days = (current_week_start..week_end).any? do |date|
+        # Only check dates within the selected range
+        next false if date < from_date || date > to_date
+        RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date)
+      end
+      
+      # Include the week if:
+      # 1. It has at least one working day, OR
+      # 2. User has logged time in that week (even if all holidays)
+      if has_working_days || normalized_data.key?(current_week_start)
+        all_weeks[current_week_start] = normalized_data[current_week_start] || 0.0
+      end
+      
+      # Move to next week
+      current_week_start += 7
+    end
+    
+    all_weeks
+  end
+
+  def fill_missing_months(grouped_data, from_date, to_date)
+    # First, normalize the grouped_data keys to Date objects (first day of month)
+    normalized_data = {}
+    adapter_name = ActiveRecord::Base.connection.adapter_name.downcase
+    
+    grouped_data.each do |key, hours|
+      month_start = case key
+      when Date, Time, DateTime
+        # PostgreSQL/SQLite returns Date
+        date = key.to_date
+        Date.new(date.year, date.month, 1)
+      when String
+        # MySQL returns string like '2026-01-01' or parse it
+        date = Date.parse(key)
+        Date.new(date.year, date.month, 1)
+      when Array
+        # Handle [year, month] format if any database returns this
+        Date.new(key[0], key[1], 1)
+      else
+        Date.parse(key.to_s)
+      end
+      
+      normalized_data[month_start] = hours
+    end
+    
+    # Now create a hash with all months in range
+    all_months = {}
+    
+    # Get the first day of the from_date month
+    current_month_start = Date.new(from_date.year, from_date.month, 1)
+    
+    # Iterate through all months until we pass to_date
+    while current_month_start <= to_date
+      month_end = current_month_start.end_of_month
+      
+      # Check if the month has any working days
+      has_working_days = (current_month_start..month_end).any? do |date|
+        # Only check dates within the selected range
+        next false if date < from_date || date > to_date
+        RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date)
+      end
+      
+      # Include the month if:
+      # 1. It has at least one working day, OR
+      # 2. User has logged time in that month (even if all holidays)
+      if has_working_days || normalized_data.key?(current_month_start)
+        all_months[current_month_start] = normalized_data[current_month_start] || 0.0
+      end
+      
+      # Move to next month
+      current_month_start = current_month_start.next_month
+    end
+    
+    all_months
   end
 end
