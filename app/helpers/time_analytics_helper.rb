@@ -3,7 +3,6 @@ module TimeAnalyticsHelper
   def time_analytics_tabs
     [
       { name: 'individual_dashboard', label: l(:label_individual_dashboard), partial: 'individual_dashboard' },
-      { name: 'team_dashboard', label: l(:label_team_dashboard), partial: 'team_dashboard' },
       { name: 'custom_dashboard', label: l(:label_custom_dashboard), partial: 'custom_dashboard' }
     ]
   end
@@ -209,8 +208,6 @@ module TimeAnalyticsHelper
     case params[:action]
     when 'individual_dashboard'
       l(:label_individual_dashboard)
-    when 'team_dashboard'
-      l(:label_team_dashboard)
     when 'custom_dashboard'
       l(:label_custom_dashboard)
     else

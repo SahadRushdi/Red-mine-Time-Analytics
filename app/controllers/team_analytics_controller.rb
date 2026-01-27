@@ -43,22 +43,27 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}"
     
-    # Get team projects - also consider retroactive
-    # Only exclude projects that were removed BEFORE the analysis period
-    team_project_ids = TaTeamProject.where(team: @selected_team)
-                                    .where('end_date IS NULL OR end_date >= ?', @from)
-                                    .pluck(:project_id)
+    # Get time entries for all active team members on ALL projects where they have logged time
+    # Filter by member start_date and the selected date range
+    # Build conditions to respect each member's start date
+    member_conditions = @team_members.map do |membership|
+      member_from_date = [membership.start_date, @from].max
+      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}')"
+    end.join(' OR ')
     
-    Rails.logger.info "Team Analytics: Team projects: #{team_project_ids.inspect}"
-    
-    # Get time entries for all active team members on team projects
     @time_entries = TimeEntry.joins(:project)
                              .where(user_id: @active_member_ids)
-                             .where(project_id: team_project_ids)
                              .where(spent_on: @from..@to)
                              .where(projects: { status: Project::STATUS_ACTIVE })
-                             .includes(:user, :project, :issue, :activity)
-                             .order('time_entries.spent_on DESC, time_entries.created_on DESC')
+                             .where(member_conditions) if member_conditions.present?
+    
+    @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
+                                 .order('time_entries.spent_on DESC, time_entries.created_on DESC') if @time_entries
+    
+    # If no members or conditions, return empty relation
+    @time_entries ||= TimeEntry.none
+    
+    Rails.logger.info "Team Analytics: Auto-discovered projects from member time logs"
     
     # Apply search filter if present
     if params[:search].present?
@@ -199,7 +204,7 @@ class TeamAnalyticsController < ApplicationController
     # Get excluded user IDs
     excluded_ids = TaTeamSetting.excluded_user_ids
     
-    # Get team members and projects - retroactive configuration
+    # Get team members - retroactive configuration
     @team_members = TaTeamMembership.where(team: @selected_team)
                                     .where('end_date IS NULL OR end_date >= ?', @from)
                                     .includes(:user)
@@ -207,18 +212,24 @@ class TeamAnalyticsController < ApplicationController
     @member_ids = @team_members.map(&:user_id)
     @active_member_ids = @member_ids - excluded_ids
     
-    team_project_ids = TaTeamProject.where(team: @selected_team)
-                                    .where('end_date IS NULL OR end_date >= ?', @from)
-                                    .pluck(:project_id)
+    # Get time entries for all active team members on ALL projects where they have logged time
+    # Filter by member start_date and the selected date range
+    member_conditions = @team_members.map do |membership|
+      member_from_date = [membership.start_date, @from].max
+      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}')"
+    end.join(' OR ')
     
-    # Get time entries
     @time_entries = TimeEntry.joins(:project)
                              .where(user_id: @active_member_ids)
-                             .where(project_id: team_project_ids)
                              .where(spent_on: @from..@to)
                              .where(projects: { status: Project::STATUS_ACTIVE })
-                             .includes(:user, :project, :issue, :activity)
-                             .order('time_entries.spent_on DESC')
+                             .where(member_conditions) if member_conditions.present?
+    
+    @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
+                                 .order('time_entries.spent_on DESC') if @time_entries
+    
+    # If no members or conditions, return empty relation
+    @time_entries ||= TimeEntry.none
 
     # Apply search filter if present
     if params[:search].present?
