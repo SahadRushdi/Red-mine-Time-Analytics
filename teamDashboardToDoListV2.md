@@ -1,6 +1,6 @@
 # Team Dashboard To-Do List
 
-**Last Updated:** January 22, 2026 - 16:00 UTC  
+**Last Updated:** January 28, 2026 - 05:50 UTC  
 **Plugin:** Redmine Time Analytics  
 **Goal:** Build Team Dashboard Feature for Team Analytics
 
@@ -644,7 +644,70 @@ redmine_time_analytics/
 
 ---
 
-## 📝 SUMMARY OF TODAY'S WORK (January 22, 2026)
+## 📝 SUMMARY OF RECENT WORK
+
+### January 28, 2026 - Personal Projects Grouping Feature ✅
+
+#### Completed Implementation:
+1. ✅ **Database Migration**
+   - Added `personal_project_url` column to `ta_teams` table
+   - Migration file: `20260128_add_personal_project_url_to_ta_teams.rb`
+   - Successfully migrated to production database
+
+2. ✅ **Model Updates (TaTeam)**
+   - Added validation for personal_project_url format
+   - Added methods:
+     - `personal_project_parent` - Get parent project from URL
+     - `personal_project_ids` - Get all personal project IDs (recursive)
+     - `personal_project?(project_id)` - Check if project is personal
+     - `extract_project_identifier(url)` - Extract identifier from URL
+   - Added URL validation on save
+
+3. ✅ **Admin Interface**
+   - Updated `_form.html.erb` with personal projects URL field
+   - Added real-time AJAX URL validation button
+   - Visual feedback (green checkmark for valid, red error for invalid)
+   - Clear instructions and placeholder text
+   - Validates against current Redmine instance only
+
+4. ✅ **Admin Controller (AdminTaTeamsController)**
+   - Added `validate_url` action for AJAX validation
+   - Returns JSON response with validation result
+   - Checks project existence and status
+   - Extracts project name for confirmation
+
+5. ✅ **Routes Configuration**
+   - Added POST route: `validate_url_admin_ta_teams_path`
+   - Collection route for URL validation endpoint
+
+6. ✅ **Team Dashboard Logic (TeamAnalyticsController)**
+   - Modified `generate_project_pivot_table` method
+   - Personal projects automatically grouped as "Personal Projects"
+   - Includes all sub-projects recursively (nested hierarchy support)
+   - Maintains backward compatibility (teams without URL work as before)
+
+#### Feature Capabilities:
+- ✅ Admin can enter project URL (e.g., `http://0.0.0.0:3000/projects/iot-team`)
+- ✅ Real-time validation before save (AJAX)
+- ✅ Automatic recursive sub-project discovery
+- ✅ All personal projects grouped as single "Personal Projects" entry
+- ✅ Works in both Project view detailed and summary modes
+- ✅ Charts and tables show grouped data
+- ✅ Cross-instance validation (only current Redmine instance URLs accepted)
+
+#### Files Modified:
+1. `/db/migrate/20260128_add_personal_project_url_to_ta_teams.rb` (NEW)
+2. `/app/models/ta_team.rb` (+40 lines)
+3. `/app/views/admin_ta_teams/_form.html.erb` (+45 lines with JavaScript)
+4. `/app/controllers/admin_ta_teams_controller.rb` (+25 lines)
+5. `/config/routes.rb` (+3 lines)
+6. `/app/controllers/team_analytics_controller.rb` (+10 lines)
+
+#### Total Code Changes: ~120 lines (minimal, maintainable implementation)
+
+---
+
+### January 22, 2026 - Project and Activity Views
 
 ### Completed Tasks:
 1. ✅ **Activity View Implementation**
@@ -682,28 +745,9 @@ redmine_time_analytics/
 - ✅ Code reusability maximized (shared helper methods and patterns)
 - ✅ Professional user experience with state persistence
 - ✅ Comprehensive documentation for future reference
-
-### Tomorrow's Plan (January 23, 2026):
-1. 🎯 Implement Members View
-   - Follow Activity/Project view pattern
-   - Member × Time Period pivot table
-   - Dual view system with toggle
-   - Member distribution charts
-   - Time Overview table (3 columns)
-   
-2. 🎯 Testing & Bug Fixes
-   - Test all 4 view modes
-   - Cross-browser testing
-   - Performance optimization
-   - UI polish
-
-### Estimated Completion:
-- **Members View:** 4-6 hours
-- **Testing & Refinement:** 1-2 days
-- **Total Remaining:** ~2-3 days
-- **Overall Project:** 97-98% complete!
+- ✅ Personal projects grouping feature for simplified dashboard view
 
 ---
 
-**Document Status:** Living Document - Updated January 22, 2026, 16:00 UTC  
-**Next Update:** After Members View implementation (January 23, 2026)
+**Document Status:** Living Document - Updated January 28, 2026, 05:50 UTC  
+**Next Update:** After Members View implementation

@@ -69,6 +69,32 @@ class AdminTaTeamsController < ApplicationController
     redirect_to admin_ta_teams_path
   end
 
+  def validate_url
+    url = params[:url]
+    
+    if url.blank?
+      render json: { valid: false, error: 'URL is required' }
+      return
+    end
+    
+    # Extract project identifier
+    match = url.match(/\/projects\/([a-z0-9\-_]+)/i)
+    if match.nil?
+      render json: { valid: false, error: 'Invalid URL format. Expected: http://host/projects/project-identifier' }
+      return
+    end
+    
+    identifier = match[1]
+    project = Project.find_by(identifier: identifier, status: Project::STATUS_ACTIVE)
+    
+    if project.nil?
+      render json: { valid: false, error: 'Project not found or inactive in this Redmine instance' }
+      return
+    end
+    
+    render json: { valid: true, project_name: project.name, identifier: identifier }
+  end
+
   private
 
   def find_team

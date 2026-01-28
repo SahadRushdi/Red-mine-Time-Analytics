@@ -24,9 +24,10 @@ class TaTeam < ActiveRecord::Base
   validates :name, presence: true, uniqueness: true, length: { maximum: 255 }
   validate :cannot_be_own_parent
   validate :cannot_create_circular_hierarchy
+  validate :validate_personal_project_url
 
   # Safe attributes for mass assignment
-  safe_attributes 'name', 'parent_team_id', 'description'
+  safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_url'
 
   # Scopes
   scope :root_teams, -> { where(parent_team_id: nil) }
@@ -122,6 +123,43 @@ class TaTeam < ActiveRecord::Base
     team_projects.where(end_date: nil).includes(:project)
   end
 
+  # Get personal project parent from URL
+  # @return [Project, nil] Parent project or nil if URL not configured
+  def personal_project_parent
+    return nil if personal_project_url.blank?
+    
+    identifier = extract_project_identifier(personal_project_url)
+    return nil if identifier.nil?
+    
+    Project.find_by(identifier: identifier, status: Project::STATUS_ACTIVE)
+  end
+
+  # Get all personal project IDs (parent + all descendants)
+  # @return [Array<Integer>] Array of project IDs
+  def personal_project_ids
+    parent = personal_project_parent
+    return [] if parent.nil?
+    
+    parent.self_and_descendants.pluck(:id)
+  end
+
+  # Check if a project is a personal project
+  # @param project_id [Integer] Project ID to check
+  # @return [Boolean] true if project is personal
+  def personal_project?(project_id)
+    personal_project_ids.include?(project_id)
+  end
+
+  # Extract project identifier from URL
+  # @param url [String] Project URL
+  # @return [String, nil] Project identifier or nil
+  def extract_project_identifier(url)
+    return nil if url.blank?
+    
+    match = url.match(/\/projects\/([a-z0-9\-_]+)/i)
+    match ? match[1] : nil
+  end
+
   private
 
   # Validation: Prevent team from being its own parent
@@ -145,6 +183,22 @@ class TaTeam < ActiveRecord::Base
       end
       visited.add(current.id)
       current = current.parent_team
+    end
+  end
+
+  # Validation: Validate personal project URL
+  def validate_personal_project_url
+    return if personal_project_url.blank?
+    
+    identifier = extract_project_identifier(personal_project_url)
+    if identifier.nil?
+      errors.add(:personal_project_url, "invalid format. Expected format: http://host/projects/project-identifier")
+      return
+    end
+    
+    project = Project.find_by(identifier: identifier)
+    if project.nil?
+      errors.add(:personal_project_url, "project not found or inactive")
     end
   end
 end

@@ -20,4 +20,63 @@
     <%= f.text_area :description, rows: 4, cols: 60 %>
     <em class="info">Optional description of the team</em>
   </p>
+
+  <p>
+    <%= f.label :personal_project_url, 'Personal Projects Parent URL' %>
+    <%= f.text_field :personal_project_url, size: 60, placeholder: 'http://0.0.0.0:3000/projects/iot-team' %>
+    <button type="button" id="validate-url-btn" class="button" style="margin-left: 10px;">Validate URL</button>
+    <span id="url-validation-result" style="margin-left: 10px;"></span>
+    <br>
+    <em class="info">
+      Enter the URL of the parent project whose sub-projects should be grouped as "Personal Projects" in the team dashboard.
+      <br>All sub-projects (including nested ones) under this project will be automatically grouped.
+    </em>
+  </p>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const validateBtn = document.getElementById('validate-url-btn');
+    const urlInput = document.getElementById('ta_team_personal_project_url');
+    const resultSpan = document.getElementById('url-validation-result');
+    
+    if (validateBtn && urlInput && resultSpan) {
+      validateBtn.addEventListener('click', function() {
+        const url = urlInput.value.trim();
+        
+        if (!url) {
+          resultSpan.innerHTML = '<span style="color: #999;">No URL provided</span>';
+          return;
+        }
+        
+        // Show loading state
+        resultSpan.innerHTML = '<span style="color: #999;">Validating...</span>';
+        validateBtn.disabled = true;
+        
+        // Send AJAX request
+        fetch('<%= validate_url_admin_ta_teams_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+          validateBtn.disabled = false;
+          if (data.valid) {
+            resultSpan.innerHTML = '<span style="color: #28a745;">✓ Valid - Project: ' + data.project_name + '</span>';
+          } else {
+            resultSpan.innerHTML = '<span style="color: #dc3545;">✗ ' + data.error + '</span>';
+          }
+        })
+        .catch(error => {
+          validateBtn.disabled = false;
+          resultSpan.innerHTML = '<span style="color: #dc3545;">✗ Validation failed</span>';
+          console.error('Validation error:', error);
+        });
+      });
+    }
+  });
+</script>

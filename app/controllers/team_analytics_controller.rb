@@ -928,10 +928,20 @@ class TeamAnalyticsController < ApplicationController
   def generate_project_pivot_table(time_entries, grouping)
     Rails.logger.info "Generating project pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
     
+    # Get personal project IDs if configured
+    personal_project_ids = @selected_team.personal_project_ids
+    
     # Get all time entries with their details
     entries_with_details = time_entries.includes(:project).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
-      project_name = entry.project&.name || 'No Project'
+      
+      # Group personal projects under "Personal Projects"
+      project_name = if personal_project_ids.include?(entry.project_id)
+                       'Personal Projects'
+                     else
+                       entry.project&.name || 'No Project'
+                     end
+      
       {
         period_key: period_key,
         project_name: project_name,

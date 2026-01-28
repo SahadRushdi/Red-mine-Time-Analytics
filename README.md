@@ -57,8 +57,23 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Mobile-First Design**: Sections stack vertically on smaller screens
 - **Smart Chart Switching**: Charts automatically update when toggling between summary and detailed views
 
+### Team Dashboard
+- **Team Analytics Dashboard**: Team productivity insights and workload distribution for team leads
+- **Multiple View Modes**: Time, Activity, Project, and Members views
+- **Team Configuration**: Admin interface for managing teams, members, and project assignments
+- **Personal Projects Grouping**: Automatically group sub-projects as "Personal Projects" in dashboard
+  - Configure parent project URL in team settings
+  - All sub-projects (including nested) automatically grouped
+  - Simplifies dashboard view for teams with many personal projects
+  - Real-time URL validation before save
+- **Hierarchical Team Structure**: Support for parent-child team relationships
+- **Historical Tracking**: Track member and project assignments with date ranges
+- **Access Control**: Team leads see their teams, super users see all teams
+- **Exclusion List**: Exclude specific users (e.g., C-level executives) from analytics
+- **Interactive Charts**: Same powerful Chart.js visualizations as Individual Dashboard
+- **Export Functionality**: CSV export for team time entries
+
 ### Coming Soon
-- **Team Dashboard**: Team productivity insights and workload distribution
 - **Custom Dashboard**: Personalized analytics views with configurable widgets
 
 ## Installation
@@ -243,6 +258,27 @@ redmine_time_analytics/
 ```
 
 ### Recent Improvements (January 2026)
+
+#### Personal Projects Grouping Feature (January 28, 2026)
+- **Simplified Project View**: Automatically group personal projects in team dashboard
+  - Admin configures parent project URL in team settings (e.g., `http://0.0.0.0:3000/projects/iot-team`)
+  - All sub-projects (including nested levels) automatically grouped as "Personal Projects"
+  - Reduces dashboard clutter for teams with many personal/individual projects
+  - Main team projects (e.g., ADMS, Switchgear) shown separately
+- **Real-time URL Validation**: AJAX validation before saving team configuration
+  - Validates project exists in current Redmine instance
+  - Shows green checkmark for valid URLs, red error for invalid
+  - Prevents configuration mistakes
+- **Recursive Sub-project Discovery**: Automatically includes all nested sub-projects
+  - Uses Redmine's native project hierarchy (parent-child relationships)
+  - No manual maintenance required
+  - Updates automatically when new sub-projects are added
+- **Backward Compatible**: Teams without personal project URL work as before
+- **Usage Example**:
+  - Grid Control Team has main projects: ADMS, Switchgear
+  - Configure personal project URL: `http://0.0.0.0:3000/projects/iot-team`
+  - All personal projects (Sahad, Dihan, Lakshan, etc.) grouped as "Personal Projects"
+  - Dashboard shows 3 entries instead of 20+: ADMS, Switchgear, Personal Projects
 
 #### Custom Holiday Management UI (January 20, 2026)
 - **Admin Interface**: Web-based UI for managing holidays without code changes
