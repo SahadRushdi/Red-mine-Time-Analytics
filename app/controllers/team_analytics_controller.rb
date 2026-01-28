@@ -431,6 +431,11 @@ class TeamAnalyticsController < ApplicationController
       member_counts[period_key].add(entry.user_id)
     end
     
+    # Fill missing periods for weekly grouping to handle partial weeks
+    if grouping == 'weekly'
+      data = fill_missing_weeks_team(data, @from, @to)
+    end
+    
     # Sort by period key
     sorted_data = data.sort_by { |key, _| key }
     
@@ -446,7 +451,7 @@ class TeamAnalyticsController < ApplicationController
                            end
       
       period_label = helpers.format_period_for_table(period_for_display, grouping, @from, @to)
-      member_count = member_counts[period].size
+      member_count = member_counts[period]&.size || 0
       
       Struct.new(:period, :member_count, :hours).new(period_label, member_count, hours)
     end
@@ -472,12 +477,31 @@ class TeamAnalyticsController < ApplicationController
       grouped_data[period_key] += entry.hours
     end
     
+    # Fill missing weeks for proper date range handling
+    if grouping == 'weekly'
+      grouped_data = fill_missing_weeks_team(grouped_data, @from, @to)
+    end
+    
     # Sort by period key
     sorted_data = grouped_data.sort_by { |key, _| key }
     
     # Format labels and values
-    labels = sorted_data.map { |period, _| helpers.format_chart_label(period) }
+    labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
     values = sorted_data.map { |_, hours| hours.round(2) }
+    
+    # For weekly grouping, prepare tooltip labels with date ranges
+    tooltip_labels = if grouping == 'weekly'
+                      sorted_data.map do |period, _|
+                        week_start = period
+                        week_end = period + 6.days
+                        # Clip to user's selected date range
+                        display_start = [week_start, @from].max
+                        display_end = [week_end, @to].min
+                        "#{display_start.strftime('%m/%d/%Y')} to #{display_end.strftime('%m/%d/%Y')}"
+                      end
+                    else
+                      nil
+                    end
     
     # Build complete Chart.js config (matching Individual Dashboard structure)
     chart_data = {
@@ -485,6 +509,7 @@ class TeamAnalyticsController < ApplicationController
       datasets: [{
         label: chart_type == 'pie' ? 'Team Hours' : 'Hours',
         data: values,
+        tooltipLabels: tooltip_labels,  # Add tooltip labels for weekly view
         backgroundColor: case chart_type
                          when 'pie'
                            generate_colors(values.length)
@@ -1012,6 +1037,47 @@ class TeamAnalyticsController < ApplicationController
       generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
       generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    end
+  end
+
+  # Fill missing weeks for team dashboard (includes weeks overlapping with date range)
+  def fill_missing_weeks_team(grouped_data, from_date, to_date)
+    # Include weeks that overlap with the date range (like Individual Dashboard)
+    # Find Monday of the week containing from_date
+    days_since_monday = (from_date.wday - 1) % 7
+    start_monday = from_date - days_since_monday
+    
+    # Find Monday of the week containing to_date
+    days_since_monday_end = (to_date.wday - 1) % 7
+    end_monday = to_date - days_since_monday_end
+    
+    result = {}
+    current = start_monday
+    
+    while current <= end_monday
+      result[current] = grouped_data[current] || 0
+      current += 7.days
+    end
+    
+    result
+  end
+
+  # Format chart label for team dashboard (proper week format: YYYY-WW)
+  def format_chart_label_for_team(period, grouping)
+    case grouping
+    when 'weekly'
+      # Format as YYYY-WW (ISO week number)
+      year = period.cwyear
+      week = period.cweek
+      "#{year}-#{week}"
+    when 'monthly'
+      # Format as "Month YYYY"
+      Date.new(period[0], period[1], 1).strftime('%b %Y')
+    when 'yearly'
+      period.to_s
+    else
+      # Daily - format as "Mon DD, YYYY"
+      period.strftime('%b %d, %Y')
     end
   end
 end
