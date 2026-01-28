@@ -22,7 +22,7 @@
       <%# Time Period Filter %>
       <div class="filter-group">
         <%= label_tag :filter, l(:label_time_period) %>
-        <%= select_tag :filter, options_for_select(time_filter_options, params[:filter] || 'last_7_days'), 
+        <%= select_tag :filter, options_for_select(team_time_filter_options, params[:filter] || 'this_month'), 
             onchange: 'toggleCustomDateRange()', class: 'filter-select' %>
       </div>
 
@@ -37,7 +37,7 @@
       <%# Grouping Filter %>
       <div class="filter-group">
         <%= label_tag :grouping, l(:label_grouping) %>
-        <%= select_tag :grouping, options_for_select(grouping_options, @grouping), 
+        <%= select_tag :grouping, options_for_select(team_grouping_options, @grouping), 
             class: 'filter-select' %>
       </div>
 

@@ -3,6 +3,7 @@ class TeamAnalyticsController < ApplicationController
   before_action :set_date_range
   before_action :set_grouping
   helper :time_analytics
+  helper :ta_teams
 
   def index
     # Get teams where current user is a lead
@@ -91,14 +92,11 @@ class TeamAnalyticsController < ApplicationController
       @avg_hours_per_period = calculate_avg_hours_per_month
       @max_period_hours = calculate_max_monthly_hours
       @min_period_hours = calculate_min_monthly_hours
-    when 'yearly'
-      @avg_hours_per_period = calculate_avg_hours_per_year
-      @max_period_hours = calculate_max_yearly_hours
-      @min_period_hours = calculate_min_yearly_hours
-    else # daily
-      @avg_hours_per_period = calculate_avg_hours_per_day
-      @max_period_hours = calculate_max_daily_hours
-      @min_period_hours = calculate_min_daily_hours
+    else
+      # Default to weekly if invalid grouping
+      @avg_hours_per_period = calculate_avg_hours_per_week
+      @max_period_hours = calculate_max_weekly_hours
+      @min_period_hours = calculate_min_weekly_hours
     end
     
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
@@ -253,40 +251,36 @@ class TeamAnalyticsController < ApplicationController
 
   def set_date_range
     case params[:filter]
-    when 'last_7_days'
-      @from = Date.current - 6.days
-      @to = Date.current
-    when 'last_14_days'
-      @from = Date.current - 13.days
-      @to = Date.current
-    when 'this_week'
-      @from = Date.current.beginning_of_week(:monday)
-      @to = Date.current.end_of_week(:monday)
-    when 'last_week'
-      @from = (Date.current - 1.week).beginning_of_week(:monday)
-      @to = (Date.current - 1.week).end_of_week(:monday)
     when 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
+    when 'last_month'
+      @from = (Date.current - 1.month).beginning_of_month
+      @to = (Date.current - 1.month).end_of_month
+    when 'last_3_months'
+      # Last 3 complete months (excluding current month)
+      # Example: If today is Jan 2026, show Oct, Nov, Dec 2025
+      @from = (Date.current - 3.months).beginning_of_month
+      @to = (Date.current - 1.month).end_of_month
     when 'custom'
-      @from = params[:from].present? ? Date.parse(params[:from]) : (Date.current - 6.days)
-      @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
+      @from = params[:from].present? ? Date.parse(params[:from]) : Date.current.beginning_of_month
+      @to = params[:to].present? ? Date.parse(params[:to]) : Date.current.end_of_month
     else
-      # Default to last 7 days
-      params[:filter] = 'last_7_days'
-      @from = Date.current - 6.days
-      @to = Date.current
+      # Default to this month
+      params[:filter] = 'this_month'
+      @from = Date.current.beginning_of_month
+      @to = Date.current.end_of_month
     end
   rescue ArgumentError
     # Handle invalid date format
-    @from = Date.current - 6.days
-    @to = Date.current
+    @from = Date.current.beginning_of_month
+    @to = Date.current.end_of_month
   end
 
   def set_grouping
-    # Default to daily grouping
-    @grouping = params[:grouping].presence || 'daily'
-    @grouping = 'daily' unless %w[daily weekly monthly yearly].include?(@grouping)
+    # Default to weekly grouping for team dashboard
+    @grouping = params[:grouping].presence || 'weekly'
+    @grouping = 'weekly' unless %w[weekly monthly].include?(@grouping)
   end
 
   # Calculate average hours per day for team (excluding weekends and holidays)
@@ -417,10 +411,9 @@ class TeamAnalyticsController < ApplicationController
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
                      [entry.spent_on.year, entry.spent_on.month]
-                   when 'yearly'
-                     entry.spent_on.year
-                   else # daily
-                     entry.spent_on
+                   else
+                     # Default to weekly
+                     entry.spent_on.beginning_of_week(:monday)
                    end
       
       data[period_key] ||= 0
@@ -467,10 +460,9 @@ class TeamAnalyticsController < ApplicationController
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
                      [entry.spent_on.year, entry.spent_on.month]
-                   when 'yearly'
-                     entry.spent_on.year
-                   else # daily
-                     entry.spent_on
+                   else
+                     # Default to weekly
+                     entry.spent_on.beginning_of_week(:monday)
                    end
       
       grouped_data[period_key] ||= 0
@@ -712,11 +704,10 @@ class TeamAnalyticsController < ApplicationController
     when 'monthly'
       # Use first day of month as key
       Date.new(date.year, date.month, 1)
-    when 'yearly'
-      # Use first day of year as key
-      Date.new(date.year, 1, 1)
     else
-      date
+      # Default to weekly - Monday of week
+      days_since_monday = (date.wday - 1) % 7
+      date - days_since_monday
     end
   end
 
@@ -728,11 +719,9 @@ class TeamAnalyticsController < ApplicationController
       helpers.format_period_for_table(period_key, grouping, @from, @to)
     when 'monthly'
       period_key.strftime('%B %Y') # "October 2025"
-    when 'yearly'
-      period_key.strftime('%Y')
     else
-      # Daily: Use same format as Time Entries section for consistency
-      helpers.format_chart_label(period_key)
+      # Default to weekly
+      helpers.format_period_for_table(period_key, grouping, @from, @to)
     end
   end
 
@@ -1073,11 +1062,11 @@ class TeamAnalyticsController < ApplicationController
     when 'monthly'
       # Format as "Month YYYY"
       Date.new(period[0], period[1], 1).strftime('%b %Y')
-    when 'yearly'
-      period.to_s
     else
-      # Daily - format as "Mon DD, YYYY"
-      period.strftime('%b %d, %Y')
+      # Default to weekly
+      year = period.cwyear
+      week = period.cweek
+      "#{year}-#{week}"
     end
   end
 end

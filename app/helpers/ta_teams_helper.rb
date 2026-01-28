@@ -50,4 +50,22 @@ module TaTeamsHelper
     
     options_for_select(grouped_options, selected)
   end
+
+  # Team-specific time filter options (different from Individual Dashboard)
+  def team_time_filter_options
+    [
+      [l(:label_this_month), 'this_month'],
+      [l(:label_last_month), 'last_month'],
+      ['Last 3 Months', 'last_3_months'],
+      [l(:label_custom_range), 'custom']
+    ]
+  end
+
+  # Team-specific grouping options (only Week and Month)
+  def team_grouping_options
+    [
+      [l(:label_weekly), 'weekly'],
+      [l(:label_monthly), 'monthly']
+    ]
+  end
 end
