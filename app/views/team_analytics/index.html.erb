@@ -163,10 +163,6 @@
         <div class="summary-label"><%= l(:label_total_hours) || 'TOTAL HOURS' %></div>
       </div>
       <div class="summary-item">
-        <div class="summary-value"><%= format_hours(@avg_hours_per_period) %></div>
-        <div class="summary-label"><%= avg_label_for_grouping(@grouping) %></div>
-      </div>
-      <div class="summary-item">
         <div class="summary-value"><%= format_hours(@max_period_hours) %></div>
         <div class="summary-label"><%= max_label_for_grouping(@grouping) %></div>
       </div>
@@ -177,10 +173,6 @@
       <div class="summary-item">
         <div class="summary-value"><%= @team_size %></div>
         <div class="summary-label">TEAM SIZE</div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-value"><%= format_hours(@avg_hours_per_member) %></div>
-        <div class="summary-label">AVG/MEMBER</div>
       </div>
     </div>
   </div>
