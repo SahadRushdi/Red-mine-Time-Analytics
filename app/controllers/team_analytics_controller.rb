@@ -328,7 +328,6 @@ class TeamAnalyticsController < ApplicationController
   # Generate team time overview data with member count per period
   def generate_team_time_overview_data(entries, grouping)
     data = {}
-    member_counts = {}
     
     entries.each do |entry|
       period_key = case grouping
@@ -343,21 +342,19 @@ class TeamAnalyticsController < ApplicationController
       
       data[period_key] ||= 0
       data[period_key] += entry.hours
-      
-      # Track unique members per period
-      member_counts[period_key] ||= Set.new
-      member_counts[period_key].add(entry.user_id)
     end
     
-    # Fill missing periods for weekly grouping to handle partial weeks
+    # Fill missing periods to show unlogged weeks/months as 0.00h
     if grouping == 'weekly'
       data = fill_missing_weeks_team(data, @from, @to)
+    elsif grouping == 'monthly'
+      data = fill_missing_months_team(data, @from, @to)
     end
     
-    # Sort by period key
-    sorted_data = data.sort_by { |key, _| key }
+    # Sort by period key in DESCENDING order (newest first, like Individual Dashboard)
+    sorted_data = data.sort_by { |key, _| key }.reverse
     
-    # Return structured data with period, member_count, and hours
+    # Return structured data with period, team_size (not member_count), and hours
     sorted_data.map do |period, hours|
       # Convert period key to appropriate format for the helper
       period_for_display = case grouping
@@ -369,9 +366,10 @@ class TeamAnalyticsController < ApplicationController
                            end
       
       period_label = helpers.format_period_for_table(period_for_display, grouping, @from, @to)
-      member_count = member_counts[period]&.size || 0
+      # Always show team size (not unique members per period)
+      team_size = @team_size
       
-      Struct.new(:period, :member_count, :hours).new(period_label, member_count, hours)
+      Struct.new(:period, :member_count, :hours).new(period_label, team_size, hours)
     end
   end
 
@@ -394,12 +392,14 @@ class TeamAnalyticsController < ApplicationController
       grouped_data[period_key] += entry.hours
     end
     
-    # Fill missing weeks for proper date range handling
+    # Fill missing periods for proper date range handling (show unlogged periods as 0.00)
     if grouping == 'weekly'
       grouped_data = fill_missing_weeks_team(grouped_data, @from, @to)
+    elsif grouping == 'monthly'
+      grouped_data = fill_missing_months_team(grouped_data, @from, @to)
     end
     
-    # Sort by period key
+    # Sort by period key in ASCENDING order (oldest first for chart, like Individual Dashboard)
     sorted_data = grouped_data.sort_by { |key, _| key }
     
     # Format labels and values
@@ -976,6 +976,20 @@ class TeamAnalyticsController < ApplicationController
     result
   end
 
+  # Fill missing months for team dashboard
+  def fill_missing_months_team(grouped_data, from_date, to_date)
+    result = {}
+    current = from_date.beginning_of_month
+    
+    while current <= to_date
+      month_key = [current.year, current.month]
+      result[month_key] = grouped_data[month_key] || 0
+      current = current.next_month
+    end
+    
+    result
+  end
+
   # Format chart label for team dashboard (proper week format: YYYY-WW)
   def format_chart_label_for_team(period, grouping)
     case grouping
@@ -985,8 +999,8 @@ class TeamAnalyticsController < ApplicationController
       week = period.cweek
       "#{year}-#{week}"
     when 'monthly'
-      # Format as "Month YYYY"
-      Date.new(period[0], period[1], 1).strftime('%b %Y')
+      # Format as "Month YYYY" (full month name like Individual Dashboard)
+      Date.new(period[0], period[1], 1).strftime('%B %Y')
     else
       # Default to weekly
       year = period.cwyear

@@ -170,10 +170,6 @@
         <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
         <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
       </div>
-      <div class="summary-item">
-        <div class="summary-value"><%= @team_size %></div>
-        <div class="summary-label">TEAM SIZE</div>
-      </div>
     </div>
   </div>
 
@@ -203,7 +199,7 @@
         <tfoot>
           <tr class="total-row">
             <td class="date-column"><strong><%= l(:label_total) %></strong></td>
-            <td class="member-count-column"><strong><%= @team_size %></strong></td>
+            <td class="member-count-column"></td>
             <td class="hours-column"><strong><%= format_hours(@total_hours) %></strong></td>
           </tr>
         </tfoot>
