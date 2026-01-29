@@ -368,8 +368,8 @@ class TeamAnalyticsController < ApplicationController
                            end
       
       period_label = helpers.format_period_for_table(period_for_display, grouping, @from, @to)
-      # Always show team size (not unique members per period)
-      team_size = @team_size
+      # Calculate actual team size for this specific period based on membership dates
+      team_size = calculate_team_size_for_period(period_for_display, grouping)
       
       Struct.new(:period, :member_count, :hours).new(period_label, team_size, hours)
     end
@@ -1004,6 +1004,46 @@ class TeamAnalyticsController < ApplicationController
     end
     
     result
+  end
+
+  # Calculate team size for a specific period based on membership dates (not time logging)
+  def calculate_team_size_for_period(period_date, grouping)
+    # Get excluded user IDs
+    excluded_ids = TaTeamSetting.excluded_user_ids
+    
+    # Determine period start and end dates based on grouping
+    period_start, period_end = case grouping
+                                when 'weekly'
+                                  week_start = period_date.beginning_of_week(:monday)
+                                  week_end = week_start + 6.days
+                                  [week_start, week_end]
+                                when 'monthly'
+                                  month_start = period_date.beginning_of_month
+                                  month_end = period_date.end_of_month
+                                  [month_start, month_end]
+                                else
+                                  # Default to weekly
+                                  week_start = period_date.beginning_of_week(:monday)
+                                  week_end = week_start + 6.days
+                                  [week_start, week_end]
+                                end
+    
+    # Count members who were active during this period (based on membership dates, not time entries)
+    active_count = @team_members.count do |membership|
+      user_id = membership.user_id
+      start_date = membership.start_date
+      end_date = membership.end_date
+      
+      # Skip if member is in excluded list
+      next false if excluded_ids.include?(user_id)
+      
+      # Member is active during period if:
+      # - Their start_date is on or before the period ends (start_date <= period_end)
+      # - AND their end_date is either NULL (still active) OR on or after the period starts (end_date >= period_start)
+      start_date <= period_end && (end_date.nil? || end_date >= period_start)
+    end
+    
+    active_count
   end
 
   # Format chart label for team dashboard (proper week format: YYYY-WW)
