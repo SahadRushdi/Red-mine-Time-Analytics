@@ -898,9 +898,9 @@ class TeamAnalyticsController < ApplicationController
       }
     end
     
-    # Get unique periods and projects
+    # Get unique periods and projects (temporarily without sorting projects)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    projects = entries_with_details.map { |e| e[:project_name] }.uniq.sort
+    projects_unsorted = entries_with_details.map { |e| e[:project_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -914,18 +914,22 @@ class TeamAnalyticsController < ApplicationController
       matrix_data[period][project] += entry[:hours]
     end
     
-    # Calculate totals
-    period_totals = {}
+    # Calculate project totals first
     project_totals = {}
+    projects_unsorted.each do |project|
+      project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
+    end
+    
+    # Sort projects by total hours descending (largest to smallest)
+    projects = projects_unsorted.sort_by { |project| -project_totals[project] }
+    
+    # Calculate period totals and grand total
+    period_totals = {}
     grand_total = 0
     
     periods.each do |period|
       period_totals[period] = projects.sum { |project| matrix_data[period][project] || 0 }
       grand_total += period_totals[period]
-    end
-    
-    projects.each do |project|
-      project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
     end
     
     {
