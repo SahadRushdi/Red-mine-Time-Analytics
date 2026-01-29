@@ -975,15 +975,25 @@ class TimeAnalyticsController < ApplicationController
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
     # Determine what data to use based on view state
     if activity_view_state == 'summary'
-      # Summary view: group by activity
-      labels = pivot_data[:activities]
-      data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
+      # Summary view: group by activity, sorted by hours (descending)
+      sorted_activities = pivot_data[:activities].sort_by { |activity| -(pivot_data[:activity_totals][activity] || 0) }
+      labels = sorted_activities
+      data_values = sorted_activities.map { |activity| pivot_data[:activity_totals][activity] || 0 }
       raw_keys = nil  # No raw keys for activity names
     else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
+      # Detailed view: group by time period, sorted by hours (descending)
+      combined = pivot_data[:raw_periods].map do |period|
+        {
+          raw_key: period,
+          label: pivot_data[:periods][pivot_data[:raw_periods].index(period)],
+          value: pivot_data[:period_totals][period] || 0
+        }
+      end
+      sorted_combined = combined.sort_by { |item| -item[:value] }
+      
+      labels = sorted_combined.map { |item| item[:label] }
+      data_values = sorted_combined.map { |item| item[:value] }
+      raw_keys = sorted_combined.map { |item| item[:raw_key] }
     end
     
     case chart_type
