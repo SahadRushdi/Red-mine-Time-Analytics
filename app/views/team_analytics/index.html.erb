@@ -39,6 +39,18 @@
   .context-pill .pill-value {
     color: #111;
   }
+  .context-pill .remove-pill {
+    margin-left: 8px;
+    color: #777;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.2em;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .context-pill .remove-pill:hover {
+    color: #d00;
+  }
   
   /* Responsive styles for mobile */
   @media (max-width: 920px) {
@@ -134,6 +146,7 @@
       <div class="context-pill">
         <span class="pill-label">Search:</span>
         <span class="pill-value">'<%= params[:search] %>'</span>
+        <%= link_to '×', url_for(params.to_unsafe_h.except(:search)), class: 'remove-pill', title: 'Remove Search Filter' %>
       </div>
     <% end %>
   </div>
@@ -183,7 +196,7 @@
         <thead>
           <tr>
             <th class="date-column"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
-            <th class="member-count-column">Team Members</th>
+            <th class="member-count-column">Team Size</th>
             <th class="hours-column"><%= l(:label_hours) %></th>
           </tr>
         </thead>
