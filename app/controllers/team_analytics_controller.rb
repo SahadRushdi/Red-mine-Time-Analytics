@@ -45,11 +45,12 @@ class TeamAnalyticsController < ApplicationController
     Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}"
     
     # Get time entries for all active team members on ALL projects where they have logged time
-    # Filter by member start_date and the selected date range
-    # Build conditions to respect each member's start date
+    # Filter by member start_date and end_date within the selected date range
+    # Build conditions to respect each member's start date and end date
     member_conditions = @team_members.map do |membership|
       member_from_date = [membership.start_date, @from].max
-      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}')"
+      member_to_date = membership.end_date ? [membership.end_date, @to].min : @to
+      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
     end.join(' OR ')
     
     @time_entries = TimeEntry.joins(:project)
@@ -207,10 +208,11 @@ class TeamAnalyticsController < ApplicationController
     @active_member_ids = @member_ids - excluded_ids
     
     # Get time entries for all active team members on ALL projects where they have logged time
-    # Filter by member start_date and the selected date range
+    # Filter by member start_date and end_date within the selected date range
     member_conditions = @team_members.map do |membership|
       member_from_date = [membership.start_date, @from].max
-      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}')"
+      member_to_date = membership.end_date ? [membership.end_date, @to].min : @to
+      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
     end.join(' OR ')
     
     @time_entries = TimeEntry.joins(:project)
