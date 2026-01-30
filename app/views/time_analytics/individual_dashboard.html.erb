@@ -112,7 +112,14 @@
 </style>
 
 <div class="dashboard-header">
-  <h2><%= l(:label_individual_dashboard) %></h2>
+  <h2>
+    <%= l(:label_individual_dashboard) %>
+    <% if @viewing_other_user %>
+      <span style="color: #666; font-weight: normal; font-size: 0.85em;">
+        - <%= @user.name %>
+      </span>
+    <% end %>
+  </h2>
 
   <div class="context-pills-bar">
     <div class="context-pill">
@@ -150,6 +157,7 @@
 
 <div id="filters" class="collapsible" style="display:none;">
   <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form' do %>
+    <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
     <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
@@ -443,6 +451,7 @@
       <div class="table-controls">
         <%= form_tag my_time_path, method: :get, local: true, 
             class: 'pagination-form' do %>
+          <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
           <%= hidden_field_tag :filter, params[:filter] %>
           <%= hidden_field_tag :from, params[:from] %>
           <%= hidden_field_tag :to, params[:to] %>

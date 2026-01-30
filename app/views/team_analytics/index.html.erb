@@ -104,6 +104,21 @@
     text-align: right;
     width: 120px;
   }
+  
+  /* Member link styling */
+  .member-link {
+    color: #169;
+    text-decoration: none;
+    font-weight: normal;
+    transition: color 0.2s ease;
+  }
+  .member-link:hover {
+    color: #007cba;
+    text-decoration: underline;
+  }
+  .member-link:visited {
+    color: #169;
+  }
 </style>
 
 <script type="text/javascript">
@@ -672,7 +687,11 @@
             <tr>
               <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @members.each do |member| %>
-                <th class="member-header"><%= member %></th>
+                <th class="member-header">
+                  <%= link_to member, my_time_path(user_id: @member_user_ids[member]), 
+                      class: 'member-link', 
+                      title: "View #{member}'s individual dashboard" %>
+                </th>
               <% end %>
               <th class="total-header">Grand Total</th>
             </tr>
@@ -727,7 +746,11 @@
               <% hours = @member_totals[member] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <tr>
-                <td><%= member %></td>
+                <td>
+                  <%= link_to member, my_time_path(user_id: @member_user_ids[member]), 
+                      class: 'member-link', 
+                      title: "View #{member}'s individual dashboard" %>
+                </td>
                 <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
                 <td class="bar-column">
                   <div class="bar-container">

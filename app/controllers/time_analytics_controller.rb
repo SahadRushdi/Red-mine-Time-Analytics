@@ -11,10 +11,28 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def individual_dashboard
-    @user = User.current
+    # Allow team leads to view their team members' dashboards
+    if params[:user_id].present?
+      target_user = User.find_by(id: params[:user_id])
+      
+      # Check if current user has permission to view this user's dashboard
+      if target_user && can_view_user_dashboard?(target_user)
+        @user = target_user
+        @viewing_other_user = true
+      else
+        # No permission or user not found - show own dashboard with notice
+        flash[:warning] = "You don't have permission to view this user's dashboard" if target_user
+        @user = User.current
+        @viewing_other_user = false
+      end
+    else
+      @user = User.current
+      @viewing_other_user = false
+    end
+    
     @view_mode = params[:view_mode] || 'time_entries'
     
-    # Get time entries for the current user with project visibility check
+    # Get time entries for the target user with project visibility check
     @time_entries = TimeEntry.joins(:project)
                              .where(user: @user)
                              .where(spent_on: @from..@to)
@@ -225,6 +243,29 @@ class TimeAnalyticsController < ApplicationController
   end
 
   private
+
+  # Check if current user can view target user's dashboard
+  def can_view_user_dashboard?(target_user)
+    current_user = User.current
+    
+    # Admins can view anyone's dashboard
+    return true if current_user.admin?
+    
+    # Check if current user is a team lead for any team
+    led_teams = current_user.led_teams
+    return false if led_teams.empty?
+    
+    # Check if target user is a member of any team led by current user
+    led_teams.each do |team|
+      # Get team member IDs (active or had entries during any period)
+      team_member_ids = TaTeamMembership.where(team: team)
+                                        .pluck(:user_id)
+      
+      return true if team_member_ids.include?(target_user.id)
+    end
+    
+    false
+  end
 
   def get_default_chart_type(view_mode)
     case view_mode

@@ -170,6 +170,7 @@ class TeamAnalyticsController < ApplicationController
       @period_totals = @member_pivot_data[:period_totals]
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
+      @member_user_ids = @member_pivot_data[:member_user_ids]
       
       # For pagination, use periods count
       @entry_count = @time_periods.count
@@ -997,10 +998,12 @@ class TeamAnalyticsController < ApplicationController
     entries_with_details = time_entries.includes(:user).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
       member_name = entry.user.name # Full name
+      user_id = entry.user.id
       
       {
         period_key: period_key,
         member_name: member_name,
+        user_id: user_id,
         hours: entry.hours
       }
     end
@@ -1008,6 +1011,12 @@ class TeamAnalyticsController < ApplicationController
     # Get unique periods and members (temporarily without sorting members)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
     members_unsorted = entries_with_details.map { |e| e[:member_name] }.uniq
+    
+    # Create member name to user_id mapping
+    member_to_user_id = {}
+    entries_with_details.each do |entry|
+      member_to_user_id[entry[:member_name]] = entry[:user_id]
+    end
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -1046,7 +1055,8 @@ class TeamAnalyticsController < ApplicationController
       period_totals: period_totals,
       member_totals: member_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      member_user_ids: member_to_user_id # Map member names to user IDs
     }
   end
 
