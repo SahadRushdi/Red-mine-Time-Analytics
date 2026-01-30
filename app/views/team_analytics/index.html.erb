@@ -303,10 +303,10 @@
           }
         </style>
 
-        <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' %>
+        <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
           <div class="custom-chart-dropdown">
             <button type="button" class="dropdown-toggle" id="team-chart-toggle">
-              <% default_chart_type = (@view_mode == 'activity' || @view_mode == 'project') ? 'pie' : 'line' %>
+              <% default_chart_type = (@view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') ? 'pie' : 'line' %>
               <span id="team-chart-label"><%= (params[:chart_type] || default_chart_type).capitalize %></span>
               <i class="arrow-down"></i>
             </button>
