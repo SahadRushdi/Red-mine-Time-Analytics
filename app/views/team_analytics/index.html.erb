@@ -320,7 +320,7 @@
       </div>
     </h3>
     
-    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project') && @chart_data.present? && @entry_count > 0 %>
+    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @chart_data.present? && @entry_count > 0 %>
       <div id="chart-container" style="display: block;">
         <div class="chart-wrapper">
           <canvas id="time-chart" class="chart" 
@@ -328,7 +328,7 @@
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
       </div>
-    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' %>
+    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
       <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
         <div style="text-align: center; padding: 40px; color: #666;">
           <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">

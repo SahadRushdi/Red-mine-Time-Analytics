@@ -15,6 +15,7 @@ en:
   label_time_overview: "Time Overview"
   label_summary: "Summary"
   label_export_csv: "Export CSV"
+  label_members: "Members"
   
   # Filter options
   label_last_7_days: "Last 7 days"
