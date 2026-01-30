@@ -187,11 +187,11 @@
   </div>
 
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
-  <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project') && @time_overview_data&.any? %>
+  <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
     <div class="box time-overview-box">
       <h3><%= l(:label_time_overview) %></h3>
       
-      <%# Both Time, Activity, and Project views use the same 3-column table structure %>
+      <%# All views (Time, Activity, Project, Members) use the same 3-column table structure %>
       <table class="team-time-overview-table">
         <thead>
           <tr>
@@ -636,12 +636,140 @@
     </div>
   <% end %>
 <% elsif @view_mode == 'members' %>
-  <div class="box" style="margin-top: 20px;">
-    <p style="padding: 20px; background: #ffffcc; border: 1px solid #e7e700; border-radius: 5px;">
-      <strong>Note:</strong> Members pivot table will be implemented in Phase 7.
-      Switch to Time view to see team time overview.
-    </p>
-  </div>
+  <%# Member Analysis Tables - Show pivot table for Member × Time Period %>
+  <% if @members&.any? %>
+    <div class="box">
+      <h3>
+        Time by Member
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-member-view-btn" class="button button-base button-primary" onclick="toggleMemberView()">
+            <span id="member-view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+        <div class="table-controls">
+          <%= form_tag team_analytics_path, method: :get, local: true, 
+              class: 'pagination-form' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :search, params[:search] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' %>
+            <%= label_tag :per_page, l(:label_per_page) %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()' %>
+          <% end %>
+        </div>
+      </h3>
+
+      <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
+      <div id="team-member-detailed-view" class="pivot-table-wrapper">
+        <table class="list pivot-table">
+          <thead>
+            <tr>
+              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @members.each do |member| %>
+                <th class="member-header"><%= member %></th>
+              <% end %>
+              <th class="total-header">Grand Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @member_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr>
+                <td class="period-cell"><%= period_display %></td>
+                <% @members.each do |member| %>
+                  <td class="hours-cell">
+                    <% hours = @matrix_data[period_key][member] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '' %>
+                  </td>
+                <% end %>
+                <td class="total-cell">
+                  <%= format_hours(@period_totals[period_key] || 0) %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Member Total' : 'Grand Total' %></strong></td>
+              <% @members.each do |member| %>
+                <td class="total-cell">
+                  <strong><%= format_hours(@member_totals[member] || 0) %></strong>
+                </td>
+              <% end %>
+              <td class="grand-total-cell">
+                <strong><%= format_hours(@grand_total || 0) %></strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Member Table (Hidden by default) %>
+      <div id="team-member-summary-view" style="display: none;">
+        <table class="list time-entries-grouped-table summary-with-bars">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-member-summary-view')" title="Click to sort">
+                Total Hours <span class="sort-indicator">⇅</span>
+              </th>
+              <th class="bar-column">Distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @members.each do |member| %>
+              <% hours = @member_totals[member] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <tr>
+                <td><%= member %></td>
+                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
+                <td class="bar-column">
+                  <div class="bar-container">
+                    <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td><strong><%= l(:label_total) %></strong></td>
+              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+              <td class="bar-column"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <%# Pagination for Member view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :team_id, :member_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="pagination-info-text" 
+             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-member-count="<%= @members&.count || 0 %>"
+             data-view-mode="<%= @view_mode %>">
+          <%= l(:text_pagination_info, 
+              from: (@offset + 1), 
+              to: [@offset + @limit, @entry_count].min, 
+              total: @entry_count) %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="box" style="margin-top: 20px;">
+      <p class="nodata"><%= l(:label_no_data) %></p>
+    </div>
+  <% end %>
 <% end %>
 
 <script>
@@ -710,6 +838,9 @@
     
     // Restore project view state
     restoreProjectViewState();
+    
+    // Restore member view state
+    restoreMemberViewState();
   });
 
   // Chart initialization
@@ -1000,6 +1131,109 @@
     
     // Update hidden field with current state
     var hiddenField = document.getElementById('project_view_state_field');
+    if (hiddenField) {
+      hiddenField.value = currentMode;
+    }
+  }
+
+  // Toggle member view between detailed and summary
+  function toggleMemberView() {
+    var detailedView = document.getElementById('team-member-detailed-view');
+    var summaryView = document.getElementById('team-member-summary-view');
+    var toggleText = document.getElementById('member-view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    var newViewState;
+    if (detailedView.style.display === 'none') {
+      // Currently showing summary, switch to detailed
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      localStorage.setItem('team_member_view_mode', 'detailed');
+      newViewState = 'detailed';
+      updateMemberPaginationInfo('detailed');
+    } else {
+      // Currently showing detailed, switch to summary
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      localStorage.setItem('team_member_view_mode', 'summary');
+      newViewState = 'summary';
+      updateMemberPaginationInfo('summary');
+    }
+    
+    // Regenerate chart with new view state
+    regenerateChartForMemberViewState(newViewState);
+  }
+
+  // Update pagination info for member view
+  function updateMemberPaginationInfo(viewState) {
+    var paginationInfo = document.getElementById('pagination-info-text');
+    if (!paginationInfo) {
+      return;
+    }
+    
+    var detailedText = paginationInfo.getAttribute('data-detailed-text');
+    var viewMode = paginationInfo.getAttribute('data-view-mode');
+    
+    if (viewState === 'detailed') {
+      // Show detailed view pagination (based on time periods)
+      paginationInfo.textContent = detailedText;
+    } else {
+      // Show summary view pagination (based on members)
+      var count = parseInt(paginationInfo.getAttribute('data-member-count'));
+      paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' members';
+    }
+  }
+
+  // Regenerate chart when member view state changes
+  function regenerateChartForMemberViewState(viewState) {
+    // Get current URL parameters
+    var urlParams = new URLSearchParams(window.location.search);
+    
+    // Add/update member_view_state parameter
+    urlParams.set('member_view_state', viewState);
+    
+    // Build new URL
+    var baseUrl = window.location.pathname;
+    var newUrl = baseUrl + '?' + urlParams.toString();
+    
+    // Reload page with new view state parameter
+    window.location.href = newUrl;
+  }
+
+  // Restore member view preference
+  function restoreMemberViewState() {
+    var savedMode = localStorage.getItem('team_member_view_mode');
+    var detailedView = document.getElementById('team-member-detailed-view');
+    var summaryView = document.getElementById('team-member-summary-view');
+    var toggleText = document.getElementById('member-view-toggle-text');
+    
+    if (!detailedView || !summaryView || !toggleText) {
+      return;
+    }
+    
+    // Default to detailed view if no saved preference
+    var currentMode = savedMode || 'detailed';
+    
+    if (currentMode === 'summary') {
+      detailedView.style.display = 'none';
+      summaryView.style.display = 'block';
+      toggleText.textContent = 'Show Detailed View';
+      updateMemberPaginationInfo('summary');
+    } else {
+      // Default to detailed view
+      detailedView.style.display = 'block';
+      summaryView.style.display = 'none';
+      toggleText.textContent = 'Show Summary View';
+      updateMemberPaginationInfo('detailed');
+    }
+    
+    // Update hidden field with current state
+    var hiddenField = document.getElementById('member_view_state_field');
     if (hiddenField) {
       hiddenField.value = currentMode;
     }
