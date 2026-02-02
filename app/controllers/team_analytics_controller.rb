@@ -993,58 +993,60 @@ class TeamAnalyticsController < ApplicationController
   def generate_member_pivot_table(time_entries, grouping)
     Rails.logger.info "Generating member pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
     
-    # Get all time entries with their details
+    # Get all time entries with their details, including user IDs
     entries_with_details = time_entries.includes(:user).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
-      member_name = entry.user.name # Full name
+      user = entry.user
+      member_data = { id: user.id, name: user.name } # Store both ID and name
       
       {
         period_key: period_key,
-        member_name: member_name,
+        member_data: member_data,
         hours: entry.hours
       }
     end
     
     # Get unique periods and members (temporarily without sorting members)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    members_unsorted = entries_with_details.map { |e| e[:member_name] }.uniq
+    members_unsorted = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
     
-    # Initialize matrix with zeros
+    # Initialize matrix with zeros (use member name as key for lookup)
     matrix_data = {}
     periods.each { |period| matrix_data[period] = {} }
     
-    # Populate matrix data
+    # Populate matrix data (use member name as key)
     entries_with_details.each do |entry|
       period = entry[:period_key]
-      member = entry[:member_name]
-      matrix_data[period][member] ||= 0
-      matrix_data[period][member] += entry[:hours]
+      member_name = entry[:member_data][:name]
+      matrix_data[period][member_name] ||= 0
+      matrix_data[period][member_name] += entry[:hours]
     end
     
-    # Calculate member totals first
+    # Calculate member totals first (using member name)
     member_totals = {}
-    members_unsorted.each do |member|
-      member_totals[member] = periods.sum { |period| matrix_data[period][member] || 0 }
+    members_unsorted.each do |member_data|
+      member_name = member_data[:name]
+      member_totals[member_name] = periods.sum { |period| matrix_data[period][member_name] || 0 }
     end
     
     # Sort members by total hours descending (largest to smallest)
-    members = members_unsorted.sort_by { |member| -member_totals[member] }
+    members = members_unsorted.sort_by { |member_data| -member_totals[member_data[:name]] }
     
     # Calculate period totals and grand total
     period_totals = {}
     grand_total = 0
     
     periods.each do |period|
-      period_totals[period] = members.sum { |member| matrix_data[period][member] || 0 }
+      period_totals[period] = members.sum { |member_data| matrix_data[period][member_data[:name]] || 0 }
       grand_total += period_totals[period]
     end
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
-      members: members,
-      matrix: matrix_data,
+      members: members, # Array of {id:, name:} hashes
+      matrix: matrix_data, # Still keyed by member name for lookup
       period_totals: period_totals,
-      member_totals: member_totals,
+      member_totals: member_totals, # Keyed by member name
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
@@ -1054,9 +1056,9 @@ class TeamAnalyticsController < ApplicationController
   def generate_member_pivot_chart_data(pivot_data, chart_type, member_view_state = 'detailed')
     # Determine what data to use based on view state
     if member_view_state == 'summary'
-      # Summary view: group by member
-      labels = pivot_data[:members]
-      data_values = pivot_data[:members].map { |member| pivot_data[:member_totals][member] || 0 }
+      # Summary view: group by member (members are now hashes with id and name)
+      labels = pivot_data[:members].map { |m| m[:name] }
+      data_values = pivot_data[:members].map { |m| pivot_data[:member_totals][m[:name]] || 0 }
       raw_keys = nil  # No raw keys for member names
     else
       # Detailed view: group by time period

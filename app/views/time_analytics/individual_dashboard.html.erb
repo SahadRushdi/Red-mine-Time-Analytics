@@ -31,7 +31,7 @@
 </script>
 
 <div class="contextual">
-  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode)), 
+  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode, :user_id)), 
       method: :post, class: 'icon icon-download' %>
 </div>
 
@@ -112,7 +112,12 @@
 </style>
 
 <div class="dashboard-header">
-  <h2><%= l(:label_individual_dashboard) %></h2>
+  <h2>
+    <%= l(:label_individual_dashboard) %>
+    <% if @user && @user.id != User.current.id %>
+      <span style="color: #666; font-weight: normal;"> - <%= @user.name %></span>
+    <% end %>
+  </h2>
 
   <div class="context-pills-bar">
     <div class="context-pill">
@@ -154,6 +159,7 @@
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
     <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
+    <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
     <fieldset class="box">
       
       <div class="filter-row">
@@ -187,7 +193,7 @@
         </div>
 
         <div class="filter-group">
-          <%= link_to l(:button_clear), my_time_path, 
+          <%= link_to l(:button_clear), my_time_path(params[:user_id].present? ? { user_id: params[:user_id] } : {}), 
               class: 'button-base button-neutral button-small button-clear' %>
         </div>
       </div>
@@ -196,11 +202,11 @@
       <div class="toggle-buttons-wrapper">
         <label class="toggle-label">Group results by:</label>
         <div class="toggle-buttons">
-          <%= link_to 'Time', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'time_entries')), 
+          <%= link_to 'Time', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :user_id).merge(view_mode: 'time_entries')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Activity', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'activity')), 
+          <%= link_to 'Activity', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :user_id).merge(view_mode: 'activity')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Project', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page).merge(view_mode: 'project')), 
+          <%= link_to 'Project', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :user_id).merge(view_mode: 'project')), 
               class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
         </div>
       </div>
@@ -265,7 +271,7 @@
       <!-- Pagination -->
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :user_id) %>
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -450,6 +456,7 @@
           <%= hidden_field_tag :search, params[:search] %>
           <%= hidden_field_tag :chart_type, params[:chart_type] %>
           <%= hidden_field_tag :view_mode, @view_mode %>
+          <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
           <%= label_tag :per_page, l(:label_per_page) %>
           <%= select_tag :per_page, options_for_select(per_page_options, @limit),
               onchange: 'this.form.submit()' %>
@@ -811,7 +818,7 @@
     <% if @view_mode == 'activity' || @view_mode == 'project' %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode, :user_id) %>
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info" id="pagination-info-text" 

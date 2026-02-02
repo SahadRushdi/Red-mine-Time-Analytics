@@ -11,10 +11,22 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def individual_dashboard
-    @user = User.current
+    # Allow team leads to view their team members' dashboards
+    if params[:user_id].present?
+      @user = User.find_by(id: params[:user_id])
+      
+      # Verify access: user must be a team lead of the viewed user or an admin
+      unless user_can_view_member_dashboard?(@user)
+        render_403
+        return
+      end
+    else
+      @user = User.current
+    end
+    
     @view_mode = params[:view_mode] || 'time_entries'
     
-    # Get time entries for the current user with project visibility check
+    # Get time entries for the user with project visibility check
     @time_entries = TimeEntry.joins(:project)
                              .where(user: @user)
                              .where(spent_on: @from..@to)
@@ -188,7 +200,19 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def export_csv
-    @user = User.current
+    # Allow team leads to export their team members' data
+    if params[:user_id].present?
+      @user = User.find_by(id: params[:user_id])
+      
+      # Verify access: user must be a team lead of the viewed user or an admin
+      unless user_can_view_member_dashboard?(@user)
+        render_403
+        return
+      end
+    else
+      @user = User.current
+    end
+    
     @view_mode = params[:view_mode] || 'time_entries'
     
     @time_entries = TimeEntry.joins(:project)
@@ -1516,5 +1540,30 @@ class TimeAnalyticsController < ApplicationController
     end
     
     all_months
+  end
+  
+  # Check if current user can view another user's dashboard
+  def user_can_view_member_dashboard?(target_user)
+    return false unless target_user
+    
+    # User can always view their own dashboard
+    return true if target_user.id == User.current.id
+    
+    # Admins can view any dashboard
+    return true if User.current.admin?
+    
+    # Team leads can view their team members' dashboards
+    led_teams = User.current.led_teams
+    return false if led_teams.empty?
+    
+    # Check if target user is a member of any team led by current user
+    led_teams.each do |team|
+      team_member_ids = TaTeamMembership.where(team: team)
+                                        .where('end_date IS NULL OR end_date >= ?', Date.today)
+                                        .pluck(:user_id)
+      return true if team_member_ids.include?(target_user.id)
+    end
+    
+    false
   end
 end

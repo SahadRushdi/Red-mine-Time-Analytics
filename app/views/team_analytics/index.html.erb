@@ -672,7 +672,9 @@
             <tr>
               <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @members.each do |member| %>
-                <th class="member-header"><%= member %></th>
+                <th class="member-header">
+                  <%= link_to member[:name], my_time_path(user_id: member[:id]), target: "_blank", style: "color: #169; text-decoration: underline;" %>
+                </th>
               <% end %>
               <th class="total-header">Grand Total</th>
             </tr>
@@ -684,7 +686,7 @@
                 <td class="period-cell"><%= period_display %></td>
                 <% @members.each do |member| %>
                   <td class="hours-cell">
-                    <% hours = @matrix_data[period_key][member] || 0 %>
+                    <% hours = @matrix_data[period_key][member[:name]] || 0 %>
                     <%= hours > 0 ? format_hours(hours) : '' %>
                   </td>
                 <% end %>
@@ -699,7 +701,7 @@
               <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Member Total' : 'Grand Total' %></strong></td>
               <% @members.each do |member| %>
                 <td class="total-cell">
-                  <strong><%= format_hours(@member_totals[member] || 0) %></strong>
+                  <strong><%= format_hours(@member_totals[member[:name]] || 0) %></strong>
                 </td>
               <% end %>
               <td class="grand-total-cell">
@@ -724,10 +726,12 @@
           </thead>
           <tbody>
             <% @members.each do |member| %>
-              <% hours = @member_totals[member] || 0 %>
+              <% hours = @member_totals[member[:name]] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <tr>
-                <td><%= member %></td>
+                <td>
+                  <%= link_to member[:name], my_time_path(user_id: member[:id]), target: "_blank", style: "color: #169; text-decoration: underline;" %>
+                </td>
                 <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
                 <td class="bar-column">
                   <div class="bar-container">
