@@ -1,16 +1,16 @@
-<% html_title "Team Analytics Configuration" %>
+<% html_title "Team Management" %>
 
 <div class="contextual">
   <%= link_to 'New Team', new_admin_ta_team_path, class: 'icon icon-add' %>
   <%= link_to 'Settings', admin_ta_team_settings_path, class: 'icon icon-settings' %>
 </div>
 
-<h2>Team Analytics Configuration</h2>
+<h2>Team Management</h2>
 
 <% if @all_teams.empty? %>
   <p class="nodata"><%= l(:label_no_data) %></p>
   <p>
-    Create your first team to start configuring team analytics.<br/>
+    Create your first team to start managing your organization.<br/>
     <%= link_to 'Create Team', new_admin_ta_team_path, class: 'icon icon-add' %>
   </p>
 <% else %>

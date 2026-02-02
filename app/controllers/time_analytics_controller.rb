@@ -1552,14 +1552,14 @@ class TimeAnalyticsController < ApplicationController
     # Admins can view any dashboard
     return true if User.current.admin?
     
-    # Team leads can view their team members' dashboards
+    # Team leads can view their team members' dashboards (including past members)
     led_teams = User.current.led_teams
     return false if led_teams.empty?
     
-    # Check if target user is a member of any team led by current user
+    # Check if target user is or was a member of any team led by current user
+    # Allow access to historical data for past members
     led_teams.each do |team|
       team_member_ids = TaTeamMembership.where(team: team)
-                                        .where('end_date IS NULL OR end_date >= ?', Date.today)
                                         .pluck(:user_id)
       return true if team_member_ids.include?(target_user.id)
     end

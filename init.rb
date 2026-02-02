@@ -19,7 +19,7 @@ Redmine::Plugin.register :redmine_time_analytics do
 
   # Add to admin menu
   menu :admin_menu, :team_analytics_configuration, { controller: 'admin_ta_teams', action: 'index' },
-       caption: 'Team Analytics Configuration',
+       caption: 'Team Management',
        html: { class: 'icon', style: 'background-image: url(/images/group.png)' }
 
   # Add to admin menu
