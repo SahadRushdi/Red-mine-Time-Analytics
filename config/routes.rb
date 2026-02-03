@@ -7,6 +7,7 @@ RedmineApp::Application.routes.draw do
   # Team Analytics routes (separate controller)
   get 'team/analytics', to: 'team_analytics#index', as: :team_analytics
   post 'team/analytics/export_csv', to: 'team_analytics#export_csv', as: :team_analytics_export_csv
+  get 'team/analytics/tree_data', to: 'team_analytics#get_tree_data', as: :team_analytics_tree_data
 
   # Admin routes for Team Analytics Configuration
   resources :admin_ta_teams, path: 'admin/ta_teams' do

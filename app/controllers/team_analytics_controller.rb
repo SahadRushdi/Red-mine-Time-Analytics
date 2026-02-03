@@ -1,7 +1,7 @@
 class TeamAnalyticsController < ApplicationController
   before_action :require_login
-  before_action :set_date_range
-  before_action :set_grouping
+  before_action :set_date_range, except: [:get_tree_data]
+  before_action :set_grouping, except: [:get_tree_data]
   helper :time_analytics
   helper :ta_teams
 
@@ -262,6 +262,81 @@ class TeamAnalyticsController < ApplicationController
     send_data csv_data, 
               filename: filename,
               type: 'text/csv'
+  end
+
+  # API endpoint for tree view data
+  def get_tree_data
+    # Get teams led by current user
+    led_teams = User.current.led_teams
+    return render json: { error: 'Unauthorized' }, status: 403 unless led_teams.any?
+    
+    # Get excluded user IDs
+    excluded_ids = TaTeamSetting.excluded_user_ids
+    
+    # Date range from params or use defaults
+    from_date = params[:from] ? Date.parse(params[:from]) : Date.today - 7.days
+    to_date = params[:to] ? Date.parse(params[:to]) : Date.today
+    
+    # Build tree structure
+    tree_nodes = []
+    
+    led_teams.each do |team|
+      # Get active members for this team
+      memberships = TaTeamMembership.where(team: team)
+                                   .where('end_date IS NULL OR end_date >= ?', from_date)
+                                   .includes(:user)
+      
+      member_ids = memberships.map(&:user_id) - excluded_ids
+      
+      # Build team node
+      team_node = {
+        id: "team_#{team.id}",
+        text: team.name,
+        icon: "icon icon-group",
+        state: { opened: true },
+        children: []
+      }
+      
+      # Add members to team node
+      memberships.each do |membership|
+        next if excluded_ids.include?(membership.user_id)
+        
+        user = membership.user
+        
+        # Get projects with logged time in date range
+        projects = TimeEntry.joins(:project)
+                           .where(user_id: user.id, spent_on: from_date..to_date)
+                           .where(projects: { status: Project::STATUS_ACTIVE })
+                           .select('DISTINCT projects.id, projects.name')
+                           .order('projects.name')
+        
+        project_list = projects.map(&:name).join(', ')
+        project_text = project_list.present? ? "Projects: #{project_list}" : "No projects logged"
+        
+        # Member node
+        member_node = {
+          id: "member_#{user.id}",
+          text: user.name,
+          icon: "icon icon-user",
+          state: { opened: true },
+          data: { user_id: user.id },
+          children: [
+            {
+              id: "projects_#{user.id}",
+              text: project_text,
+              icon: "icon icon-projects",
+              type: "projects"
+            }
+          ]
+        }
+        
+        team_node[:children] << member_node
+      end
+      
+      tree_nodes << team_node
+    end
+    
+    render json: tree_nodes
   end
 
   private
