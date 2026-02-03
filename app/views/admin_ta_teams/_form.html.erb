@@ -22,61 +22,148 @@
   </p>
 
   <p>
-    <%= f.label :personal_project_url, 'Personal Projects Parent URL' %>
-    <%= f.text_field :personal_project_url, size: 60, placeholder: 'http://0.0.0.0:3000/projects/iot-team' %>
-    <button type="button" id="validate-url-btn" class="button" style="margin-left: 10px;">Validate URL</button>
-    <span id="url-validation-result" style="margin-left: 10px;"></span>
+    <%= f.label :personal_project_urls, 'Personal Projects Parent URLs' %>
+    <div id="personal-project-urls-container">
+      <% urls = @team.parse_personal_project_urls %>
+      <% if urls.empty? %>
+        <div class="url-input-row" data-index="0">
+          <input type="text" name="ta_team[personal_project_urls][]" 
+                 class="url-input" size="60" 
+                 placeholder="http://0.0.0.0:3000/projects/iot-team" />
+          <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
+          <button type="button" class="remove-url-btn button" style="margin-left: 5px; display: none;">Remove</button>
+          <span class="url-validation-result" style="margin-left: 10px;"></span>
+        </div>
+      <% else %>
+        <% urls.each_with_index do |url, index| %>
+          <div class="url-input-row" data-index="<%= index %>">
+            <input type="text" name="ta_team[personal_project_urls][]" 
+                   value="<%= url %>" 
+                   class="url-input" size="60" 
+                   placeholder="http://0.0.0.0:3000/projects/iot-team" />
+            <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
+            <button type="button" class="remove-url-btn button" style="margin-left: 5px; <%= 'display: none;' if urls.length == 1 %>">Remove</button>
+            <span class="url-validation-result" style="margin-left: 10px;"></span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <button type="button" id="add-url-btn" class="button" style="margin-top: 10px;">Add Another URL</button>
     <br>
     <em class="info">
-      Enter the URL of the parent project whose sub-projects should be grouped as "Personal Projects" in the team dashboard.
-      <br>All sub-projects (including nested ones) under this project will be automatically grouped.
+      Enter URLs of parent projects whose sub-projects should be grouped as "Personal Projects" in the team dashboard.
+      <br>All sub-projects (including nested ones) under these projects will be automatically grouped.
+      <br><strong>Hierarchical Inheritance:</strong> Personal project URLs added to parent teams automatically apply to all child teams.
     </em>
   </p>
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    const validateBtn = document.getElementById('validate-url-btn');
-    const urlInput = document.getElementById('ta_team_personal_project_url');
-    const resultSpan = document.getElementById('url-validation-result');
+    const container = document.getElementById('personal-project-urls-container');
+    const addBtn = document.getElementById('add-url-btn');
+    let urlIndex = container.querySelectorAll('.url-input-row').length;
     
-    if (validateBtn && urlInput && resultSpan) {
-      validateBtn.addEventListener('click', function() {
-        const url = urlInput.value.trim();
-        
-        if (!url) {
-          resultSpan.innerHTML = '<span style="color: #999;">No URL provided</span>';
-          return;
+    // Function to update Remove button visibility
+    function updateRemoveButtons() {
+      const rows = container.querySelectorAll('.url-input-row');
+      rows.forEach(row => {
+        const removeBtn = row.querySelector('.remove-url-btn');
+        if (rows.length > 1) {
+          removeBtn.style.display = 'inline-block';
+        } else {
+          removeBtn.style.display = 'none';
         }
-        
-        // Show loading state
-        resultSpan.innerHTML = '<span style="color: #999;">Validating...</span>';
-        validateBtn.disabled = true;
-        
-        // Send AJAX request
-        fetch('<%= validate_url_admin_ta_teams_path %>', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify({ url: url })
-        })
-        .then(response => response.json())
-        .then(data => {
-          validateBtn.disabled = false;
-          if (data.valid) {
-            resultSpan.innerHTML = '<span style="color: #28a745;">✓ Valid - Project: ' + data.project_name + '</span>';
-          } else {
-            resultSpan.innerHTML = '<span style="color: #dc3545;">✗ ' + data.error + '</span>';
-          }
-        })
-        .catch(error => {
-          validateBtn.disabled = false;
-          resultSpan.innerHTML = '<span style="color: #dc3545;">✗ Validation failed</span>';
-          console.error('Validation error:', error);
-        });
       });
     }
+    
+    // Add URL button
+    if (addBtn) {
+      addBtn.addEventListener('click', function() {
+        const newRow = document.createElement('div');
+        newRow.className = 'url-input-row';
+        newRow.dataset.index = urlIndex++;
+        newRow.style.marginTop = '8px';
+        
+        newRow.innerHTML = `
+          <input type="text" name="ta_team[personal_project_urls][]" 
+                 class="url-input" size="60" 
+                 placeholder="http://0.0.0.0:3000/projects/iot-team" />
+          <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
+          <button type="button" class="remove-url-btn button" style="margin-left: 5px;">Remove</button>
+          <span class="url-validation-result" style="margin-left: 10px;"></span>
+        `;
+        
+        container.appendChild(newRow);
+        updateRemoveButtons();
+        attachValidateHandler(newRow);
+        attachRemoveHandler(newRow);
+      });
+    }
+    
+    // Validate URL handler
+    function attachValidateHandler(row) {
+      const validateBtn = row.querySelector('.validate-url-btn');
+      const urlInput = row.querySelector('.url-input');
+      const resultSpan = row.querySelector('.url-validation-result');
+      
+      if (validateBtn && urlInput && resultSpan) {
+        validateBtn.addEventListener('click', function() {
+          const url = urlInput.value.trim();
+          
+          if (!url) {
+            resultSpan.innerHTML = '<span style="color: #999;">No URL provided</span>';
+            return;
+          }
+          
+          // Show loading state
+          resultSpan.innerHTML = '<span style="color: #999;">Validating...</span>';
+          validateBtn.disabled = true;
+          
+          // Send AJAX request
+          fetch('<%= validate_url_admin_ta_teams_path %>', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ url: url })
+          })
+          .then(response => response.json())
+          .then(data => {
+            validateBtn.disabled = false;
+            if (data.valid) {
+              resultSpan.innerHTML = '<span style="color: #28a745;">✓ Valid - Project: ' + data.project_name + '</span>';
+            } else {
+              resultSpan.innerHTML = '<span style="color: #dc3545;">✗ ' + data.error + '</span>';
+            }
+          })
+          .catch(error => {
+            validateBtn.disabled = false;
+            resultSpan.innerHTML = '<span style="color: #dc3545;">✗ Validation failed</span>';
+            console.error('Validation error:', error);
+          });
+        });
+      }
+    }
+    
+    // Remove URL handler
+    function attachRemoveHandler(row) {
+      const removeBtn = row.querySelector('.remove-url-btn');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          row.remove();
+          updateRemoveButtons();
+        });
+      }
+    }
+    
+    // Attach handlers to existing rows
+    container.querySelectorAll('.url-input-row').forEach(row => {
+      attachValidateHandler(row);
+      attachRemoveHandler(row);
+    });
+    
+    updateRemoveButtons();
   });
 </script>

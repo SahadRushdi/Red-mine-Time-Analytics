@@ -24,10 +24,13 @@ class TaTeam < ActiveRecord::Base
   validates :name, presence: true, uniqueness: true, length: { maximum: 255 }
   validate :cannot_be_own_parent
   validate :cannot_create_circular_hierarchy
-  validate :validate_personal_project_url
+  validate :validate_personal_project_urls
 
   # Safe attributes for mass assignment
-  safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_url'
+  safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_urls'
+  
+  # Serialize personal_project_urls as JSON array
+  serialize :personal_project_urls, JSON
 
   # Scopes
   scope :root_teams, -> { where(parent_team_id: nil) }
@@ -123,24 +126,69 @@ class TaTeam < ActiveRecord::Base
     team_projects.where(end_date: nil).includes(:project)
   end
 
-  # Get personal project parent from URL
-  # @return [Project, nil] Parent project or nil if URL not configured
-  def personal_project_parent
-    return nil if personal_project_url.blank?
+  # Get all personal project URLs including inherited from parent teams
+  # @return [Array<String>] Array of project URLs
+  def all_personal_project_urls
+    urls = []
     
-    identifier = extract_project_identifier(personal_project_url)
-    return nil if identifier.nil?
+    # Add own URLs
+    own_urls = parse_personal_project_urls
+    urls.concat(own_urls) if own_urls.any?
     
-    Project.find_by(identifier: identifier, status: Project::STATUS_ACTIVE)
+    # Add parent team URLs (hierarchical inheritance)
+    current_parent = parent_team
+    while current_parent
+      parent_urls = current_parent.parse_personal_project_urls
+      urls.concat(parent_urls) if parent_urls.any?
+      current_parent = current_parent.parent_team
+    end
+    
+    urls.uniq
+  end
+  
+  # Parse personal_project_urls from JSON
+  # @return [Array<String>] Array of URLs
+  def parse_personal_project_urls
+    return [] if personal_project_urls.blank?
+    
+    if personal_project_urls.is_a?(String)
+      begin
+        JSON.parse(personal_project_urls)
+      rescue JSON::ParserError
+        []
+      end
+    elsif personal_project_urls.is_a?(Array)
+      personal_project_urls
+    else
+      []
+    end
   end
 
-  # Get all personal project IDs (parent + all descendants)
+  # Get all personal project parents from URLs (including inherited)
+  # @return [Array<Project>] Array of parent projects
+  def personal_project_parents
+    urls = all_personal_project_urls
+    return [] if urls.empty?
+    
+    urls.map do |url|
+      identifier = extract_project_identifier(url)
+      next if identifier.nil?
+      Project.find_by(identifier: identifier, status: Project::STATUS_ACTIVE)
+    end.compact
+  end
+
+  # Get all personal project IDs (all parents + all descendants, including inherited)
   # @return [Array<Integer>] Array of project IDs
   def personal_project_ids
-    parent = personal_project_parent
-    return [] if parent.nil?
+    parents = personal_project_parents
+    return [] if parents.empty?
     
-    parent.self_and_descendants.pluck(:id)
+    project_ids = []
+    parents.each do |parent|
+      project_ids.concat(parent.self_and_descendants.pluck(:id))
+    end
+    
+    project_ids.uniq
   end
 
   # Check if a project is a personal project
@@ -186,19 +234,26 @@ class TaTeam < ActiveRecord::Base
     end
   end
 
-  # Validation: Validate personal project URL
-  def validate_personal_project_url
-    return if personal_project_url.blank?
+  # Validation: Validate personal project URLs
+  def validate_personal_project_urls
+    return if personal_project_urls.blank?
     
-    identifier = extract_project_identifier(personal_project_url)
-    if identifier.nil?
-      errors.add(:personal_project_url, "invalid format. Expected format: http://host/projects/project-identifier")
-      return
-    end
+    urls = parse_personal_project_urls
+    return if urls.empty?
     
-    project = Project.find_by(identifier: identifier)
-    if project.nil?
-      errors.add(:personal_project_url, "project not found or inactive")
+    urls.each_with_index do |url, index|
+      next if url.blank?
+      
+      identifier = extract_project_identifier(url)
+      if identifier.nil?
+        errors.add(:personal_project_urls, "URL #{index + 1}: invalid format. Expected format: http://host/projects/project-identifier")
+        next
+      end
+      
+      project = Project.find_by(identifier: identifier)
+      if project.nil?
+        errors.add(:personal_project_urls, "URL #{index + 1}: project not found or inactive")
+      end
     end
   end
 end

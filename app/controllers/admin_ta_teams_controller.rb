@@ -24,7 +24,14 @@ class AdminTaTeamsController < ApplicationController
 
   def create
     @team = TaTeam.new
-    @team.safe_attributes = params[:ta_team]
+    
+    # Handle personal_project_urls array
+    team_params = params[:ta_team].dup
+    if team_params[:personal_project_urls].is_a?(Array)
+      team_params[:personal_project_urls] = team_params[:personal_project_urls].reject(&:blank?).to_json
+    end
+    
+    @team.safe_attributes = team_params
 
     if @team.save
       flash[:notice] = l(:notice_successful_create)
@@ -40,7 +47,13 @@ class AdminTaTeamsController < ApplicationController
   end
 
   def update
-    @team.safe_attributes = params[:ta_team]
+    # Handle personal_project_urls array
+    team_params = params[:ta_team].dup
+    if team_params[:personal_project_urls].is_a?(Array)
+      team_params[:personal_project_urls] = team_params[:personal_project_urls].reject(&:blank?).to_json
+    end
+    
+    @team.safe_attributes = team_params
 
     if @team.save
       flash[:notice] = l(:notice_successful_update)
