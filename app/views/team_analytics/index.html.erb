@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
 
+<!-- Material Icons from Google Fonts -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
 <style>
   /* Tree view slide-out panel */
   .tree-view-overlay {
@@ -82,22 +85,32 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 5px 10px;
+    padding: 5px 8px;
     color: #555;
-    font-size: 18px;
+    font-size: 22px;
     transition: color 0.2s, background-color 0.2s;
     border-radius: 3px;
     vertical-align: middle;
+    text-decoration: none;
+    outline: none;
+    line-height: 1;
   }
   
   .tree-view-toggle-btn:hover {
     background-color: #f0f0f0;
     color: #169;
+    text-decoration: none;
   }
   
-  .tree-view-toggle-btn .tree-icon {
-    font-size: 20px;
-    font-weight: bold;
+  .tree-view-toggle-btn:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  
+  .tree-view-toggle-btn .material-symbols-outlined {
+    font-size: 24px;
+    vertical-align: middle;
+    display: block;
   }
   
   /* jsTree customization */
@@ -345,7 +358,7 @@
   <h2>
     <%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %>
     <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
-      <span class="tree-icon">☰</span>
+      <span class="material-symbols-outlined">account_tree</span>
     </button>
   </h2>
   <div class="context-pills-bar">
