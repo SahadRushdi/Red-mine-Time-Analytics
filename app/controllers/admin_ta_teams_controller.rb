@@ -1,5 +1,6 @@
 class AdminTaTeamsController < ApplicationController
   layout 'admin'
+  menu_item :team_analytics_configuration
   self.main_menu = false
 
   before_action :require_admin
