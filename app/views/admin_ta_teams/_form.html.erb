@@ -22,21 +22,21 @@
   </p>
 
   <p>
-    <%= f.label :personal_project_urls, 'Personal Projects Parent URLs' %>
-    <div id="personal-project-urls-container">
+    <%= f.label :personal_project_urls, 'Personal Projects URLs' %>
+    <span id="personal-project-urls-container">
       <% urls = @team.parse_personal_project_urls %>
       <% if urls.empty? %>
-        <div class="url-input-row" data-index="0">
+        <span class="url-input-row" data-index="0" style="display: block; margin-bottom: 5px;">
           <input type="text" name="ta_team[personal_project_urls][]" 
                  class="url-input" size="60" 
                  placeholder="http://0.0.0.0:3000/projects/iot-team" />
           <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
           <button type="button" class="remove-url-btn button" style="margin-left: 5px; display: none;">Remove</button>
           <span class="url-validation-result" style="margin-left: 10px;"></span>
-        </div>
+        </span>
       <% else %>
         <% urls.each_with_index do |url, index| %>
-          <div class="url-input-row" data-index="<%= index %>">
+          <span class="url-input-row" data-index="<%= index %>" style="display: block; margin-bottom: 5px;">
             <input type="text" name="ta_team[personal_project_urls][]" 
                    value="<%= url %>" 
                    class="url-input" size="60" 
@@ -44,13 +44,12 @@
             <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
             <button type="button" class="remove-url-btn button" style="margin-left: 5px; <%= 'display: none;' if urls.length == 1 %>">Remove</button>
             <span class="url-validation-result" style="margin-left: 10px;"></span>
-          </div>
+          </span>
         <% end %>
       <% end %>
-    </div>
-    <button type="button" id="add-url-btn" class="button" style="margin-top: 10px;">Add Another URL</button>
-    <br>
-    <em class="info">
+    </span>
+    <button type="button" id="add-url-btn" class="button" style="margin-top: 10px; display: block;">Add Another URL</button>
+    <em class="info" style="display: block;">
       Enter URLs of parent projects whose sub-projects should be grouped as "Personal Projects" in the team dashboard.
       <br>All sub-projects (including nested ones) under these projects will be automatically grouped.
       <br><strong>Hierarchical Inheritance:</strong> Personal project URLs added to parent teams automatically apply to all child teams.
@@ -80,10 +79,11 @@
     // Add URL button
     if (addBtn) {
       addBtn.addEventListener('click', function() {
-        const newRow = document.createElement('div');
+        const newRow = document.createElement('span');
         newRow.className = 'url-input-row';
         newRow.dataset.index = urlIndex++;
-        newRow.style.marginTop = '8px';
+        newRow.style.display = 'block';
+        newRow.style.marginBottom = '5px';
         
         newRow.innerHTML = `
           <input type="text" name="ta_team[personal_project_urls][]" 
