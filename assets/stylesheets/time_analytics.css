@@ -271,14 +271,14 @@ fieldset.box {
 .analytics-section .time-overview-box,
 .analytics-section .visualization-section {
   margin: 0 !important;
-  padding: 15px !important;
+  padding: 10px !important;
   box-sizing: border-box !important;
   align-self: stretch !important;
 }
 
 /* Reset ALL h3 margins inside analytics boxes */
 .analytics-section h3 {
-  margin: 0 0 15px 0 !important;
+  margin: 0 0 10px 0 !important;
   padding: 0 !important;
 }
 
@@ -293,7 +293,7 @@ fieldset.box {
 
 .analytics-section .stats-summary h3 {
   text-align: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .analytics-section .time-overview-box {
@@ -319,7 +319,7 @@ fieldset.box {
 .analytics-section .time-overview-table th,
 .analytics-section .time-overview-table td {
   text-align: center;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-bottom: 1px solid #eee;
 }
 
@@ -343,7 +343,7 @@ fieldset.box {
 
 .analytics-section .time-overview-box .pagination-wrapper {
   text-align: center;
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 11px;
 }
 
@@ -361,13 +361,13 @@ fieldset.box {
 .summary-grid {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
   margin: 0;
 }
 
 .summary-item {
   text-align: center;
-  padding: 10px 8px;
+  padding: 8px 6px;
   background-color: #f5f5f5;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -399,8 +399,8 @@ fieldset.box {
 
 .chart-wrapper {
   position: relative;
-  height: 320px;
-  margin: 10px 0 5px;
+  height: 280px;
+  margin: 8px 0 5px;
   width: 100%;
   min-width: 0;
 }
