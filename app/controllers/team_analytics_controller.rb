@@ -125,8 +125,8 @@ class TeamAnalyticsController < ApplicationController
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
       
-      # For pagination, use periods count
-      @entry_count = @time_periods.count
+      # For pagination, use time overview count to include periods with 0 hours
+      @entry_count = @time_overview_data.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Track activity view state for chart generation
@@ -148,8 +148,8 @@ class TeamAnalyticsController < ApplicationController
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
       
-      # For pagination, use periods count
-      @entry_count = @time_periods.count
+      # For pagination, use time overview count to include periods with 0 hours
+      @entry_count = @time_overview_data.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Track project view state for chart generation
@@ -171,8 +171,8 @@ class TeamAnalyticsController < ApplicationController
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
       
-      # For pagination, use periods count
-      @entry_count = @time_periods.count
+      # For pagination, use time overview count to include periods with 0 hours
+      @entry_count = @time_overview_data.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Track member view state for chart generation
