@@ -646,6 +646,9 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
     chart_data = {
       labels: formatted_labels,
       datasets: [{
@@ -653,7 +656,8 @@ class TimeAnalyticsController < ApplicationController
         data: sorted_data.map { |_, value| value },
         backgroundColor: generate_colors(sorted_data.size),
         borderWidth: 1,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
+        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
+        formattedHours: formatted_hours  # Add formatted hours for value display
       }]
     }
 
@@ -665,10 +669,7 @@ class TimeAnalyticsController < ApplicationController
           display: false
         },
         tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && view_mode != 'activity') ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
+          callbacks: {}
         }
       },
       scales: {
@@ -729,6 +730,9 @@ class TimeAnalyticsController < ApplicationController
       end
     end
     
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
     chart_data = {
       labels: formatted_labels,
       datasets: [{
@@ -741,7 +745,8 @@ class TimeAnalyticsController < ApplicationController
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
+        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
+        formattedHours: formatted_hours  # Add formatted hours for value display
       }]
     }
 
@@ -753,10 +758,7 @@ class TimeAnalyticsController < ApplicationController
           display: false
         },
         tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && view_mode != 'activity' && view_mode != 'project') ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
+          callbacks: {}
         }
       },
       scales: {

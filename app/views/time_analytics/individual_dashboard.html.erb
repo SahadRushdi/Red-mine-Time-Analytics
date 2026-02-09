@@ -940,6 +940,18 @@ function initChart() {
         return tooltipLabels ? tooltipLabels[index] : context[0].label;
       };
     }
+    
+    // Add tooltip label callback for bar and line charts to show formatted hours
+    if (config.type === 'bar' || config.type === 'line') {
+      if (!config.options.plugins) config.options.plugins = {};
+      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
+      
+      config.options.plugins.tooltip.callbacks.label = function(context) {
+        var formattedHours = context.dataset.formattedHours;
+        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+      };
+    }
 
     // Dynamically add tooltip callbacks on the client-side for pie charts
     if (config.type === 'pie' && config.options.plugins && config.options.plugins.tooltip) {
@@ -1143,6 +1155,15 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Ensure formattedHours exists for tooltips
+    if (!newConfig.data.datasets[0].formattedHours) {
+      var formattedHoursArray = [];
+      for (var i = 0; i < newConfig.data.datasets[0].data.length; i++) {
+        formattedHoursArray.push(formatHours(newConfig.data.datasets[0].data[i]));
+      }
+      newConfig.data.datasets[0].formattedHours = formattedHoursArray;
+    }
+    
     // Get localized grouping label from data attribute
     var grouping = getGroupingLabel();
     
@@ -1153,6 +1174,14 @@ function transformChartType(originalConfig, newType) {
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var formattedHours = context.dataset.formattedHours;
+              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+            }
+          }
         }
       },
       scales: {
@@ -1206,6 +1235,15 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Ensure formattedHours exists for tooltips
+    if (!newConfig.data.datasets[0].formattedHours) {
+      var formattedHoursArray = [];
+      for (var i = 0; i < newConfig.data.datasets[0].data.length; i++) {
+        formattedHoursArray.push(formatHours(newConfig.data.datasets[0].data[i]));
+      }
+      newConfig.data.datasets[0].formattedHours = formattedHoursArray;
+    }
+    
     // Get localized grouping label from data attribute
     var grouping = getGroupingLabel();
     
@@ -1216,6 +1254,14 @@ function transformChartType(originalConfig, newType) {
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var formattedHours = context.dataset.formattedHours;
+              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+            }
+          }
         }
       },
       scales: {
