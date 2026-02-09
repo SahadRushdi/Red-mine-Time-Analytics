@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'sri_lankan_holidays'
+require_relative 'holidays'
 
 module RedmineTimeAnalytics
   class WorkingDaysCalculator
@@ -8,7 +8,7 @@ module RedmineTimeAnalytics
 
     class << self
       # Calculate the number of working days between two dates
-      # Excludes weekends (from Redmine settings) and Sri Lankan holidays
+      # Excludes weekends (from Redmine settings) and custom holidays
       def working_days_count(from_date, to_date)
         return 0 if from_date > to_date
         
@@ -17,7 +17,7 @@ module RedmineTimeAnalytics
         # Count weekend days using Redmine's logic
         weekend_days = count_weekend_days(from_date, to_date)
         
-        # Count Sri Lankan holidays (excluding those that fall on weekends)
+        # Count custom holidays (excluding those that fall on weekends)
         holidays = count_working_day_holidays(from_date, to_date)
         
         # Calculate working days
@@ -29,7 +29,7 @@ module RedmineTimeAnalytics
 
       # Check if a date is a working day
       def working_day?(date)
-        !weekend?(date) && !SriLankanHolidays.holiday?(date)
+        !weekend?(date) && !Holidays.holiday?(date)
       end
 
       # Check if a date is a weekend
@@ -54,7 +54,7 @@ module RedmineTimeAnalytics
       def count_working_day_holidays(from_date, to_date)
         return 0 if from_date > to_date
         
-        holidays = SriLankanHolidays.holidays_between(from_date, to_date)
+        holidays = Holidays.holidays_between(from_date, to_date)
         
         # Count only holidays that don't fall on weekends
         holidays.count { |holiday| !weekend?(holiday) }
