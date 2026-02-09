@@ -22,5 +22,9 @@ RedmineApp::Application.routes.draw do
     get :index, on: :collection
   end
   
-  resources :custom_holidays
+  resources :custom_holidays do
+    collection do
+      post :import_csv
+    end
+  end
 end

@@ -9,11 +9,12 @@ class CustomHolidaysController < ApplicationController
   before_action :find_holiday, only: [:edit, :update, :destroy]
 
   def index
-    @holiday_count = CustomHoliday.count
-    @holiday_pages = Paginator.new @holiday_count, 25, params['page']
+    # Fetch all holidays for year grouping
     @holidays = CustomHoliday.order(start_date: :desc)
-                              .limit(@holiday_pages.per_page)
-                              .offset(@holiday_pages.offset)
+    @holiday_count = @holidays.count
+    
+    # Keep pagination info for display
+    @holiday_pages = Paginator.new @holiday_count, 25, params['page']
   end
 
   def new
@@ -45,6 +46,103 @@ class CustomHolidaysController < ApplicationController
   def destroy
     @holiday.destroy
     flash[:notice] = 'Holiday was successfully deleted.'
+    redirect_to custom_holidays_path
+  end
+
+  def import_csv
+    unless params[:csv_file]
+      flash[:error] = 'Please select a CSV file to upload.'
+      redirect_to custom_holidays_path
+      return
+    end
+
+    file = params[:csv_file]
+    
+    unless file.original_filename.end_with?('.csv')
+      flash[:error] = 'Invalid file format. Please upload a CSV file.'
+      redirect_to custom_holidays_path
+      return
+    end
+
+    require 'csv'
+    
+    imported_count = 0
+    errors = []
+    line_number = 1
+
+    begin
+      CSV.foreach(file.path, headers: true, skip_blanks: true) do |row|
+        line_number += 1
+        
+        # Skip empty rows
+        next if row.to_h.values.compact.empty?
+        
+        name = row['Name']&.strip
+        start_date_str = row['Start Date']&.strip
+        end_date_str = row['End Date']&.strip
+        description = row['Description']&.strip
+
+        # Validate required fields
+        if name.blank?
+          errors << "Line #{line_number}: Name is required"
+          next
+        end
+
+        if start_date_str.blank?
+          errors << "Line #{line_number}: Start date is required"
+          next
+        end
+
+        # Parse dates
+        begin
+          start_date = Date.parse(start_date_str)
+        rescue ArgumentError
+          errors << "Line #{line_number}: Invalid start date format '#{start_date_str}'"
+          next
+        end
+
+        # If end_date is empty, use start_date (single day holiday)
+        end_date = if end_date_str.blank?
+                     start_date
+                   else
+                     begin
+                       Date.parse(end_date_str)
+                     rescue ArgumentError
+                       errors << "Line #{line_number}: Invalid end date format '#{end_date_str}'"
+                       next
+                     end
+                   end
+
+        # Create holiday
+        holiday = CustomHoliday.new(
+          name: name,
+          start_date: start_date,
+          end_date: end_date,
+          description: description,
+          active: true
+        )
+
+        if holiday.save
+          imported_count += 1
+        else
+          errors << "Line #{line_number}: #{holiday.errors.full_messages.join(', ')}"
+        end
+      end
+
+      if imported_count > 0
+        flash[:notice] = "Successfully imported #{imported_count} holiday(s)."
+      end
+
+      if errors.any?
+        flash[:warning] = "Import completed with #{errors.count} error(s): #{errors.first(5).join('; ')}"
+      end
+
+    rescue CSV::MalformedCSVError => e
+      flash[:error] = "Invalid CSV file: #{e.message}"
+    rescue => e
+      flash[:error] = "An error occurred: #{e.message}"
+    end
+
     redirect_to custom_holidays_path
   end
 
