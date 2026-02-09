@@ -334,6 +334,19 @@ module TimeAnalyticsHelper
     end
   end
 
+  def period_count_label_for_grouping(grouping)
+    case grouping
+    when 'weekly'
+      l(:label_week_count)
+    when 'monthly'
+      l(:label_month_count)
+    when 'yearly'
+      l(:label_year_count)
+    else
+      l(:label_working_days)
+    end
+  end
+
   def grouping_label(grouping)
     case grouping
     when 'daily'

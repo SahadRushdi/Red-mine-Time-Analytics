@@ -230,6 +230,10 @@
         <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
         <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
       </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= @period_count %></div>
+        <div class="summary-label"><%= period_count_label_for_grouping(@grouping) %></div>
+      </div>
     </div>
   </div>
 

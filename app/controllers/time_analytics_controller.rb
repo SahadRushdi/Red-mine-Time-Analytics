@@ -42,18 +42,22 @@ class TimeAnalyticsController < ApplicationController
       @avg_hours_per_period = calculate_avg_hours_per_week
       @max_period_hours = calculate_max_weekly_hours
       @min_period_hours = calculate_min_weekly_hours
+      @period_count = calculate_week_count
     when 'monthly'
       @avg_hours_per_period = calculate_avg_hours_per_month
       @max_period_hours = calculate_max_monthly_hours
       @min_period_hours = calculate_min_monthly_hours
+      @period_count = calculate_month_count
     when 'yearly'
       @avg_hours_per_period = calculate_avg_hours_per_year
       @max_period_hours = calculate_max_yearly_hours
       @min_period_hours = calculate_min_yearly_hours
+      @period_count = calculate_year_count
     else # daily
       @avg_hours_per_period = calculate_avg_hours_per_day
       @max_period_hours = calculate_max_daily_hours
       @min_period_hours = calculate_min_daily_hours
+      @period_count = calculate_working_days_count
     end
 
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
@@ -412,6 +416,28 @@ class TimeAnalyticsController < ApplicationController
       yearly_data[year_start] += entry.hours
     end
     yearly_data
+  end
+
+  # Period count calculations for summary display
+  def calculate_working_days_count
+    RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+  end
+
+  def calculate_week_count
+    weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
+    weekly_totals.count
+  end
+
+  def calculate_month_count
+    monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
+    monthly_totals.count
+  end
+
+  def calculate_year_count
+    yearly_totals = get_yearly_totals(@time_entries)
+    yearly_totals.count
   end
 
   # Inline Chart Helper methods
