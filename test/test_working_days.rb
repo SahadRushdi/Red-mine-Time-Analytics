@@ -22,11 +22,11 @@ module Redmine
 end
 
 # Load our modules
-require_relative '../lib/redmine_time_analytics/sri_lankan_holidays'
+require_relative '../lib/redmine_time_analytics/holidays'
 require_relative '../lib/redmine_time_analytics/working_days_calculator'
 
 puts "=" * 60
-puts "Sri Lankan Working Days Calculator - Test"
+puts "Working Days Calculator - Test"
 puts "=" * 60
 
 # Test 1: Simple week test
@@ -38,23 +38,22 @@ total_days = (to_date - from_date).to_i + 1
 puts "Total days: #{total_days}"
 puts "Working days: #{working_days}"
 
-# Test 2: Check if Duruthu Poya (Jan 13, 2025) is detected
-puts "\nTest 2: Check Duruthu Poya (Jan 13, 2025)"
-poya_date = Date.new(2025, 1, 13)
-is_holiday = RedmineTimeAnalytics::SriLankanHolidays.holiday?(poya_date)
-puts "Date: #{poya_date}"
+# Test 2: Check if a date is a holiday (from database)
+puts "\nTest 2: Check Holiday from Database"
+test_date = Date.new(2025, 1, 13)
+is_holiday = RedmineTimeAnalytics::Holidays.holiday?(test_date)
+puts "Date: #{test_date}"
 puts "Is Holiday: #{is_holiday}"
-puts "Expected: true"
+puts "Note: This checks database, not hardcoded holidays"
 
-# Test 3: Independence Day (Feb 4, 2025)
-puts "\nTest 3: Check Independence Day (Feb 4, 2025)"
-independence_day = Date.new(2025, 2, 4)
-is_holiday = RedmineTimeAnalytics::SriLankanHolidays.holiday?(independence_day)
-is_working = RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(independence_day)
-puts "Date: #{independence_day} (#{independence_day.strftime('%A')})"
+# Test 3: Check a specific date
+puts "\nTest 3: Check Another Date"
+test_date2 = Date.new(2025, 2, 4)
+is_holiday = RedmineTimeAnalytics::Holidays.holiday?(test_date2)
+is_working = RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(test_date2)
+puts "Date: #{test_date2} (#{test_date2.strftime('%A')})"
 puts "Is Holiday: #{is_holiday}"
 puts "Is Working Day: #{is_working}"
-puts "Expected: Holiday=true, Working Day=false"
 
 # Test 4: Average hours calculation simulation
 puts "\nTest 4: Average Hours Calculation Simulation"
