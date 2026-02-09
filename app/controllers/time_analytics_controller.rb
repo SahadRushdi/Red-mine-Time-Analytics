@@ -569,7 +569,8 @@ class TimeAnalyticsController < ApplicationController
     labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
       hours = sorted_data[index][1]
       percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      "#{label} (#{percentage}%, #{hours.round(1)}h)"
+      formatted_hours = helpers.format_hours(hours)
+      "#{label} (#{percentage}%, #{formatted_hours})"
     end
     
     chart_data = {
@@ -824,14 +825,14 @@ class TimeAnalyticsController < ApplicationController
           entry.activity&.name || '-',
           entry.issue ? "##{entry.issue.id}: #{entry.issue.subject}" : '-',
           entry.comments || '-',
-          sprintf('%.2f', entry.hours)
+          helpers.format_hours(entry.hours)
         ]
       end
       
       # Add summary row
       total_hours = time_entries.map { |entry| entry.hours }.sum
       csv << []
-      csv << ['TOTAL', '', '', '', '', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', '', '', '', '', helpers.format_hours(total_hours)]
     end
   end
 
@@ -850,14 +851,14 @@ class TimeAnalyticsController < ApplicationController
       sorted_data.each do |activity_name, hours|
         csv << [
           activity_name || 'No Activity',
-          sprintf('%.2f', hours)
+          helpers.format_hours(hours)
         ]
       end
       
       # Add summary row
       total_hours = grouped_data.values.sum
       csv << []
-      csv << ['TOTAL', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', helpers.format_hours(total_hours)]
     end
   end
 
@@ -876,14 +877,14 @@ class TimeAnalyticsController < ApplicationController
       sorted_data.each do |project_name, hours|
         csv << [
           project_name || 'No Project',
-          sprintf('%.2f', hours)
+          helpers.format_hours(hours)
         ]
       end
       
       # Add summary row
       total_hours = grouped_data.values.sum
       csv << []
-      csv << ['TOTAL', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', helpers.format_hours(total_hours)]
     end
   end
 

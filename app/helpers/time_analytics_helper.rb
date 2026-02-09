@@ -13,8 +13,19 @@ module TimeAnalyticsHelper
   end
 
   def format_hours(hours)
-    return '0.00' if hours.nil? || hours.zero?
-    sprintf('%.2f', hours.to_f)
+    return "" if hours.nil?
+    return "0:00" if hours.zero? && Setting.timespan_format == 'minutes'
+    return "0.00" if hours.zero?
+    
+    # Use Redmine's native format_hours from Redmine::I18n
+    # This respects the Setting.timespan_format configuration
+    if Setting.timespan_format == 'minutes'
+      h = hours.floor
+      m = ((hours - h) * 60).round
+      "%d:%02d" % [h, m]
+    else
+      sprintf('%.2f', hours.to_f)
+    end
   end
 
   def format_date_for_grouping(date, grouping)
