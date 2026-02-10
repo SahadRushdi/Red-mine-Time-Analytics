@@ -236,6 +236,10 @@
         <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
         <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
       </div>
+      <div class="summary-item">
+        <div class="summary-value"><%= @period_count %></div>
+        <div class="summary-label"><%= period_count_label_for_grouping(@grouping) %></div>
+      </div>
     </div>
   </div>
 
@@ -846,6 +850,24 @@
 // Global chart instance
 var timeAnalyticsChart = null;
 
+// Format hours based on Redmine's timespan format setting
+// This is passed from the server via data attribute
+var timespanFormat = '<%= Setting.timespan_format %>';
+
+function formatHours(hours) {
+  if (!hours || hours === 0) {
+    return timespanFormat === 'minutes' ? '0:00' : '0.00';
+  }
+  
+  if (timespanFormat === 'minutes') {
+    var h = Math.floor(hours);
+    var m = Math.round((hours - h) * 60);
+    return h + ':' + (m < 10 ? '0' : '') + m;
+  } else {
+    return hours.toFixed(2);
+  }
+}
+
 // Get localized grouping label from chart element data attribute
 function getGroupingLabel() {
   var chartElement = document.getElementById('time-chart');
@@ -890,7 +912,6 @@ function toggleVisualization() {
 function initChart() {
   var chartElement = document.getElementById('time-chart');
   if (!chartElement) {
-    console.log('Chart element not found');
     return;
   }
 
@@ -903,7 +924,6 @@ function initChart() {
   try {
     var chartData = chartElement.getAttribute('data-chart');
     if (!chartData || chartData === 'null' || chartData === '') {
-      console.log('No chart data available');
       chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No data available for chart</p>';
       return;
     }
@@ -927,6 +947,18 @@ function initChart() {
         var index = context[0].dataIndex;
         var tooltipLabels = context[0].dataset.tooltipLabels;
         return tooltipLabels ? tooltipLabels[index] : context[0].label;
+      };
+    }
+    
+    // Add tooltip label callback for bar and line charts to show formatted hours
+    if (config.type === 'bar' || config.type === 'line') {
+      if (!config.options.plugins) config.options.plugins = {};
+      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
+      
+      config.options.plugins.tooltip.callbacks.label = function(context) {
+        var formattedHours = context.dataset.formattedHours;
+        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
       };
     }
 
@@ -954,9 +986,7 @@ function initChart() {
       };
     }
     
-    console.log('Creating chart with config:', config);
     timeAnalyticsChart = new Chart(chartElement, config);
-    console.log('Chart created successfully');
     
     // Enhance legend for pie charts
     if (config.type === 'pie') {
@@ -968,8 +998,7 @@ function initChart() {
     }
     
   } catch (error) {
-    console.error('Error creating chart:', error);
-    chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart: ' + error.message + '</p>';
+    chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart</p>';
   }
 }
 
@@ -977,37 +1006,31 @@ function updateChart() {
   var chartTypeDropdown = document.getElementById('chart_type_select');
   
   if (!chartTypeDropdown) {
-    console.error('Chart type dropdown not found!');
     return;
   }
   
   var chartType = chartTypeDropdown.value;
-  console.log('Switching to chart type:', chartType);
   
   // Update hidden field with new chart type
   var hiddenChartTypeField = document.getElementById('chart_type_hidden');
   if (hiddenChartTypeField) {
     hiddenChartTypeField.value = chartType;
-    console.log('Updated hidden chart type field to:', chartType);
   }
   
   // Get the current chart element and its data
   var chartElement = document.getElementById('time-chart');
   if (!chartElement) {
-    console.error('Chart element not found');
     return;
   }
   
   var currentChartData = chartElement.getAttribute('data-chart');
   if (!currentChartData) {
-    console.error('No chart data found');
     return;
   }
   
   try {
     // Parse the current chart configuration
     var chartConfig = JSON.parse(currentChartData);
-    console.log('Current chart config:', chartConfig);
     
     // Transform the chart type while keeping the same data
     var newChartConfig = transformChartType(chartConfig, chartType);
@@ -1018,19 +1041,14 @@ function updateChart() {
     // Reinitialize the chart
     initChart();
     
-    console.log('Chart successfully switched to:', chartType);
-    
   } catch (error) {
-    console.error('Error transforming chart:', error);
+    // Silent fail - chart remains as is
   }
 }
 
 function transformChartType(originalConfig, newType) {
   // Create a new config based on the original data but with different chart type
   var newConfig = JSON.parse(JSON.stringify(originalConfig)); // Deep copy
-  
-  console.log('Transforming chart to type:', newType);
-  console.log('Original labels:', newConfig.data.labels);
   
   // Change the chart type
   newConfig.type = newType;
@@ -1051,16 +1069,15 @@ function transformChartType(originalConfig, newType) {
       for (var i = 0; i < originalLabels.length; i++) {
         var value = newConfig.data.datasets[0].data[i];
         var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-        var hours = value.toFixed(1);
+        var formattedHours = formatHours(value);
         
-        // Format: "Development (68.9%, 31.1h)"
-        var labelWithInfo = originalLabels[i] + ' (' + percentage + '%, ' + hours + 'h)';
+        // Format: "Development (68.9%, 28:25)" or "Development (68.9%, 28.42)"
+        var labelWithInfo = originalLabels[i] + ' (' + percentage + '%, ' + formattedHours + ')';
         modifiedLabels.push(labelWithInfo);
       }
       
       // Update chart labels
       newConfig.data.labels = modifiedLabels;
-      console.log('Modified labels for pie chart:', modifiedLabels);
     }
     
     // Pie chart specific configuration
@@ -1132,6 +1149,15 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Ensure formattedHours exists for tooltips
+    if (!newConfig.data.datasets[0].formattedHours) {
+      var formattedHoursArray = [];
+      for (var i = 0; i < newConfig.data.datasets[0].data.length; i++) {
+        formattedHoursArray.push(formatHours(newConfig.data.datasets[0].data[i]));
+      }
+      newConfig.data.datasets[0].formattedHours = formattedHoursArray;
+    }
+    
     // Get localized grouping label from data attribute
     var grouping = getGroupingLabel();
     
@@ -1142,6 +1168,14 @@ function transformChartType(originalConfig, newType) {
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var formattedHours = context.dataset.formattedHours;
+              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+            }
+          }
         }
       },
       scales: {
@@ -1195,6 +1229,15 @@ function transformChartType(originalConfig, newType) {
       newConfig.data.labels = restoredLabels;
     }
     
+    // Ensure formattedHours exists for tooltips
+    if (!newConfig.data.datasets[0].formattedHours) {
+      var formattedHoursArray = [];
+      for (var i = 0; i < newConfig.data.datasets[0].data.length; i++) {
+        formattedHoursArray.push(formatHours(newConfig.data.datasets[0].data[i]));
+      }
+      newConfig.data.datasets[0].formattedHours = formattedHoursArray;
+    }
+    
     // Get localized grouping label from data attribute
     var grouping = getGroupingLabel();
     
@@ -1205,6 +1248,14 @@ function transformChartType(originalConfig, newType) {
       plugins: {
         legend: {
           display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var formattedHours = context.dataset.formattedHours;
+              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+            }
+          }
         }
       },
       scales: {
@@ -1457,24 +1508,21 @@ function syncChartTypeDropdown() {
       // Update dropdown to match actual chart type
       if (chartTypeDropdown.value !== actualChartType) {
         chartTypeDropdown.value = actualChartType;
-        console.log('Synced chart type dropdown to:', actualChartType);
       }
       
       // Also update the hidden field in the form
       var hiddenChartTypeField = document.getElementById('chart_type_hidden');
       if (hiddenChartTypeField && hiddenChartTypeField.value !== actualChartType) {
         hiddenChartTypeField.value = actualChartType;
-        console.log('Updated hidden chart_type field to:', actualChartType);
       }
     }
   } catch (e) {
-    console.error('Error syncing chart type:', e);
+    // Silent fail - sync not critical
   }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing chart...');
   toggleCustomDateRange();
   restoreActivityViewState();
   restoreProjectViewState();

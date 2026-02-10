@@ -271,7 +271,7 @@ fieldset.box {
 .analytics-section .time-overview-box,
 .analytics-section .visualization-section {
   margin: 0 !important;
-  padding: 10px !important;
+  padding: 12px !important;
   box-sizing: border-box !important;
   align-self: stretch !important;
 }
@@ -306,7 +306,7 @@ fieldset.box {
 
 .analytics-section .time-overview-box h3 {
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-size: 16px;
 }
 
@@ -367,17 +367,17 @@ fieldset.box {
 
 .summary-item {
   text-align: center;
-  padding: 8px 6px;
+  padding: 6px 8px;
   background-color: #f5f5f5;
   border: 1px solid #ddd;
   border-radius: 4px;
 }
 
 .summary-value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   color: #36a2eb;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .summary-label {
@@ -399,8 +399,8 @@ fieldset.box {
 
 .chart-wrapper {
   position: relative;
-  height: 280px;
-  margin: 8px 0 5px;
+  height: 275px;
+  margin: 10px 0 5px;
   width: 100%;
   min-width: 0;
 }
@@ -713,6 +713,6 @@ fieldset.box {
   }
 
   .chart-wrapper {
-    height: 300px;
+    height: 280px;
   }
 }

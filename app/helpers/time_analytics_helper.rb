@@ -12,8 +12,19 @@ module TimeAnalyticsHelper
   end
 
   def format_hours(hours)
-    return '0.00' if hours.nil? || hours.zero?
-    sprintf('%.2f', hours.to_f)
+    return "" if hours.nil?
+    return "0:00" if hours.zero? && Setting.timespan_format == 'minutes'
+    return "0.00" if hours.zero?
+    
+    # Use Redmine's native format_hours from Redmine::I18n
+    # This respects the Setting.timespan_format configuration
+    if Setting.timespan_format == 'minutes'
+      h = hours.floor
+      m = ((hours - h) * 60).round
+      "%d:%02d" % [h, m]
+    else
+      sprintf('%.2f', hours.to_f)
+    end
   end
 
   def format_date_for_grouping(date, grouping)
@@ -69,8 +80,7 @@ module TimeAnalyticsHelper
       key.to_s
     end
   rescue => e
-    # Log error if something goes wrong
-    Rails.logger.error "Error formatting chart label for key #{key.inspect}: #{e.message}"
+    # Return key as string if formatting fails
     key.to_s
   end
 
@@ -317,6 +327,19 @@ module TimeAnalyticsHelper
       l(:label_min_yearly)
     else
       l(:label_min_daily)
+    end
+  end
+
+  def period_count_label_for_grouping(grouping)
+    case grouping
+    when 'weekly'
+      l(:label_week_count)
+    when 'monthly'
+      l(:label_month_count)
+    when 'yearly'
+      l(:label_year_count)
+    else
+      l(:label_working_days)
     end
   end
 

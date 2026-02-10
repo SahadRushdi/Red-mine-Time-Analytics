@@ -54,18 +54,22 @@ class TimeAnalyticsController < ApplicationController
       @avg_hours_per_period = calculate_avg_hours_per_week
       @max_period_hours = calculate_max_weekly_hours
       @min_period_hours = calculate_min_weekly_hours
+      @period_count = calculate_week_count
     when 'monthly'
       @avg_hours_per_period = calculate_avg_hours_per_month
       @max_period_hours = calculate_max_monthly_hours
       @min_period_hours = calculate_min_monthly_hours
+      @period_count = calculate_month_count
     when 'yearly'
       @avg_hours_per_period = calculate_avg_hours_per_year
       @max_period_hours = calculate_max_yearly_hours
       @min_period_hours = calculate_min_yearly_hours
+      @period_count = calculate_year_count
     else # daily
       @avg_hours_per_period = calculate_avg_hours_per_day
       @max_period_hours = calculate_max_daily_hours
       @min_period_hours = calculate_min_daily_hours
+      @period_count = calculate_working_days_count
     end
 
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
@@ -167,8 +171,6 @@ class TimeAnalyticsController < ApplicationController
     # Track activity/project view state (summary vs detailed) for chart generation
     @activity_view_state = params[:activity_view_state] || 'detailed'
     @project_view_state = params[:project_view_state] || 'detailed'
-    
-    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}, project_view_state: #{@project_view_state}"
     
     if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
@@ -433,6 +435,28 @@ class TimeAnalyticsController < ApplicationController
     yearly_data
   end
 
+  # Period count calculations for summary display
+  def calculate_working_days_count
+    RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+  end
+
+  def calculate_week_count
+    weekly_totals = get_weekly_totals(@time_entries)
+    weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
+    weekly_totals.count
+  end
+
+  def calculate_month_count
+    monthly_totals = get_monthly_totals(@time_entries)
+    monthly_totals = fill_missing_months(monthly_totals, @from, @to)
+    monthly_totals.count
+  end
+
+  def calculate_year_count
+    yearly_totals = get_yearly_totals(@time_entries)
+    yearly_totals.count
+  end
+
   # Inline Chart Helper methods
   def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed')
     # Group data by the specified view mode and grouping
@@ -588,7 +612,8 @@ class TimeAnalyticsController < ApplicationController
     labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
       hours = sorted_data[index][1]
       percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      "#{label} (#{percentage}%, #{hours.round(1)}h)"
+      formatted_hours = helpers.format_hours(hours)
+      "#{label} (#{percentage}%, #{formatted_hours})"
     end
     
     chart_data = {
@@ -664,6 +689,9 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
     chart_data = {
       labels: formatted_labels,
       datasets: [{
@@ -671,7 +699,8 @@ class TimeAnalyticsController < ApplicationController
         data: sorted_data.map { |_, value| value },
         backgroundColor: generate_colors(sorted_data.size),
         borderWidth: 1,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
+        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
+        formattedHours: formatted_hours  # Add formatted hours for value display
       }]
     }
 
@@ -683,10 +712,7 @@ class TimeAnalyticsController < ApplicationController
           display: false
         },
         tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && view_mode != 'activity') ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
+          callbacks: {}
         }
       },
       scales: {
@@ -747,6 +773,9 @@ class TimeAnalyticsController < ApplicationController
       end
     end
     
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
     chart_data = {
       labels: formatted_labels,
       datasets: [{
@@ -759,7 +788,8 @@ class TimeAnalyticsController < ApplicationController
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
+        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
+        formattedHours: formatted_hours  # Add formatted hours for value display
       }]
     }
 
@@ -771,10 +801,7 @@ class TimeAnalyticsController < ApplicationController
           display: false
         },
         tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && view_mode != 'activity' && view_mode != 'project') ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
+          callbacks: {}
         }
       },
       scales: {
@@ -843,14 +870,14 @@ class TimeAnalyticsController < ApplicationController
           entry.activity&.name || '-',
           entry.issue ? "##{entry.issue.id}: #{entry.issue.subject}" : '-',
           entry.comments || '-',
-          sprintf('%.2f', entry.hours)
+          helpers.format_hours(entry.hours)
         ]
       end
       
       # Add summary row
       total_hours = time_entries.map { |entry| entry.hours }.sum
       csv << []
-      csv << ['TOTAL', '', '', '', '', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', '', '', '', '', helpers.format_hours(total_hours)]
     end
   end
 
@@ -869,14 +896,14 @@ class TimeAnalyticsController < ApplicationController
       sorted_data.each do |activity_name, hours|
         csv << [
           activity_name || 'No Activity',
-          sprintf('%.2f', hours)
+          helpers.format_hours(hours)
         ]
       end
       
       # Add summary row
       total_hours = grouped_data.values.sum
       csv << []
-      csv << ['TOTAL', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', helpers.format_hours(total_hours)]
     end
   end
 
@@ -895,20 +922,18 @@ class TimeAnalyticsController < ApplicationController
       sorted_data.each do |project_name, hours|
         csv << [
           project_name || 'No Project',
-          sprintf('%.2f', hours)
+          helpers.format_hours(hours)
         ]
       end
       
       # Add summary row
       total_hours = grouped_data.values.sum
       csv << []
-      csv << ['TOTAL', sprintf('%.2f', total_hours)]
+      csv << ['TOTAL', helpers.format_hours(total_hours)]
     end
   end
 
   def generate_activity_pivot_table(time_entries, grouping)
-    Rails.logger.info "Generating activity pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
-    
     # Get all time entries with their details
     entries_with_details = time_entries.includes(:activity).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
@@ -1031,8 +1056,6 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_table(time_entries, grouping)
-    Rails.logger.info "Generating project pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
-    
     # Get all time entries with their details
     entries_with_details = time_entries.includes(:project).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping) # Reuse same period key logic
