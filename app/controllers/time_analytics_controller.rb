@@ -555,8 +555,8 @@ class TimeAnalyticsController < ApplicationController
     is_activity_data = first_key.is_a?(String)
     
     sorted_data = if is_activity_data
-      # Sort by activity/project name
-      data_hash.sort_by { |key, _| key || 'No Activity' }
+      # Sort by hours (descending) for activity/project data
+      data_hash.sort_by { |_, value| -value }
     else
       # Sort by date for proper chronological order
       data_hash.sort_by do |key, _|
