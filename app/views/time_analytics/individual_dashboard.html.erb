@@ -214,7 +214,11 @@
   <div class="box stats-summary">
     <h3><%= l(:label_summary) %></h3>
     <div class="summary-grid">
-      <div class="summary-item">
+    <div class="summary-item">
+        <div class="summary-value"><%= @period_count %></div>
+        <div class="summary-label"><%= period_count_label_for_grouping(@grouping) %></div>
+    </div>
+    <div class="summary-item">
         <div class="summary-value"><%= format_hours(@total_hours) %></div>
         <div class="summary-label"><%= l(:label_total_hours) %></div>
       </div>
@@ -229,10 +233,6 @@
       <div class="summary-item">
         <div class="summary-value"><%= format_hours(@min_period_hours) %></div>
         <div class="summary-label"><%= min_label_for_grouping(@grouping) %></div>
-      </div>
-      <div class="summary-item">
-        <div class="summary-value"><%= @period_count %></div>
-        <div class="summary-label"><%= period_count_label_for_grouping(@grouping) %></div>
       </div>
     </div>
   </div>
