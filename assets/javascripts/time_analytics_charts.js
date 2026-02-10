@@ -102,8 +102,7 @@ TimeAnalytics.initCharts = function() {
       }
       
     } catch (e) {
-      console.error('Error initializing chart:', e);
-      element.innerHTML = '<div class="error-message">Error loading chart: ' + e.message + '</div>';
+      element.innerHTML = '<div class="error-message">Error loading chart</div>';
     }
   });
 };

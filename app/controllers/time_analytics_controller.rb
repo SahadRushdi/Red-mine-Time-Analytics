@@ -160,8 +160,6 @@ class TimeAnalyticsController < ApplicationController
     @activity_view_state = params[:activity_view_state] || 'detailed'
     @project_view_state = params[:project_view_state] || 'detailed'
     
-    Rails.logger.info "Generating chart with type: #{chart_type}, view_mode: #{@view_mode}, grouping: #{@grouping}, activity_view_state: #{@activity_view_state}, project_view_state: #{@project_view_state}"
-    
     if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
     elsif @view_mode == 'project' && ['weekly', 'monthly'].include?(@grouping) && defined?(@project_pivot_data)
@@ -917,8 +915,6 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_activity_pivot_table(time_entries, grouping)
-    Rails.logger.info "Generating activity pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
-    
     # Get all time entries with their details
     entries_with_details = time_entries.includes(:activity).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
@@ -1031,8 +1027,6 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_table(time_entries, grouping)
-    Rails.logger.info "Generating project pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
-    
     # Get all time entries with their details
     entries_with_details = time_entries.includes(:project).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping) # Reuse same period key logic

@@ -31,7 +31,6 @@ function toggleVisualization() {
 function initChart() {
   var chartElement = document.getElementById('time-chart');
   if (!chartElement) {
-    console.log('Chart element not found');
     return;
   }
 
@@ -43,15 +42,11 @@ function initChart() {
   try {
     var chartData = chartElement.getAttribute('data-chart');
     if (!chartData || chartData === 'null' || chartData === '') {
-      console.log('No chart data available');
       return;
     }
 
     var config = JSON.parse(chartData);
-    
-    console.log('Creating new chart...');
     timeAnalyticsChart = new Chart(chartElement, config);
-    console.log('Chart created successfully');
     
   } catch (error) {
     console.error('Error creating chart:', error);
@@ -105,12 +100,12 @@ document.addEventListener('DOMContentLoaded', function() {
       var isOpen = collapsibleSection.classList.toggle('open');
       toggleBtn.classList.toggle('active', isOpen);
     });
-  }
 
-  document.addEventListener('click', function(event) {
-    if (collapsibleSection.classList.contains('open') && !collapsibleSection.contains(event.target) && !toggleBtn.contains(event.target)) {
-      collapsibleSection.classList.remove('open');
-      toggleBtn.classList.remove('active');
-    }
-  });
+    document.addEventListener('click', function(event) {
+      if (collapsibleSection.classList.contains('open') && !collapsibleSection.contains(event.target) && !toggleBtn.contains(event.target)) {
+        collapsibleSection.classList.remove('open');
+        toggleBtn.classList.remove('active');
+      }
+    });
+  }
 });

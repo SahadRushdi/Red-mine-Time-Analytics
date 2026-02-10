@@ -81,8 +81,7 @@ module TimeAnalyticsHelper
       key.to_s
     end
   rescue => e
-    # Log error if something goes wrong
-    Rails.logger.error "Error formatting chart label for key #{key.inspect}: #{e.message}"
+    # Return key as string if formatting fails
     key.to_s
   end
 
