@@ -376,7 +376,7 @@ module TimeAnalyticsHelper
   def grouping_label(grouping)
     case grouping
     when 'daily'
-      l(:label_daily)
+      l(:label_date)
     when 'weekly'
       l(:label_weekly)
     when 'monthly'
