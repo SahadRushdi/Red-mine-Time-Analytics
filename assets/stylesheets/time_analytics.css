@@ -273,7 +273,13 @@ fieldset.box {
   margin: 0 !important;
   padding: 12px !important;
   box-sizing: border-box !important;
-  align-self: stretch !important;
+  align-self: stretch !important; /* Ensure stretching to equal height */
+  height: 350px; /* Fixed height for all three boxes */
+}
+
+.analytics-section .stats-summary,
+.analytics-section .time-overview-box {
+  overflow: auto; /* Enable scrolling for content overflow */
 }
 
 /* Reset ALL h3 margins inside analytics boxes */
@@ -355,6 +361,10 @@ fieldset.box {
   width: 100%;
   max-width: none;
   align-self: stretch;
+  
+  /* Make it a flex container to manage vertical space */
+  display: flex;
+  flex-direction: column;
 }
 
 /* === Stats Summary Grid === */
@@ -397,12 +407,26 @@ fieldset.box {
   gap: 10px;
 }
 
+/* Allow chart-container to grow and fill remaining space */
+#chart-container {
+  flex-grow: 1; /* Make it take up all available vertical space */
+  display: flex; /* Make it a flex container too to control its child (chart-wrapper) */
+  flex-direction: column;
+  height: 0; /* Important: Allows flex-grow to work correctly with fixed parent height */
+}
+
 .chart-wrapper {
   position: relative;
-  height: 275px;
-  margin: 10px 0 5px;
+  flex-grow: 1; /* Allow it to grow */
+  height: 100%; /* Explicitly define height to prevent bouncing */
+  margin: 0;
   width: 100%;
   min-width: 0;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* === Tables === */
