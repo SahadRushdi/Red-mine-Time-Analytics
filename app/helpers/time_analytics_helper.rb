@@ -265,6 +265,43 @@ module TimeAnalyticsHelper
     content_tag(:div, links.join(' ').html_safe, class: 'pagination')
   end
 
+  def overview_pagination_links(current_page, total_pages, base_params)
+    return '' if total_pages <= 1
+
+    links = []
+    
+    # Previous link
+    if current_page > 1
+      prev_params = base_params.merge(overview_page: current_page - 1)
+      links << link_to('‹ ' + l(:label_previous), 
+                       my_time_path(prev_params), 
+                       class: 'pagination-link')
+    end
+    
+    # Page numbers
+    start_page = [current_page - 2, 1].max
+    end_page = [current_page + 2, total_pages].min
+    
+    (start_page..end_page).each do |page|
+      if page == current_page
+        links << content_tag(:span, page, class: 'pagination-current')
+      else
+        page_params = base_params.merge(overview_page: page)
+        links << link_to(page, my_time_path(page_params), class: 'pagination-link')
+      end
+    end
+    
+    # Next link
+    if current_page < total_pages
+      next_params = base_params.merge(overview_page: current_page + 1)
+      links << link_to(l(:label_next) + ' ›', 
+                       my_time_path(next_params), 
+                       class: 'pagination-link')
+    end
+    
+    content_tag(:div, links.join(' ').html_safe, class: 'pagination')
+  end
+
   def issue_link_or_text(issue)
     if issue
       link_to "##{issue.id}: #{truncate(issue.subject, length: 50)}", 

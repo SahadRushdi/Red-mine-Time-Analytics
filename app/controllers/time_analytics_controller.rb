@@ -6,7 +6,7 @@ class TimeAnalyticsController < ApplicationController
 
   def index
     # Default to individual dashboard
-    permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page)
+    permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :overview_page)
     redirect_to my_time_path(permitted_params)
   end
 
@@ -63,8 +63,14 @@ class TimeAnalyticsController < ApplicationController
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
 
+    # Time Overview pagination (separate from Activity/Project pagination)
+    @overview_limit = 6
+    @overview_page = params[:overview_page].to_i > 0 ? params[:overview_page].to_i : 1
+    @overview_offset = (@overview_page - 1) * @overview_limit
+
     # Generate Time Overview data (always grouped by date for consistency across all views)
     @time_overview_data = generate_time_overview_data(@time_entries, @grouping)
+    @overview_total_pages = (@time_overview_data.count.to_f / @overview_limit).ceil
 
     if @view_mode == 'activity'
       # Generate Activity × Time Period pivot table for ALL groupings (including daily)
