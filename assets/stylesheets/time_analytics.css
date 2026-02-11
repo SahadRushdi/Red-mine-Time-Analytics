@@ -626,12 +626,15 @@ fieldset.box {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid #eee;
+  flex-wrap: nowrap; /* Prevent wrapping */
+  gap: 10px;
 }
 
 .pagination {
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .pagination-link,
@@ -653,16 +656,17 @@ fieldset.box {
 }
 
 .pagination-current {
-  border-color: #628db6;
-  background-color: #628db6;
+  border-color: #0065ff;
+  background-color: #0065ff;
   color: white;
   font-weight: bold;
 }
 
 .pagination-info,
 .pagination-form label {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
+  white-space: nowrap; /* Keep on one line */
 }
 
 /* === Messages === */

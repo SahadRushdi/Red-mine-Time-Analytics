@@ -278,18 +278,8 @@ module TimeAnalyticsHelper
                        class: 'pagination-link')
     end
     
-    # Page numbers
-    start_page = [current_page - 2, 1].max
-    end_page = [current_page + 2, total_pages].min
-    
-    (start_page..end_page).each do |page|
-      if page == current_page
-        links << content_tag(:span, page, class: 'pagination-current')
-      else
-        page_params = base_params.merge(overview_page: page)
-        links << link_to(page, my_time_path(page_params), class: 'pagination-link')
-      end
-    end
+    # Show only current page number to save space
+    links << content_tag(:span, current_page, class: 'pagination-current')
     
     # Next link
     if current_page < total_pages

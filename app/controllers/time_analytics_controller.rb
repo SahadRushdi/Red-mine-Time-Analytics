@@ -64,7 +64,7 @@ class TimeAnalyticsController < ApplicationController
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
 
     # Time Overview pagination (separate from Activity/Project pagination)
-    @overview_limit = 6
+    @overview_limit = 5
     @overview_page = params[:overview_page].to_i > 0 ? params[:overview_page].to_i : 1
     @overview_offset = (@overview_page - 1) * @overview_limit
 
