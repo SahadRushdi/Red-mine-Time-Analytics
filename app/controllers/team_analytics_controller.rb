@@ -276,66 +276,76 @@ class TeamAnalyticsController < ApplicationController
     from_date = params[:from] ? Date.parse(params[:from]) : Date.today - 7.days
     to_date = params[:to] ? Date.parse(params[:to]) : Date.today
     
-    # Build tree structure
+    # Build hierarchical tree structure
     tree_nodes = []
     
     led_teams.each do |team|
-      # Get active members for this team
-      memberships = TaTeamMembership.where(team: team)
-                                   .where('end_date IS NULL OR end_date >= ?', from_date)
-                                   .includes(:user)
-      
-      member_ids = memberships.map(&:user_id) - excluded_ids
-      
-      # Build team node
-      team_node = {
-        id: "team_#{team.id}",
-        text: team.name,
-        icon: "icon icon-group",
-        state: { opened: true },
-        children: []
-      }
-      
-      # Add members to team node
-      memberships.each do |membership|
-        next if excluded_ids.include?(membership.user_id)
-        
-        user = membership.user
-        
-        # Get projects with logged time in date range
-        projects = TimeEntry.joins(:project)
-                           .where(user_id: user.id, spent_on: from_date..to_date)
-                           .where(projects: { status: Project::STATUS_ACTIVE })
-                           .select('DISTINCT projects.id, projects.name')
-                           .order('projects.name')
-        
-        project_list = projects.map(&:name).join(', ')
-        project_text = project_list.present? ? "Projects: #{project_list}" : "No projects logged"
-        
-        # Member node
-        member_node = {
-          id: "member_#{user.id}",
-          text: user.name,
-          icon: "icon icon-user",
-          state: { opened: true },
-          data: { user_id: user.id },
-          children: [
-            {
-              id: "projects_#{user.id}",
-              text: project_text,
-              icon: "icon icon-projects",
-              type: "projects"
-            }
-          ]
-        }
-        
-        team_node[:children] << member_node
-      end
-      
+      team_node = build_team_node(team, excluded_ids, from_date, to_date)
       tree_nodes << team_node
     end
     
     render json: tree_nodes
+  end
+
+  # Recursively build team node with sub-teams and members
+  def build_team_node(team, excluded_ids, from_date, to_date)
+    # Get direct members for this team only
+    memberships = TaTeamMembership.where(team: team)
+                                 .where('end_date IS NULL OR end_date >= ?', from_date)
+                                 .includes(:user)
+    
+    # Build team node
+    team_node = {
+      id: "team_#{team.id}",
+      text: team.name,
+      icon: "icon icon-group",
+      state: { opened: true },
+      children: []
+    }
+    
+    # Add sub-teams first (hierarchical)
+    team.child_teams.ordered_by_name.each do |child_team|
+      child_node = build_team_node(child_team, excluded_ids, from_date, to_date)
+      team_node[:children] << child_node
+    end
+    
+    # Add direct members after sub-teams
+    memberships.each do |membership|
+      next if excluded_ids.include?(membership.user_id)
+      
+      user = membership.user
+      
+      # Get projects with logged time in date range
+      projects = TimeEntry.joins(:project)
+                         .where(user_id: user.id, spent_on: from_date..to_date)
+                         .where(projects: { status: Project::STATUS_ACTIVE })
+                         .select('DISTINCT projects.id, projects.name')
+                         .order('projects.name')
+      
+      project_list = projects.map(&:name).join(', ')
+      project_text = project_list.present? ? "Projects: #{project_list}" : "No projects logged"
+      
+      # Member node
+      member_node = {
+        id: "member_#{team.id}_#{user.id}",
+        text: user.name,
+        icon: "icon icon-user",
+        state: { opened: false },
+        data: { user_id: user.id },
+        children: [
+          {
+            id: "projects_#{team.id}_#{user.id}",
+            text: project_text,
+            icon: "icon icon-projects",
+            type: "projects"
+          }
+        ]
+      }
+      
+      team_node[:children] << member_node
+    end
+    
+    team_node
   end
 
   private
