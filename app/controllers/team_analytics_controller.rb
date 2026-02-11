@@ -28,21 +28,20 @@ class TeamAnalyticsController < ApplicationController
     # Get excluded user IDs from settings
     excluded_ids = TaTeamSetting.excluded_user_ids
     
-    # Get team members - consider team configuration as retroactive
-    # If a member is in the team now (or was during analysis period), 
-    # we should be able to analyze their historical data
-    # Only exclude members who left BEFORE the analysis period starts
-    @team_members = TaTeamMembership.where(team: @selected_team)
-                                    .where('end_date IS NULL OR end_date >= ?', @from)
-                                    .includes(:user)
+    # Get hierarchical team members (own + inherited from child teams)
+    # This implements the "bubble up" logic where child team members appear in parent teams
+    @team_members = @selected_team.hierarchical_members(@from, @to)
     
-    @member_ids = @team_members.map(&:user_id)
+    @member_ids = @team_members.map(&:user_id).uniq
     
     # Filter out excluded users
     @active_member_ids = @member_ids - excluded_ids
     @team_size = @active_member_ids.count
     
-    Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}"
+    # Get sub-teams for dashboard display
+    @sub_teams = @selected_team.child_teams.ordered_by_name
+    
+    Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}, Sub-teams: #{@sub_teams.count}"
     
     # Get time entries for all active team members on ALL projects where they have logged time
     # Filter by member start_date and end_date within the selected date range
@@ -51,7 +50,7 @@ class TeamAnalyticsController < ApplicationController
       member_from_date = [membership.start_date, @from].max
       member_to_date = membership.end_date ? [membership.end_date, @to].min : @to
       "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
-    end.join(' OR ')
+    end.uniq.join(' OR ')
     
     @time_entries = TimeEntry.joins(:project)
                              .where(user_id: @active_member_ids)

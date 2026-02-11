@@ -68,6 +68,66 @@ class TaTeam < ActiveRecord::Base
     leads.first
   end
 
+  # Get all hierarchical members (own + inherited from child teams) for a date range
+  # Members bubble up from child teams to parents
+  # @param start_date [Date] Start of date range
+  # @param end_date [Date] End of date range
+  # @return [Array<TaTeamMembership>] Unique memberships including inherited ones
+  def hierarchical_members(start_date, end_date)
+    member_hash = {}
+    
+    # Get own direct members
+    own_members = active_members(start_date, end_date).to_a
+    own_members.each do |membership|
+      key = "#{membership.user_id}_#{membership.team_id}"
+      member_hash[key] = membership
+    end
+    
+    # Get members from all child teams (bubble up)
+    all_descendants.each do |child_team|
+      child_members = child_team.active_members(start_date, end_date).to_a
+      child_members.each do |membership|
+        key = "#{membership.user_id}_#{membership.team_id}"
+        # Add only if not already present (avoid duplicates)
+        member_hash[key] ||= membership
+      end
+    end
+    
+    member_hash.values
+  end
+
+  # Get current hierarchical members (including inherited from child teams)
+  # @return [Array<TaTeamMembership>] Unique memberships including inherited ones
+  def current_hierarchical_members
+    member_hash = {}
+    
+    # Get own direct members
+    own_members = current_members.to_a
+    own_members.each do |membership|
+      key = "#{membership.user_id}_#{membership.team_id}"
+      member_hash[key] = membership
+    end
+    
+    # Get members from all child teams (bubble up)
+    all_descendants.each do |child_team|
+      child_members = child_team.current_members.to_a
+      child_members.each do |membership|
+        key = "#{membership.user_id}_#{membership.team_id}"
+        member_hash[key] ||= membership
+      end
+    end
+    
+    member_hash.values
+  end
+
+  # Get unique user IDs for hierarchical members (for analytics queries)
+  # @param start_date [Date] Start of date range
+  # @param end_date [Date] End of date range
+  # @return [Array<Integer>] Unique user IDs
+  def hierarchical_member_ids(start_date, end_date)
+    hierarchical_members(start_date, end_date).map(&:user_id).uniq
+  end
+
   # Get all descendant teams recursively
   # @return [Array<TaTeam>] All child teams and their children
   def all_descendants

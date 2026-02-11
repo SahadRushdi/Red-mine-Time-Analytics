@@ -8,7 +8,15 @@
 <h2>Team Members: <%= @team.name %></h2>
 <p class="subtitle"><%= ta_team_breadcrumb(@team) %></p>
 
-<h3>Active Members (<%= @active_memberships.count %>)</h3>
+<% 
+  # Get hierarchical members (own + inherited from children)
+  hierarchical_memberships = @team.current_hierarchical_members
+  direct_member_ids = @active_memberships.map(&:user_id)
+  inherited_memberships = hierarchical_memberships.reject { |m| direct_member_ids.include?(m.user_id) }
+%>
+
+<h3>Direct Members (<%= @active_memberships.count %>)</h3>
+<p class="info" style="font-style: italic; color: #555;">Members directly assigned to this team.</p>
 
 <% if @active_memberships.any? %>
   <table class="list">
@@ -46,7 +54,42 @@
     </tbody>
   </table>
 <% else %>
-  <p class="nodata">No active members</p>
+  <p class="nodata">No direct members</p>
+<% end %>
+
+<% if inherited_memberships.any? %>
+  <h3>Inherited Members from Sub-teams (<%= inherited_memberships.count %>)</h3>
+  <p class="info" style="font-style: italic; color: #555;">Members automatically inherited from child teams. These members cannot be edited here.</p>
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Source Team</th>
+        <th>Start Date</th>
+        <th>End Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% inherited_memberships.sort_by { |m| m.user.name }.each do |membership| %>
+        <tr class="<%= cycle('odd', 'even') %>" style="background-color: #f9f9f9;">
+          <td><%= link_to membership.user.name, user_path(membership.user) %></td>
+          <td><%= membership.user.mail %></td>
+          <td>
+            <% if membership.lead? %>
+              <strong><%= membership.role.titleize %></strong>
+            <% else %>
+              <%= membership.role.titleize %>
+            <% end %>
+          </td>
+          <td><span style="color: #666;"><%= membership.team.name %></span></td>
+          <td><%= format_date(membership.start_date) %></td>
+          <td><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
 <% end %>
 
 <% if @inactive_memberships.any? %>
