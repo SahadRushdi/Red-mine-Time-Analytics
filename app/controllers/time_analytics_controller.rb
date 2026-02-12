@@ -240,16 +240,7 @@ class TimeAnalyticsController < ApplicationController
   private
 
   def get_default_chart_type(view_mode)
-    case view_mode
-    when 'time_entries'
-      'line'
-    when 'activity'
-      'pie'
-    when 'project'
-      'pie'
-    else
-      'bar'
-    end
+    'line'
   end
 
   def set_date_range
@@ -446,33 +437,20 @@ class TimeAnalyticsController < ApplicationController
 
   # Inline Chart Helper methods
   def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed')
-    # Group data by the specified view mode and grouping
-    # For activity view, use activity_view_state to determine grouping
-    # For project view, use project_view_state to determine grouping
-    if view_mode == 'activity'
-      # Summary view: always group by activity
-      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
-      grouped_data = activity_view_state == 'summary' ? group_time_entries(time_entries, 'activity') : group_time_entries(time_entries, grouping)
-    elsif view_mode == 'project'
-      # Summary view: always group by project
-      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
-      grouped_data = project_view_state == 'summary' ? group_time_entries(time_entries, 'project') : group_time_entries(time_entries, grouping)
-    else
-      grouped_data = group_time_entries(time_entries, grouping)
-      # Fill in missing periods to ensure chart matches table
-      case grouping
-      when 'daily'
-        grouped_data = fill_missing_working_days(grouped_data, @from, @to)
-      when 'weekly'
-        grouped_data = fill_missing_weeks(grouped_data, @from, @to)
-      when 'monthly'
-        grouped_data = fill_missing_months(grouped_data, @from, @to)
-      end
+    # Always group by time period for consistent line chart display
+    grouped_data = group_time_entries(time_entries, grouping)
+    
+    # Fill in missing periods to ensure chart matches table
+    case grouping
+    when 'daily'
+      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+    when 'weekly'
+      grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+    when 'monthly'
+      grouped_data = fill_missing_months(grouped_data, @from, @to)
     end
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_data(grouped_data, view_mode)
     when 'line'
       generate_line_chart_data(grouped_data, view_mode)
     else
@@ -553,124 +531,26 @@ class TimeAnalyticsController < ApplicationController
     end
   end
 
-  def generate_pie_chart_data(data_hash, view_mode = 'time_entries')
-    return empty_chart_data('pie') if data_hash.empty?
-
-    # Sort data based on data type
-    first_key = data_hash.keys.first
-    is_activity_data = first_key.is_a?(String)
-    
-    sorted_data = if is_activity_data
-      # Sort by hours (descending) for activity/project data
-      data_hash.sort_by { |_, value| -value }
-    else
-      # Sort by date for proper chronological order
-      data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
-      end
-    end
-    
-    formatted_labels = if is_activity_data
-      # Data grouped by activity names
-      sorted_data.map { |key, _| key || 'No Activity' }
-    else
-      # Data grouped by time periods (dates, weeks, months, years)
-      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    end
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if !is_activity_data && @grouping == 'weekly'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
-    else
-      formatted_labels
-    end
-    
-    # Calculate total for percentage calculation
-    total_hours = sorted_data.map { |_, value| value }.sum
-    
-    # Format labels with percentages and hours for pie chart
-    labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
-      hours = sorted_data[index][1]
-      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      formatted_hours = helpers.format_hours(hours)
-      "#{label} (#{percentage}%, #{formatted_hours})"
-    end
-    
-    chart_data = {
-      labels: labels_with_percentages,
-      datasets: [{
-        data: sorted_data.map { |_, value| value },
-        backgroundColor: generate_colors(sorted_data.size),
-        borderWidth: 1,
-        borderColor: '#fff',
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            padding: 15,
-            boxWidth: 12
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && !is_activity_data) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      # Add total hours for percentage calculation in JavaScript
-      total_hours: total_hours
-    }
-
-    {
-      type: 'pie',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
-  end
-
   def generate_bar_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('bar') if data_hash.empty?
 
-    # Sort data by date keys for proper chronological order (except for activity/project views)
-    sorted_data = if view_mode == 'activity' || view_mode == 'project'
-      data_hash.sort_by { |key, _| key || '' }
-    else
-      data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
+    # Sort data by date keys for proper chronological order
+    sorted_data = data_hash.sort_by do |key, _|
+      case key
+      when Date
+        key
+      when String
+        Date.parse(key) rescue key
+      else
+        key.to_s
       end
     end
 
     # Generate labels and tooltip data
-    formatted_labels = if view_mode == 'activity'
-      sorted_data.map { |key, _| key || 'No Activity' }
-    else
-      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    end
+    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     
     # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if @grouping == 'weekly' && view_mode != 'activity'
+    tooltip_labels = if @grouping == 'weekly'
       sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
       formatted_labels
@@ -684,10 +564,10 @@ class TimeAnalyticsController < ApplicationController
       datasets: [{
         label: 'Hours',
         data: sorted_data.map { |_, value| value },
-        backgroundColor: generate_colors(sorted_data.size),
+        backgroundColor: 'GRADIENT_PLACEHOLDER',
         borderWidth: 1,
-        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
-        formattedHours: formatted_hours  # Add formatted hours for value display
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
       }]
     }
 
@@ -733,31 +613,25 @@ class TimeAnalyticsController < ApplicationController
   def generate_line_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('line') if data_hash.empty?
 
-    if view_mode == 'activity' || view_mode == 'project'
-      # For activity/project view, sort by name
-      sorted_data = data_hash.sort_by { |key, _| key || 'No Activity' }
-      formatted_labels = sorted_data.map { |key, _| key || 'No Activity' }
-      tooltip_labels = formatted_labels
-    else
-      # Sort data by date for proper line chart display
-      sorted_data = data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
-      end
-      formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-      
-      # Generate detailed tooltip labels for weekly grouping
-      tooltip_labels = if @grouping == 'weekly'
-        sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    # Sort data by date for proper line chart display
+    sorted_data = data_hash.sort_by do |key, _|
+      case key
+      when Date
+        key
+      when String
+        Date.parse(key) rescue key
       else
-        formatted_labels
+        key.to_s
       end
+    end
+    
+    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
     end
     
     # Generate formatted hours for tooltips
@@ -775,8 +649,8 @@ class TimeAnalyticsController < ApplicationController
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
-        formattedHours: formatted_hours  # Add formatted hours for value display
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
       }]
     }
 
@@ -1009,22 +883,12 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if activity_view_state == 'summary'
-      # Summary view: group by activity
-      labels = pivot_data[:activities]
-      data_values = pivot_data[:activities].map { |activity| pivot_data[:activity_totals][activity] || 0 }
-      raw_keys = nil  # No raw keys for activity names
-    else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
-    end
+    # Always use time period data for consistency
+    labels = pivot_data[:periods]
+    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+    raw_keys = pivot_data[:raw_periods]
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
       generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
@@ -1086,22 +950,12 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if project_view_state == 'summary'
-      # Summary view: group by project
-      labels = pivot_data[:projects]
-      data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
-      raw_keys = nil  # No raw keys for project names
-    else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
-    end
+    # Always use time period data for consistency
+    labels = pivot_data[:periods]
+    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+    raw_keys = pivot_data[:raw_periods]
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
       generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
@@ -1122,9 +976,9 @@ class TimeAnalyticsController < ApplicationController
       datasets: [{
         label: 'Hours',
         data: data_values,
-        backgroundColor: generate_colors(labels.size),
+        backgroundColor: 'GRADIENT_PLACEHOLDER',
         borderWidth: 1,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
+        tooltipLabels: tooltip_labels
       }]
     }
 
@@ -1231,64 +1085,6 @@ class TimeAnalyticsController < ApplicationController
 
     {
       type: 'line',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
-  end
-
-  def generate_pie_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Calculate total for percentage calculation
-    total_hours = data_values.sum
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if raw_keys && grouping == 'weekly'
-      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
-    else
-      labels
-    end
-    
-    # Format labels with percentages and hours for pie chart
-    labels_with_percentages = labels.each_with_index.map do |label, index|
-      hours = data_values[index]
-      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      "#{label} (#{percentage}%, #{hours.round(1)}h)"
-    end
-    
-    chart_data = {
-      labels: labels_with_percentages,
-      datasets: [{
-        data: data_values,
-        backgroundColor: generate_colors(labels.size),
-        borderWidth: 1,
-        borderColor: '#fff',
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            padding: 15,
-            boxWidth: 12
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      # Add total hours for percentage calculation in JavaScript
-      total_hours: total_hours
-    }
-
-    {
-      type: 'pie',
       data: chart_data,
       options: chart_options
     }.to_json.html_safe

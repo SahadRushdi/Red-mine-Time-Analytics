@@ -201,8 +201,7 @@ module TimeAnalyticsHelper
   def chart_type_options
     [
       [l(:label_bar_chart), 'bar'],
-      [l(:label_line_chart), 'line'],
-      [l(:label_pie_chart), 'pie']
+      [l(:label_line_chart), 'line']
     ]
   end
 
@@ -311,14 +310,7 @@ module TimeAnalyticsHelper
   end
 
   def default_chart_type(view_mode)
-    case view_mode
-    when 'time_entries'
-      'line'
-    when 'activity', 'project'
-      'pie'
-    else
-      'bar'
-    end
+    'line'
   end
 
   def avg_label_for_grouping(grouping)

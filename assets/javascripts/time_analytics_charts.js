@@ -16,6 +16,15 @@ TimeAnalytics.initCharts = function() {
       
       var chartConfig = JSON.parse(element.getAttribute('data-chart'));
       
+      // Create gradient for bar charts
+      if (chartConfig.type === 'bar' && chartConfig.data.datasets[0].backgroundColor === 'GRADIENT_PLACEHOLDER') {
+        var ctx = element.getContext('2d');
+        var gradient = ctx.createLinearGradient(0, 0, 0, element.height);
+        gradient.addColorStop(0, '#007cba');
+        gradient.addColorStop(1, '#36a2eb');
+        chartConfig.data.datasets[0].backgroundColor = gradient;
+      }
+      
       // Ensure responsive configuration
       if (!chartConfig.options) {
         chartConfig.options = {};
@@ -47,42 +56,6 @@ TimeAnalytics.initCharts = function() {
               }
               
               return label;
-            }
-          }
-        };
-      }
-      
-      // Configure pie charts with percentage in legend
-      if (chartConfig.type === 'pie') {
-        var total = chartConfig.options.total_hours || chartConfig.data.datasets[0].data.reduce(function(sum, val) { return sum + val; }, 0);
-        
-        // Modify labels to include percentage and hours in legend
-        var originalLabels = chartConfig.data.labels.slice();
-        var modifiedLabels = [];
-        
-        for (var i = 0; i < originalLabels.length; i++) {
-          var value = chartConfig.data.datasets[0].data[i];
-          var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-          var hours = value.toFixed(1);
-          
-          // Format: "Development (68.9%, 31.1h)"
-          var labelWithInfo = originalLabels[i] + ' (' + percentage + '%, ' + hours + 'h)';
-          modifiedLabels.push(labelWithInfo);
-        }
-        
-        // Update chart labels
-        chartConfig.data.labels = modifiedLabels;
-        
-        // Enhanced tooltip for pie charts
-        chartConfig.options.plugins.tooltip = {
-          callbacks: {
-            label: function(context) {
-              var label = context.label || '';
-              var value = context.parsed;
-              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              // Extract original label (before parentheses) for cleaner tooltip
-              var originalLabel = label.split(' (')[0];
-              return originalLabel + ': ' + value.toFixed(1) + 'h (' + percentage + '%)';
             }
           }
         };
@@ -163,11 +136,13 @@ TimeAnalytics.applyColorScheme = function(chartConfig, schemeName) {
   
   if (chartConfig.data && chartConfig.data.datasets) {
     chartConfig.data.datasets.forEach(function(dataset, index) {
-      if (chartConfig.type === 'pie' || chartConfig.type === 'doughnut') {
-        dataset.backgroundColor = colors.slice(0, dataset.data.length);
-      } else {
-        dataset.backgroundColor = colors[index % colors.length];
-        dataset.borderColor = colors[index % colors.length];
+      if (chartConfig.type === 'bar') {
+        // Use placeholder for gradient (will be replaced during init)
+        dataset.backgroundColor = 'GRADIENT_PLACEHOLDER';
+        dataset.borderColor = '#007cba';
+      } else if (chartConfig.type === 'line') {
+        dataset.backgroundColor = 'rgba(54, 162, 235, 0.1)';
+        dataset.borderColor = '#36a2eb';
       }
     });
   }
