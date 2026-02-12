@@ -926,8 +926,8 @@ function initChart() {
     if (config.type === 'bar' && config.data.datasets[0].backgroundColor === 'GRADIENT_PLACEHOLDER') {
       var ctx = chartElement.getContext('2d');
       var gradient = ctx.createLinearGradient(0, 0, 0, chartElement.height);
-      gradient.addColorStop(0, '#007cba');
-      gradient.addColorStop(1, '#36a2eb');
+      gradient.addColorStop(0, '#36a2eb');
+      gradient.addColorStop(1, '#007cba');
       config.data.datasets[0].backgroundColor = gradient;
     }
     

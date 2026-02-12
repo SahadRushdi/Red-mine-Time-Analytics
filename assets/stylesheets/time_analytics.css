@@ -347,6 +347,10 @@ fieldset.box {
   font-weight: bold;
 }
 
+.analytics-section .time-overview-table tbody tr:hover {
+  background-color: #f0f4ff;
+}
+
 .analytics-section .time-overview-box .pagination-wrapper {
   text-align: center;
   margin-top: 8px;

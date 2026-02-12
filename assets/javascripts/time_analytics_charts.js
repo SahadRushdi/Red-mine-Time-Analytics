@@ -20,8 +20,8 @@ TimeAnalytics.initCharts = function() {
       if (chartConfig.type === 'bar' && chartConfig.data.datasets[0].backgroundColor === 'GRADIENT_PLACEHOLDER') {
         var ctx = element.getContext('2d');
         var gradient = ctx.createLinearGradient(0, 0, 0, element.height);
-        gradient.addColorStop(0, '#007cba');
-        gradient.addColorStop(1, '#36a2eb');
+        gradient.addColorStop(0, '#36a2eb');
+        gradient.addColorStop(1, '#007cba');
         chartConfig.data.datasets[0].backgroundColor = gradient;
       }
       
