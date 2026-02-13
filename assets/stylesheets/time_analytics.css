@@ -141,7 +141,6 @@
 /* === Form Controls === */
 .filter-select,
 .date-input,
-.search-input,
 .chart-type-select,
 .pagination-form select {
   box-sizing: border-box;
@@ -181,11 +180,6 @@
 
 .button-clear {
   font-size: 13px !important;
-}
-
-.search-input {
-  min-width: 220px;
-  flex-shrink: 0; 
 }
 
 /* === Filter Section === */
@@ -705,15 +699,9 @@ fieldset.box {
     align-items: stretch;
   }
 
-  .search-range-wrapper {
-    flex-direction: column; /* Allows stacking only on mobile */
-    align-items: stretch !important;
-  }
-
   .filter-group,
   .filter-select,
-  .date-input,
-  .search-input {
+  .date-input {
     width: 100%;
     min-width: 0;
   }

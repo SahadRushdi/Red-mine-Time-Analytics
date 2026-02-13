@@ -1245,6 +1245,9 @@ function toggleActivityView() {
     localStorage.setItem('activity_view_mode', 'summary');
     newViewState = 'summary';
     updatePaginationInfo('summary');
+    
+    // Auto-sort by hours (descending) when showing summary view
+    initSummarySorting('daily-summary-view');
   }
   
   // Regenerate chart with new view state
@@ -1277,6 +1280,9 @@ function toggleProjectView() {
     localStorage.setItem('project_view_mode', 'summary');
     newViewState = 'summary';
     updatePaginationInfo('summary');
+    
+    // Auto-sort by hours (descending) when showing summary view
+    initSummarySorting('project-summary-view');
   }
   
   // Regenerate chart with new view state
@@ -1335,6 +1341,9 @@ function restoreActivityViewState() {
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
     updatePaginationInfo('summary');
+    
+    // Initialize summary sorting to descending (highest to lowest)
+    initSummarySorting('daily-summary-view');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
@@ -1369,6 +1378,9 @@ function restoreProjectViewState() {
     summaryView.style.display = 'block';
     toggleText.textContent = 'Show Detailed View';
     updatePaginationInfo('summary');
+    
+    // Initialize summary sorting to descending (highest to lowest)
+    initSummarySorting('project-summary-view');
   } else {
     // Default to detailed view
     detailedView.style.display = 'block';
@@ -1436,6 +1448,25 @@ if (document.readyState === 'complete') {
   setTimeout(function() {
     initChart();
   }, 100);
+}
+
+// Initialize summary table sorting to default descending (highest to lowest)
+function initSummarySorting(tableContainerId) {
+  var container = document.getElementById(tableContainerId);
+  if (!container) return;
+  
+  var table = container.querySelector('table');
+  if (!table) return;
+  
+  var hoursHeader = table.querySelector('th.hours-column.sortable');
+  if (!hoursHeader) return;
+  
+  // Set to 'desc' (already sorted by backend) and update indicator
+  hoursHeader.setAttribute('data-sort', 'desc');
+  var indicator = hoursHeader.querySelector('.sort-indicator');
+  if (indicator) {
+    indicator.textContent = '▼';
+  }
 }
 
 // Table sorting function for summary views

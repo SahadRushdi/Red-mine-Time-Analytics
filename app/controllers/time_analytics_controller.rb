@@ -811,7 +811,7 @@ class TimeAnalyticsController < ApplicationController
     
     # Get unique periods and activities
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    activities = entries_with_details.map { |e| e[:activity_name] }.uniq.sort
+    activities = entries_with_details.map { |e| e[:activity_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -838,6 +838,9 @@ class TimeAnalyticsController < ApplicationController
     activities.each do |activity|
       activity_totals[activity] = periods.sum { |period| matrix_data[period][activity] || 0 }
     end
+    
+    # Sort activities by total hours (highest to lowest) for summary view
+    activities = activities.sort_by { |activity| -activity_totals[activity] }
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
@@ -913,7 +916,7 @@ class TimeAnalyticsController < ApplicationController
     
     # Get unique periods and projects
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    projects = entries_with_details.map { |e| e[:project_name] }.uniq.sort
+    projects = entries_with_details.map { |e| e[:project_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -940,6 +943,9 @@ class TimeAnalyticsController < ApplicationController
     projects.each do |project|
       project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
     end
+    
+    # Sort projects by total hours (highest to lowest) for summary view
+    projects = projects.sort_by { |project| -project_totals[project] }
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
