@@ -12,7 +12,9 @@ class TimeAnalyticsController < ApplicationController
 
   def individual_dashboard
     @user = User.current
-    @view_mode = params[:view_mode] || 'time_entries'
+    # Default to time_entries view only if no view_mode parameter is present
+    # This allows showing Time view when user first visits or clicks Clear
+    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
     
     # Get time entries for the current user with project visibility check
     @time_entries = TimeEntry.joins(:project)
@@ -202,7 +204,8 @@ class TimeAnalyticsController < ApplicationController
 
   def export_csv
     @user = User.current
-    @view_mode = params[:view_mode] || 'time_entries'
+    # Use same logic as individual_dashboard for consistency
+    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
     
     @time_entries = TimeEntry.joins(:project)
                              .where(user: @user)

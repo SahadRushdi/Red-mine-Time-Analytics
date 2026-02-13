@@ -196,12 +196,10 @@
       <div class="toggle-buttons-wrapper">
         <label class="toggle-label">Group results by:</label>
         <div class="toggle-buttons">
-          <%= link_to 'Time', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :overview_page).merge(view_mode: 'time_entries')), 
-              class: "button button-base button-toggle button-small #{@view_mode == 'time_entries' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Activity', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :overview_page).merge(view_mode: 'activity')), 
-              class: "button button-base button-toggle button-small #{@view_mode == 'activity' ? 'button-primary' : 'button-neutral'}" %>
-          <%= link_to 'Project', my_time_path(params.permit(:filter, :from, :to, :grouping, :search, :per_page, :page, :overview_page).merge(view_mode: 'project')), 
-              class: "button button-base button-toggle button-small #{@view_mode == 'project' ? 'button-primary' : 'button-neutral'}" %>
+          <a href="#" data-view-mode="activity" onclick="toggleViewMode(event, 'activity')" 
+             class="button button-base button-toggle button-small <%= @view_mode == 'activity' ? 'button-primary' : 'button-neutral' %>">Activity</a>
+          <a href="#" data-view-mode="project" onclick="toggleViewMode(event, 'project')" 
+             class="button button-base button-toggle button-small <%= @view_mode == 'project' ? 'button-primary' : 'button-neutral' %>">Project</a>
         </div>
       </div>
     </fieldset>
@@ -1503,3 +1501,29 @@ function sortTable(header, columnIndex, tableContainerId) {
     color: #999;
   }
 </style>
+
+<script>
+// Toggle view mode - clicking selected button unselects it and goes back to time view
+function toggleViewMode(event, viewMode) {
+  event.preventDefault();
+  
+  // Get current view mode from the form
+  var currentViewMode = '<%= @view_mode %>';
+  
+  // Build URL parameters
+  var urlParams = new URLSearchParams(window.location.search);
+  
+  // If clicking the currently selected view, unselect it (go back to time_entries view)
+  if (currentViewMode === viewMode) {
+    urlParams.delete('view_mode'); // Remove view_mode to show default time view
+  } else {
+    // Otherwise, select the new view
+    urlParams.set('view_mode', viewMode);
+  }
+  
+  // Build and navigate to the new URL
+  var baseUrl = window.location.pathname;
+  var newUrl = baseUrl + (urlParams.toString() ? '?' + urlParams.toString() : '');
+  window.location.href = newUrl;
+}
+</script>
