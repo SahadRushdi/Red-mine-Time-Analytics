@@ -26,7 +26,6 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - **Dual View System**: Toggle between detailed pivot table and summary view for all groupings
   - **Context-Aware Charts**: Pie charts show activities/projects in summary view, time periods in detailed view
   - **Horizontal Distribution Bars**: Visual percentage bars in summary tables showing proportional time distribution
-- **Advanced Search**: Search across projects, issues, and comments
 - **Export Functionality**: Export data and visualizations as CSV
 - **Responsive Design**: Works on desktop and mobile devices with adaptive layouts
 - **Percentage Display**: Pie charts show percentages and hours for each segment (e.g., "Development (68.9%, 31.1h)")
@@ -95,7 +94,6 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 4. **Filter Controls**: Click the filter icon to show/hide advanced filters
    - Select time period (today, this week, last week, this month, this year, or custom range)
    - Choose grouping (daily, weekly, monthly)
-   - Search for specific projects, issues, or comments
 5. **Analytics Section**: View summary statistics and interactive charts side-by-side
    - **Summary**: Compact 2x2 grid showing key metrics
    - **Visualization**: Interactive charts with view-specific defaults and real-time type switching (bar, line, pie)
@@ -150,7 +148,7 @@ Advanced Chart.js integration with custom wrapper and intelligent defaults:
 ### Database Queries
 - Efficiently queries TimeEntry model with proper joins and includes
 - Cross-database compatibility (MySQL, PostgreSQL, SQLite)
-- Supports filtering, pagination, and full-text search
+- Supports filtering and pagination
 - Activity pivot tables with optimized matrix generation
 - Consistent date grouping logic across view modes
 - Optimized for performance with large datasets

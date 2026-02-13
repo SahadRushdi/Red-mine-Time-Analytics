@@ -185,9 +185,9 @@
 /* === Filter Section === */
 .filter-row {
   display: flex !important;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 15px;
-  align-items: flex-end;
+  align-items: center;
   width: 100%;
 }
 
@@ -202,6 +202,29 @@
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 12px;
+}
+
+.filter-group-inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 1;
+}
+
+.filter-label-inline {
+  font-weight: bold;
+  font-size: 12px;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.filter-group.filter-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  min-width: auto;
 }
 
 /* === Fieldset Box Legend Styling === */
@@ -697,13 +720,35 @@ fieldset.box {
   .filter-row {
     flex-direction: column;
     align-items: stretch;
+    flex-wrap: wrap;
   }
 
   .filter-group,
+  .filter-group-inline {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filter-group-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .filter-label-inline {
+    margin-bottom: 5px;
+  }
+
   .filter-select,
   .date-input {
     width: 100%;
     min-width: 0;
+  }
+
+  .filter-group.filter-actions {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .analytics-section {

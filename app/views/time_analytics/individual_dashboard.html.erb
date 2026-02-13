@@ -31,7 +31,7 @@
 </script>
 
 <div class="contextual">
-  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode)), 
+  <%= link_to l(:label_export_csv), time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode)), 
       method: :post, class: 'icon icon-download' %>
 </div>
 
@@ -130,13 +130,7 @@
       <span class="pill-value"><%= grouping_label(@grouping) %></span>
     </div>
 
-    <% if params[:search].present? %>
-      <div class="context-pill">
-        <span class="pill-label">Search:</span>
-        <span class="pill-value">'<%= params[:search] %>'</span>
-        <%= link_to '×', url_for(params.to_unsafe_h.except(:search)), class: 'remove-pill', title: 'Remove Search Filter' %>
-      </div>
-    <% end %>
+
   </div>
 </div>
 <%# END: Dashboard Header with Context Pills %>
@@ -157,38 +151,29 @@
     <fieldset class="box">
       
       <div class="filter-row">
-        <div class="filter-group">
-          <%= label_tag :filter, l(:label_time_period) %>
+        <div class="filter-group-inline">
+          <%= label_tag :filter, l(:label_time_period), class: 'filter-label-inline' %>
           <%= select_tag :filter, options_for_select(time_filter_options, params[:filter]), 
               onchange: 'toggleCustomDateRange()', class: 'filter-select' %>
         </div>
 
-        <div class="filter-group" id="custom-date-range" style="<%= 'display: none;' unless params[:filter] == 'custom' %>">
-          <%= label_tag :from, l(:label_from) %>
+        <div class="filter-group-inline" id="custom-date-range" style="<%= 'display: none;' unless params[:filter] == 'custom' %>">
+          <%= label_tag :from, l(:label_from), class: 'filter-label-inline' %>
           <%= date_field_tag :from, params[:from] || @from, class: 'date-input' %>
-          <%= label_tag :to, l(:label_to) %>
+          <%= label_tag :to, l(:label_to), class: 'filter-label-inline' %>
           <%= date_field_tag :to, params[:to] || @to, class: 'date-input' %>
         </div>
 
-        <div class="filter-group">
-          <%= label_tag :grouping, l(:label_grouping) %>
+        <div class="filter-group-inline">
+          <%= label_tag :grouping, l(:label_grouping), class: 'filter-label-inline' %>
           <%= select_tag :grouping, options_for_select(grouping_options, @grouping), 
               class: 'filter-select' %>
         </div>
 
-        <div class="filter-group">
-          <%= label_tag :search, l(:label_search) %>
-          <%= text_field_tag :search, params[:search], placeholder: l(:text_search_placeholder), 
-              class: 'search-input' %>
-        </div>
-
-        <div class="filter-group">
-          <%= submit_tag l(:button_apply), class: 'button-small' %>
-        </div>
-
-        <div class="filter-group">
+        <div class="filter-group filter-actions">
+          <%= submit_tag l(:button_apply), class: 'button-base button-primary button-apply' %>
           <%= link_to l(:button_clear), my_time_path, 
-              class: 'button-base button-neutral button-small button-clear' %>
+              class: 'button-base button-neutral button-clear' %>
         </div>
       </div>
     </fieldset>
@@ -266,7 +251,7 @@
       
       <!-- Pagination -->
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -448,7 +433,6 @@
           <%= hidden_field_tag :from, params[:from] %>
           <%= hidden_field_tag :to, params[:to] %>
           <%= hidden_field_tag :grouping, params[:grouping] %>
-          <%= hidden_field_tag :search, params[:search] %>
           <%= hidden_field_tag :chart_type, params[:chart_type] %>
           <%= hidden_field_tag :view_mode, @view_mode %>
           <%= label_tag :per_page, l(:label_per_page) %>
@@ -812,7 +796,7 @@
     <% if @view_mode == 'activity' || @view_mode == 'project' %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :view_mode) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode) %>
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info" id="pagination-info-text" 
