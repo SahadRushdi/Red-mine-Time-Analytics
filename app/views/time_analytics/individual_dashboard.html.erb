@@ -1307,8 +1307,8 @@ function updatePaginationInfo(viewState) {
       count = parseInt(paginationInfo.getAttribute('data-issue-count')) || 0;
     }
     
-    // Format: "Showing 1 to X of X entries"
-    paginationInfo.textContent = 'Showing 1 to ' + count + ' of ' + count + ' entries';
+    // Format: "1 to X of X entries"
+    paginationInfo.textContent = '1 to ' + count + ' of ' + count + ' entries';
   }
 }
 

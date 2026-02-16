@@ -84,7 +84,7 @@ en:
   text_custom_dashboard_description: "Custom Dashboard will allow you to create personalized analytics views with configurable widgets and metrics."
   text_search_placeholder: "Search projects, issues, or comments..."
   text_export_confirm: "Export time entries as CSV?"
-  text_pagination_info: "Showing %{from} to %{to} of %{total} entries"
+  text_pagination_info: "%{from} to %{to} of %{total} entries"
   
   # Date/Time formats
   label_from: "From"
