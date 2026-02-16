@@ -581,8 +581,8 @@ fieldset.box {
 }
 
 .pivot-table .grand-total-cell {
-  background-color: #ffe6cc;
-  border-left: 2px solid #ff9900;
+  background-color: #e5f1f9;
+  border-left: 2px solid #007cba;
   font-weight: bold;
 }
 
