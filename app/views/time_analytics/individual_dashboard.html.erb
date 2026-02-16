@@ -396,9 +396,13 @@
   </div>
 </div>
 
-<!-- Tab Navigation - Below cards, above Activity/Project tables -->
+<!-- Tab Navigation - Below cards, above Activity/Project/Issue tables -->
 <div class="nav-tabs-wrapper">
   <ul class="nav nav-tabs">
+    <li class="nav-item">
+      <a href="#" data-view-mode="issue" onclick="toggleViewMode(event, 'issue')" 
+         class="nav-link <%= @view_mode == 'issue' ? 'active' : '' %>">Issue</a>
+    </li>
     <li class="nav-item">
       <a href="#" data-view-mode="activity" onclick="toggleViewMode(event, 'activity')" 
          class="nav-link <%= @view_mode == 'activity' ? 'active' : '' %>">Activity</a>
@@ -410,8 +414,8 @@
   </ul>
 </div>
 
-<!-- Activity/Project Analysis Tables - Only shown for activity and project views -->
-<% if @view_mode == 'activity' || @view_mode == 'project' %>
+<!-- Activity/Project/Issue Analysis Tables - Only shown for activity, project, and issue views -->
+<% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
   <div class="box">
     <h3>
       <% if @view_mode == 'activity' %>
@@ -426,6 +430,13 @@
         <div class="view-toggle-controls">
           <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
             <span id="project-view-toggle-text">Show Summary View</span>
+          </button>
+        </div>
+      <% elsif @view_mode == 'issue' %>
+        Time by Issue
+        <div class="view-toggle-controls">
+          <button type="button" id="toggle-issue-view-btn" class="button button-base button-primary" onclick="toggleIssueView()">
+            <span id="issue-view-toggle-text">Show Summary View</span>
           </button>
         </div>
       <% end %>
@@ -793,10 +804,109 @@
           </table>
         </div>
       <% end %>
+    <% elsif @view_mode == 'issue' %>
+      <% if ['daily', 'weekly', 'monthly'].include?(@grouping) %>
+        <%# Issue pivot table for cross-tabulation (Issue × Time Period matrix) - Dual View System %>
+        
+        <%# Detailed View: Pivot Table (Time Period × Issue matrix) - Default %>
+        <div id="issue-detailed-view" class="pivot-table-wrapper">
+          <table class="list pivot-table">
+            <thead>
+              <tr>
+                <th class="period-header"><%= l("label_#{@grouping}") %></th>
+                <% @issues.each do |issue_info| %>
+                  <% if issue_info[:issue] %>
+                    <th class="issue-header">
+                      <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: "_blank", class: "issue-link" %>
+                    </th>
+                  <% else %>
+                    <th class="issue-header">No Issue</th>
+                  <% end %>
+                <% end %>
+                <th class="total-header">Grand Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @paginated_periods.each_with_index do |period_display, index| %>
+                <% period_key = @issue_pivot_data[:raw_periods][(@offset + index)] %>
+                <tr>
+                  <td class="period-cell"><%= period_display %></td>
+                  <% @issues.each do |issue_info| %>
+                    <td class="hours-cell">
+                      <% hours = @matrix_data[period_key][issue_info[:key]] || 0 %>
+                      <%= hours > 0 ? format_hours(hours) : '' %>
+                    </td>
+                  <% end %>
+                  <td class="total-cell">
+                    <%= format_hours(@period_totals[period_key] || 0) %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td class="period-cell"><strong>Grand Total</strong></td>
+                <% @issues.each do |issue_info| %>
+                  <td class="total-cell">
+                    <strong><%= format_hours(@issue_totals[issue_info[:key]] || 0) %></strong>
+                  </td>
+                <% end %>
+                <td class="grand-total-cell">
+                  <strong><%= format_hours(@grand_total || 0) %></strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <%# Summary View: Simple Issue Table (Hidden by default) %>
+        <div id="issue-summary-view" style="display: none;">
+          <table class="list time-entries-grouped-table summary-with-bars">
+            <thead>
+              <tr>
+                <th>Issue</th>
+                <th class="hours-column sortable" onclick="sortTable(this, 1, 'issue-summary-view')" title="Click to sort">
+                  Total Hours <span class="sort-indicator">⇅</span>
+                </th>
+                <th class="bar-column">Distribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @issues.each do |issue_info| %>
+                <% hours = @issue_totals[issue_info[:key]] || 0 %>
+                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+                <tr>
+                  <td>
+                    <% if issue_info[:issue] %>
+                      <%= link_to issue_info[:display], issue_path(issue_info[:issue]), target: "_blank", class: "issue-link" %>
+                    <% else %>
+                      <%= issue_info[:display] %>
+                    <% end %>
+                  </td>
+                  <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
+                  <td class="bar-column">
+                    <div class="bar-container">
+                      <div class="bar-fill" style="width: <%= percentage %>%"></div>
+                      <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td><strong><%= l(:label_total) %></strong></td>
+                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
+                <td class="bar-column"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% end %>
     <% end %>
 
-    <!-- Pagination for Activity/Project views -->
-    <% if @view_mode == 'activity' || @view_mode == 'project' %>
+    <!-- Pagination for Activity/Project/Issue views -->
+    <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode) %>
@@ -806,6 +916,7 @@
              data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
              data-activity-count="<%= @activities&.count || 0 %>"
              data-project-count="<%= @projects&.count || 0 %>"
+             data-issue-count="<%= @issues&.count || 0 %>"
              data-view-mode="<%= @view_mode %>">
           <%= l(:text_pagination_info, 
               from: (@offset + 1), 
@@ -1192,12 +1303,14 @@ function updatePaginationInfo(viewState) {
     // Show detailed view pagination (based on time periods)
     paginationInfo.textContent = detailedText;
   } else {
-    // Show summary view pagination (based on activities or projects)
+    // Show summary view pagination (based on activities, projects, or issues)
     var count;
     if (viewMode === 'activity') {
       count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
     } else if (viewMode === 'project') {
       count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
+    } else if (viewMode === 'issue') {
+      count = parseInt(paginationInfo.getAttribute('data-issue-count')) || 0;
     }
     
     // Format: "Showing 1 to X of X entries"
@@ -1276,6 +1389,41 @@ function toggleProjectView() {
   regenerateChartForProjectViewState(newViewState);
 }
 
+function toggleIssueView() {
+  var detailedView = document.getElementById('issue-detailed-view');
+  var summaryView = document.getElementById('issue-summary-view');
+  var toggleText = document.getElementById('issue-view-toggle-text');
+  
+  if (!detailedView || !summaryView || !toggleText) {
+    return;
+  }
+  
+  var newViewState;
+  if (detailedView.style.display === 'none') {
+    // Currently showing summary, switch to detailed
+    detailedView.style.display = 'block';
+    summaryView.style.display = 'none';
+    toggleText.textContent = 'Show Summary View';
+    localStorage.setItem('issue_view_mode', 'detailed');
+    newViewState = 'detailed';
+    updatePaginationInfo('detailed');
+  } else {
+    // Currently showing detailed, switch to summary
+    detailedView.style.display = 'none';
+    summaryView.style.display = 'block';
+    toggleText.textContent = 'Show Detailed View';
+    localStorage.setItem('issue_view_mode', 'summary');
+    newViewState = 'summary';
+    updatePaginationInfo('summary');
+    
+    // Auto-sort by hours (descending) when showing summary view
+    initSummarySorting('issue-summary-view');
+  }
+  
+  // Regenerate chart with new view state
+  regenerateChartForIssueViewState(newViewState);
+}
+
 // Regenerate chart based on activity view state (summary vs detailed)
 function regenerateChartForViewState(viewState) {
   // Get current URL parameters
@@ -1300,6 +1448,21 @@ function regenerateChartForProjectViewState(viewState) {
   
   // Add/update project_view_state parameter
   urlParams.set('project_view_state', viewState);
+  
+  // Build new URL
+  var baseUrl = window.location.pathname;
+  var newUrl = baseUrl + '?' + urlParams.toString();
+  
+  // Reload page with new view state parameter
+  window.location.href = newUrl;
+}
+
+function regenerateChartForIssueViewState(viewState) {
+  // Get current URL parameters
+  var urlParams = new URLSearchParams(window.location.search);
+  
+  // Add/update issue_view_state parameter
+  urlParams.set('issue_view_state', viewState);
   
   // Build new URL
   var baseUrl = window.location.pathname;
@@ -1383,6 +1546,42 @@ function restoreProjectViewState() {
   }
 }
 
+function restoreIssueViewState() {
+  var savedMode = localStorage.getItem('issue_view_mode');
+  var detailedView = document.getElementById('issue-detailed-view');
+  var summaryView = document.getElementById('issue-summary-view');
+  var toggleText = document.getElementById('issue-view-toggle-text');
+  
+  if (!detailedView || !summaryView || !toggleText) {
+    return;
+  }
+  
+  // Default to detailed view if no saved preference
+  var currentMode = savedMode || 'detailed';
+  
+  if (currentMode === 'summary') {
+    detailedView.style.display = 'none';
+    summaryView.style.display = 'block';
+    toggleText.textContent = 'Show Detailed View';
+    updatePaginationInfo('summary');
+    
+    // Initialize summary sorting to descending (highest to lowest)
+    initSummarySorting('issue-summary-view');
+  } else {
+    // Default to detailed view
+    detailedView.style.display = 'block';
+    summaryView.style.display = 'none';
+    toggleText.textContent = 'Show Summary View';
+    updatePaginationInfo('detailed');
+  }
+  
+  // Update hidden field with current state
+  var hiddenField = document.getElementById('issue_view_state_field');
+  if (hiddenField) {
+    hiddenField.value = currentMode;
+  }
+}
+
 
 
 // Sync chart type dropdown with actual chart type from backend
@@ -1421,6 +1620,7 @@ document.addEventListener('DOMContentLoaded', function() {
   toggleCustomDateRange();
   restoreActivityViewState();
   restoreProjectViewState();
+  restoreIssueViewState();
   
   // Initialize chart after a small delay to ensure DOM is fully rendered
   setTimeout(function() {
@@ -1528,16 +1728,16 @@ function toggleViewMode(event, viewMode) {
   // Get current view mode from the form
   var currentViewMode = '<%= @view_mode %>';
   
+  // Don't toggle off if clicking the same tab
+  if (currentViewMode === viewMode) {
+    return;
+  }
+  
   // Build URL parameters
   var urlParams = new URLSearchParams(window.location.search);
   
-  // If clicking the currently selected view, unselect it (go back to time_entries view)
-  if (currentViewMode === viewMode) {
-    urlParams.delete('view_mode'); // Remove view_mode to show default time view
-  } else {
-    // Otherwise, select the new view
-    urlParams.set('view_mode', viewMode);
-  }
+  // Select the new view
+  urlParams.set('view_mode', viewMode);
   
   // Build and navigate to the new URL
   var baseUrl = window.location.pathname;

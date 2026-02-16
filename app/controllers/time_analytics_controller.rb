@@ -12,9 +12,8 @@ class TimeAnalyticsController < ApplicationController
 
   def individual_dashboard
     @user = User.current
-    # Default to time_entries view only if no view_mode parameter is present
-    # This allows showing Time view when user first visits or clicks Clear
-    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
+    # Default to issue view
+    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
     
     # Get time entries for the current user with project visibility check
     @time_entries = TimeEntry.joins(:project)
@@ -110,6 +109,29 @@ class TimeAnalyticsController < ApplicationController
           Struct.new(:period, :hours).new(project_name || 'No Project', hours)
         end
       end
+    elsif @view_mode == 'issue'
+      # Generate Issue × Time Period pivot table for ALL groupings (including daily)
+      @issue_pivot_data = generate_issue_pivot_table(@time_entries, @grouping)
+      @time_periods = @issue_pivot_data[:periods]
+      @issues = @issue_pivot_data[:issues]
+      @matrix_data = @issue_pivot_data[:matrix]
+      @period_totals = @issue_pivot_data[:period_totals]
+      @issue_totals = @issue_pivot_data[:issue_totals]
+      @grand_total = @issue_pivot_data[:grand_total]
+      
+      # For pagination, use time overview count to include periods with 0 hours
+      @entry_count = @time_overview_data.count
+      @paginated_periods = @time_periods.slice(@offset, @limit)
+      
+      # Also generate simple issue summary for daily toggle view
+      if @grouping == 'daily'
+        grouped_data = group_time_entries(@time_entries, 'issue')
+        # Sort by hours (highest to lowest)
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        @paginated_entries = sorted_data.slice(@offset, @limit).map do |issue_info, hours|
+          Struct.new(:period, :hours, :issue).new(issue_info[:display], hours, issue_info[:issue])
+        end
+      end
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       
@@ -157,13 +179,16 @@ class TimeAnalyticsController < ApplicationController
     # Track activity/project view state (summary vs detailed) for chart generation
     @activity_view_state = params[:activity_view_state] || 'detailed'
     @project_view_state = params[:project_view_state] || 'detailed'
+    @issue_view_state = params[:issue_view_state] || 'detailed'
     
     if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
     elsif @view_mode == 'project' && ['weekly', 'monthly'].include?(@grouping) && defined?(@project_pivot_data)
       @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
+    elsif @view_mode == 'issue' && ['daily', 'weekly', 'monthly'].include?(@grouping) && defined?(@issue_pivot_data)
+      @chart_data = generate_issue_pivot_chart_data(@issue_pivot_data, chart_type, @issue_view_state)
     else
-      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state)
+      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state, @issue_view_state)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -419,7 +444,7 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # Inline Chart Helper methods
-  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed')
+  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed', issue_view_state = 'detailed')
     # Always group by time period for consistent line chart display
     grouped_data = group_time_entries(time_entries, grouping)
     
@@ -459,6 +484,33 @@ class TimeAnalyticsController < ApplicationController
       base_query.joins('LEFT JOIN projects ON time_entries.project_id = projects.id')
                 .group('projects.name')
                 .sum(:hours)
+    when 'issue'
+      # Group by issue - return hash with issue info and hours
+      result = {}
+      time_entries.each do |entry|
+        if entry.issue
+          issue = entry.issue
+          key = issue.id
+          if !result[key]
+            result[key] = { issue: issue, display: format_issue_display(issue) }
+          end
+        else
+          key = 'no_issue'
+          if !result[key]
+            result[key] = { issue: nil, display: 'No Issue' }
+          end
+        end
+      end
+      # Return hash mapping issue_info => hours
+      issue_hours = {}
+      time_entries.each do |entry|
+        key = entry.issue_id || 'no_issue'
+        if result[key]
+          issue_hours[result[key]] ||= 0
+          issue_hours[result[key]] += entry.hours
+        end
+      end
+      issue_hours
     when 'daily'
       base_query.group(:spent_on).sum(:hours)
     when 'weekly'
@@ -939,6 +991,84 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
+    # Always use time period data for consistency
+    labels = pivot_data[:periods]
+    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+    raw_keys = pivot_data[:raw_periods]
+    
+    case chart_type
+    when 'line'
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    end
+  end
+
+  def generate_issue_pivot_table(time_entries, grouping)
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:issue).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      issue_key = entry.issue_id || 'no_issue'
+      issue_display = entry.issue ? format_issue_display(entry.issue) : 'No Issue'
+      {
+        period_key: period_key,
+        issue_key: issue_key,
+        issue_display: issue_display,
+        issue: entry.issue,
+        hours: entry.hours
+      }
+    end
+    
+    # Get unique periods and issues
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    issues = entries_with_details.map { |e| { key: e[:issue_key], display: e[:issue_display], issue: e[:issue] } }
+                                  .uniq { |i| i[:key] }
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      issue_key = entry[:issue_key]
+      matrix_data[period][issue_key] ||= 0
+      matrix_data[period][issue_key] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    issue_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = issues.sum { |issue| matrix_data[period][issue[:key]] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    issues.each do |issue|
+      issue_totals[issue[:key]] = periods.sum { |period| matrix_data[period][issue[:key]] || 0 }
+    end
+    
+    # Sort issues by total hours (highest to lowest) for summary view
+    issues = issues.sort_by { |issue| -issue_totals[issue[:key]] }
+    
+    {
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      issues: issues,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      issue_totals: issue_totals,
+      grand_total: grand_total,
+      raw_periods: periods
+    }
+  end
+
+  def format_issue_display(issue)
+    "#{issue.tracker.name} ##{issue.id}: #{issue.subject}"
+  end
+
+  def generate_issue_pivot_chart_data(pivot_data, chart_type, issue_view_state = 'detailed')
     # Always use time period data for consistency
     labels = pivot_data[:periods]
     data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
