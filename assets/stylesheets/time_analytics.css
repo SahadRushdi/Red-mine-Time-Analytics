@@ -246,7 +246,7 @@ fieldset.box legend {
 /* Ensure the fieldset has enough top padding so the buttons don't 
    crash into the newly positioned legend */
 fieldset.box {
-  padding-top: 8px !important;
+  padding-top: 12px !important;
   margin-top: 8px;
   margin-bottom: 20px;
   border: 1px solid #d7d7d7;
@@ -265,7 +265,7 @@ fieldset.box {
 /* Force consistent spacing - override theme conflicts */
 fieldset.box {
   margin-bottom: 20px !important;
-  padding-bottom: 15px !important;
+  padding-bottom: 12px !important;
 }
 
 #filters fieldset.box {
@@ -294,9 +294,12 @@ fieldset.box {
   height: 350px; /* Fixed height for all three boxes */
 }
 
-.analytics-section .stats-summary,
-.analytics-section .time-overview-box {
+.analytics-section .stats-summary {
   overflow: auto; /* Enable scrolling for content overflow */
+}
+
+.analytics-section .time-overview-box {
+  overflow: hidden; /* Clip pagination overflow and remove scrollbar */
 }
 
 /* Reset ALL h3 margins inside analytics boxes */
@@ -337,6 +340,7 @@ fieldset.box {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  margin-bottom: 0;
 }
 
 .analytics-section .time-overview-table th,
@@ -344,6 +348,11 @@ fieldset.box {
   text-align: center;
   padding: 8px 8px;
   border-bottom: 1px solid #eee;
+}
+
+/* Remove bottom border from last row to eliminate space */
+.analytics-section .time-overview-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .analytics-section .time-overview-table th {
@@ -366,7 +375,8 @@ fieldset.box {
 
 .analytics-section .time-overview-box .pagination-wrapper {
   text-align: center;
-  margin-top: 8px;
+  margin-top: 4px;
+  margin-bottom: 0;
   font-size: 11px;
 }
 
@@ -470,6 +480,7 @@ fieldset.box {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-right: 12px; /* Keep dropdown within chart box */
 }
 
 /* Allow chart-container to grow and fill remaining space */
@@ -498,7 +509,11 @@ fieldset.box {
 .pivot-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 15px;
+  margin-bottom: 0;
+}
+
+.time-entries-grouped-table {
+  margin-bottom: 0;
 }
 
 .pivot-table-wrapper {
@@ -689,7 +704,9 @@ fieldset.box {
   justify-content: space-between;
   align-items: center;
   margin-top: 15px;
+  margin-bottom: 0;
   padding-top: 15px;
+  padding-bottom: 0;
   border-top: 1px solid #eee;
   flex-wrap: nowrap; /* Prevent wrapping */
   gap: 10px;
