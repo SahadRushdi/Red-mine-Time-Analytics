@@ -238,10 +238,7 @@
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
-          <%= l(:text_pagination_info, 
-              from: (@overview_offset + 1), 
-              to: [@overview_offset + @overview_limit, @time_overview_data.count].min, 
-              total: @time_overview_data.count) %>
+          (<%= @overview_offset + 1 %>-<%= [@overview_offset + @overview_limit, @time_overview_data.count].min %>/<%= @time_overview_data.count %>)
         </div>
       </div>
     </div>
@@ -908,15 +905,12 @@
         <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info" id="pagination-info-text" 
-             data-detailed-text="<%= l(:text_pagination_info, from: (@offset + 1), to: [@offset + @limit, @entry_count].min, total: @entry_count) %>"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
              data-activity-count="<%= @activities&.count || 0 %>"
              data-project-count="<%= @projects&.count || 0 %>"
              data-issue-count="<%= @issues&.count || 0 %>"
              data-view-mode="<%= @view_mode %>">
-          <%= l(:text_pagination_info, 
-              from: (@offset + 1), 
-              to: [@offset + @limit, @entry_count].min, 
-              total: @entry_count) %>
+          (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
       </div>
     <% end %>
@@ -1308,8 +1302,8 @@ function updatePaginationInfo(viewState) {
       count = parseInt(paginationInfo.getAttribute('data-issue-count')) || 0;
     }
     
-    // Format: "1 to X of X entries"
-    paginationInfo.textContent = '1 to ' + count + ' of ' + count + ' entries';
+    // Format: Redmine native format "(1-X/X)"
+    paginationInfo.textContent = '(1-' + count + '/' + count + ')';
   }
 }
 

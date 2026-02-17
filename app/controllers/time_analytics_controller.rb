@@ -73,8 +73,8 @@ class TimeAnalyticsController < ApplicationController
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
       
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Also generate simple activity summary for daily toggle view
@@ -96,8 +96,8 @@ class TimeAnalyticsController < ApplicationController
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
       
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Also generate simple project summary for daily toggle view
@@ -119,8 +119,8 @@ class TimeAnalyticsController < ApplicationController
       @issue_totals = @issue_pivot_data[:issue_totals]
       @grand_total = @issue_pivot_data[:grand_total]
       
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Also generate simple issue summary for daily toggle view
