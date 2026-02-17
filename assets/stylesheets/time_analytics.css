@@ -816,6 +816,13 @@ fieldset.box {
     flex-direction: column;
   }
 
+  .analytics-section .stats-summary,
+  .analytics-section .time-overview-box,
+  .analytics-section .visualization-section {
+    height: auto !important; /* Remove fixed height on mobile */
+    flex: none !important; /* Remove flex-grow behavior */
+  }
+
   .analytics-section .stats-summary {
     flex: none;
   }
@@ -839,6 +846,10 @@ fieldset.box {
 
   .chart-wrapper {
     height: 280px;
+  }
+
+  #chart-container {
+    height: auto !important; /* Remove height: 0 trick on mobile */
   }
 
   .nav.nav-tabs {
