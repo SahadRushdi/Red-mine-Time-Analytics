@@ -840,7 +840,7 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Get unique periods and activities
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
     activities = entries_with_details.map { |e| e[:activity_name] }.uniq
     
     # Initialize matrix with zeros
@@ -920,15 +920,17 @@ class TimeAnalyticsController < ApplicationController
 
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
     # Always use time period data for consistency
-    labels = pivot_data[:periods]
-    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
     raw_keys = pivot_data[:raw_periods]
+    data_hash = {}
+    raw_keys.each_with_index do |key, index|
+      data_hash[key] = pivot_data[:period_totals][key] || 0
+    end
     
     case chart_type
     when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_bar_chart_data(data_hash)
     end
   end
 
@@ -945,7 +947,7 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Get unique periods and projects
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
     projects = entries_with_details.map { |e| e[:project_name] }.uniq
     
     # Initialize matrix with zeros
@@ -990,15 +992,17 @@ class TimeAnalyticsController < ApplicationController
 
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
     # Always use time period data for consistency
-    labels = pivot_data[:periods]
-    data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
     raw_keys = pivot_data[:raw_periods]
+    data_hash = {}
+    raw_keys.each_with_index do |key, index|
+      data_hash[key] = pivot_data[:period_totals][key] || 0
+    end
     
     case chart_type
     when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_bar_chart_data(data_hash)
     end
   end
 
@@ -1018,7 +1022,7 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Get unique periods and issues
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
     issues = entries_with_details.map { |e| { key: e[:issue_key], display: e[:issue_display], issue: e[:issue] } }
                                   .uniq { |i| i[:key] }
     

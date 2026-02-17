@@ -662,13 +662,18 @@ fieldset.box {
 /* === Links === */
 .project-link,
 .issue-link {
-  color: #628db6;
+  color: #2563eb;
   text-decoration: none;
 }
 
 .project-link:hover,
 .issue-link:hover {
   text-decoration: underline;
+}
+
+/* Issue links in table headers */
+.pivot-table th .issue-link {
+  color: #2563eb;
 }
 
 .no-issue {
