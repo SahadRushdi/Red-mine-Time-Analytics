@@ -438,6 +438,17 @@ fieldset.box {
   margin-right: 12px; /* Keep dropdown within chart box */
 }
 
+.total-hours-label {
+  font-size: 14px;
+  color: #555;
+  margin-right: 15px;
+}
+
+.total-hours-label strong {
+  color: #333;
+  font-weight: 600;
+}
+
 /* Allow chart-container to grow and fill remaining space */
 #chart-container {
   flex-grow: 1; /* Make it take up all available vertical space */

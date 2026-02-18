@@ -433,6 +433,7 @@
         </div>
       <% end %>
       <div class="table-controls">
+        <span class="total-hours-label">Hours: <strong><%= format_hours(@grand_total || 0) %></strong></span>
         <%= form_tag my_time_path, method: :get, local: true, 
             class: 'pagination-form' do %>
           <%= hidden_field_tag :filter, params[:filter] %>
@@ -485,19 +486,6 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td class="period-cell"><strong>Grand Total</strong></td>
-                <% @activities.each do |activity| %>
-                  <td class="total-cell">
-                    <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
-                  </td>
-                <% end %>
-                <td class="grand-total-cell">
-                  <strong><%= format_hours(@grand_total || 0) %></strong>
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
         
@@ -529,13 +517,6 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong><%= l(:label_total) %></strong></td>
-                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-                <td class="bar-column"></td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       <% elsif @grouping == 'daily' %>
@@ -570,19 +551,6 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td class="period-cell"><strong>Activity Total</strong></td>
-                <% @activities.each do |activity| %>
-                  <td class="total-cell">
-                    <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
-                  </td>
-                <% end %>
-                <td class="grand-total-cell">
-                  <strong><%= format_hours(@grand_total || 0) %></strong>
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
         
@@ -614,13 +582,6 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong><%= l(:label_total) %></strong></td>
-                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-                <td class="bar-column"></td>
-              </tr>
-            </tfoot>
           </table>
         </div>
       <% end %>
@@ -657,19 +618,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td class="period-cell"><strong>Grand Total</strong></td>
-                <% @projects.each do |project| %>
-                  <td class="total-cell">
-                    <strong><%= format_hours(@project_totals[project] || 0) %></strong>
-                  </td>
-                <% end %>
-                <td class="grand-total-cell">
-                  <strong><%= format_hours(@grand_total || 0) %></strong>
-                </td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
         
@@ -701,13 +650,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong><%= l(:label_total) %></strong></td>
-                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-                <td class="bar-column"></td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
       <% elsif @grouping == 'daily' %>
@@ -742,19 +685,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td class="period-cell"><strong>Grand Total</strong></td>
-                <% @projects.each do |project| %>
-                  <td class="total-cell">
-                    <strong><%= format_hours(@project_totals[project] || 0) %></strong>
-                  </td>
-                <% end %>
-                <td class="grand-total-cell">
-                  <strong><%= format_hours(@grand_total || 0) %></strong>
-                </td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
         
@@ -786,13 +717,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong><%= l(:label_total) %></strong></td>
-                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-                <td class="bar-column"></td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
       <% end %>
@@ -835,19 +760,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td class="period-cell"><strong>Grand Total</strong></td>
-                <% @issues.each do |issue_info| %>
-                  <td class="total-cell">
-                    <strong><%= format_hours(@issue_totals[issue_info[:key]] || 0) %></strong>
-                  </td>
-                <% end %>
-                <td class="grand-total-cell">
-                  <strong><%= format_hours(@grand_total || 0) %></strong>
-                </td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
         
@@ -885,13 +798,7 @@
                 </tr>
               <% end %>
             </tbody>
-            <tfoot>
-              <tr class="total-row">
-                <td><strong><%= l(:label_total) %></strong></td>
-                <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-                <td class="bar-column"></td>
-              </tr>
-            </tfoot>
+            
           </table>
         </div>
       <% end %>
