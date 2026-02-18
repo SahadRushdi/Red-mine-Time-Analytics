@@ -192,7 +192,7 @@
     </div>
     <div class="summary-item">
         <div class="summary-value"><%= format_hours(@total_hours) %></div>
-        <div class="summary-label"><%= l(:label_total_hours) %></div>
+        <div class="summary-label"><%= l(:label_hours) %></div>
       </div>
       <div class="summary-item">
         <div class="summary-value"><%= format_hours(@avg_hours_per_period) %></div>
@@ -466,7 +466,7 @@
                 <% @activities.each do |activity| %>
                   <th class="activity-header"><%= activity %></th>
                 <% end %>
-                <th class="total-header">Grand Total</th>
+                <th class="total-header"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -496,7 +496,7 @@
               <tr>
                 <th>Activity</th>
                 <th class="hours-column sortable" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  Total Hours <span class="sort-indicator">⇅</span>
+                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
                 </th>
                 <th class="bar-column"></th>
               </tr>
@@ -531,7 +531,7 @@
                 <% @activities.each do |activity| %>
                   <th class="activity-header"><%= activity %></th>
                 <% end %>
-                <th class="total-header">Grand Total</th>
+                <th class="total-header"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -561,7 +561,7 @@
               <tr>
                 <th>Activity</th>
                 <th class="hours-column sortable" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  Total Hours <span class="sort-indicator">⇅</span>
+                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
                 </th>
                 <th class="bar-column"></th>
               </tr>
@@ -598,7 +598,7 @@
                 <% @projects.each do |project| %>
                   <th class="project-header"><%= project %></th>
                 <% end %>
-                <th class="total-header">Grand Total</th>
+                <th class="total-header"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -629,7 +629,7 @@
               <tr>
                 <th>Project</th>
                 <th class="hours-column sortable" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  Total Hours <span class="sort-indicator">⇅</span>
+                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
                 </th>
                 <th class="bar-column"></th>
               </tr>
@@ -665,7 +665,7 @@
                 <% @projects.each do |project| %>
                   <th class="project-header"><%= project %></th>
                 <% end %>
-                <th class="total-header">Grand Total</th>
+                <th class="total-header"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -696,7 +696,7 @@
               <tr>
                 <th>Project</th>
                 <th class="hours-column sortable" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  Total Hours <span class="sort-indicator">⇅</span>
+                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
                 </th>
                 <th class="bar-column"></th>
               </tr>
@@ -740,7 +740,7 @@
                     <th class="issue-header">No Issue</th>
                   <% end %>
                 <% end %>
-                <th class="total-header">Grand Total</th>
+                <th class="total-header"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -771,7 +771,7 @@
               <tr>
                 <th>Issue</th>
                 <th class="hours-column sortable" onclick="sortTable(this, 1, 'issue-summary-view')" title="Click to sort">
-                  Total Hours <span class="sort-indicator">⇅</span>
+                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
                 </th>
                 <th class="bar-column"></th>
               </tr>

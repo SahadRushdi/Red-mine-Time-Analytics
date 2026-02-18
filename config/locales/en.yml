@@ -49,7 +49,6 @@ en:
   label_total: "Total"
   
   # Summary statistics
-  label_total_hours: "Total Hours"
   label_entries_count: "Entries"
   label_avg_per_day: "Avg/Day"
   label_avg_per_week: "Avg/Week"

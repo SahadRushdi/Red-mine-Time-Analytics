@@ -315,6 +315,7 @@ fieldset.box {
   font-weight: bold;
   font-size: 12px;
   border-bottom: 2px solid #ddd;
+  color: #212136;
 }
 
 .analytics-section .time-overview-table .hours-column {
@@ -518,6 +519,7 @@ fieldset.box {
 /* Table Headers */
 .pivot-table th.period-header,
 .pivot-table th.activity-header,
+.pivot-table th.project-header,
 .pivot-table th.total-header,
 .time-entries-table th {
   font-weight: bold;
@@ -525,6 +527,7 @@ fieldset.box {
   border-bottom: 2px solid #ddd;
   vertical-align: middle;
   font-size: 12px;
+  color: #212136;
 }
 
 .pivot-table th.period-header {
@@ -533,7 +536,8 @@ fieldset.box {
   text-align: center;
 }
 
-.pivot-table th.activity-header {
+.pivot-table th.activity-header,
+.pivot-table th.project-header {
   background-color: #f0f8e8;
   min-width: 100px;
   text-align: center;
@@ -554,7 +558,6 @@ fieldset.box {
 
 /* Table Cells */
 .pivot-table .period-cell {
-  background-color: #f9f9f9;
   font-weight: bold;
   padding: 8px;
   border-right: 2px solid #ddd;
@@ -576,14 +579,7 @@ fieldset.box {
 }
 
 .pivot-table .total-cell {
-  background-color: #f5f5f5;
   border-left: 2px solid #ddd;
-}
-
-.pivot-table .grand-total-cell {
-  background-color: #e5f1f9;
-  border-left: 2px solid #007cba;
-  font-weight: bold;
 }
 
 .time-entries-table td {
@@ -601,20 +597,7 @@ fieldset.box {
   background-color: #f9f9f9;
 }
 
-/* Total Rows */
-.pivot-table .total-row,
-.time-entries-table .total-row {
-  background-color: #f0f0f0;
-  border-top: 2px solid #ddd;
-}
-
-.pivot-table .total-row td,
-.time-entries-table .total-row td {
-  font-weight: bold;
-  border-bottom: none;
-}
-
-/* === Column Widths === */
+/* Column Widths */
 .date-column { width: 100px; white-space: nowrap; }
 .project-column { width: 150px; }
 .activity-column { width: 120px; }
@@ -627,16 +610,22 @@ fieldset.box {
   width: 60%;
 }
 
+.summary-with-bars th {
+  color: #212136;
+}
+
 .summary-with-bars th:first-child,
 .summary-with-bars td:first-child {
   text-align: left;
   padding-left: 12px;
+  color: #212136;
 }
 
 .summary-with-bars .hours-column {
   width: 120px;
   text-align: right;
   padding-right: 20px;
+  color: #212136;
 }
 
 .bar-container {
