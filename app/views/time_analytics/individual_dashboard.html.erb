@@ -408,7 +408,7 @@
 
 <!-- Activity/Project/Issue Analysis Tables - Only shown for activity, project, and issue views -->
 <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
-  <div class="box">
+  <div class="box" id="view-mode-table">
     <h3>
       <% if @view_mode == 'activity' %>
         Time by Activity
@@ -531,7 +531,7 @@
                 <% @activities.each do |activity| %>
                   <th class="activity-header"><%= activity %></th>
                 <% end %>
-                <th class="total-header">Daily Total</th>
+                <th class="total-header">Grand Total</th>
               </tr>
             </thead>
             <tbody>
@@ -1246,6 +1246,9 @@ function toggleActivityView() {
     initSummarySorting('daily-summary-view');
   }
   
+  // Store scroll flag to trigger auto-scroll
+  sessionStorage.setItem('scrollToTable', 'true');
+  
   // Regenerate chart with new view state
   regenerateChartForViewState(newViewState);
 }
@@ -1281,6 +1284,9 @@ function toggleProjectView() {
     initSummarySorting('project-summary-view');
   }
   
+  // Store scroll flag to trigger auto-scroll
+  sessionStorage.setItem('scrollToTable', 'true');
+  
   // Regenerate chart with new view state
   regenerateChartForProjectViewState(newViewState);
 }
@@ -1315,6 +1321,9 @@ function toggleIssueView() {
     // Auto-sort by hours (descending) when showing summary view
     initSummarySorting('issue-summary-view');
   }
+  
+  // Store scroll flag to trigger auto-scroll
+  sessionStorage.setItem('scrollToTable', 'true');
   
   // Regenerate chart with new view state
   regenerateChartForIssueViewState(newViewState);
@@ -1518,6 +1527,17 @@ document.addEventListener('DOMContentLoaded', function() {
   restoreProjectViewState();
   restoreIssueViewState();
   
+  // Auto-scroll to table when switching views
+  if (sessionStorage.getItem('scrollToTable') === 'true') {
+    sessionStorage.removeItem('scrollToTable');
+    setTimeout(function() {
+      var tableElement = document.getElementById('view-mode-table');
+      if (tableElement) {
+        tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 200);
+  }
+  
   // Initialize chart after a small delay to ensure DOM is fully rendered
   setTimeout(function() {
     initChart();
@@ -1628,6 +1648,9 @@ function toggleViewMode(event, viewMode) {
   if (currentViewMode === viewMode) {
     return;
   }
+  
+  // Store scroll flag in sessionStorage to trigger scroll after page load
+  sessionStorage.setItem('scrollToTable', 'true');
   
   // Build URL parameters
   var urlParams = new URLSearchParams(window.location.search);
