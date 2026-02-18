@@ -12,7 +12,9 @@ en:
   label_search: "Search"
   label_visualization: "Visualization"
   label_time_entries: "Time"
-  label_time_overview: "Time Overview"
+  label_time_overview_daily: "Daily Time Log"
+  label_time_overview_weekly: "Weekly Time Log"
+  label_time_overview_monthly: "Monthly Time Log"
   label_summary: "Summary"
   label_export_csv: "Export CSV"
   

@@ -212,7 +212,7 @@
   <!-- Time Overview Section - Between Summary and Visualization -->
   <% if @time_overview_data&.any? %>
     <div class="box time-overview-box">
-      <h3><%= l(:label_time_overview) %></h3>
+      <h3><%= l("label_time_overview_#{@grouping}") %></h3>
       
       <%# Always show Date format (consistent across all views) %>
       <table class="list time-overview-table">
