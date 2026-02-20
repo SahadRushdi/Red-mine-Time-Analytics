@@ -1530,12 +1530,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auto-scroll to table when switching views
   if (sessionStorage.getItem('scrollToTable') === 'true') {
     sessionStorage.removeItem('scrollToTable');
-    setTimeout(function() {
-      var tableElement = document.getElementById('view-mode-table');
-      if (tableElement) {
-        tableElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 200);
+    var tableElement = document.getElementById('view-mode-table');
+    if (tableElement) {
+      tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+    }
   }
   
   // Initialize chart after a small delay to ensure DOM is fully rendered
