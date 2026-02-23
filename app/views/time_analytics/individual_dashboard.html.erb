@@ -462,11 +462,11 @@
           <table class="list pivot-table">
             <thead>
               <tr>
-                <th class="period-header"><%= l("label_#{@grouping}") %></th>
+                <th class="period-header" style="border-right: 2px solid #ddd;"><%= l("label_#{@grouping}") %></th>
                 <% @activities.each do |activity| %>
-                  <th class="activity-header"><%= activity %></th>
+                  <th class="activity-header" style="border-right: 1px solid #eee;"><%= activity %></th>
                 <% end %>
-                <th class="total-header"><%= l(:label_hours) %></th>
+                <th class="total-header" style="border-left: 2px solid #ddd;"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -527,11 +527,11 @@
           <table class="list pivot-table">
             <thead>
               <tr>
-                <th class="period-header">Date</th>
+                <th class="period-header" style="border-right: 2px solid #ddd;">Date</th>
                 <% @activities.each do |activity| %>
-                  <th class="activity-header"><%= activity %></th>
+                  <th class="activity-header" style="border-right: 1px solid #eee;"><%= activity %></th>
                 <% end %>
-                <th class="total-header"><%= l(:label_hours) %></th>
+                <th class="total-header" style="border-left: 2px solid #ddd;"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -594,11 +594,11 @@
           <table class="list pivot-table">
             <thead>
               <tr>
-                <th class="period-header"><%= l("label_#{@grouping}") %></th>
+                <th class="period-header" style="border-right: 2px solid #ddd;"><%= l("label_#{@grouping}") %></th>
                 <% @projects.each do |project| %>
-                  <th class="project-header"><%= project %></th>
+                  <th class="project-header" style="border-right: 1px solid #eee;"><%= project %></th>
                 <% end %>
-                <th class="total-header"><%= l(:label_hours) %></th>
+                <th class="total-header" style="border-left: 2px solid #ddd;"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
@@ -661,12 +661,11 @@
           <table class="list pivot-table">
             <thead>
               <tr>
-                <th class="period-header">Date</th>
+                <th class="period-header" style="border-right: 2px solid #ddd;">Date</th>
                 <% @projects.each do |project| %>
-                  <th class="project-header"><%= project %></th>
+                  <th class="project-header" style="border-right: 1px solid #eee;"><%= project %></th>
                 <% end %>
-                <th class="total-header"><%= l(:label_hours) %></th>
-              </tr>
+                <th class="total-header" style="border-left: 2px solid #ddd;"><%= l(:label_hours) %></th>              </tr>
             </thead>
             <tbody>
               <% @paginated_periods.each_with_index do |period_display, index| %>
@@ -730,17 +729,17 @@
           <table class="list pivot-table">
             <thead>
               <tr>
-                <th class="period-header"><%= l("label_#{@grouping}") %></th>
+                <th class="period-header" style="border-right: 2px solid #ddd;"><%= l("label_#{@grouping}") %></th>
                 <% @issues.each do |issue_info| %>
                   <% if issue_info[:issue] %>
-                    <th class="issue-header">
+                    <th class="issue-header" style="border-right: 1px solid #eee;">
                       <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: "_blank", class: "issue-link" %>
                     </th>
                   <% else %>
-                    <th class="issue-header">No Issue</th>
+                    <th class="issue-header" style="border-right: 1px solid #eee;">No Issue</th>
                   <% end %>
                 <% end %>
-                <th class="total-header"><%= l(:label_hours) %></th>
+                <th class="total-header" style="border-left: 2px solid #ddd;"><%= l(:label_hours) %></th>
               </tr>
             </thead>
             <tbody>
