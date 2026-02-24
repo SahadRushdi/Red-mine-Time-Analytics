@@ -1,6 +1,23 @@
 <% content_for :header_tags do %>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Flowbite CSS (local) -->
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Tailwind CSS (compiled) -->
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Legacy CSS (will be removed after migration) -->
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Flowbite JS (local) -->
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Plugin JS -->
   <%= javascript_include_tag 'time_analytics.js', plugin: 'redmine_time_analytics' %>
 <% end %>
