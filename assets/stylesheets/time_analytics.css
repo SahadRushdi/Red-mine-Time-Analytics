@@ -323,6 +323,32 @@ fieldset.box {
   font-family: monospace;
 }
 
+.analytics-section .time-overview-table .activity-breakdown-column {
+  text-align: left;
+  width: 50%;
+}
+
+.analytics-section .time-overview-table .activity-breakdown-cell {
+  text-align: left;
+  padding: 10px 12px;
+}
+
+.analytics-section .time-overview-table .activity-mini-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.analytics-section .time-overview-table .activity-bar {
+  transition: all 0.3s ease;
+}
+
+.analytics-section .time-overview-table .activity-bar:hover {
+  transform: scaleX(1.03) translateY(-1px);
+  filter: brightness(1.15);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
 .analytics-section .time-overview-table .total-row {
   background-color: #f0f0f0;
   border-top: 2px solid #ddd;
@@ -469,6 +495,12 @@ fieldset.box {
 
 .chart-wrapper canvas {
   width: 100% !important;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.chart-wrapper canvas:hover {
+  transform: scale(1.002);
 }
 
 /* === Tables === */
@@ -808,6 +840,14 @@ fieldset.box {
 
   .analytics-section .stats-summary {
     flex: none;
+  }
+  
+  .analytics-section .time-overview-table .activity-breakdown-column {
+    width: 100%;
+  }
+  
+  .analytics-section .time-overview-table .activity-bar span {
+    font-size: 10px;
   }
 
   .visualization-controls,

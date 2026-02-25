@@ -297,9 +297,9 @@
 <div class="analytics-section">
   <% if @time_overview_data&.any? %>
     <div class="box time-overview-box">
-      <h3><%= l("label_time_overview_#{@grouping}") %></h3>
+      <h3><%= time_overview_header(@grouping) %></h3>
       
-      <%# Always show Date format (consistent across all views) %>
+      <%# Simple Time Overview Table - Date and Hours only %>
       <table class="list time-overview-table">
         <thead>
           <tr>
@@ -331,7 +331,8 @@
 
   <!-- Visualization Section -->
   <div class="box visualization-section">
-    <h3 style="display: flex; justify-content: flex-end;">
+    <h3 style="display: flex; justify-content: space-between; align-items: center;">
+      <span><%= chart_breakdown_header(@grouping) %></span>
       <div class="visualization-controls">
         <%# START: New Custom Dropdown for Chart Type %>
         <style>
@@ -988,15 +989,6 @@ function initChart() {
 
     var config = JSON.parse(chartData);
     
-    // Create gradient for bar charts
-    if (config.type === 'bar' && config.data.datasets[0].backgroundColor === 'GRADIENT_PLACEHOLDER') {
-      var ctx = chartElement.getContext('2d');
-      var gradient = ctx.createLinearGradient(0, 0, 0, chartElement.height);
-      gradient.addColorStop(0, '#36a2eb');
-      gradient.addColorStop(1, '#007cba');
-      config.data.datasets[0].backgroundColor = gradient;
-    }
-    
     // Ensure responsive configuration
     if (!config.options) {
       config.options = {};
@@ -1004,8 +996,65 @@ function initChart() {
     config.options.responsive = true;
     config.options.maintainAspectRatio = false;
 
-    // Add custom tooltip callback for weekly grouping (bar and line charts)
-    if ((config.type === 'bar' || config.type === 'line') && config.data.datasets[0].tooltipLabels) {
+    // Add tooltip formatting for stacked bar charts
+    if (config.type === 'bar') {
+      // Ensure plugins object exists
+      if (!config.options.plugins) config.options.plugins = {};
+      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
+      
+      // Preserve existing tooltip settings from server (font sizes, etc.)
+      var existingTooltipConfig = config.options.plugins.tooltip;
+      
+      // Ensure callbacks object exists
+      if (!config.options.plugins.tooltip.callbacks) {
+        config.options.plugins.tooltip.callbacks = {};
+      }
+      
+      // Custom title callback for weekly grouping (show Month/Date/Year format)
+      config.options.plugins.tooltip.callbacks.title = function(context) {
+        var index = context[0].dataIndex;
+        var dataset = config.data.datasets[0];
+        
+        // Use tooltipLabels if available (for weekly grouping with Month/Date/Year format)
+        if (dataset.tooltipLabels && dataset.tooltipLabels[index]) {
+          return dataset.tooltipLabels[index];
+        }
+        
+        return context[0].label;
+      };
+      
+      // Custom label callback to format hours and hide 0:00 activities
+      config.options.plugins.tooltip.callbacks.label = function(context) {
+        var label = context.dataset.label || '';
+        var value = context.parsed.y;
+        
+        // Hide activities with 0:00 hours
+        if (value === 0) {
+          return null;
+        }
+        
+        var formatted = formatHours(value);
+        return label + ': ' + formatted;
+      };
+      
+      // Filter out zero-value items from tooltip
+      config.options.plugins.tooltip.filter = function(tooltipItem) {
+        return tooltipItem.parsed.y !== 0;
+      };
+      
+      // Add hover animation
+      config.options.animation = {
+        duration: 300,
+        easing: 'easeInOutQuart'
+      };
+      
+      config.options.hover = {
+        animationDuration: 300
+      };
+    }
+    
+    // Add custom tooltip callback for weekly grouping (line charts)
+    if (config.type === 'line' && config.data.datasets[0].tooltipLabels) {
       if (!config.options.plugins) config.options.plugins = {};
       if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
       if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
@@ -1017,33 +1066,22 @@ function initChart() {
       };
     }
     
-    // Add tooltip label callback for bar and line charts to show formatted hours
-    if (config.type === 'bar' || config.type === 'line') {
+    // Add tooltip label callback for line charts to show formatted hours
+    if (config.type === 'line') {
       if (!config.options.plugins) config.options.plugins = {};
       if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
       if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
       
       config.options.plugins.tooltip.callbacks.label = function(context) {
         var formattedHours = context.dataset.formattedHours;
-        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
-      };
-    }
-
-    // Dynamically add tooltip callbacks on the client-side
-    if (config.type === 'bar' || config.type === 'line') {
-      if (!config.options.plugins) config.options.plugins = {};
-      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
-      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
-      
-      config.options.plugins.tooltip.callbacks.label = function(context) {
-        var formattedHours = context.dataset.formattedHours;
-        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
+        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : formatHours(context.parsed.y));
       };
     }
     
     timeAnalyticsChart = new Chart(chartElement, config);
     
   } catch (error) {
+    console.error('Chart initialization error:', error);
     chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart</p>';
   }
 }
@@ -1077,7 +1115,25 @@ function updateChart() {
   try {
     // Parse the current chart configuration
     var chartConfig = JSON.parse(currentChartData);
+    var currentChartType = chartConfig.type;
     
+    // If switching between line and bar, we need to reload from server
+    // because they have different data structures (line = simple totals, bar = activity breakdown)
+    if ((currentChartType === 'line' && chartType === 'bar') || 
+        (currentChartType === 'bar' && chartType === 'line')) {
+      // Reload the page with the new chart type parameter
+      var url = new URL(window.location.href);
+      url.searchParams.set('chart_type', chartType);
+      window.location.href = url.toString();
+      return;
+    }
+    
+    // For same type transitions (shouldn't happen), just reinit
+    if (currentChartType === chartType) {
+      return;
+    }
+    
+    // This code shouldn't be reached anymore, but keep as fallback
     // Transform the chart type while keeping the same data
     var newChartConfig = transformChartType(chartConfig, chartType);
     
@@ -1088,7 +1144,11 @@ function updateChart() {
     initChart();
     
   } catch (error) {
-    // Silent fail - chart remains as is
+    console.error('Chart update error:', error);
+    // On error, reload from server
+    var url = new URL(window.location.href);
+    url.searchParams.set('chart_type', chartType);
+    window.location.href = url.toString();
   }
 }
 

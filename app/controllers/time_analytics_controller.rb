@@ -444,25 +444,173 @@ class TimeAnalyticsController < ApplicationController
 
   # Inline Chart Helper methods
   def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed', issue_view_state = 'detailed')
-    # Always group by time period for consistent line chart display
-    grouped_data = group_time_entries(time_entries, grouping)
-    
-    # Fill in missing periods to ensure chart matches table
-    case grouping
-    when 'daily'
-      grouped_data = fill_missing_working_days(grouped_data, @from, @to)
-    when 'weekly'
-      grouped_data = fill_missing_weeks(grouped_data, @from, @to)
-    when 'monthly'
-      grouped_data = fill_missing_months(grouped_data, @from, @to)
-    end
-    
+    # For bar charts, always generate stacked activity breakdown
+    # For line charts, generate simple total hours
     case chart_type
     when 'line'
+      # Group by time period for line chart (total hours only)
+      grouped_data = group_time_entries(time_entries, grouping)
+      
+      # Fill in missing periods
+      case grouping
+      when 'daily'
+        grouped_data = fill_missing_working_days(grouped_data, @from, @to)
+      when 'weekly'
+        grouped_data = fill_missing_weeks(grouped_data, @from, @to)
+      when 'monthly'
+        grouped_data = fill_missing_months(grouped_data, @from, @to)
+      end
+      
       generate_line_chart_data(grouped_data, view_mode)
     else
-      generate_bar_chart_data(grouped_data, view_mode)
+      # Bar charts always show stacked activity breakdown
+      generate_bar_chart_data_with_activities(time_entries, grouping, view_mode)
     end
+  end
+  
+  def generate_bar_chart_data_with_activities(time_entries, grouping, view_mode = 'time_entries')
+    return empty_chart_data('bar') if time_entries.empty?
+
+    # Generate activity breakdown for each period
+    activity_breakdown = {}
+    time_entries.includes(:activity).each do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      activity_name = entry.activity&.name || 'No Activity'
+      
+      activity_breakdown[period_key] ||= {}
+      activity_breakdown[period_key][activity_name] ||= 0
+      activity_breakdown[period_key][activity_name] += entry.hours
+    end
+    
+    # Get all unique periods, sorted
+    all_periods = activity_breakdown.keys.sort
+    
+    # Return empty if no data
+    return empty_chart_data('bar') if all_periods.empty?
+    
+    # Get all unique activities across all periods, sorted by total hours (highest to lowest)
+    all_activities = {}
+    activity_breakdown.each do |_, activities|
+      activities.each do |activity, hours|
+        all_activities[activity] ||= 0
+        all_activities[activity] += hours
+      end
+    end
+    activities_sorted = all_activities.sort_by { |_, h| -h }.map(&:first)
+    
+    # Generate labels for chart
+    formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+    
+    # Generate tooltip labels (detailed format for weekly grouping)
+    tooltip_labels = if grouping == 'weekly'
+      all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Define modern color palette for activities
+    activity_colors = {
+      'Development' => '#6366f1',      # Indigo
+      'Testing' => '#3b82f6',          # Blue
+      'Learning' => '#10b981',         # Green
+      'Design' => '#f97316',           # Orange
+      'Documentation' => '#8b5cf6',    # Purple
+      'Meeting' => '#ec4899',          # Pink
+      'Code Review' => '#14b8a6',      # Teal
+      'Bug Fix' => '#ef4444',          # Red
+      'Research' => '#f59e0b',         # Amber
+      'Planning' => '#06b6d4'          # Cyan
+    }
+    
+    # Create datasets for each activity (stacked)
+    datasets = activities_sorted.map do |activity|
+      data = all_periods.map do |period_key|
+        activity_breakdown[period_key]&.[](activity) || 0
+      end
+      
+      color = activity_colors[activity] || generate_colors(1).first
+      
+      # Calculate slightly brighter color for hover effect
+      hover_color = lighten_color(color, 15)
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: activity,
+        data: data,
+        backgroundColor: color,
+        hoverBackgroundColor: hover_color,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14, weight: '600' },
+          bodyFont: { size: 13 },
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            font: {
+              size: 11
+            }
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          },
+          grid: {
+            color: '#f3f4f6'
+          }
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: chart_options
+    }.to_json.html_safe
   end
 
   def group_time_entries(time_entries, grouping)
@@ -564,85 +712,23 @@ class TimeAnalyticsController < ApplicationController
       result
     end
   end
-
-  def generate_bar_chart_data(data_hash, view_mode = 'time_entries')
-    return empty_chart_data('bar') if data_hash.empty?
-
-    # Sort data by date keys for proper chronological order
-    sorted_data = data_hash.sort_by do |key, _|
-      case key
-      when Date
-        key
-      when String
-        Date.parse(key) rescue key
-      else
-        key.to_s
-      end
-    end
-
-    # Generate labels and tooltip data
-    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+  
+  def lighten_color(hex_color, percent)
+    # Convert hex to RGB
+    hex = hex_color.gsub('#', '')
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
     
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if @grouping == 'weekly'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
-    else
-      formatted_labels
-    end
+    # Lighten by increasing towards 255
+    r = [255, r + (255 - r) * percent / 100].min.to_i
+    g = [255, g + (255 - g) * percent / 100].min.to_i
+    b = [255, b + (255 - b) * percent / 100].min.to_i
     
-    # Generate formatted hours for tooltips
-    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
-    
-    chart_data = {
-      labels: formatted_labels,
-      datasets: [{
-        label: 'Hours',
-        data: sorted_data.map { |_, value| value },
-        backgroundColor: 'GRADIENT_PLACEHOLDER',
-        borderWidth: 1,
-        tooltipLabels: tooltip_labels,
-        formattedHours: formatted_hours
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {}
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: helpers.grouping_label(@grouping)
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        }
-      }
-    }
-
-    {
-      type: 'bar',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
+    # Convert back to hex
+    "#%02x%02x%02x" % [r, g, b]
   end
+
 
   def generate_line_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('line') if data_hash.empty?
@@ -1088,7 +1174,7 @@ class TimeAnalyticsController < ApplicationController
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
-    # Format data with proper date display
+    # Format data with proper date display (no activity breakdown)
     sorted_data.map do |period, hours|
       formatted_period = if grouping == 'daily'
         helpers.format_chart_label(period)

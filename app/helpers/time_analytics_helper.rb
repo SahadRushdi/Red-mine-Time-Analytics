@@ -379,4 +379,46 @@ module TimeAnalyticsHelper
       grouping.humanize
     end
   end
+  
+  def activity_color(activity_name)
+    colors = {
+      'Development' => '#6366f1',
+      'Testing' => '#3b82f6',
+      'Learning' => '#10b981',
+      'Design' => '#f97316',
+      'Documentation' => '#8b5cf6',
+      'Meeting' => '#ec4899',
+      'Code Review' => '#14b8a6',
+      'Bug Fix' => '#ef4444',
+      'Research' => '#f59e0b',
+      'Planning' => '#06b6d4'
+    }
+    colors[activity_name] || '#6b7280'
+  end
+  
+  def time_overview_header(grouping)
+    case grouping
+    when 'daily'
+      'Daily Time Log'
+    when 'weekly'
+      'Weekly Time Log'
+    when 'monthly'
+      'Monthly Time Log'
+    else
+      'Time Log'
+    end
+  end
+  
+  def chart_breakdown_header(grouping)
+    case grouping
+    when 'daily'
+      'Daily Breakdown'
+    when 'weekly'
+      'Weekly Breakdown'
+    when 'monthly'
+      'Monthly Breakdown'
+    else
+      'Time Breakdown'
+    end
+  end
 end
