@@ -5,7 +5,7 @@
   <div>
     <h1 class="text-2xl font-bold text-gray-900"><%= l(:label_individual_dashboard) %></h1>
     <p class="text-sm text-gray-500">
-      <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%d, %Y')}" : l(:label_all_time) %>
+      <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
     </p>
   </div>
   
@@ -192,7 +192,20 @@
       <%= percentage_complete %>% complete
     </span>
   </div>
-  <div class="text-xs text-gray-500 mt-1">Last entry: <%= @from && @to ? "Today, #{Time.current.strftime('%I:%M %p')}" : 'N/A' %></div>
+  <div class="text-xs text-gray-500 mt-1">
+    Last entry: 
+    <% if @last_entry %>
+      <% if @last_entry.created_on.to_date == Date.today %>
+        Today, <%= @last_entry.created_on.strftime('%I:%M %p') %>
+      <% elsif @last_entry.created_on.to_date == Date.yesterday %>
+        Yesterday, <%= @last_entry.created_on.strftime('%I:%M %p') %>
+      <% else %>
+        <%= @last_entry.created_on.strftime('%b %d, %I:%M %p') %>
+      <% end %>
+    <% else %>
+      N/A
+    <% end %>
+  </div>
 </div>
 
 <%# Modern Metrics Grid - 6 Cards %>
@@ -300,7 +313,7 @@
       <h3><%= time_overview_header(@grouping) %></h3>
       
       <%# Simple Time Overview Table - Date and Hours only %>
-      <table class="list time-overview-table">
+      <table class="time-overview-table">
         <thead>
           <tr>
             <th><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>

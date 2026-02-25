@@ -27,6 +27,14 @@ class TimeAnalyticsController < ApplicationController
     @total_hours = @time_entries.sum(:hours)
     @entry_count = @time_entries.count
     
+    # Get the most recently logged time entry across ALL time (not filtered by date range)
+    # This shows when the user actually last logged time, regardless of current filter
+    @last_entry = TimeEntry.joins(:project)
+                           .where(user: @user)
+                           .where(projects: { status: Project::STATUS_ACTIVE })
+                           .order(created_on: :desc, id: :desc)
+                           .first
+    
     # Calculate summary statistics based on grouping
     case @grouping
     when 'weekly'
