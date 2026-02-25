@@ -1,16 +1,6 @@
 // Global chart instance
 var timeAnalyticsChart = null;
 
-function toggleCustomDateRange() {
-  var filter = document.getElementById('filter').value;
-  var customRange = document.getElementById('custom-date-range');
-  if (filter === 'custom') {
-    customRange.style.display = 'block';
-  } else {
-    customRange.style.display = 'none';
-  }
-}
-
 function toggleVisualization() {
   var container = document.getElementById('chart-container');
   var btn = document.getElementById('toggle-chart-btn');
@@ -88,7 +78,6 @@ function updateChart() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  toggleCustomDateRange();
   initChart();
 
   var toggleBtn = document.getElementById('toggle-filters-btn');

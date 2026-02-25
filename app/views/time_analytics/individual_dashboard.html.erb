@@ -15,71 +15,75 @@
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
     <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
-    <%= hidden_field_tag :filter, '', id: 'filter_hidden' %>
+    <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
     
-    <%# Time Period Button Group %>
-    <div class="inline-flex rounded-lg shadow-sm" role="group">
-      <button type="button" onclick="setFilterAndSubmit('last_7_days')" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'last_7_days' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border border-gray-300 rounded-l-lg hover:bg-gray-50 transition-colors">
-        Last 7 Days
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('last_14_days')" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'last_14_days' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border-t border-b border-gray-300 hover:bg-gray-50 transition-colors">
-        Last 14 Days
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('this_week')" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'this_week' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border border-gray-300 hover:bg-gray-50 transition-colors">
-        This Week
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('last_week')" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'last_week' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border border-gray-300 hover:bg-gray-50 transition-colors">
-        Last Week
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('this_month')" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'this_month' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border border-gray-300 hover:bg-gray-50 transition-colors">
-        This Month
-      </button>
-      <button type="button" onclick="toggleCustomDateRange()" 
-          class="px-4 py-2 text-sm font-medium <%= params[:filter] == 'custom' ? 'text-white bg-gray-900' : 'text-gray-700 bg-white' %> border border-gray-300 rounded-r-lg hover:bg-gray-50 transition-colors">
-        Custom Range
-      </button>
-    </div>
-    
-    <%# Custom Date Range (Hidden by default) %>
-    <div id="custom-date-range" class="<%= 'hidden' unless params[:filter] == 'custom' %> flex items-center gap-2">
+        <%# Time Period Button Group %>
+        <div class="inline-flex rounded-lg shadow-sm" role="group">
+          <button type="button" onclick="setFilterAndSubmit('last_7_days')" 
+              style="<%= @filter == 'last_7_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_7_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            Last 7 Days
+          </button>
+          <button type="button" onclick="setFilterAndSubmit('last_14_days')" 
+              style="<%= @filter == 'last_14_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border-t border-b border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_14_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            Last 14 Days
+          </button>
+          <button type="button" onclick="setFilterAndSubmit('this_week')" 
+              style="<%= @filter == 'this_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            This Week
+          </button>
+          <button type="button" onclick="setFilterAndSubmit('last_week')" 
+              style="<%= @filter == 'last_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            Last Week
+          </button>
+          <button type="button" onclick="setFilterAndSubmit('this_month')" 
+              style="<%= @filter == 'this_month' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_month' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            This Month
+          </button>
+          <button type="button" onclick="toggleCustomDateRange()" 
+              style="<%= @filter == 'custom' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'custom' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            Custom Range
+          </button>
+        </div>    
+    <%# Custom Date Range (Hidden by default) - Reverted to Browser Default with Auto-submit %>
+    <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2">
       <span class="text-sm text-gray-600">From:</span>
-      <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500' %>
+      <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
       <span class="text-sm text-gray-600">To:</span>
-      <%= date_field_tag :to, params[:to] || @to, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500' %>
-      <%= submit_tag 'Apply', class: 'px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors' %>
+      <%= date_field_tag :to, params[:to] || @to, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
     </div>
     
     <%# Group By Dropdown - Flowbite Style %>
     <div class="relative">
       <button type="button" id="grouping-dropdown-button" onclick="toggleGroupingDropdown()" 
-          class="inline-flex items-center justify-between w-32 px-4 py-2 text-sm font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors">
+          class="inline-flex items-center justify-between w-32 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
         <span id="grouping-selected-text"><%= @grouping.capitalize %></span>
         <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
       </button>
-      <div id="grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-lg">
-        <ul class="py-1 text-sm text-gray-700">
+      <div id="grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+        <ul class="text-sm">
           <li>
             <button type="button" onclick="setGroupingAndSubmit('daily')" 
-                class="w-full text-left px-4 py-2 hover:bg-gray-100 <%= @grouping == 'daily' ? 'bg-blue-50 text-blue-700 font-medium' : '' %>">
+                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'daily' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
               Days
             </button>
           </li>
           <li>
             <button type="button" onclick="setGroupingAndSubmit('weekly')" 
-                class="w-full text-left px-4 py-2 hover:bg-gray-100 <%= @grouping == 'weekly' ? 'bg-blue-50 text-blue-700 font-medium' : '' %>">
+                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'weekly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
               Week
             </button>
           </li>
           <li>
             <button type="button" onclick="setGroupingAndSubmit('monthly')" 
-                class="w-full text-left px-4 py-2 hover:bg-gray-100 <%= @grouping == 'monthly' ? 'bg-blue-50 text-blue-700 font-medium' : '' %>">
+                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'monthly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
               Month
             </button>
           </li>
@@ -91,7 +95,8 @@
     <%# Export CSV Button %>
     <%= link_to time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode)), 
         method: :post, 
-        class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors' do %>
+        style: "background-color: #3b82f6 !important; color: white !important;",
+        class: 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors' do %>
       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
         <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/>
       </svg>
@@ -128,6 +133,20 @@
       customRange.classList.remove('hidden');
       customRange.classList.add('flex');
       filterHidden.value = 'custom';
+    } else {
+      customRange.classList.add('hidden');
+      customRange.classList.remove('flex');
+    }
+  }
+  
+  // Update visibility based on current filter value (for initialization)
+  function initCustomDateRangeVisibility() {
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
+    
+    if (filterHidden && filterHidden.value === 'custom') {
+      customRange.classList.remove('hidden');
+      customRange.classList.add('flex');
     } else {
       customRange.classList.add('hidden');
       customRange.classList.remove('flex');
@@ -188,7 +207,7 @@
     <div class="mt-2 text-xs text-gray-600">Weekly target</div>
     <div class="flex items-center gap-2 mt-1">
       <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: <%= [percentage_complete, 100].min %>%"></div>
+        <div class="h-full rounded-full transition-all duration-500" style="width: <%= [percentage_complete, 100].min %>%; background-color: #3b82f6 !important;"></div>
       </div>
       <span class="text-xs font-medium text-gray-700"><%= percentage_complete %>%</span>
     </div>
@@ -479,21 +498,21 @@
       <% if @view_mode == 'activity' %>
         Time by Activity
         <div class="view-toggle-controls">
-          <button type="button" id="toggle-activity-view-btn" class="button button-base button-primary" onclick="toggleActivityView()">
+          <button type="button" id="toggle-activity-view-btn" style="background-color: #3b82f6 !important; color: white !important;" class="px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors" onclick="toggleActivityView()">
             <span id="view-toggle-text">Show Summary View</span>
           </button>
         </div>
       <% elsif @view_mode == 'project' %>
         Time by Project
         <div class="view-toggle-controls">
-          <button type="button" id="toggle-project-view-btn" class="button button-base button-primary" onclick="toggleProjectView()">
+          <button type="button" id="toggle-project-view-btn" style="background-color: #3b82f6 !important; color: white !important;" class="px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors" onclick="toggleProjectView()">
             <span id="project-view-toggle-text">Show Summary View</span>
           </button>
         </div>
       <% elsif @view_mode == 'issue' %>
         Time by Issue
         <div class="view-toggle-controls">
-          <button type="button" id="toggle-issue-view-btn" class="button button-base button-primary" onclick="toggleIssueView()">
+          <button type="button" id="toggle-issue-view-btn" style="background-color: #3b82f6 !important; color: white !important;" class="px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors" onclick="toggleIssueView()">
             <span id="issue-view-toggle-text">Show Summary View</span>
           </button>
         </div>
@@ -929,16 +948,6 @@ function getGroupingLabel() {
   // Fallback to capitalizing grouping value if data attribute not found
   var groupingSelect = document.getElementById('grouping');
   return groupingSelect ? groupingSelect.value.charAt(0).toUpperCase() + groupingSelect.value.slice(1) : '';
-}
-
-function toggleCustomDateRange() {
-  var filter = document.getElementById('filter').value;
-  var customRange = document.getElementById('custom-date-range');
-  if (filter === 'custom') {
-    customRange.style.display = 'block';
-  } else {
-    customRange.style.display = 'none';
-  }
 }
 
 function toggleVisualization() {
@@ -1587,7 +1596,7 @@ function syncChartTypeDropdown() {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-  toggleCustomDateRange();
+  initCustomDateRangeVisibility();
   restoreActivityViewState();
   restoreProjectViewState();
   restoreIssueViewState();

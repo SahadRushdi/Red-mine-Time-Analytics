@@ -250,7 +250,8 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def set_date_range
-    case params[:filter]
+    @filter = params[:filter]
+    case @filter
     when 'last_7_days'
       @from = Date.current - 6.days
       @to = Date.current
@@ -271,7 +272,7 @@ class TimeAnalyticsController < ApplicationController
       @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
     else
       # Default to last 7 days
-      params[:filter] = 'last_7_days'
+      @filter = 'last_7_days'
       @from = Date.current - 6.days
       @to = Date.current
     end
