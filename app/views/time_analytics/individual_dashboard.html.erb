@@ -212,7 +212,12 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
   <%# Total Hours Card with Progress Bar %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Total Hours</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Total Hours</p>
+    </div>
     <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@total_hours) %></p>
     <% if hours_vs_last > 0 %>
       <p class="text-xs text-green-600 font-medium">↑ <%= format_hours(hours_vs_last) %> vs last week</p>
@@ -228,7 +233,12 @@
 
   <%# Daily Average Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Daily Average</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Daily Average</p>
+    </div>
     <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@avg_hours_per_period) %></p>
     <% avg_vs_last = @avg_hours_per_period.to_f * 0.1 %>
     <% if avg_vs_last > 0 %>
@@ -239,7 +249,12 @@
 
   <%# Best Day Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Best Day</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Best Day</p>
+    </div>
     <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@max_period_hours) %></p>
     <p class="text-xs text-gray-600"><%= @from ? @from.strftime('%b %d, %Y • %a') : 'N/A' %></p>
     <div class="text-xs text-gray-600 mt-2">
@@ -249,7 +264,12 @@
 
   <%# Lightest Day Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Lightest Day</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Lightest Day</p>
+    </div>
     <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@min_period_hours) %></p>
     <p class="text-xs text-gray-600"><%= @from ? (@from + 2.days).strftime('%b %d • %a') : 'N/A' %></p>
     <div class="text-xs text-gray-600 mt-2">
@@ -259,7 +279,12 @@
 
   <%# Active Days Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Active Days</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Active Days</p>
+    </div>
     <p class="text-3xl font-bold text-gray-900 mb-1">
       <%= @period_count %><span class="text-base">/5</span>
     </p>
@@ -272,7 +297,12 @@
 
   <%# Remaining Card - Warning Style %>
   <div class="bg-white rounded-lg shadow-md p-5 border <%= remaining_hours > 15 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' %> hover:shadow-lg transition-shadow duration-200">
-    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Remaining</p>
+    <div class="flex items-center gap-2 mb-1">
+      <svg class="w-5 h-5 <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %>" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      <p class="text-xs font-medium text-gray-500 uppercase">Remaining</p>
+    </div>
     <p class="text-3xl font-bold <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> mb-1">
       <%= format_hours(remaining_hours) %>
     </p>
