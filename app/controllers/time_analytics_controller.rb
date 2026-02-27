@@ -821,6 +821,323 @@ class TimeAnalyticsController < ApplicationController
     }.to_json.html_safe
   end
 
+  # Simple bar chart generator for pivot table data (total hours per period)
+  def generate_simple_bar_chart_data(data_hash)
+    return empty_chart_data('bar') if data_hash.empty?
+
+    # Sort data by date for proper bar chart display
+    sorted_data = data_hash.sort_by do |key, _|
+      case key
+      when Date
+        key
+      when String
+        Date.parse(key) rescue key
+      else
+        key.to_s
+      end
+    end
+    
+    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
+    chart_data = {
+      labels: formatted_labels,
+      datasets: [{
+        label: 'Hours',
+        data: sorted_data.map { |_, value| value },
+        backgroundColor: '#3b82f6',
+        borderColor: '#2563eb',
+        borderWidth: 1,
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }]
+    }
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {}
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: helpers.grouping_label(@grouping)
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Stacked bar chart generator for activity breakdown (colorful bars by activity)
+  def generate_stacked_bar_chart_data(period_keys, activities, matrix_data)
+    return empty_chart_data('bar') if period_keys.empty? || activities.empty?
+
+    # Sort periods by date
+    sorted_periods = period_keys.sort
+    
+    # Generate labels for chart
+    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Define modern color palette for activities (same as daily chart)
+    activity_colors = {
+      'Development' => '#6366f1',      # Indigo
+      'Testing' => '#3b82f6',          # Blue
+      'Learning' => '#10b981',         # Green
+      'Design' => '#f97316',           # Orange
+      'Documentation' => '#8b5cf6',    # Purple
+      'Meeting' => '#ec4899',          # Pink
+      'Code Review' => '#14b8a6',      # Teal
+      'Bug Fix' => '#ef4444',          # Red
+      'Research' => '#f59e0b',         # Amber
+      'Planning' => '#06b6d4'          # Cyan
+    }
+    
+    # Create datasets for each activity (stacked)
+    datasets = activities.map do |activity|
+      data = sorted_periods.map do |period_key|
+        matrix_data[period_key]&.[](activity) || 0
+      end
+      
+      color = activity_colors[activity] || generate_colors(1).first
+      
+      # Calculate slightly brighter color for hover effect
+      hover_color = lighten_color(color, 15)
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: activity,
+        data: data,
+        backgroundColor: color,
+        hoverBackgroundColor: hover_color,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14, weight: '600' },
+          bodyFont: { size: 13 },
+          cornerRadius: 8,
+          callbacks: {}
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          title: {
+            display: true,
+            text: helpers.grouping_label(@grouping),
+            font: { size: 12, weight: '500' }
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            font: { size: 11 }
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours',
+            font: { size: 12, weight: '500' }
+          },
+          ticks: {
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Stacked bar chart generator for project breakdown (colorful bars by project)
+  def generate_stacked_bar_chart_by_project(period_keys, projects, matrix_data)
+    return empty_chart_data('bar') if period_keys.empty? || projects.empty?
+
+    # Sort periods by date
+    sorted_periods = period_keys.sort
+    
+    # Generate labels for chart
+    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Generate colors for projects (use consistent color palette)
+    project_colors = generate_colors(projects.length)
+    
+    # Create datasets for each project (stacked)
+    datasets = projects.each_with_index.map do |project, index|
+      data = sorted_periods.map do |period_key|
+        matrix_data[period_key]&.[](project) || 0
+      end
+      
+      color = project_colors[index]
+      
+      # Calculate slightly brighter color for hover effect
+      hover_color = lighten_color(color, 15)
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: project,
+        data: data,
+        backgroundColor: color,
+        hoverBackgroundColor: hover_color,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 12
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14, weight: '600' },
+          bodyFont: { size: 13 },
+          cornerRadius: 8,
+          callbacks: {}
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          title: {
+            display: true,
+            text: helpers.grouping_label(@grouping),
+            font: { size: 12, weight: '500' }
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            font: { size: 11 }
+          }
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Hours',
+            font: { size: 12, weight: '500' }
+          },
+          ticks: {
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: chart_options
+    }.to_json.html_safe
+  end
+
   def empty_chart_data(chart_type)
     {
       type: chart_type,
@@ -1014,18 +1331,22 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
-    # Always use time period data for consistency
+    # Get time period data and activity breakdown
     raw_keys = pivot_data[:raw_periods]
-    data_hash = {}
-    raw_keys.each_with_index do |key, index|
-      data_hash[key] = pivot_data[:period_totals][key] || 0
-    end
+    activities = pivot_data[:activities]
+    matrix_data = pivot_data[:matrix]
     
     case chart_type
     when 'line'
+      # Line chart shows only total hours per period
+      data_hash = {}
+      raw_keys.each_with_index do |key, index|
+        data_hash[key] = pivot_data[:period_totals][key] || 0
+      end
       generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_data(data_hash)
+      # Bar chart shows stacked activities per period (colorful breakdown)
+      generate_stacked_bar_chart_data(raw_keys, activities, matrix_data)
     end
   end
 
@@ -1086,18 +1407,22 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
-    # Always use time period data for consistency
+    # Get time period data and project breakdown
     raw_keys = pivot_data[:raw_periods]
-    data_hash = {}
-    raw_keys.each_with_index do |key, index|
-      data_hash[key] = pivot_data[:period_totals][key] || 0
-    end
+    projects = pivot_data[:projects]
+    matrix_data = pivot_data[:matrix]
     
     case chart_type
     when 'line'
+      # Line chart shows only total hours per period
+      data_hash = {}
+      raw_keys.each_with_index do |key, index|
+        data_hash[key] = pivot_data[:period_totals][key] || 0
+      end
       generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_data(data_hash)
+      # Bar chart shows stacked projects per period (colorful breakdown)
+      generate_stacked_bar_chart_by_project(raw_keys, projects, matrix_data)
     end
   end
 
