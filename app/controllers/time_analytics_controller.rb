@@ -519,18 +519,20 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
-    # Define modern color palette for activities
+    # Define consistent color palette for activities - used in both bar and donut charts
     activity_colors = {
-      'Development' => '#6366f1',      # Indigo
-      'Testing' => '#3b82f6',          # Blue
-      'Learning' => '#10b981',         # Green
-      'Design' => '#f97316',           # Orange
-      'Documentation' => '#8b5cf6',    # Purple
-      'Meeting' => '#ec4899',          # Pink
-      'Code Review' => '#14b8a6',      # Teal
-      'Bug Fix' => '#ef4444',          # Red
-      'Research' => '#f59e0b',         # Amber
-      'Planning' => '#06b6d4'          # Cyan
+      'Development' => '#FF6B9D',      # Pink
+      'Testing' => '#C77DFF',          # Purple
+      'Learning' => '#4CC9F0',         # Cyan
+      'Design' => '#06D6A0',           # Green
+      'Documentation' => '#FFD166',    # Yellow
+      'Meeting' => '#FF9F1C',          # Orange
+      'Code Review' => '#FF8FB1',      # Light Pink
+      'Bug Fix' => '#A259F7',          # Light Purple
+      'Research' => '#00B4D8',         # Dark Cyan
+      'Planning' => '#00F5A0',         # Light Green
+      'Deployment' => '#FFBE0B',       # Bright Yellow
+      'Support' => '#FF5733'           # Red Orange
     }
     
     # Create datasets for each activity (stacked)
@@ -707,9 +709,11 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_colors(count)
+    # Consistent color palette matching bar and donut charts
     colors = [
-      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-      '#FF9F40', '#8AC249', '#EA5F89', '#00D1B2', '#958AF7'
+      '#FF6B9D', '#FF8FB1', '#C77DFF', '#A259F7',
+      '#4CC9F0', '#00B4D8', '#06D6A0', '#00F5A0',
+      '#FFD166', '#FFBE0B', '#FF9F1C', '#FF5733'
     ]
     
     if count <= colors.size
@@ -921,18 +925,20 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
-    # Define modern color palette for activities (same as daily chart)
+    # Define consistent color palette for activities - same as used elsewhere
     activity_colors = {
-      'Development' => '#6366f1',      # Indigo
-      'Testing' => '#3b82f6',          # Blue
-      'Learning' => '#10b981',         # Green
-      'Design' => '#f97316',           # Orange
-      'Documentation' => '#8b5cf6',    # Purple
-      'Meeting' => '#ec4899',          # Pink
-      'Code Review' => '#14b8a6',      # Teal
-      'Bug Fix' => '#ef4444',          # Red
-      'Research' => '#f59e0b',         # Amber
-      'Planning' => '#06b6d4'          # Cyan
+      'Development' => '#FF6B9D',      # Pink
+      'Testing' => '#C77DFF',          # Purple
+      'Learning' => '#4CC9F0',         # Cyan
+      'Design' => '#06D6A0',           # Green
+      'Documentation' => '#FFD166',    # Yellow
+      'Meeting' => '#FF9F1C',          # Orange
+      'Code Review' => '#FF8FB1',      # Light Pink
+      'Bug Fix' => '#A259F7',          # Light Purple
+      'Research' => '#00B4D8',         # Dark Cyan
+      'Planning' => '#00F5A0',         # Light Green
+      'Deployment' => '#FFBE0B',       # Bright Yellow
+      'Support' => '#FF5733'           # Red Orange
     }
     
     # Create datasets for each activity (stacked)
