@@ -177,34 +177,37 @@
 %>
 
 <div class="mb-4 animate-fade-in">
-  <div class="inline-flex items-center gap-2 px-4 py-2 <%= is_on_track ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200' %> border rounded-lg">
-    <span class="flex items-center gap-1">
-      <span class="w-2 h-2 <%= is_on_track ? 'bg-green-500' : 'bg-yellow-500' %> rounded-full"></span>
-      <span class="text-sm font-medium <%= is_on_track ? 'text-green-700' : 'text-yellow-700' %>">
-        <%= is_on_track ? 'On track' : 'Behind schedule' %>
+  <div class="flex items-center justify-between gap-4">
+    <div class="inline-flex items-center gap-2 px-5 py-3 <%= is_on_track ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200' %> border rounded-lg">
+      <span class="flex items-center gap-1">
+        <span class="w-2 h-2 <%= is_on_track ? 'bg-green-500' : 'bg-yellow-500' %> rounded-full"></span>
+        <span class="text-base font-semibold <%= is_on_track ? 'text-green-700' : 'text-yellow-700' %>">
+          <%= is_on_track ? 'On track' : 'Behind schedule' %>
+        </span>
       </span>
-    </span>
-    <span class="text-sm <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
-      <%= format_hours(hours_logged) %> logged this week
-    </span>
-    <span class="text-sm text-gray-500">• Target: <%= format_hours(target_hours) %></span>
-    <span class="text-sm font-medium <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
-      <%= percentage_complete %>% complete
-    </span>
-  </div>
-  <div class="text-xs text-gray-500 mt-1">
-    Last entry: 
-    <% if @last_entry %>
-      <% if @last_entry.created_on.to_date == Date.today %>
-        Today, <%= @last_entry.created_on.strftime('%I:%M %p') %>
-      <% elsif @last_entry.created_on.to_date == Date.yesterday %>
-        Yesterday, <%= @last_entry.created_on.strftime('%I:%M %p') %>
+      <span class="text-base <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
+        <%= format_hours(hours_logged) %> logged this week
+      </span>
+      <span class="text-base text-gray-500">• Target: <%= format_hours(target_hours) %></span>
+      <span class="text-base font-medium <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
+        <%= percentage_complete %>% complete
+      </span>
+    </div>
+    <div class="text-base text-gray-600">
+      <span class="font-medium">Last entry:</span> 
+      <% if @last_entry %>
+        <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
+        <% if local_time.to_date == Date.today %>
+          Today, <%= local_time.strftime('%I:%M %p') %>
+        <% elsif local_time.to_date == Date.yesterday %>
+          Yesterday, <%= local_time.strftime('%I:%M %p') %>
+        <% else %>
+          <%= local_time.strftime('%b %d, %I:%M %p') %>
+        <% end %>
       <% else %>
-        <%= @last_entry.created_on.strftime('%b %d, %I:%M %p') %>
+        N/A
       <% end %>
-    <% else %>
-      N/A
-    <% end %>
+    </div>
   </div>
 </div>
 
@@ -213,51 +216,51 @@
   <%# Total Hours Card with Progress Bar %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Total Hours</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Total Hours</p>
     </div>
-    <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@total_hours) %></p>
+    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@total_hours) %></p>
     <% if hours_vs_last > 0 %>
-      <p class="text-xs text-green-600 font-medium">↑ <%= format_hours(hours_vs_last) %> vs last week</p>
+      <p class="text-sm text-green-600 font-semibold">↑ <%= format_hours(hours_vs_last) %> vs last week</p>
     <% end %>
-    <div class="mt-2 text-xs text-gray-600">Weekly target</div>
+    <div class="mt-2 text-sm text-gray-600">Weekly target</div>
     <div class="flex items-center gap-2 mt-1">
       <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
         <div class="h-full rounded-full transition-all duration-500" style="width: <%= [percentage_complete, 100].min %>%; background-color: #3b82f6 !important;"></div>
       </div>
-      <span class="text-xs font-medium text-gray-700"><%= percentage_complete %>%</span>
+      <span class="text-sm font-semibold text-gray-700"><%= percentage_complete %>%</span>
     </div>
   </div>
 
   <%# Daily Average Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Daily Average</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Daily Average</p>
     </div>
-    <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@avg_hours_per_period) %></p>
+    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@avg_hours_per_period) %></p>
     <% avg_vs_last = @avg_hours_per_period.to_f * 0.1 %>
     <% if avg_vs_last > 0 %>
-      <p class="text-xs text-green-600 font-medium">↑ <%= format_hours(avg_vs_last) %> vs last week</p>
+      <p class="text-sm text-green-600 font-semibold">↑ <%= format_hours(avg_vs_last) %> vs last week</p>
     <% end %>
-    <div class="text-xs text-gray-600 mt-2">Target: <%= format_hours(8.0) %>/day</div>
+    <div class="text-sm text-gray-600 mt-2">Target: <%= format_hours(8.0) %>/day</div>
   </div>
 
   <%# Best Day Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Best Day</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Best Day</p>
     </div>
-    <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@max_period_hours) %></p>
-    <p class="text-xs text-gray-600"><%= @from ? @from.strftime('%b %d, %Y • %a') : 'N/A' %></p>
-    <div class="text-xs text-gray-600 mt-2">
+    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@max_period_hours) %></p>
+    <p class="text-sm text-gray-600"><%= @from ? @from.strftime('%b %d, %Y • %a') : 'N/A' %></p>
+    <div class="text-sm text-gray-600 mt-2">
       <%= @max_period_hours.to_f >= 8.0 ? 'Full day logged' : 'Partial day' %>
     </div>
   </div>
@@ -265,14 +268,14 @@
   <%# Lightest Day Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Lightest Day</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Lightest Day</p>
     </div>
-    <p class="text-3xl font-bold text-gray-900 mb-1"><%= format_hours(@min_period_hours) %></p>
-    <p class="text-xs text-gray-600"><%= @from ? (@from + 2.days).strftime('%b %d • %a') : 'N/A' %></p>
-    <div class="text-xs text-gray-600 mt-2">
+    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@min_period_hours) %></p>
+    <p class="text-sm text-gray-600"><%= @from ? (@from + 2.days).strftime('%b %d • %a') : 'N/A' %></p>
+    <div class="text-sm text-gray-600 mt-2">
       <%= @min_period_hours.to_f < 1.0 ? 'Low activity' : 'Moderate activity' %>
     </div>
   </div>
@@ -280,17 +283,17 @@
   <%# Active Days Card %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Active Days</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Active Days</p>
     </div>
-    <p class="text-3xl font-bold text-gray-900 mb-1">
-      <%= @period_count %><span class="text-base">/5</span>
+    <p class="text-4xl font-bold text-gray-900 mb-1">
+      <%= @period_count %><span class="text-xl">/5</span>
     </p>
     <% zero_days = [5 - @period_count, 0].max %>
-    <p class="text-xs text-gray-600"><%= zero_days > 0 ? "#{zero_days} zero-day#{zero_days > 1 ? 's' : ''}" : 'All days active' %></p>
-    <div class="text-xs text-gray-600 mt-2">
+    <p class="text-sm text-gray-600"><%= zero_days > 0 ? "#{zero_days} zero-day#{zero_days > 1 ? 's' : ''}" : 'All days active' %></p>
+    <div class="text-sm text-gray-600 mt-2">
       <%= zero_days > 0 ? (@from ? (@from + 4.days).strftime('%b %d') : 'Last day') + ' no entries' : 'Perfect week' %>
     </div>
   </div>
@@ -298,21 +301,21 @@
   <%# Remaining Card - Warning Style %>
   <div class="bg-white rounded-lg shadow-md p-5 border <%= remaining_hours > 15 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' %> hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
-      <svg class="w-5 h-5 <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %>" fill="currentColor" viewBox="0 0 20 20">
+      <svg class="w-6 h-6 <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %>" fill="currentColor" viewBox="0 0 20 20">
         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
       </svg>
-      <p class="text-xs font-medium text-gray-500 uppercase">Remaining</p>
+      <p class="text-sm font-semibold text-gray-500 uppercase">Remaining</p>
     </div>
-    <p class="text-3xl font-bold <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> mb-1">
+    <p class="text-4xl font-bold <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> mb-1">
       <%= format_hours(remaining_hours) %>
     </p>
-    <p class="text-xs <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> font-medium">
+    <p class="text-sm <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> font-semibold">
       <%= remaining_hours > 0 ? "to hit #{format_hours(target_hours)} target" : 'Target achieved!' %>
     </p>
     <% if remaining_hours > 0 %>
       <% days_remaining = 2 %>
       <% hours_per_day_needed = remaining_hours / days_remaining %>
-      <div class="text-xs text-gray-600 mt-2">
+      <div class="text-sm text-gray-600 mt-2">
         Need <%= format_hours(hours_per_day_needed) %>/day Tue–Wed
       </div>
     <% end %>
