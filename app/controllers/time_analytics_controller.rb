@@ -88,9 +88,10 @@ class TimeAnalyticsController < ApplicationController
       # Also generate simple activity summary for daily toggle view
       if @grouping == 'daily'
         grouped_data = group_time_entries(@time_entries, 'activity')
-        # Sort by activity name
-        sorted_data = grouped_data.sort_by { |activity_name, _| activity_name || 'No Activity' }
-        @paginated_entries = sorted_data.slice(@offset, @limit).map do |activity_name, hours|
+        # Sort by hours (highest to lowest) for summary view
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |activity_name, hours|
           Struct.new(:period, :hours).new(activity_name || 'No Activity', hours)
         end
       end
@@ -111,9 +112,10 @@ class TimeAnalyticsController < ApplicationController
       # Also generate simple project summary for daily toggle view
       if @grouping == 'daily'
         grouped_data = group_time_entries(@time_entries, 'project')
-        # Sort by project name
-        sorted_data = grouped_data.sort_by { |project_name, _| project_name || 'No Project' }
-        @paginated_entries = sorted_data.slice(@offset, @limit).map do |project_name, hours|
+        # Sort by hours (highest to lowest) for summary view
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |project_name, hours|
           Struct.new(:period, :hours).new(project_name || 'No Project', hours)
         end
       end
@@ -136,7 +138,8 @@ class TimeAnalyticsController < ApplicationController
         grouped_data = group_time_entries(@time_entries, 'issue')
         # Sort by hours (highest to lowest)
         sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        @paginated_entries = sorted_data.slice(@offset, @limit).map do |issue_info, hours|
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |issue_info, hours|
           Struct.new(:period, :hours, :issue).new(issue_info[:display], hours, issue_info[:issue])
         end
       end

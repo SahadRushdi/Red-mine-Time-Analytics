@@ -494,45 +494,63 @@ function switchChartType(chartType) {
             </h3>
             
             <!-- View Toggle Buttons -->
-            <div class="flex items-center gap-2">
+            <div class="inline-flex rounded-md shadow-sm" role="group">
               <% if @view_mode == 'activity' %>
-                <button type="button" id="show-summary-btn-activity" 
-                        onclick="toggleActivityView()" 
-                        style="<%= @activity_view_state == 'summary' ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @activity_view_state == 'summary' ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Summary View
-                </button>
                 <button type="button" id="show-detailed-btn-activity" 
-                        onclick="toggleActivityView()" 
-                        style="<%= @activity_view_state == 'detailed' || @activity_view_state.nil? ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @activity_view_state == 'detailed' || @activity_view_state.nil? ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Detailed View
+                        onclick="showDetailedView('activity');" 
+                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 17V2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h12M5 15V1m8 18v-4"/>
+                  </svg>
+                  Show Detail View
+                </button>
+                <button type="button" id="show-summary-btn-activity" 
+                        onclick="showSummaryView('activity');" 
+                        style="<%= @activity_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm0 13a8.949 8.949 0 0 1-4.951-1.488A3.987 3.987 0 0 1 9 13h2a3.987 3.987 0 0 1 3.951 3.512A8.949 8.949 0 0 1 10 18Z"/>
+                  </svg>
+                  Show Summary View
                 </button>
               <% elsif @view_mode == 'project' %>
-                <button type="button" id="show-summary-btn-project" 
-                        onclick="toggleProjectView()" 
-                        style="<%= @project_view_state == 'summary' ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @project_view_state == 'summary' ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Summary View
-                </button>
                 <button type="button" id="show-detailed-btn-project" 
-                        onclick="toggleProjectView()" 
-                        style="<%= @project_view_state == 'detailed' || @project_view_state.nil? ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @project_view_state == 'detailed' || @project_view_state.nil? ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Detailed View
+                        onclick="showDetailedView('project');" 
+                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 17V2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h12M5 15V1m8 18v-4"/>
+                  </svg>
+                  Show Detail View
+                </button>
+                <button type="button" id="show-summary-btn-project" 
+                        onclick="showSummaryView('project');" 
+                        style="<%= @project_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm0 13a8.949 8.949 0 0 1-4.951-1.488A3.987 3.987 0 0 1 9 13h2a3.987 3.987 0 0 1 3.951 3.512A8.949 8.949 0 0 1 10 18Z"/>
+                  </svg>
+                  Show Summary View
                 </button>
               <% elsif @view_mode == 'issue' %>
-                <button type="button" id="show-summary-btn-issue" 
-                        onclick="toggleIssueView()" 
-                        style="<%= @issue_view_state == 'summary' ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @issue_view_state == 'summary' ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Summary View
-                </button>
                 <button type="button" id="show-detailed-btn-issue" 
-                        onclick="toggleIssueView()" 
-                        style="<%= @issue_view_state == 'detailed' || @issue_view_state.nil? ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                        class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap <%= @issue_view_state == 'detailed' || @issue_view_state.nil? ? '!text-gray-700 !bg-white border border-gray-300 hover:!bg-gray-50 hover:!text-gray-700' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] hover:!text-white' %>">
-                  Show Detailed View
+                        onclick="showDetailedView('issue');" 
+                        style="<%= (@issue_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@issue_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 20">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 17V2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h12M5 15V1m8 18v-4"/>
+                  </svg>
+                  Show Detail View
+                </button>
+                <button type="button" id="show-summary-btn-issue" 
+                        onclick="showSummaryView('issue');" 
+                        style="<%= @issue_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @issue_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <svg class="w-3 h-3 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm0 13a8.949 8.949 0 0 1-4.951-1.488A3.987 3.987 0 0 1 9 13h2a3.987 3.987 0 0 1 3.951 3.512A8.949 8.949 0 0 1 10 18Z"/>
+                  </svg>
+                  Show Summary View
                 </button>
               <% end %>
             </div>
@@ -608,8 +626,8 @@ function switchChartType(chartType) {
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 w-96">Activity</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right sortable cursor-pointer hover:bg-gray-100" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
+                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
+                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
                 </th>
                 <th scope="col" class="px-6 py-3"></th>
               </tr>
@@ -675,8 +693,8 @@ function switchChartType(chartType) {
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 w-96">Activity</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right sortable cursor-pointer hover:bg-gray-100" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
+                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
+                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
                 </th>
                 <th scope="col" class="px-6 py-3"></th>
               </tr>
@@ -744,8 +762,8 @@ function switchChartType(chartType) {
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 w-96">Project</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right sortable cursor-pointer hover:bg-gray-100" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
+                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
+                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
                 </th>
                 <th scope="col" class="px-6 py-3"></th>
               </tr>
@@ -811,8 +829,8 @@ function switchChartType(chartType) {
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 w-96">Project</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right sortable cursor-pointer hover:bg-gray-100" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
+                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
+                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
                 </th>
                 <th scope="col" class="px-6 py-3"></th>
               </tr>
@@ -886,8 +904,8 @@ function switchChartType(chartType) {
             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 w-96">Issue</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right sortable cursor-pointer hover:bg-gray-100" onclick="sortTable(this, 1, 'issue-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator">⇅</span>
+                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'issue-summary-view')" title="Click to sort">
+                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
                 </th>
                 <th scope="col" class="px-6 py-3"></th>
               </tr>
@@ -1405,206 +1423,87 @@ function updatePaginationInfo(viewState) {
   }
 }
 
-// Toggle between detailed and summary views for daily activity analysis
-function toggleActivityView() {
-  var detailedView = document.getElementById('daily-detailed-view');
-  var summaryView = document.getElementById('daily-summary-view');
-  var summaryBtn = document.getElementById('show-summary-btn-activity');
-  var detailedBtn = document.getElementById('show-detailed-btn-activity');
+// Simplified view toggle functions - toggle display AND update button styling
+function showDetailedView(viewType) {
+  // Map viewType to actual div IDs (activity uses 'daily' prefix)
+  var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
+  var detailedView = document.getElementById(viewPrefix + '-detailed-view');
+  var summaryView = document.getElementById(viewPrefix + '-summary-view');
   
-  if (!detailedView || !summaryView) {
-    return;
+  if (!detailedView || !summaryView) return;
+  
+  // Show detailed view, hide summary view
+  detailedView.style.display = 'block';
+  summaryView.style.display = 'none';
+  
+  // Update button styling - Detail button blue, Summary button white
+  var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
+  var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
+  
+  if (detailBtn && summaryBtn) {
+    // Make detail button blue (selected)
+    detailBtn.style.backgroundColor = '#3b82f6';
+    detailBtn.style.color = 'white';
+    detailBtn.className = detailBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+    
+    // Make summary button white (unselected)
+    summaryBtn.style.backgroundColor = '';
+    summaryBtn.style.color = '';
+    summaryBtn.className = summaryBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
   
-  var newViewState;
-  // Check which view is currently visible
-  if (summaryView.style.display === 'block') {
-    // Currently showing summary, switch to detailed
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    localStorage.setItem('activity_view_mode', 'detailed');
-    newViewState = 'detailed';
-    updatePaginationInfo('detailed');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '#3b82f6';
-      summaryBtn.style.color = 'white';
-      summaryBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      summaryBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-      
-      detailedBtn.style.backgroundColor = '';
-      detailedBtn.style.color = '';
-      detailedBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      detailedBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-    }
-  } else {
-    // Currently showing detailed, switch to summary
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    localStorage.setItem('activity_view_mode', 'summary');
-    newViewState = 'summary';
-    updatePaginationInfo('summary');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '';
-      summaryBtn.style.color = '';
-      summaryBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      summaryBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      
-      detailedBtn.style.backgroundColor = '#3b82f6';
-      detailedBtn.style.color = 'white';
-      detailedBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      detailedBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-    }
-    
-    // Auto-sort by hours (descending) when showing summary view
-    initSummarySorting('daily-summary-view');
-    sortTableByDefault('daily-summary-view', 1);
-  }
+  // Update hidden field
+  var hiddenField = document.getElementById(viewType + '_view_state_field');
+  if (hiddenField) hiddenField.value = 'detailed';
   
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('activity_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = newViewState;
-  }
+  // Update pagination info
+  updatePaginationInfo('detailed');
   
-  // NO PAGE RELOAD - just toggle the views
+  // Save preference
+  localStorage.setItem(viewType + '_view_mode', 'detailed');
 }
 
-function toggleProjectView() {
-  var detailedView = document.getElementById('project-detailed-view');
-  var summaryView = document.getElementById('project-summary-view');
-  var summaryBtn = document.getElementById('show-summary-btn-project');
-  var detailedBtn = document.getElementById('show-detailed-btn-project');
+function showSummaryView(viewType) {
+  // Map viewType to actual div IDs (activity uses 'daily' prefix)
+  var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
+  var detailedView = document.getElementById(viewPrefix + '-detailed-view');
+  var summaryView = document.getElementById(viewPrefix + '-summary-view');
   
-  if (!detailedView || !summaryView) {
-    return;
+  if (!detailedView || !summaryView) return;
+  
+  // Show summary view, hide detailed view
+  detailedView.style.display = 'none';
+  summaryView.style.display = 'block';
+  
+  // Update button styling - Summary button blue, Detail button white
+  var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
+  var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
+  
+  if (detailBtn && summaryBtn) {
+    // Make summary button blue (selected)
+    summaryBtn.style.backgroundColor = '#3b82f6';
+    summaryBtn.style.color = 'white';
+    summaryBtn.className = summaryBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+    
+    // Make detail button white (unselected)
+    detailBtn.style.backgroundColor = '';
+    detailBtn.style.color = '';
+    detailBtn.className = detailBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
   
-  var newViewState;
-  // Check which view is currently visible
-  if (summaryView.style.display === 'block') {
-    // Currently showing summary, switch to detailed
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    localStorage.setItem('project_view_mode', 'detailed');
-    newViewState = 'detailed';
-    updatePaginationInfo('detailed');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '#3b82f6';
-      summaryBtn.style.color = 'white';
-      summaryBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      summaryBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-      
-      detailedBtn.style.backgroundColor = '';
-      detailedBtn.style.color = '';
-      detailedBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      detailedBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-    }
-  } else {
-    // Currently showing detailed, switch to summary
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    localStorage.setItem('project_view_mode', 'summary');
-    newViewState = 'summary';
-    updatePaginationInfo('summary');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '';
-      summaryBtn.style.color = '';
-      summaryBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      summaryBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      
-      detailedBtn.style.backgroundColor = '#3b82f6';
-      detailedBtn.style.color = 'white';
-      detailedBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      detailedBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-    }
-    
-    // Auto-sort by hours (descending) when showing summary view
-    initSummarySorting('project-summary-view');
-    sortTableByDefault('project-summary-view', 1);
-  }
+  // Update hidden field
+  var hiddenField = document.getElementById(viewType + '_view_state_field');
+  if (hiddenField) hiddenField.value = 'summary';
   
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('project_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = newViewState;
-  }
+  // Update pagination info
+  updatePaginationInfo('summary');
   
-  // NO PAGE RELOAD - just toggle the views
-}
-
-function toggleIssueView() {
-  var detailedView = document.getElementById('issue-detailed-view');
-  var summaryView = document.getElementById('issue-summary-view');
-  var summaryBtn = document.getElementById('show-summary-btn-issue');
-  var detailedBtn = document.getElementById('show-detailed-btn-issue');
+  // Save preference
+  localStorage.setItem(viewType + '_view_mode', 'summary');
   
-  if (!detailedView || !summaryView) {
-    return;
-  }
-  
-  var newViewState;
-  // Check which view is currently visible
-  if (summaryView.style.display === 'block') {
-    // Currently showing summary, switch to detailed
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    localStorage.setItem('issue_view_mode', 'detailed');
-    newViewState = 'detailed';
-    updatePaginationInfo('detailed');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '#3b82f6';
-      summaryBtn.style.color = 'white';
-      summaryBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      summaryBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-      
-      detailedBtn.style.backgroundColor = '';
-      detailedBtn.style.color = '';
-      detailedBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      detailedBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-    }
-  } else {
-    // Currently showing detailed, switch to summary
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    localStorage.setItem('issue_view_mode', 'summary');
-    newViewState = 'summary';
-    updatePaginationInfo('summary');
-    
-    // Update button states
-    if (summaryBtn && detailedBtn) {
-      summaryBtn.style.backgroundColor = '';
-      summaryBtn.style.color = '';
-      summaryBtn.classList.remove('!text-white', '!bg-[#3b82f6]');
-      summaryBtn.classList.add('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      
-      detailedBtn.style.backgroundColor = '#3b82f6';
-      detailedBtn.style.color = 'white';
-      detailedBtn.classList.remove('!text-gray-700', '!bg-white', 'border', 'border-gray-300');
-      detailedBtn.classList.add('!text-white', '!bg-[#3b82f6]');
-    }
-    
-    // Auto-sort by hours (descending) when showing summary view
-    initSummarySorting('issue-summary-view');
-    sortTableByDefault('issue-summary-view', 1);
-  }
-  
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('issue_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = newViewState;
-  }
-  
-  // NO PAGE RELOAD - just toggle the views
+  // Auto-sort summary table by hours (descending)
+  var tableId = viewType === 'activity' ? 'daily-summary-view' : viewType + '-summary-view';
+  initSummarySorting(tableId);
 }
 
 // Regenerate chart based on activity view state (summary vs detailed)
@@ -1660,9 +1559,8 @@ function restoreActivityViewState() {
   var savedMode = localStorage.getItem('activity_view_mode');
   var detailedView = document.getElementById('daily-detailed-view');
   var summaryView = document.getElementById('daily-summary-view');
-  var toggleText = document.getElementById('view-toggle-text');
   
-  if (!detailedView || !summaryView || !toggleText) {
+  if (!detailedView || !summaryView) {
     return;
   }
   
@@ -1670,25 +1568,9 @@ function restoreActivityViewState() {
   var currentMode = savedMode || 'detailed';
   
   if (currentMode === 'summary') {
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    toggleText.textContent = 'Show Detailed View';
-    updatePaginationInfo('summary');
-    
-    // Initialize summary sorting to descending (highest to lowest)
-    initSummarySorting('daily-summary-view');
+    showSummaryView('activity');
   } else {
-    // Default to detailed view
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    toggleText.textContent = 'Show Summary View';
-    updatePaginationInfo('detailed');
-  }
-  
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('activity_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = currentMode;
+    showDetailedView('activity');
   }
 }
 
@@ -1697,9 +1579,8 @@ function restoreProjectViewState() {
   var savedMode = localStorage.getItem('project_view_mode');
   var detailedView = document.getElementById('project-detailed-view');
   var summaryView = document.getElementById('project-summary-view');
-  var toggleText = document.getElementById('project-view-toggle-text');
   
-  if (!detailedView || !summaryView || !toggleText) {
+  if (!detailedView || !summaryView) {
     return;
   }
   
@@ -1707,26 +1588,9 @@ function restoreProjectViewState() {
   var currentMode = savedMode || 'detailed';
   
   if (currentMode === 'summary') {
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    toggleText.textContent = 'Show Detailed View';
-    updatePaginationInfo('summary');
-    
-    // Initialize summary sorting to descending (highest to lowest)
-    initSummarySorting('project-summary-view');
-    sortTableByDefault('project-summary-view', 1);
+    showSummaryView('project');
   } else {
-    // Default to detailed view
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    toggleText.textContent = 'Show Summary View';
-    updatePaginationInfo('detailed');
-  }
-  
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('project_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = currentMode;
+    showDetailedView('project');
   }
 }
 
@@ -1734,9 +1598,8 @@ function restoreIssueViewState() {
   var savedMode = localStorage.getItem('issue_view_mode');
   var detailedView = document.getElementById('issue-detailed-view');
   var summaryView = document.getElementById('issue-summary-view');
-  var toggleText = document.getElementById('issue-view-toggle-text');
   
-  if (!detailedView || !summaryView || !toggleText) {
+  if (!detailedView || !summaryView) {
     return;
   }
   
@@ -1744,26 +1607,9 @@ function restoreIssueViewState() {
   var currentMode = savedMode || 'detailed';
   
   if (currentMode === 'summary') {
-    detailedView.style.display = 'none';
-    summaryView.style.display = 'block';
-    toggleText.textContent = 'Show Detailed View';
-    updatePaginationInfo('summary');
-    
-    // Initialize summary sorting to descending (highest to lowest)
-    initSummarySorting('issue-summary-view');
-    sortTableByDefault('issue-summary-view', 1);
+    showSummaryView('issue');
   } else {
-    // Default to detailed view
-    detailedView.style.display = 'block';
-    summaryView.style.display = 'none';
-    toggleText.textContent = 'Show Summary View';
-    updatePaginationInfo('detailed');
-  }
-  
-  // Update hidden field with current state
-  var hiddenField = document.getElementById('issue_view_state_field');
-  if (hiddenField) {
-    hiddenField.value = currentMode;
+    showDetailedView('issue');
   }
 }
 
@@ -1950,6 +1796,20 @@ document.addEventListener('DOMContentLoaded', function() {
   restoreProjectViewState();
   restoreIssueViewState();
   
+  // Prevent page scroll on pagination clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('pagination-link') || e.target.closest('.pagination-link')) {
+      // Store current scroll position
+      sessionStorage.setItem('scrollPosition', window.pageYOffset);
+    }
+  });
+  
+  // Restore scroll position after page load
+  if (sessionStorage.getItem('scrollPosition')) {
+    window.scrollTo(0, parseInt(sessionStorage.getItem('scrollPosition')));
+    sessionStorage.removeItem('scrollPosition');
+  }
+  
   // Auto-scroll to table when switching views
   if (sessionStorage.getItem('scrollToTable') === 'true') {
     sessionStorage.removeItem('scrollToTable');
@@ -1967,14 +1827,15 @@ document.addEventListener('DOMContentLoaded', function() {
     syncChartTypeDropdown();
     
     // Auto-sort summary tables by hours (highest to lowest) on page load
+    // AND set the sort icon to indicate descending sort
     if (document.getElementById('daily-summary-view') && document.getElementById('daily-summary-view').style.display !== 'none') {
-      sortTableByDefault('daily-summary-view', 1);
+      initSummarySorting('daily-summary-view');
     }
     if (document.getElementById('project-summary-view') && document.getElementById('project-summary-view').style.display !== 'none') {
-      sortTableByDefault('project-summary-view', 1);
+      initSummarySorting('project-summary-view');
     }
     if (document.getElementById('issue-summary-view') && document.getElementById('issue-summary-view').style.display !== 'none') {
-      sortTableByDefault('issue-summary-view', 1);
+      initSummarySorting('issue-summary-view');
     }
   }, 100);
 });
