@@ -861,3 +861,19 @@ button:active,
 .px-4.py-2\\.5 {
   text-decoration: none !important;
 }
+
+/* === Remove Blue Border/Outline from Tab Buttons === */
+/* Remove focus ring and borders from view mode tab buttons */
+.nav-tabs-wrapper button,
+button[onclick*="toggleViewMode"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button[onclick*="toggleViewMode"]:focus,
+button[onclick*="toggleViewMode"]:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
