@@ -801,3 +801,63 @@ fieldset.box {
     margin-bottom: 4px;
   }
 }
+
+/* === Remove Blue Underlines from ALL Buttons === */
+/* Override Redmine's default link styles that add blue underlines */
+/* NOTE: We only remove text-decoration, NOT the border itself */
+button,
+button:link,
+button:visited,
+button:hover,
+button:active,
+.button-base,
+.button-base:link,
+.button-base:visited,
+.button-base:hover,
+.button-base:active,
+.button-neutral,
+.button-neutral:link,
+.button-neutral:visited,
+.button-neutral:hover,
+.button-neutral:active,
+.button-primary,
+.button-primary:link,
+.button-primary:visited,
+.button-primary:hover,
+.button-primary:active,
+.button-secondary,
+.button-secondary:link,
+.button-secondary:visited,
+.button-secondary:hover,
+.button-secondary:active,
+.button-toggle,
+.button-toggle:link,
+.button-toggle:visited,
+.button-toggle:hover,
+.button-toggle:active,
+.inline-flex,
+.inline-flex:link,
+.inline-flex:visited,
+.inline-flex:hover,
+.inline-flex:active {
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+/* Specific override for Tailwind button groups */
+.inline-flex.items-center,
+.inline-flex.items-center:link,
+.inline-flex.items-center:visited,
+.inline-flex.items-center:hover,
+.inline-flex.items-center:active {
+  text-decoration: none !important;
+}
+
+/* Remove underline from any button-like elements */
+[type="button"],
+[type="submit"],
+[role="button"],
+.px-4.py-2,
+.px-4.py-2\\.5 {
+  text-decoration: none !important;
+}
