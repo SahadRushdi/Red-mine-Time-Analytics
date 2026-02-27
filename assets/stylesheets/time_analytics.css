@@ -254,7 +254,7 @@ fieldset.box {
   padding: 12px !important;
   box-sizing: border-box !important;
   align-self: stretch !important; /* Ensure stretching to equal height */
-  height: 350px; /* Fixed height for all three boxes */
+  height: 470px; /* Increased height to show 6 entries without scrolling */
   background: white !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
   border-radius: 6px !important;
@@ -266,7 +266,7 @@ fieldset.box {
 }
 
 .analytics-section .time-overview-box {
-  overflow: hidden; /* Clip pagination overflow and remove scrollbar */
+  overflow: visible; /* Allow content to be visible without scrollbar */
 }
 
 /* Reset ALL h3 margins inside analytics boxes */
@@ -275,7 +275,6 @@ fieldset.box {
   padding: 0 !important;
   font-size: 16px;
   font-weight: 500;
-  text-align: center;
 }
 
 .analytics-section .stats-summary {
@@ -293,74 +292,6 @@ fieldset.box {
   display: flex;
   flex-direction: column;
   align-self: stretch;
-}
-
-.analytics-section .time-overview-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  margin-bottom: 0;
-}
-
-.analytics-section .time-overview-table th,
-.analytics-section .time-overview-table td {
-  text-align: center;
-  padding: 8px 8px;
-  border-bottom: 1px solid #eee;
-}
-
-/* Remove bottom border from last row to eliminate space */
-.analytics-section .time-overview-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.analytics-section .time-overview-table tbody tr:hover {
-  background-color: #f0f4ff;
-}
-
-.analytics-section .time-overview-table th {
-  background-color: #f9fafb !important;
-  font-weight: 600;
-  font-size: 12px;
-  border-bottom: 2px solid #ddd;
-  color: #212136;
-}
-
-.analytics-section .time-overview-table .hours-column {
-  text-align: right;
-  font-family: monospace;
-}
-
-.analytics-section .time-overview-table .activity-breakdown-column {
-  text-align: left;
-  width: 50%;
-}
-
-.analytics-section .time-overview-table .activity-breakdown-cell {
-  text-align: left;
-  padding: 10px 12px;
-}
-
-.analytics-section .time-overview-table .activity-mini-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.analytics-section .time-overview-table .activity-bar {
-  transition: all 0.3s ease;
-}
-
-.analytics-section .time-overview-table .activity-bar:hover {
-  transform: scaleX(1.03) translateY(-1px);
-  filter: brightness(1.15);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
-}
-
-.analytics-section .time-overview-table .total-row {
-  background-color: #f0f0f0;
-  border-top: 2px solid #ddd;
-  font-weight: bold;
 }
 
 .analytics-section .time-overview-box .pagination-wrapper {
@@ -464,15 +395,6 @@ fieldset.box {
 }
 
 /* === Chart === */
-.visualization-controls,
-.table-controls {
-  float: right;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-right: 12px; /* Keep dropdown within chart box */
-}
-
 .total-hours-label {
   font-size: 14px;
   color: #555;
@@ -850,20 +772,6 @@ fieldset.box {
     flex: none;
   }
   
-  .analytics-section .time-overview-table .activity-breakdown-column {
-    width: 100%;
-  }
-  
-  .analytics-section .time-overview-table .activity-bar span {
-    font-size: 10px;
-  }
-
-  .visualization-controls,
-  .table-controls {
-    float: none;
-    margin: 10px 0;
-  }
-
   .pagination-wrapper {
     flex-direction: column;
     gap: 10px;
