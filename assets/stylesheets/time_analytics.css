@@ -877,3 +877,13 @@ button[onclick*="toggleViewMode"]:active {
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* === Remove Blue Border from Grouping Dropdown Items === */
+#grouping-dropdown button,
+#grouping-dropdown button:focus,
+#grouping-dropdown button:active,
+button[onclick*="setGroupingAndSubmit"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
