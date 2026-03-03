@@ -39,23 +39,23 @@ class TimeAnalyticsController < ApplicationController
     case @grouping
     when 'weekly'
       @avg_hours_per_period = calculate_avg_hours_per_week
-      @max_period_hours = calculate_max_weekly_hours
-      @min_period_hours = calculate_min_weekly_hours
+      @max_period_hours, @max_period_key = calculate_max_weekly_hours
+      @min_period_hours, @min_period_key = calculate_min_weekly_hours
       @period_count = calculate_week_count
     when 'monthly'
       @avg_hours_per_period = calculate_avg_hours_per_month
-      @max_period_hours = calculate_max_monthly_hours
-      @min_period_hours = calculate_min_monthly_hours
+      @max_period_hours, @max_period_key = calculate_max_monthly_hours
+      @min_period_hours, @min_period_key = calculate_min_monthly_hours
       @period_count = calculate_month_count
     when 'yearly'
       @avg_hours_per_period = calculate_avg_hours_per_year
-      @max_period_hours = calculate_max_yearly_hours
-      @min_period_hours = calculate_min_yearly_hours
+      @max_period_hours, @max_period_key = calculate_max_yearly_hours
+      @min_period_hours, @min_period_key = calculate_min_yearly_hours
       @period_count = calculate_year_count
     else # daily
       @avg_hours_per_period = calculate_avg_hours_per_day
-      @max_period_hours = calculate_max_daily_hours
-      @min_period_hours = calculate_min_daily_hours
+      @max_period_hours, @max_period_key = calculate_max_daily_hours
+      @min_period_hours, @min_period_key = calculate_min_daily_hours
       @period_count = calculate_working_days_count
     end
 
@@ -319,15 +319,18 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_daily_hours
     # Remove order clause to avoid ambiguity in GROUP BY
-    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours).values
-    daily_totals.max || 0
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    max_date = daily_totals.max_by { |date, hours| hours }
+    [max_date[1], max_date[0]]
   end
 
   def calculate_min_daily_hours
     # Remove order clause to avoid ambiguity in GROUP BY
-    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours).values
-    return 0 if daily_totals.empty?
-    daily_totals.min
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    min_date = daily_totals.min_by { |date, hours| hours }
+    [min_date[1], min_date[0]]
   end
 
   # Weekly grouping calculations
@@ -345,14 +348,17 @@ class TimeAnalyticsController < ApplicationController
   def calculate_max_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
-    weekly_totals.values.max || 0
+    return [0, nil] if weekly_totals.empty?
+    max_week = weekly_totals.max_by { |week, hours| hours }
+    [max_week[1], max_week[0]]
   end
 
   def calculate_min_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
-    return 0 if weekly_totals.empty?
-    weekly_totals.values.min
+    return [0, nil] if weekly_totals.empty?
+    min_week = weekly_totals.min_by { |week, hours| hours }
+    [min_week[1], min_week[0]]
   end
 
   def get_weekly_totals(time_entries)
@@ -380,14 +386,17 @@ class TimeAnalyticsController < ApplicationController
   def calculate_max_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
-    monthly_totals.values.max || 0
+    return [0, nil] if monthly_totals.empty?
+    max_month = monthly_totals.max_by { |month, hours| hours }
+    [max_month[1], max_month[0]]
   end
 
   def calculate_min_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
-    return 0 if monthly_totals.empty?
-    monthly_totals.values.min
+    return [0, nil] if monthly_totals.empty?
+    min_month = monthly_totals.min_by { |month, hours| hours }
+    [min_month[1], min_month[0]]
   end
 
   def get_monthly_totals(time_entries)
@@ -412,13 +421,16 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_yearly_hours
     yearly_totals = get_yearly_totals(@time_entries)
-    yearly_totals.values.max || 0
+    return [0, nil] if yearly_totals.empty?
+    max_year = yearly_totals.max_by { |year, hours| hours }
+    [max_year[1], max_year[0]]
   end
 
   def calculate_min_yearly_hours
     yearly_totals = get_yearly_totals(@time_entries)
-    return 0 if yearly_totals.empty?
-    yearly_totals.values.min
+    return [0, nil] if yearly_totals.empty?
+    min_year = yearly_totals.min_by { |year, hours| hours }
+    [min_year[1], min_year[0]]
   end
 
   def get_yearly_totals(time_entries)
@@ -808,32 +820,45 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {}
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
         }
       },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: helpers.grouping_label(@grouping)
+            labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45
           }
-        }
+        }]
       }
     }
 
