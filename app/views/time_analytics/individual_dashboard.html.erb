@@ -622,35 +622,32 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 w-96">Activity</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
-                </th>
-                <th scope="col" class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @activities.each do |activity| %>
-                <% hours = @activity_totals[activity] || 0 %>
-                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900"><%= activity %></td>
-                  <td class="px-6 py-4 text-right text-gray-900 whitespace-nowrap" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-700 min-w-[50px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <div class="space-y-4 px-2">
+            <% 
+              # Sort activities by hours (highest to lowest)
+              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
+              sorted_activities.each do |activity| 
+            %>
+              <% hours = @activity_totals[activity] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <div class="bg-white">
+                <!-- Activity name and hours -->
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
+                  <div class="flex items-center gap-3">
+                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                </div>
+                <!-- Subtitle -->
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active day</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% elsif @grouping == 'daily' %>
         <%# Daily Activity Analysis - Dual View System %>
@@ -689,35 +686,32 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 w-96">Activity</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'daily-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
-                </th>
-                <th scope="col" class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @activities.each do |activity| %>
-                <% hours = @activity_totals[activity] || 0 %>
-                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900"><%= activity %></td>
-                  <td class="px-6 py-4 text-right text-gray-900 whitespace-nowrap" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-700 min-w-[50px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <div class="space-y-4 px-2">
+            <% 
+              # Sort activities by hours (highest to lowest)
+              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
+              sorted_activities.each do |activity| 
+            %>
+              <% hours = @activity_totals[activity] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <div class="bg-white">
+                <!-- Activity name and hours -->
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
+                  <div class="flex items-center gap-3">
+                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                </div>
+                <!-- Subtitle -->
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active day</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
     <% elsif @view_mode == 'project' %>
@@ -758,35 +752,32 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 w-96">Project</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
-                </th>
-                <th scope="col" class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @projects.each do |project| %>
-                <% hours = @project_totals[project] || 0 %>
-                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900"><%= project %></td>
-                  <td class="px-6 py-4 text-right text-gray-900 whitespace-nowrap" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-700 min-w-[50px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <div class="space-y-4 px-2">
+            <% 
+              # Sort projects by hours (highest to lowest)
+              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
+              sorted_projects.each do |project| 
+            %>
+              <% hours = @project_totals[project] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <div class="bg-white">
+                <!-- Project name and hours -->
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
+                  <div class="flex items-center gap-3">
+                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                </div>
+                <!-- Subtitle -->
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active day</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% elsif @grouping == 'daily' %>
         <%# Daily Project Analysis - Dual View System %>
@@ -825,35 +816,32 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 w-96">Project</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'project-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
-                </th>
-                <th scope="col" class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @projects.each do |project| %>
-                <% hours = @project_totals[project] || 0 %>
-                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900"><%= project %></td>
-                  <td class="px-6 py-4 text-right text-gray-900 whitespace-nowrap" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-700 min-w-[50px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <div class="space-y-4 px-2">
+            <% 
+              # Sort projects by hours (highest to lowest)
+              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
+              sorted_projects.each do |project| 
+            %>
+              <% hours = @project_totals[project] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <div class="bg-white">
+                <!-- Project name and hours -->
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
+                  <div class="flex items-center gap-3">
+                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                </div>
+                <!-- Subtitle -->
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active day</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
     <% elsif @view_mode == 'issue' %>
@@ -900,41 +888,38 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Issue Table (Hidden by default) %>
         <div id="issue-summary-view" style="display: none;">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 w-96">Issue</th>
-                <th scope="col" class="px-6 py-3 w-40 text-right hours-column sortable cursor-pointer hover:bg-gray-100 whitespace-nowrap" onclick="sortTable(this, 1, 'issue-summary-view')" title="Click to sort">
-                  <%= l(:label_hours) %> <span class="sort-indicator inline-block ml-1">⇅</span>
-                </th>
-                <th scope="col" class="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @issues.each do |issue_info| %>
-                <% hours = @issue_totals[issue_info[:key]] || 0 %>
-                <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900">
+          <div class="space-y-4 px-2">
+            <% 
+              # Sort issues by hours (highest to lowest)
+              sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
+              sorted_issues.each do |issue_info| 
+            %>
+              <% hours = @issue_totals[issue_info[:key]] || 0 %>
+              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <div class="bg-white">
+                <!-- Issue name and hours -->
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
                     <% if issue_info[:issue] %>
                       <%= link_to issue_info[:display], issue_path(issue_info[:issue]), target: "_blank", class: "text-blue-600 hover:underline" %>
                     <% else %>
                       <%= issue_info[:display] %>
                     <% end %>
-                  </td>
-                  <td class="px-6 py-4 text-right text-gray-900 whitespace-nowrap" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                  <td class="px-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
-                      </div>
-                      <span class="text-sm font-medium text-gray-700 min-w-[50px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+                  </h3>
+                  <div class="flex items-center gap-3 flex-shrink-0">
+                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  </div>
+                </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                </div>
+                <!-- Subtitle -->
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active day</p>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
     <% end %>
