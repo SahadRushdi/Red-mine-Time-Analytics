@@ -12,8 +12,11 @@
   <!-- Legacy CSS (will be removed after migration) -->
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
   
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Chart.js v2.9.4 (local - compatible with colorschemes plugin) -->
+  <%= javascript_include_tag 'chart.min.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Chart.js Color Schemes Plugin (local) -->
+  <%= javascript_include_tag 'chartjs-plugin-colorschemes.min.js', plugin: 'redmine_time_analytics' %>
   
   <!-- Flowbite JS (local) -->
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>

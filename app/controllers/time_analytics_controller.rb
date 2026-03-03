@@ -482,32 +482,69 @@ class TimeAnalyticsController < ApplicationController
   def generate_bar_chart_data_with_activities(time_entries, grouping, view_mode = 'time_entries')
     return empty_chart_data('bar') if time_entries.empty?
 
-    # Generate activity breakdown for each period
-    activity_breakdown = {}
-    time_entries.includes(:activity).each do |entry|
-      period_key = get_activity_period_key(entry.spent_on, grouping)
-      activity_name = entry.activity&.name || 'No Activity'
-      
-      activity_breakdown[period_key] ||= {}
-      activity_breakdown[period_key][activity_name] ||= 0
-      activity_breakdown[period_key][activity_name] += entry.hours
+    # Determine what to group by based on view mode
+    group_by = case view_mode
+    when 'activity'
+      :activity
+    when 'project'
+      :project
+    when 'issue'
+      :issue
+    else
+      :activity  # default
+    end
+
+    # Generate breakdown for each period based on view mode
+    category_breakdown = {}
+    case group_by
+    when :activity
+      time_entries.includes(:activity).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        category_name = entry.activity&.name || 'No Activity'
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
+    when :project
+      time_entries.includes(:project).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        category_name = entry.project&.name || 'No Project'
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
+    when :issue
+      time_entries.includes(:issue).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        if entry.issue
+          category_name = "##{entry.issue.id}: #{entry.issue.subject}"
+        else
+          category_name = 'No Issue'
+        end
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
     end
     
     # Get all unique periods, sorted
-    all_periods = activity_breakdown.keys.sort
+    all_periods = category_breakdown.keys.sort
     
     # Return empty if no data
     return empty_chart_data('bar') if all_periods.empty?
     
-    # Get all unique activities across all periods, sorted by total hours (highest to lowest)
-    all_activities = {}
-    activity_breakdown.each do |_, activities|
-      activities.each do |activity, hours|
-        all_activities[activity] ||= 0
-        all_activities[activity] += hours
+    # Get all unique categories across all periods, sorted by total hours (highest to lowest)
+    all_categories = {}
+    category_breakdown.each do |_, categories|
+      categories.each do |category, hours|
+        all_categories[category] ||= 0
+        all_categories[category] += hours
       end
     end
-    activities_sorted = all_activities.sort_by { |_, h| -h }.map(&:first)
+    categories_sorted = all_categories.sort_by { |_, h| -h }.map(&:first)
     
     # Generate labels for chart
     formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
@@ -519,41 +556,19 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
-    # Define consistent color palette for activities - used in both bar and donut charts
-    activity_colors = {
-      'Development' => '#FF6B9D',      # Pink
-      'Testing' => '#C77DFF',          # Purple
-      'Learning' => '#4CC9F0',         # Cyan
-      'Design' => '#06D6A0',           # Green
-      'Documentation' => '#FFD166',    # Yellow
-      'Meeting' => '#FF9F1C',          # Orange
-      'Code Review' => '#FF8FB1',      # Light Pink
-      'Bug Fix' => '#A259F7',          # Light Purple
-      'Research' => '#00B4D8',         # Dark Cyan
-      'Planning' => '#00F5A0',         # Light Green
-      'Deployment' => '#FFBE0B',       # Bright Yellow
-      'Support' => '#FF5733'           # Red Orange
-    }
-    
-    # Create datasets for each activity (stacked)
-    datasets = activities_sorted.map do |activity|
+    # Create datasets for each category (stacked)
+    # Colors will be assigned by chartjs-plugin-colorschemes
+    datasets = categories_sorted.map do |category|
       data = all_periods.map do |period_key|
-        activity_breakdown[period_key]&.[](activity) || 0
+        category_breakdown[period_key]&.[](category) || 0
       end
-      
-      color = activity_colors[activity] || generate_colors(1).first
-      
-      # Calculate slightly brighter color for hover effect
-      hover_color = lighten_color(color, 15)
       
       # Format hours for tooltips
       formatted_hours = data.map { |hours| helpers.format_hours(hours) }
       
       {
-        label: activity,
+        label: category,
         data: data,
-        backgroundColor: color,
-        hoverBackgroundColor: hover_color,
         borderWidth: 0,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
@@ -564,54 +579,55 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            font: {
-              size: 12
-            }
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFont: { size: 14, weight: '600' },
-          bodyFont: { size: 13 },
-          cornerRadius: 8
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
         }
       },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
       scales: {
-        x: {
+        xAxes: [{
           stacked: true,
-          grid: {
+          gridLines: {
             display: false
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45,
-            font: {
-              size: 11
-            }
+            fontSize: 11
           }
-        },
-        y: {
+        }],
+        yAxes: [{
           stacked: true,
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours'
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
           },
-          grid: {
+          gridLines: {
             color: '#f3f4f6'
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours'
           }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
         }
       }
     }
@@ -861,8 +877,6 @@ class TimeAnalyticsController < ApplicationController
       datasets: [{
         label: 'Hours',
         data: sorted_data.map { |_, value| value },
-        backgroundColor: '#3b82f6',
-        borderColor: '#2563eb',
         borderWidth: 1,
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
@@ -872,31 +886,43 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {}
-        }
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: helpers.grouping_label(@grouping)
+            labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45
           }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
         }
       }
     }
@@ -925,32 +951,12 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
-    # Define consistent color palette for activities - same as used elsewhere
-    activity_colors = {
-      'Development' => '#FF6B9D',      # Pink
-      'Testing' => '#C77DFF',          # Purple
-      'Learning' => '#4CC9F0',         # Cyan
-      'Design' => '#06D6A0',           # Green
-      'Documentation' => '#FFD166',    # Yellow
-      'Meeting' => '#FF9F1C',          # Orange
-      'Code Review' => '#FF8FB1',      # Light Pink
-      'Bug Fix' => '#A259F7',          # Light Purple
-      'Research' => '#00B4D8',         # Dark Cyan
-      'Planning' => '#00F5A0',         # Light Green
-      'Deployment' => '#FFBE0B',       # Bright Yellow
-      'Support' => '#FF5733'           # Red Orange
-    }
-    
     # Create datasets for each activity (stacked)
+    # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = activities.map do |activity|
       data = sorted_periods.map do |period_key|
         matrix_data[period_key]&.[](activity) || 0
       end
-      
-      color = activity_colors[activity] || generate_colors(1).first
-      
-      # Calculate slightly brighter color for hover effect
-      hover_color = lighten_color(color, 15)
       
       # Format hours for tooltips
       formatted_hours = data.map { |hours| helpers.format_hours(hours) }
@@ -958,8 +964,6 @@ class TimeAnalyticsController < ApplicationController
       {
         label: activity,
         data: data,
-        backgroundColor: color,
-        hoverBackgroundColor: hover_color,
         borderWidth: 0,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
@@ -970,56 +974,57 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            font: {
-              size: 12
-            }
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFont: { size: 14, weight: '600' },
-          bodyFont: { size: 13 },
-          cornerRadius: 8,
-          callbacks: {}
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
         }
       },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
       scales: {
-        x: {
+        xAxes: [{
           stacked: true,
-          title: {
+          scaleLabel: {
             display: true,
-            text: helpers.grouping_label(@grouping),
-            font: { size: 12, weight: '500' }
+            labelString: helpers.grouping_label(@grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45,
-            font: { size: 11 }
+            fontSize: 11
           }
-        },
-        y: {
+        }],
+        yAxes: [{
           stacked: true,
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours',
-            font: { size: 12, weight: '500' }
-          },
           ticks: {
-            font: { size: 11 }
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
           }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
         }
       }
     }
@@ -1051,19 +1056,12 @@ class TimeAnalyticsController < ApplicationController
       formatted_labels
     end
     
-    # Generate colors for projects (use consistent color palette)
-    project_colors = generate_colors(projects.length)
-    
     # Create datasets for each project (stacked)
-    datasets = projects.each_with_index.map do |project, index|
+    # Colors will be assigned by chartjs-plugin-colorschemes
+    datasets = projects.map do |project|
       data = sorted_periods.map do |period_key|
         matrix_data[period_key]&.[](project) || 0
       end
-      
-      color = project_colors[index]
-      
-      # Calculate slightly brighter color for hover effect
-      hover_color = lighten_color(color, 15)
       
       # Format hours for tooltips
       formatted_hours = data.map { |hours| helpers.format_hours(hours) }
@@ -1071,8 +1069,6 @@ class TimeAnalyticsController < ApplicationController
       {
         label: project,
         data: data,
-        backgroundColor: color,
-        hoverBackgroundColor: hover_color,
         borderWidth: 0,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
@@ -1083,56 +1079,57 @@ class TimeAnalyticsController < ApplicationController
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false
-      },
-      plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            font: {
-              size: 12
-            }
-          }
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFont: { size: 14, weight: '600' },
-          bodyFont: { size: 13 },
-          cornerRadius: 8,
-          callbacks: {}
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
         }
       },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
       scales: {
-        x: {
+        xAxes: [{
           stacked: true,
-          title: {
+          scaleLabel: {
             display: true,
-            text: helpers.grouping_label(@grouping),
-            font: { size: 12, weight: '500' }
+            labelString: helpers.grouping_label(@grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45,
-            font: { size: 11 }
+            fontSize: 11
           }
-        },
-        y: {
+        }],
+        yAxes: [{
           stacked: true,
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours',
-            font: { size: 12, weight: '500' }
-          },
           ticks: {
-            font: { size: 11 }
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
           }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
         }
       }
     }

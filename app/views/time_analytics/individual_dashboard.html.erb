@@ -1142,6 +1142,47 @@ function initChart() {
     }
     
     // Add tooltip label callback for line charts to show formatted hours
+    // Add custom tooltip callbacks for Chart.js v2
+    if (!config.options.tooltips) config.options.tooltips = {};
+    if (!config.options.tooltips.callbacks) config.options.tooltips.callbacks = {};
+    
+    // Custom title callback for weekly format
+    config.options.tooltips.callbacks.title = function(tooltipItems, data) {
+      if (tooltipItems && tooltipItems.length > 0) {
+        var index = tooltipItems[0].index;
+        var dataset = data.datasets[0];
+        // Use custom tooltip labels if available (for weekly format)
+        if (dataset.tooltipLabels && dataset.tooltipLabels[index]) {
+          return dataset.tooltipLabels[index];
+        }
+      }
+      return data.labels[tooltipItems[0].index];
+    };
+    
+    // Custom label callback for formatted hours
+    config.options.tooltips.callbacks.label = function(tooltipItem, data) {
+      var dataset = data.datasets[tooltipItem.datasetIndex];
+      var label = dataset.label || '';
+      
+      // Use formatted hours if available
+      if (dataset.formattedHours && dataset.formattedHours[tooltipItem.index]) {
+        return label + ': ' + dataset.formattedHours[tooltipItem.index];
+      }
+      
+      // For bar charts (v2 API)
+      if (tooltipItem.yLabel !== undefined) {
+        return label + ': ' + tooltipItem.yLabel.toFixed(2) + 'h';
+      }
+      
+      // For line charts (v2 API)  
+      if (dataset.data && dataset.data[tooltipItem.index] !== undefined) {
+        return label + ': ' + dataset.data[tooltipItem.index].toFixed(2) + 'h';
+      }
+      
+      return label;
+    };
+    
+    // Handle old v3 API tooltip config if present
     if (config.type === 'line') {
       if (!config.options.plugins) config.options.plugins = {};
       if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
@@ -1666,20 +1707,6 @@ function initDonutChart() {
   var chartData = null;
   var chartLabels = [];
   var chartValues = [];
-  var chartColors = [
-    '#FF6B9D', // Pink
-    '#FF8FB1', // Light Pink
-    '#C77DFF', // Purple
-    '#A259F7', // Light Purple
-    '#4CC9F0', // Cyan
-    '#00B4D8', // Dark Cyan
-    '#06D6A0', // Green
-    '#00F5A0', // Light Green
-    '#FFD166', // Yellow
-    '#FFBE0B', // Bright Yellow
-    '#FF9F1C', // Orange
-    '#FF5733'  // Red Orange
-  ];
   
   // Collect data
   <% if @view_mode == 'activity' && @activity_totals %>
@@ -1726,7 +1753,6 @@ function initDonutChart() {
       labels: chartLabels,
       datasets: [{
         data: chartValues,
-        backgroundColor: chartColors,
         borderColor: '#ffffff',
         borderWidth: 2
       }]
@@ -1734,33 +1760,50 @@ function initDonutChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: '70%', // This makes it a donut (larger = bigger hole)
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFont: { size: 14, weight: '600' },
-          bodyFont: { size: 13 },
-          cornerRadius: 8,
-          callbacks: {
-            label: function(context) {
-              var label = context.label || '';
-              var value = context.parsed;
-              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-              var formattedHours = formatHours(value);
-              return label + ': ' + formattedHours + ' (' + percentage + '%)';
-            }
+      cutoutPercentage: 70,
+      legend: {
+        display: false
+      },
+      tooltips: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8,
+        callbacks: {
+          label: function(tooltipItem, data) {
+            var label = data.labels[tooltipItem.index] || '';
+            var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+            var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+            var formattedHours = formatHours(value);
+            return label + ': ' + formattedHours + ' (' + percentage + '%)';
           }
+        }
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
         }
       }
     }
   });
   
-  // Generate custom legend
-  generateDonutLegend(chartLabels, chartValues, chartColors, total);
+  // Wait for chart to fully render, then get colors and generate legend
+  setTimeout(function() {
+    var colors = donutChartInstance.data.datasets[0].backgroundColor;
+    // If colors array is not defined or empty, use Tableau10 colors manually
+    if (!colors || colors.length === 0) {
+      var tableau10 = [
+        '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
+        '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
+      ];
+      colors = chartLabels.map(function(_, i) { return tableau10[i % tableau10.length]; });
+      donutChartInstance.data.datasets[0].backgroundColor = colors;
+      donutChartInstance.update();
+    }
+    generateDonutLegend(chartLabels, chartValues, colors, total);
+  }, 100);
 }
 
 function generateDonutLegend(labels, values, colors, total) {
