@@ -5,5 +5,7 @@ RedmineApp::Application.routes.draw do
   get 'time_analytics/custom_dashboard', to: 'time_analytics#custom_dashboard'
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
   
+  get 'time_entry_panel', to: 'time_entry_panel#index', as: :time_entry_panel
+  
   resources :custom_holidays
 end

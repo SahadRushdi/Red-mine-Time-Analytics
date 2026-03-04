@@ -92,6 +92,16 @@
       <%= hidden_field_tag :grouping, @grouping, id: 'grouping_hidden' %>
     </div>
     
+    <%# Log Time Button %>
+    <%= link_to time_entry_panel_path(filter: @filter, from: @from, to: @to), 
+        style: "background-color: #16a34a !important; color: white !important;",
+        class: 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium !text-white !bg-green-600 rounded-lg hover:!bg-green-700 focus:ring-4 focus:ring-green-300 shadow-xs focus:outline-none transition-colors' do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+      </svg>
+      Log Time
+    <% end %>
+    
     <%# Export CSV Button %>
     <%= link_to time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode)), 
         method: :post, 

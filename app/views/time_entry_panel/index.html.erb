@@ -1,0 +1,249 @@
+<%= render 'time_analytics/includes' %>
+
+<%# Time Entry Panel Header %>
+<div class="flex items-center justify-between mb-6 flex-wrap gap-4">
+  <div class="flex items-center gap-4">
+    <%= link_to my_time_path(filter: @filter, from: @from, to: @to), 
+        class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-blue-300 transition-colors' do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+      </svg>
+      <span>Back to Dashboard</span>
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Time Entry Panel</h1>
+      <p class="text-sm text-gray-500">
+        <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : 'All Time' %>
+      </p>
+    </div>
+  </div>
+</div>
+
+<%# Date Filter Controls %>
+<%= form_tag time_entry_panel_path, method: :get, local: true, id: 'time-entry-panel-form', class: 'mb-6' do %>
+  <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
+  
+  <%# Time Period Button Group %>
+  <div class="inline-flex rounded-lg shadow-sm" role="group">
+    <button type="button" onclick="setFilterAndSubmit('last_7_days')" 
+        style="<%= @filter == 'last_7_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_7_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      Last 7 Days
+    </button>
+    <button type="button" onclick="setFilterAndSubmit('last_14_days')" 
+        style="<%= @filter == 'last_14_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border-t border-b border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_14_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      Last 14 Days
+    </button>
+    <button type="button" onclick="setFilterAndSubmit('this_week')" 
+        style="<%= @filter == 'this_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      This Week
+    </button>
+    <button type="button" onclick="setFilterAndSubmit('last_week')" 
+        style="<%= @filter == 'last_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      Last Week
+    </button>
+    <button type="button" onclick="setFilterAndSubmit('this_month')" 
+        style="<%= @filter == 'this_month' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_month' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      This Month
+    </button>
+    <button type="button" onclick="toggleCustomDateRange()" 
+        style="<%= @filter == 'custom' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+        class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'custom' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+      Custom Range
+    </button>
+  </div>
+  
+  <%# Custom Date Range (Hidden by default) %>
+  <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2 mt-3">
+    <span class="text-sm text-gray-600">From:</span>
+    <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+    <span class="text-sm text-gray-600">To:</span>
+    <%= date_field_tag :to, params[:to] || @to, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+  </div>
+<% end %>
+
+<%# Main Content - Two Sections %>
+<div class="space-y-6">
+  <%# Section 1: Your Time Logs %>
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Your Time Logs</h2>
+      <p class="text-sm text-gray-500 mt-1">
+        Total: <%= format_hours(@total_hours) %> hours logged in this period
+      </p>
+    </div>
+    
+    <div class="p-6">
+      <% if @time_entries.any? %>
+        <div class="space-y-4">
+          <% @issues.each do |issue| %>
+            <% issue_entries = @time_entries_by_issue[issue.id] %>
+            <% if issue_entries.present? %>
+              <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded" 
+                            style="background-color: <%= issue.tracker.try(:color) || '#cccccc' %>20; color: <%= issue.tracker.try(:color) || '#333333' %>;">
+                        <%= issue.tracker.name %>
+                      </span>
+                      <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded"
+                            style="background-color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>20; color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>;">
+                        <%= issue.status.name %>
+                      </span>
+                      <span class="text-sm font-semibold text-gray-900">#<%= issue.id %></span>
+                    </div>
+                    <h3 class="text-base font-semibold text-gray-900 mb-1">
+                      <%= link_to issue.subject, issue_path(issue), class: 'hover:text-blue-600 transition-colors' %>
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-2">
+                      <span class="font-medium">Project:</span> <%= issue.project.name %>
+                    </p>
+                    <div class="text-sm text-gray-600">
+                      <span class="font-medium">Time logged:</span> <%= format_hours(issue_entries.sum(&:hours)) %> hours
+                    </div>
+                  </div>
+                  
+                  <div class="flex-shrink-0">
+                    <%= link_to new_issue_time_entry_path(issue), 
+                        class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-white !bg-green-600 rounded-lg hover:!bg-green-700 focus:ring-4 focus:ring-green-300 transition-colors shadow-sm',
+                        style: 'background-color: #16a34a !important; color: white !important;' do %>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      <span>Log Time</span>
+                    <% end %>
+                  </div>
+                </div>
+                
+                <%# Show recent time entries for this issue %>
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                  <div class="text-xs font-medium text-gray-500 mb-2">Recent entries:</div>
+                  <div class="space-y-1">
+                    <% issue_entries.first(3).each do |entry| %>
+                      <div class="flex items-center justify-between text-sm">
+                        <span class="text-gray-700">
+                          <%= entry.spent_on.strftime('%b %d, %Y') %> - 
+                          <%= entry.activity&.name || 'No Activity' %>
+                        </span>
+                        <span class="font-medium text-gray-900"><%= format_hours(entry.hours) %>h</span>
+                      </div>
+                    <% end %>
+                    <% if issue_entries.count > 3 %>
+                      <div class="text-xs text-gray-500">+ <%= issue_entries.count - 3 %> more entries</div>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No time entries</h3>
+          <p class="mt-1 text-sm text-gray-500">You haven't logged any time in this period.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Section 2: Suggested Time Log %>
+  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Suggested Time Log</h2>
+      </div>
+      <p class="text-sm text-gray-500 mt-1">
+        Issues assigned to you without time entries in this period
+      </p>
+    </div>
+    
+    <div class="p-6">
+      <% issues_without_logs = @issues.reject { |issue| @time_entries_by_issue[issue.id].present? } %>
+      
+      <% if issues_without_logs.any? %>
+        <div class="space-y-4">
+          <% issues_without_logs.each do |issue| %>
+            <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors bg-gray-50">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded" 
+                          style="background-color: <%= issue.tracker.try(:color) || '#cccccc' %>20; color: <%= issue.tracker.try(:color) || '#333333' %>;">
+                      <%= issue.tracker.name %>
+                    </span>
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded"
+                          style="background-color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>20; color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>;">
+                      <%= issue.status.name %>
+                    </span>
+                    <span class="text-sm font-semibold text-gray-900">#<%= issue.id %></span>
+                  </div>
+                  <h3 class="text-base font-semibold text-gray-900 mb-1">
+                    <%= link_to issue.subject, issue_path(issue), class: 'hover:text-blue-600 transition-colors' %>
+                  </h3>
+                  <p class="text-sm text-gray-600 mb-2">
+                    <span class="font-medium">Project:</span> <%= issue.project.name %>
+                  </p>
+                  <div class="text-sm text-gray-600">
+                    <span class="font-medium">Last updated:</span> <%= time_ago_in_words(issue.updated_on) %> ago
+                  </div>
+                </div>
+                
+                <div class="flex-shrink-0">
+                  <%= link_to new_issue_time_entry_path(issue), 
+                      class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-white !bg-green-600 rounded-lg hover:!bg-green-700 focus:ring-4 focus:ring-green-300 transition-colors shadow-sm',
+                      style: 'background-color: #16a34a !important; color: white !important;' do %>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    <span>Log Time</span>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="text-center py-12">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">All caught up!</h3>
+          <p class="mt-1 text-sm text-gray-500">You've logged time for all assigned issues in this period.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setFilterAndSubmit(filterValue) {
+    document.getElementById('filter_hidden').value = filterValue;
+    
+    // Hide custom date range if not custom
+    if (filterValue !== 'custom') {
+      document.getElementById('custom-date-range').classList.add('hidden');
+    }
+    
+    document.getElementById('time-entry-panel-form').submit();
+  }
+  
+  function toggleCustomDateRange() {
+    const customRange = document.getElementById('custom-date-range');
+    const filterHidden = document.getElementById('filter_hidden');
+    
+    if (customRange.classList.contains('hidden')) {
+      customRange.classList.remove('hidden');
+      filterHidden.value = 'custom';
+    } else {
+      customRange.classList.add('hidden');
+    }
+  }
+</script>
