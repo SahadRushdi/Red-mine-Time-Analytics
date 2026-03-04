@@ -1,0 +1,331 @@
+<%= render 'includes' %>
+
+<%# SECTION 1 — PAGE HEADER BAR %>
+<div class="time-entry-panel-header flex items-center justify-between mb-6 py-4 border-b border-gray-200">
+  <%# Left: Back link %>
+  <div class="flex-1">
+    <%= link_to(@back_url, class: "inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors") do %>
+      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+      </svg>
+      <%= t(:label_back_to_my_time) %>
+    <% end %>
+  </div>
+  
+  <%# Center: Page title %>
+  <div class="flex-1 text-center">
+    <h2 class="text-2xl font-bold text-gray-900"><%= t(:label_time_entry_panel) %></h2>
+  </div>
+  
+  <%# Right: Date range %>
+  <div class="flex-1 text-right">
+    <span class="text-sm text-gray-600">
+      <%= @date_from.strftime('%b %d, %Y') %> — <%= @date_to.strftime('%b %d, %Y') %>
+    </span>
+  </div>
+</div>
+
+<%# SECTION 2 — FILTER BAR %>
+<div class="filter-bar bg-white rounded-lg shadow-md p-5 mb-6 border border-gray-200">
+  <%= form_tag my_time_entry_panel_path, method: :get, local: true, id: 'time-entry-filters-form', class: 'space-y-4' do %>
+    
+    <%# Locked Filter Chip - Assigned to Me %>
+    <div class="flex items-center gap-3 flex-wrap">
+      <span class="text-sm font-semibold text-gray-700"><%= t(:label_active_filters) %>:</span>
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+        </svg>
+        <%= t(:label_assigned_to_me) %>
+        <svg class="w-4 h-4 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M5 10a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z" clip-rule="evenodd"/>
+        </svg>
+      </div>
+    </div>
+    
+    <%# Filter Controls Grid %>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <%# Date From Input %>
+      <div>
+        <label for="date_from" class="block text-sm font-medium text-gray-700 mb-1">
+          <%= t(:label_from) %>
+        </label>
+        <%= date_field_tag :date_from, @date_from, 
+            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500' %>
+      </div>
+      
+      <%# Date To Input %>
+      <div>
+        <label for="date_to" class="block text-sm font-medium text-gray-700 mb-1">
+          <%= t(:label_to) %>
+        </label>
+        <%= date_field_tag :date_to, @date_to, 
+            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500' %>
+      </div>
+      
+      <%# Search Input %>
+      <div class="md:col-span-2">
+        <label for="q" class="block text-sm font-medium text-gray-700 mb-1">
+          <%= t(:label_search) %>
+        </label>
+        <%= text_field_tag :q, params[:q], 
+            placeholder: t(:text_search_issues_placeholder),
+            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500' %>
+      </div>
+    </div>
+    
+    <%# Status Filter - Checkbox Chips %>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">
+        <%= t(:label_issue_status) %>
+      </label>
+      <div class="flex flex-wrap gap-2">
+        <% @issue_statuses.each do |status| %>
+          <label class="inline-flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all <%= @selected_status_ids.include?(status.id) ? 'bg-blue-50 border-blue-500 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' %>">
+            <%= check_box_tag 'status_ids[]', status.id, @selected_status_ids.include?(status.id), 
+                id: "status_#{status.id}",
+                class: 'w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500',
+                onchange: 'this.closest("label").classList.toggle("bg-blue-50"); this.closest("label").classList.toggle("border-blue-500"); this.closest("label").classList.toggle("text-blue-700"); this.closest("label").classList.toggle("border-gray-300"); this.closest("label").classList.toggle("text-gray-700");' %>
+            <span class="text-sm font-medium"><%= status.name %></span>
+          </label>
+        <% end %>
+      </div>
+    </div>
+    
+    <%# Action Buttons %>
+    <div class="flex items-center gap-3">
+      <%= submit_tag t(:button_apply_filters), 
+          class: 'px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-colors' %>
+      <%= link_to t(:button_reset_filters), 
+          my_time_entry_panel_path(date_from: Date.current.beginning_of_week(:monday), date_to: Date.current.end_of_week(:monday)), 
+          class: 'px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-colors' %>
+    </div>
+  <% end %>
+</div>
+
+<%# SECTION 3 — ISSUE LIST (Grouped by Project and Status) %>
+<div class="issue-list-container">
+  <% if @issues.present? %>
+    <% 
+      # Group issues by project
+      issues_by_project = @issues.group_by(&:project)
+    %>
+    
+    <% issues_by_project.each_with_index do |(project, project_issues), project_index| %>
+      <%# Project Group Container %>
+      <div class="project-group mb-6" data-group-id="project-<%= project.id %>">
+        
+        <%# Project Group Header %>
+        <div class="project-group-header bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-300 rounded-t-lg px-5 py-3 cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-colors"
+             data-toggle="collapse"
+             data-target="#project-issues-<%= project.id %>"
+             onclick="toggleProjectGroup('<%= project.id %>')">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 text-gray-600 transition-transform" id="chevron-<%= project.id %>" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-900"><%= project.name %></h3>
+              <span class="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-700 rounded-full">
+                <%= project_issues.count %> <%= project_issues.count == 1 ? t(:label_issue_singular) : t(:label_issue_plural) %>
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <%# Issues within Project (Grouped by Status) %>
+        <div id="project-issues-<%= project.id %>" class="project-issues-container border-l border-r border-b border-gray-300 rounded-b-lg">
+          <% 
+            # Group issues within project by status
+            issues_by_status = project_issues.group_by(&:status)
+          %>
+          
+          <% issues_by_status.each_with_index do |(status, status_issues), status_index| %>
+            <%# Status Subgroup Header %>
+            <div class="status-subgroup bg-gray-50 px-5 py-2 border-b border-gray-200">
+              <span class="text-sm font-semibold text-gray-700">
+                <%= status.name %> (<%= status_issues.count %>)
+              </span>
+            </div>
+            
+            <%# Issues within Status %>
+            <% status_issues.each do |issue| %>
+              <%
+                # Calculate total hours logged by current user on this issue within date range
+                total_logged_hours = TimeEntry.where(
+                  user_id: @current_user.id,
+                  issue_id: issue.id,
+                  spent_on: @date_from..@date_to
+                ).sum(:hours)
+              %>
+              
+              <%# Issue Row Card %>
+              <div class="issue-row border-b border-gray-200 p-5 hover:bg-gray-50 transition-colors" data-issue-id="<%= issue.id %>">
+                <div class="flex items-start justify-between gap-4">
+                  
+                  <%# LEFT SIDE: Issue Details %>
+                  <div class="flex-1 space-y-2">
+                    <div class="flex items-center gap-3 flex-wrap">
+                      <%# Issue ID Badge %>
+                      <%= link_to(issue_path(issue), target: '_blank', 
+                          class: "inline-flex items-center px-2.5 py-1 text-xs font-bold text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors") do %>
+                        #<%= issue.id %>
+                        <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                      <% end %>
+                      
+                      <%# Issue Subject %>
+                      <h4 class="text-base font-bold text-gray-900"><%= issue.subject %></h4>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 flex-wrap text-sm">
+                      <%# Status Badge %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-<%= status.name.parameterize %>-100 text-<%= status.name.parameterize %>-800 status-badge status-<%= status.name.parameterize %>">
+                        <%= status.name %>
+                      </span>
+                      
+                      <%# Priority Label %>
+                      <span class="text-gray-600">
+                        <span class="font-medium"><%= t(:label_priority) %>:</span> <%= issue.priority.name %>
+                      </span>
+                      
+                      <%# Updated Time %>
+                      <span class="text-gray-500">
+                        <%= t(:label_updated) %> <%= time_ago_in_words(issue.updated_on) %> <%= t(:label_ago) %>
+                      </span>
+                      
+                      <%# Assigned To %>
+                      <% if issue.assigned_to %>
+                        <span class="text-gray-600">
+                          <span class="font-medium"><%= t(:label_assigned_to_short) %>:</span> <%= issue.assigned_to.name %>
+                        </span>
+                      <% end %>
+                    </div>
+                  </div>
+                  
+                  <%# RIGHT SIDE: Hours Summary and Log Time Button %>
+                  <div class="flex items-center gap-4">
+                    <%# Total Hours Logged %>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold text-gray-900"><%= format_hours(total_logged_hours) %></div>
+                      <div class="text-xs text-gray-500"><%= t(:label_logged_this_period) %></div>
+                    </div>
+                    
+                    <%# Log Time Button %>
+                    <button type="button"
+                            onclick="toggleLogTimeForm('<%= issue.id %>')"
+                            class="log-time-button px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-colors inline-flex items-center gap-2"
+                            data-issue-id="<%= issue.id %>">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                      </svg>
+                      <%= t(:button_log_time) %>
+                    </button>
+                  </div>
+                </div>
+                
+                <%# INLINE LOG TIME FORM (Hidden by default) %>
+                <div id="log-time-form-<%= issue.id %>" class="log-time-form hidden mt-4 p-4 bg-gray-50 rounded-lg border border-gray-300">
+                  <%= form_tag('#', method: :post, 
+                      id: "time-entry-form-#{issue.id}",
+                      class: 'time-entry-form space-y-4',
+                      data: { issue_id: issue.id },
+                      onsubmit: "submitLogTime(event, #{issue.id}); return false;") do %>
+                    
+                    <%= hidden_field_tag :issue_id, issue.id %>
+                    <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <%# Spent On Date %>
+                      <div>
+                        <label for="spent_on_<%= issue.id %>" class="block text-sm font-medium text-gray-700 mb-1">
+                          <%= t(:label_spent_on) %> <span class="text-red-500">*</span>
+                        </label>
+                        <%= date_field_tag "spent_on_#{issue.id}", Date.current,
+                            id: "spent_on_#{issue.id}",
+                            required: true,
+                            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500' %>
+                      </div>
+                      
+                      <%# Hours %>
+                      <div>
+                        <label for="hours_<%= issue.id %>" class="block text-sm font-medium text-gray-700 mb-1">
+                          <%= t(:label_hours) %> <span class="text-red-500">*</span>
+                        </label>
+                        <%= number_field_tag "hours_#{issue.id}", nil,
+                            id: "hours_#{issue.id}",
+                            step: 0.25,
+                            min: 0.25,
+                            required: true,
+                            placeholder: '0.00',
+                            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500' %>
+                      </div>
+                      
+                      <%# Activity %>
+                      <div>
+                        <label for="activity_id_<%= issue.id %>" class="block text-sm font-medium text-gray-700 mb-1">
+                          <%= t(:label_activity) %> <span class="text-red-500">*</span>
+                        </label>
+                        <%= select_tag "activity_id_#{issue.id}",
+                            options_from_collection_for_select(@time_entry_activities, :id, :name),
+                            id: "activity_id_#{issue.id}",
+                            required: true,
+                            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500' %>
+                      </div>
+                      
+                      <%# Comments %>
+                      <div>
+                        <label for="comments_<%= issue.id %>" class="block text-sm font-medium text-gray-700 mb-1">
+                          <%= t(:label_comment) %>
+                        </label>
+                        <%= text_field_tag "comments_#{issue.id}", nil,
+                            id: "comments_#{issue.id}",
+                            placeholder: t(:text_optional),
+                            class: 'w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500' %>
+                      </div>
+                    </div>
+                    
+                    <%# Form Action Buttons %>
+                    <div class="flex items-center gap-3">
+                      <button type="submit"
+                              class="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-colors">
+                        <%= t(:button_save_entry) %>
+                      </button>
+                      <button type="button"
+                              onclick="toggleLogTimeForm('<%= issue.id %>')"
+                              class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-colors">
+                        <%= t(:button_cancel) %>
+                      </button>
+                    </div>
+                    
+                    <%# Result/Feedback Div %>
+                    <div id="log-result-<%= issue.id %>" class="log-result hidden"></div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    
+  <% else %>
+    <%# SECTION 4 — EMPTY STATE %>
+    <div class="empty-state text-center py-16">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-900 mb-2"><%= t(:label_no_issues_found) %></h3>
+      <p class="text-gray-600 mb-6"><%= t(:text_no_issues_matching_filters) %></p>
+      <%= link_to t(:button_reset_filters), 
+          my_time_entry_panel_path(date_from: Date.current.beginning_of_week(:monday), date_to: Date.current.end_of_week(:monday)), 
+          class: 'px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-colors inline-block' %>
+    </div>
+  <% end %>
+</div>
+
+<%# JavaScript loaded from /assets/javascripts/time_entry_panel.js %>

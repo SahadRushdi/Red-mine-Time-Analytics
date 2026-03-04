@@ -12,6 +12,11 @@
   <!-- Legacy CSS (will be removed after migration) -->
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
   
+  <!-- Time Entry Panel CSS (loaded conditionally if on that page) -->
+  <% if controller_name == 'time_analytics' && action_name == 'time_entry_panel' %>
+    <%= stylesheet_link_tag 'time_entry_panel.css', plugin: 'redmine_time_analytics' %>
+  <% end %>
+  
   <!-- Chart.js v2.9.4 (local - compatible with colorschemes plugin) -->
   <%= javascript_include_tag 'chart.min.js', plugin: 'redmine_time_analytics' %>
   
@@ -23,4 +28,9 @@
   
   <!-- Plugin JS -->
   <%= javascript_include_tag 'time_analytics.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Time Entry Panel JS (loaded conditionally if on that page) -->
+  <% if controller_name == 'time_analytics' && action_name == 'time_entry_panel' %>
+    <%= javascript_include_tag 'time_entry_panel.js', plugin: 'redmine_time_analytics' %>
+  <% end %>
 <% end %>

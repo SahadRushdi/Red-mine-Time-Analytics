@@ -90,3 +90,35 @@ en:
   # Date/Time formats
   label_from: "From"
   label_to: "To"
+  label_ago: "ago"
+  label_updated: "Updated"
+  
+  # Time Entry Panel
+  label_time_entry_panel: "Time Entry Panel"
+  label_back_to_my_time: "Back to My Time Analytics"
+  label_active_filters: "Active Filters"
+  label_assigned_to_me: "Assigned to Me"
+  label_issue_status: "Issue Status"
+  label_issue_singular: "issue"
+  label_issue_plural: "issues"
+  label_priority: "Priority"
+  label_assigned_to_short: "Assigned to"
+  label_logged_this_period: "logged this period"
+  label_spent_on: "Date"
+  label_no_issues_found: "No Issues Found"
+  
+  # Buttons
+  button_apply_filters: "Apply Filters"
+  button_reset_filters: "Reset Filters"
+  button_log_time: "Log Time"
+  button_save_entry: "Save Entry"
+  button_cancel: "Cancel"
+  
+  # Placeholders
+  text_search_issues_placeholder: "Search by subject or #ID..."
+  text_optional: "Optional"
+  text_no_issues_matching_filters: "No issues found matching your current filters. Try adjusting your filter settings or reset to defaults."
+  
+  # Messages
+  error_required_fields: "Please fill in all required fields."
+  notice_time_logged_successfully: "Time entry logged successfully!"

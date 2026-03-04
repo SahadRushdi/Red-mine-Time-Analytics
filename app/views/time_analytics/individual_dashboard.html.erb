@@ -9,7 +9,20 @@
     </p>
   </div>
   
-  <%# Modern Filter Controls - Horizontal Layout %>
+  <%# Log Time Button - Navigate to Time Entry Panel %>
+  <div>
+    <%= link_to my_time_entry_panel_path(date_from: @from, date_to: @to), 
+        class: "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-colors" do %>
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+      </svg>
+      <%= t(:button_log_time) %>
+    <% end %>
+  </div>
+</div>
+
+<%# Modern Filter Controls - Horizontal Layout %>
+<div class="flex items-center justify-between mb-4">
   <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form', class: 'flex items-center gap-3 flex-wrap' do %>
     <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
     <%= hidden_field_tag :view_mode, @view_mode %>

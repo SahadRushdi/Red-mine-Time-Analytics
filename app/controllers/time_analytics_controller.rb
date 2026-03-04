@@ -254,6 +254,145 @@ class TimeAnalyticsController < ApplicationController
               type: 'text/csv'
   end
 
+  def time_entry_panel
+    @current_user = User.current
+    
+    # Parse date range from params or default to current week
+    @date_from = params[:date_from].present? ? Date.parse(params[:date_from]) : Date.current.beginning_of_week(:monday)
+    @date_to = params[:date_to].present? ? Date.parse(params[:date_to]) : Date.current.end_of_week(:monday)
+    
+    # Load time entry activities for dropdown
+    @time_entry_activities = TimeEntryActivity.active.order(:position)
+    
+    # Load all issue statuses dynamically
+    @issue_statuses = IssueStatus.all.order(:position)
+    
+    # Default pre-selected statuses (match case-insensitive)
+    default_status_names = ['design', 'implementation', 'review', 'testing', 'staged']
+    @selected_status_ids = @issue_statuses.select { |s| default_status_names.include?(s.name.downcase) }.map(&:id)
+    
+    # Get status IDs from params or use defaults
+    status_ids = params[:status_ids].present? ? params[:status_ids].map(&:to_i) : @selected_status_ids
+    
+    # Load filtered issues
+    @issues = filtered_issues(@current_user, @date_from, @date_to, status_ids)
+    
+    # Back URL - use referer or fallback to My Time dashboard
+    @back_url = request.referer || my_time_path
+    
+    respond_to do |format|
+      format.html
+    end
+  rescue ArgumentError => e
+    # Handle invalid date format
+    flash[:error] = "Invalid date format: #{e.message}"
+    redirect_to my_time_path
+  end
+
+  def log_time
+    @current_user = User.current
+    
+    # Parse and validate parameters
+    issue_id = params[:issue_id]
+    
+    # Validate spent_on date
+    begin
+      spent_on = params[:spent_on].present? ? Date.parse(params[:spent_on]) : Date.current
+    rescue ArgumentError
+      render json: { success: false, errors: ['Invalid date format'] }, status: :bad_request
+      return
+    end
+    
+    # Validate hours as positive number
+    hours = params[:hours].to_f
+    if hours <= 0
+      render json: { success: false, errors: ['Hours must be greater than 0'] }, status: :unprocessable_entity
+      return
+    end
+    
+    activity_id = params[:activity_id]
+    comments = params[:comments]
+    
+    # Validate required fields
+    unless issue_id.present? && activity_id.present?
+      render json: { success: false, errors: ['Missing required fields'] }, status: :bad_request
+      return
+    end
+    
+    # Find the issue (using parameterized query)
+    issue = Issue.find_by(id: issue_id)
+    
+    unless issue
+      render json: { success: false, errors: ['Issue not found'] }, status: :not_found
+      return
+    end
+    
+    # Security check: User must have view permission on issue
+    unless issue.visible?(@current_user)
+      render json: { success: false, errors: ['You do not have permission to view this issue'] }, status: :forbidden
+      return
+    end
+    
+    # Security check: User must have log_time permission on project
+    unless @current_user.allowed_to?(:log_time, issue.project)
+      render json: { success: false, errors: ['You do not have permission to log time on this project'] }, status: :forbidden
+      return
+    end
+    
+    # Security check: Issue must be assigned to current user
+    unless issue.assigned_to_id == @current_user.id
+      render json: { success: false, errors: ['You can only log time on issues assigned to you'] }, status: :forbidden
+      return
+    end
+    
+    # Create time entry using safe attributes
+    @time_entry = TimeEntry.new(
+      project: issue.project,
+      issue: issue,
+      user: @current_user,
+      author: @current_user,
+      spent_on: spent_on,
+      hours: hours,
+      activity_id: activity_id,
+      comments: comments
+    )
+    
+    if @time_entry.save
+      # Calculate new total hours for this issue/user/date_range
+      date_from = params[:date_from].present? ? Date.parse(params[:date_from]) : Date.current.beginning_of_week(:monday)
+      date_to = params[:date_to].present? ? Date.parse(params[:date_to]) : Date.current.end_of_week(:monday)
+      
+      new_total = TimeEntry.where(
+        user_id: @current_user.id,
+        issue_id: issue.id,
+        spent_on: date_from..date_to
+      ).sum(:hours)
+      
+      render json: { 
+        success: true, 
+        message: 'Time logged successfully',
+        time_entry: {
+          id: @time_entry.id,
+          hours: @time_entry.hours,
+          spent_on: @time_entry.spent_on.strftime('%Y-%m-%d')
+        },
+        new_total: new_total
+      }, status: :created
+    else
+      render json: { 
+        success: false, 
+        errors: @time_entry.errors.full_messages 
+      }, status: :unprocessable_entity
+    end
+  rescue ArgumentError => e
+    render json: { success: false, errors: ["Invalid parameter: #{e.message}"] }, status: :bad_request
+  rescue ActiveRecord::RecordNotFound => e
+    render json: { success: false, errors: ['Record not found'] }, status: :not_found
+  rescue => e
+    Rails.logger.error "Error in log_time: #{e.message}\n#{e.backtrace.join("\n")}"
+    render json: { success: false, errors: ['An unexpected error occurred. Please try again.'] }, status: :internal_server_error
+  end
+
   private
 
   def get_default_chart_type(view_mode)
@@ -1689,5 +1828,48 @@ class TimeAnalyticsController < ApplicationController
     end
     
     all_months
+  end
+
+  def filtered_issues(user, date_from, date_to, status_ids)
+    # MANDATORY: Issues must be assigned to the current user
+    issues = Issue.visible(user)
+                  .joins(:project)
+                  .where(assigned_to_id: user.id)
+                  .where(projects: { status: Project::STATUS_ACTIVE })
+    
+    # Apply status filter if provided
+    if status_ids.present?
+      issues = issues.where(status_id: status_ids)
+    end
+    
+    # Apply at least ONE of these conditions:
+    # 1. Updated within date range
+    # 2. Has time entries by user within date range
+    # 3. Matches selected status
+    issues = issues.where(
+      'issues.updated_on >= :date_from OR ' \
+      'EXISTS (SELECT 1 FROM time_entries ' \
+      '        WHERE time_entries.issue_id = issues.id ' \
+      '        AND time_entries.user_id = :user_id ' \
+      '        AND time_entries.spent_on BETWEEN :date_from AND :date_to)',
+      date_from: date_from,
+      date_to: date_to,
+      user_id: user.id
+    )
+    
+    # Apply text search if present
+    if params[:q].present?
+      search_term = "%#{params[:q]}%"
+      issues = issues.where(
+        'issues.subject ILIKE :search OR CAST(issues.id AS text) LIKE :search',
+        search: search_term
+      )
+    end
+    
+    # Eager load associations to prevent N+1 queries
+    issues = issues.includes(:project, :status, :priority, :tracker, :assigned_to)
+    
+    # Sort by updated_on DESC
+    issues.order('issues.updated_on DESC')
   end
 end
