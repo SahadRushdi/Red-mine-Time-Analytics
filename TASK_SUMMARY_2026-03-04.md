@@ -171,3 +171,164 @@ The Time Entry Panel feature has been successfully implemented with:
 - Responsive and accessible design
 
 The feature is ready for testing and use in production.
+
+---
+
+## Update 2 - Layout and Animation Improvements (2026-03-04, 11:03 AM)
+
+### Changes Made:
+
+1. **Moved Time Period Controls to Top Right**
+   - Time period buttons now appear on the same line as the header (opposite side)
+   - Matches the Individual Dashboard layout pattern
+   - More space-efficient and intuitive
+
+2. **Inline Custom Date Range**
+   - Custom date pickers now appear in the same horizontal line as the filter buttons
+   - No more awkward vertical stacking
+   - Smooth inline appearance when "Custom Range" is selected
+
+3. **Added "Last Entry" Information**
+   - Shows when user last logged time (e.g., "Today, 04:08 PM")
+   - Uses smart time formatting:
+     - "Just now" for entries < 1 minute ago
+     - "X minutes ago" for entries < 1 hour ago
+     - "Today, HH:MM AM/PM" for entries today
+     - "Yesterday, HH:MM AM/PM" for entries yesterday
+     - "Mon DD, HH:MM AM/PM" for older entries
+   - Queries across all time (not limited to selected date range)
+
+4. **Added Smooth Animations**
+   - Issue cards now fade in with a subtle slide-up effect
+   - Staggered animation (50ms delay per card)
+   - Matches Individual Dashboard animation style
+   - CSS keyframe animation for smooth performance
+
+### Files Modified:
+
+**app/views/time_entry_panel/index.html.erb:**
+- Restructured header layout to use flexbox justify-between
+- Moved form controls to the right side of header
+- Made custom date range inline with filter buttons
+- Added animation classes to issue cards with staggered delays
+- Added CSS animation styles at the bottom
+
+**app/controllers/time_entry_panel_controller.rb:**
+- Added query for @last_entry (most recent time entry across all time)
+- Follows same pattern as Individual Dashboard controller
+
+**app/helpers/time_analytics_helper.rb:**
+- Added `format_last_entry_time(entry)` helper method
+- Smart formatting based on time difference
+- Reusable for both Time Entry Panel and Dashboard
+
+### Technical Details:
+
+**Animation Implementation:**
+```css
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+```
+
+**Layout Structure:**
+```
+┌────────────────────────────────────────────────────────────────┐
+│ [← Back] Time Entry Panel          [Filter Buttons] [From] [To]│
+│          Feb 26 – Mar 04 • Last entry: Today, 04:08 PM         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Design Improvements:
+
+1. **Consistent with Individual Dashboard**: Layout now matches the proven pattern
+2. **Better Space Utilization**: No wasted vertical space for filters
+3. **Cleaner Visual Hierarchy**: Related controls grouped together
+4. **Professional Animations**: Smooth, non-intrusive fade-in effects
+5. **User Context**: Last entry time helps users track their logging activity
+
+### Code Quality:
+
+- **Minimal Changes**: Only modified necessary parts
+- **Reused Code**: Used existing helper patterns and Flowbite components
+- **Clean CSS**: Simple, performant animations
+- **Maintainable**: Follows established conventions
+
+All changes maintain backward compatibility and don't affect existing functionality.
+
+---
+
+## Update 3 - Code Refactoring for Reuse (2026-03-04, 11:17 AM)
+
+### Changes Made:
+
+**Refactored to reuse existing code from `time_analytics_controller.rb`:**
+
+1. **Controller Code Reuse**
+   - Kept the same `@last_entry` query pattern from Individual Dashboard
+   - Both controllers now use identical code (no duplication)
+   - Maintains consistency across the plugin
+
+2. **View Code Reuse**
+   - Removed custom `format_last_entry_time` helper method
+   - Now uses inline ERB formatting (same as Individual Dashboard)
+   - Added timezone support with `in_time_zone(User.current.time_zone || 'UTC')`
+   - Exact same date logic: Today, Yesterday, or full date
+
+3. **Helper Method Cleanup**
+   - Removed `format_last_entry_time` from `time_analytics_helper.rb`
+   - No new helper methods added
+   - Cleaner, more maintainable codebase
+
+### Code Comparison:
+
+**Before (Custom Implementation):**
+```ruby
+# Helper method (now removed)
+def format_last_entry_time(entry)
+  return 'Never' unless entry
+  # ... custom logic
+end
+
+# View usage
+<%= format_last_entry_time(@last_entry) %>
+```
+
+**After (Reused Pattern):**
+```erb
+<% if @last_entry %>
+  <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
+  <% if local_time.to_date == Date.today %>
+    Today, <%= local_time.strftime('%I:%M %p') %>
+  <% elsif local_time.to_date == Date.yesterday %>
+    Yesterday, <%= local_time.strftime('%I:%M %p') %>
+  <% else %>
+    <%= local_time.strftime('%b %d, %I:%M %p') %>
+  <% end %>
+<% end %>
+```
+
+### Benefits:
+
+1. **DRY Principle**: Don't Repeat Yourself - reusing existing patterns
+2. **Consistency**: Both pages show last entry in exactly the same way
+3. **Maintainability**: Changes to date formatting only need to be made once
+4. **Timezone Awareness**: Properly respects user's timezone setting
+5. **Less Code**: Removed custom helper method (18 lines eliminated)
+
+### Files Modified:
+
+- `app/views/time_entry_panel/index.html.erb` - Changed to inline formatting
+- `app/helpers/time_analytics_helper.rb` - Removed custom helper method
+- `app/controllers/time_entry_panel_controller.rb` - Uses same query pattern
+
+### Result:
+
+The Time Entry Panel now follows the exact same pattern as the Individual Dashboard for displaying last entry time, ensuring consistency and maintainability across the entire plugin.

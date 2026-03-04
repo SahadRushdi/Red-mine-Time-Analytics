@@ -21,6 +21,14 @@ class TimeEntryPanelController < ApplicationController
                              .includes(:project, :issue, :activity)
                              .order('time_entries.spent_on DESC, time_entries.created_on DESC')
     
+    # Get the most recently logged time entry across ALL time (not filtered by date range)
+    # This shows when the user actually last logged time, regardless of current filter
+    @last_entry = TimeEntry.joins(:project)
+                           .where(user: @user)
+                           .where(projects: { status: Project::STATUS_ACTIVE })
+                           .order(created_on: :desc, id: :desc)
+                           .first
+    
     # Group time entries by issue for display
     @time_entries_by_issue = @time_entries.group_by(&:issue_id)
     
