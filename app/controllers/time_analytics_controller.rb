@@ -531,7 +531,7 @@ class TimeAnalyticsController < ApplicationController
       time_entries.includes(:issue).each do |entry|
         period_key = get_activity_period_key(entry.spent_on, grouping)
         if entry.issue
-          category_name = "##{entry.issue.id}: #{entry.issue.subject}"
+          category_name = "##{entry.issue.id}"
         else
           category_name = 'No Issue'
         end

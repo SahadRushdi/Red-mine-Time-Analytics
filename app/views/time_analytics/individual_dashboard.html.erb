@@ -1098,82 +1098,19 @@ function initChart() {
       config.options = {};
     }
     config.options.responsive = true;
+    config.options.responsive = true;
     config.options.maintainAspectRatio = false;
 
-    // Add tooltip formatting for stacked bar charts
-    if (config.type === 'bar') {
-      // Ensure plugins object exists
-      if (!config.options.plugins) config.options.plugins = {};
-      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
-      
-      // Preserve existing tooltip settings from server (font sizes, etc.)
-      var existingTooltipConfig = config.options.plugins.tooltip;
-      
-      // Ensure callbacks object exists
-      if (!config.options.plugins.tooltip.callbacks) {
-        config.options.plugins.tooltip.callbacks = {};
-      }
-      
-      // Custom title callback for weekly grouping (show Month/Date/Year format)
-      config.options.plugins.tooltip.callbacks.title = function(context) {
-        var index = context[0].dataIndex;
-        var dataset = config.data.datasets[0];
-        
-        // Use tooltipLabels if available (for weekly grouping with Month/Date/Year format)
-        if (dataset.tooltipLabels && dataset.tooltipLabels[index]) {
-          return dataset.tooltipLabels[index];
-        }
-        
-        return context[0].label;
-      };
-      
-      // Custom label callback to format hours and hide 0:00 activities
-      config.options.plugins.tooltip.callbacks.label = function(context) {
-        var label = context.dataset.label || '';
-        var value = context.parsed.y;
-        
-        // Hide activities with 0:00 hours
-        if (value === 0) {
-          return null;
-        }
-        
-        var formatted = formatHours(value);
-        return label + ': ' + formatted;
-      };
-      
-      // Filter out zero-value items from tooltip
-      config.options.plugins.tooltip.filter = function(tooltipItem) {
-        return tooltipItem.parsed.y !== 0;
-      };
-      
-      // Add hover animation
-      config.options.animation = {
-        duration: 300,
-        easing: 'easeInOutQuart'
-      };
-      
-      config.options.hover = {
-        animationDuration: 300
-      };
-    }
-    
-    // Add custom tooltip callback for weekly grouping (line charts)
-    if (config.type === 'line' && config.data.datasets[0].tooltipLabels) {
-      if (!config.options.plugins) config.options.plugins = {};
-      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
-      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
-      
-      config.options.plugins.tooltip.callbacks.title = function(context) {
-        var index = context[0].dataIndex;
-        var tooltipLabels = context[0].dataset.tooltipLabels;
-        return tooltipLabels ? tooltipLabels[index] : context[0].label;
-      };
-    }
-    
     // Add tooltip label callback for line charts to show formatted hours
     // Add custom tooltip callbacks for Chart.js v2
     if (!config.options.tooltips) config.options.tooltips = {};
     if (!config.options.tooltips.callbacks) config.options.tooltips.callbacks = {};
+    
+    // Filter out zero-value items from tooltip (Chart.js v2)
+    config.options.tooltips.filter = function(tooltipItem, data) {
+      var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+      return value !== 0 && value !== '0.00';
+    };
     
     // Custom title callback for weekly format
     config.options.tooltips.callbacks.title = function(tooltipItems, data) {
@@ -1198,30 +1135,14 @@ function initChart() {
         return label + ': ' + dataset.formattedHours[tooltipItem.index];
       }
       
-      // For bar charts (v2 API)
-      if (tooltipItem.yLabel !== undefined) {
-        return label + ': ' + tooltipItem.yLabel.toFixed(2) + 'h';
-      }
-      
-      // For line charts (v2 API)  
-      if (dataset.data && dataset.data[tooltipItem.index] !== undefined) {
-        return label + ': ' + dataset.data[tooltipItem.index].toFixed(2) + 'h';
+      // For bar/line charts (v2 API)
+      var value = tooltipItem.yLabel !== undefined ? tooltipItem.yLabel : (dataset.data && dataset.data[tooltipItem.index]);
+      if (value !== undefined && typeof value === 'number') {
+        return label + ': ' + formatHours(value);
       }
       
       return label;
     };
-    
-    // Handle old v3 API tooltip config if present
-    if (config.type === 'line') {
-      if (!config.options.plugins) config.options.plugins = {};
-      if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
-      if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
-      
-      config.options.plugins.tooltip.callbacks.label = function(context) {
-        var formattedHours = context.dataset.formattedHours;
-        return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : formatHours(context.parsed.y));
-      };
-    }
     
     timeAnalyticsChart = new Chart(chartElement, config);
     
@@ -1340,37 +1261,41 @@ function transformChartType(originalConfig, newType) {
     newConfig.options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              var formattedHours = context.dataset.formattedHours;
-              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
-            }
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(tooltipItem, data) {
+            var dataset = data.datasets[tooltipItem.datasetIndex];
+            var formattedHours = dataset.formattedHours;
+            var value = tooltipItem.yLabel !== undefined ? tooltipItem.yLabel : (dataset.data && dataset.data[tooltipItem.index]);
+            return 'Hours: ' + (formattedHours ? formattedHours[tooltipItem.index] : formatHours(value));
           }
         }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: grouping
+            labelString: grouping
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45
           }
-        }
+        }]
       }
     };
     
@@ -1420,37 +1345,41 @@ function transformChartType(originalConfig, newType) {
     newConfig.options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              var formattedHours = context.dataset.formattedHours;
-              return 'Hours: ' + (formattedHours ? formattedHours[context.dataIndex] : context.parsed.y);
-            }
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function(tooltipItem, data) {
+            var dataset = data.datasets[tooltipItem.datasetIndex];
+            var formattedHours = dataset.formattedHours;
+            var value = tooltipItem.yLabel !== undefined ? tooltipItem.yLabel : (dataset.data && dataset.data[tooltipItem.index]);
+            return 'Hours: ' + (formattedHours ? formattedHours[tooltipItem.index] : formatHours(value));
           }
         }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: grouping
+            labelString: grouping
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45
           }
-        }
+        }]
       }
     };
     
@@ -1754,7 +1683,7 @@ function initDonutChart() {
     <% sorted_issues = @issue_totals.sort_by { |_, hours| -hours } %>
     <% sorted_issues.each do |issue_key, hours| %>
       <% issue_info = @issues.find { |i| i[:key] == issue_key } %>
-      <% label = issue_info ? issue_info[:display] : 'Unknown' %>
+      <% label = issue_info && issue_info[:issue] ? "##{issue_info[:issue].id}" : (issue_info ? issue_info[:display] : 'Unknown') %>
       chartLabels.push('<%= j label %>');
       chartValues.push(<%= hours.to_f %>);
     <% end %>
