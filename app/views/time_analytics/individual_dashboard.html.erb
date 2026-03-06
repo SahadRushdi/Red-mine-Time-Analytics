@@ -179,50 +179,31 @@
   target_hours = 40.0  # Weekly target
   hours_logged = @total_hours.to_f
   percentage_complete = target_hours > 0 ? (hours_logged / target_hours * 100).round : 0
-  remaining_hours = [target_hours - hours_logged, 0].max
-  is_on_track = percentage_complete >= 50 # Arbitrary threshold
   
   # Calculate comparison with last period
   hours_vs_last = hours_logged * 0.15  # Simulated 15% increase
 %>
 
-<div class="mb-4 animate-fade-in">
-  <div class="flex items-center justify-between gap-4">
-    <div class="inline-flex items-center gap-2 px-5 py-3 <%= is_on_track ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200' %> border rounded-lg">
-      <span class="flex items-center gap-1">
-        <span class="w-2 h-2 <%= is_on_track ? 'bg-green-500' : 'bg-yellow-500' %> rounded-full"></span>
-        <span class="text-base font-semibold <%= is_on_track ? 'text-green-700' : 'text-yellow-700' %>">
-          <%= is_on_track ? 'On track' : 'Behind schedule' %>
-        </span>
-      </span>
-      <span class="text-base <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
-        <%= format_hours(hours_logged) %> logged this week
-      </span>
-      <span class="text-base text-gray-500">• Target: <%= format_hours(target_hours) %></span>
-      <span class="text-base font-medium <%= is_on_track ? 'text-green-600' : 'text-yellow-600' %>">
-        <%= percentage_complete %>% complete
-      </span>
-    </div>
-    <div class="text-base text-gray-600">
-      <span class="font-medium">Last entry:</span> 
-      <% if @last_entry %>
-        <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
-        <% if local_time.to_date == Date.today %>
-          Today, <%= local_time.strftime('%I:%M %p') %>
-        <% elsif local_time.to_date == Date.yesterday %>
-          Yesterday, <%= local_time.strftime('%I:%M %p') %>
-        <% else %>
-          <%= local_time.strftime('%b %d, %I:%M %p') %>
-        <% end %>
+<div class="mb-4 animate-fade-in text-right">
+  <div class="text-base text-gray-600">
+    <span class="font-medium">Last entry:</span> 
+    <% if @last_entry %>
+      <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
+      <% if local_time.to_date == Date.today %>
+        Today, <%= local_time.strftime('%I:%M %p') %>
+      <% elsif local_time.to_date == Date.yesterday %>
+        Yesterday, <%= local_time.strftime('%I:%M %p') %>
       <% else %>
-        N/A
+        <%= local_time.strftime('%b %d, %I:%M %p') %>
       <% end %>
-    </div>
+    <% else %>
+      N/A
+    <% end %>
   </div>
 </div>
 
-<%# Modern Metrics Grid - 6 Cards %>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+<%# Modern Metrics Grid - 5 Cards %>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
   <%# Total Hours Card with Progress Bar %>
   <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
     <div class="flex items-center gap-2 mb-1">
@@ -340,29 +321,6 @@
     <div class="text-sm text-gray-600 mt-2">
       <%= zero_days > 0 ? (@from ? (@from + 4.days).strftime('%b %d') : 'Last day') + ' no entries' : 'Perfect week' %>
     </div>
-  </div>
-
-  <%# Remaining Card - Warning Style %>
-  <div class="bg-white rounded-lg shadow-md p-5 border <%= remaining_hours > 15 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' %> hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %>" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-      </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">Remaining</p>
-    </div>
-    <p class="text-4xl font-bold <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> mb-1">
-      <%= format_hours(remaining_hours) %>
-    </p>
-    <p class="text-sm <%= remaining_hours > 15 ? 'text-red-600' : 'text-green-600' %> font-semibold">
-      <%= remaining_hours > 0 ? "to hit #{format_hours(target_hours)} target" : 'Target achieved!' %>
-    </p>
-    <% if remaining_hours > 0 %>
-      <% days_remaining = 2 %>
-      <% hours_per_day_needed = remaining_hours / days_remaining %>
-      <div class="text-sm text-gray-600 mt-2">
-        Need <%= format_hours(hours_per_day_needed) %>/day Tue–Wed
-      </div>
-    <% end %>
   </div>
 </div>
 
