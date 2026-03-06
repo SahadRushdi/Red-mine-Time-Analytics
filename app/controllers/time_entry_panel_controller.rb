@@ -1,6 +1,6 @@
 class TimeEntryPanelController < ApplicationController
   before_action :require_login
-  before_action :set_date_range
+  before_action :set_date_range, only: [:index]
   helper :time_analytics
 
   def index
@@ -34,6 +34,37 @@ class TimeEntryPanelController < ApplicationController
     
     # Calculate total hours for the period
     @total_hours = @time_entries.sum(:hours)
+  end
+
+  def get_activities
+    issue = Issue.find(params[:issue_id])
+    activities = issue.project.activities.active.sorted
+    
+    render json: { activities: activities.map { |a| { id: a.id, name: a.name } }.sort_by { |a| a[:name] } }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Issue not found' }, status: :not_found
+  end
+
+  def create_time_entry
+    issue = Issue.find(params[:issue_id])
+    
+    time_entry = TimeEntry.new(
+      issue: issue,
+      project: issue.project,
+      user: User.current,
+      spent_on: params[:spent_on],
+      hours: params[:hours],
+      activity_id: params[:activity_id],
+      comments: params[:comments]
+    )
+    
+    if time_entry.save
+      render json: { success: true, message: 'Time entry created successfully' }
+    else
+      render json: { success: false, errors: time_entry.errors.full_messages }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotFound
+    render json: { success: false, error: 'Issue not found' }, status: :not_found
   end
 
   private

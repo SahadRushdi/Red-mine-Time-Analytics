@@ -291,6 +291,161 @@ button[onclick*="setGroupingAndSubmit"] {
   box-shadow: none !important;
 }
 
+/* === Log Time Modal Styles === */
+/* Modal backdrop with semi-transparent background - allows content to be visible behind modal */
+.modal-backdrop-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  transition: opacity 0.3s ease;
+}
+
+#log-time-modal {
+  /* Container itself has no background to allow backdrop overlay to control dimming */
+}
+
+/* Fix purple border on date and hours inputs - force blue focus */
+#log-time-modal input[type="date"],
+#log-time-modal input[type="number"] {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
+#log-time-modal input[type="date"]:focus,
+#log-time-modal input[type="number"]:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  outline: none !important;
+}
+
+/* Fix close button getting blue background on focus */
+#log-time-modal button[onclick="closeLogTimeModal()"] {
+  background-color: transparent !important;
+  color: #6b7280 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#log-time-modal button[onclick="closeLogTimeModal()"]:hover {
+  background-color: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+#log-time-modal button[onclick="closeLogTimeModal()"]:focus {
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Fix activity dropdown to open upwards (dropup) and remove blue borders */
+#activity-dropdown {
+  position: absolute !important;
+  bottom: 100% !important;
+  margin-bottom: 4px !important;
+  z-index: 9999 !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Remove Redmine's default blue borders from activity dropdown items - reusing pattern */
+#activity-dropdown button,
+#activity-dropdown button:link,
+#activity-dropdown button:visited,
+#activity-dropdown button:active,
+#activity-dropdown button:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+/* Fix hover state for dropdown items - ensure text is visible */
+#activity-dropdown button:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#activity-dropdown li button {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Activity dropdown button focus state */
+#activity-dropdown-button:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Remove any inherited Redmine styles from modal form elements */
+#log-time-modal textarea {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
+#log-time-modal textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  outline: none !important;
+}
+
+/* Ensure modal buttons have visible borders */
+#log-time-modal button[type="submit"],
+#log-time-modal button[type="button"] {
+  outline: none !important;
+}
+
+#log-time-modal button[type="submit"]:focus,
+#log-time-modal button[type="button"]:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Update "Create and add another" button to match "Create" button style */
+#modal-create-add-btn {
+  background-color: #2563eb !important;
+  color: white !important;
+  border: none !important;
+}
+
+#modal-create-add-btn:hover {
+  background-color: #1d4ed8 !important;
+  border: none !important;
+}
+
+/* Cancel button with underline by default as shown in Figma */
+button[onclick="closeLogTimeModal()"] {
+  border: none !important;
+  background-color: white !important;
+  text-decoration: underline !important;
+}
+
+button[onclick="closeLogTimeModal()"]:hover {
+  background-color: #f9fafb !important;
+  text-decoration: underline !important;
+  border: none !important;
+}
+
+/* Remove Redmine's default link styling from activity dropdown - reusing pattern */
+#activity-dropdown a,
+#activity-dropdown a:link,
+#activity-dropdown a:visited,
+#activity-dropdown a:hover,
+#activity-dropdown a:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
 /* === Fix Extra Bottom Borders on Tables === */
 /* Remove the bottom border from the last row in table bodies */
 tbody tr:last-child {
