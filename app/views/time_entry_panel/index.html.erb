@@ -11,7 +11,7 @@
       <span>Back to My Time</span>
     <% end %>
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Time Entry Panel</h1>
+      <h1 class="text-2xl font-bold text-gray-900">My Timesheet</h1>
       <p class="text-sm text-gray-500">
         <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : 'All Time' %>
         <% if @last_entry %>
@@ -167,11 +167,11 @@
     </div>
   </div>
 
-  <%# Section 2: Suggested Time Log %>
+  <%# Section 2: Your Recent Work %>
   <div class="bg-white rounded-lg shadow-sm border border-gray-200">
     <div class="px-6 py-4 border-b border-gray-200">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900">Suggested Time Log</h2>
+        <h2 class="text-lg font-semibold text-gray-900">Your Recent Work</h2>
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-600" id="suggested-issues-counter"></span>
         </div>
