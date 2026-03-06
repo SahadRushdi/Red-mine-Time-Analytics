@@ -319,25 +319,24 @@ button[onclick*="setGroupingAndSubmit"] {
   outline: none !important;
 }
 
-/* Fix close button getting blue background on focus */
-#log-time-modal button[onclick="closeLogTimeModal()"] {
-  background-color: transparent !important;
-  color: #6b7280 !important;
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
+/* Log time modal specific button fixes */
 #log-time-modal button[onclick="closeLogTimeModal()"]:hover {
   background-color: #e5e7eb !important;
   color: #111827 !important;
+  border-color: #d1d5db !important; /* Force gray border instead of Redmine blue */
+}
+
+/* Header X button should not have a border on hover or focus */
+#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"],
+#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"]:hover,
+#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"]:focus {
+  border: none !important;
+  outline: none !important;
 }
 
 #log-time-modal button[onclick="closeLogTimeModal()"]:focus {
-  background-color: transparent !important;
   outline: none !important;
   box-shadow: none !important;
-  border: none !important;
 }
 
 /* Fix activity dropdown to open upwards (dropup) and remove blue borders */
@@ -413,25 +412,17 @@ button[onclick*="setGroupingAndSubmit"] {
 #modal-create-add-btn {
   background-color: #2563eb !important;
   color: white !important;
-  border: none !important;
 }
 
 #modal-create-add-btn:hover {
   background-color: #1d4ed8 !important;
-  border: none !important;
 }
 
 /* Cancel button with underline by default as shown in Figma */
-button[onclick="closeLogTimeModal()"] {
-  border: none !important;
-  background-color: white !important;
-  text-decoration: underline !important;
-}
-
-button[onclick="closeLogTimeModal()"]:hover {
-  background-color: #f9fafb !important;
-  text-decoration: underline !important;
-  border: none !important;
+/* Log time modal specific button fixes */
+#log-time-modal button[onclick="closeLogTimeModal()"]:hover {
+  background-color: #e5e7eb !important;
+  color: #111827 !important;
 }
 
 /* Remove Redmine's default link styling from activity dropdown - reusing pattern */

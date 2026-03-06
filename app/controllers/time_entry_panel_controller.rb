@@ -6,12 +6,21 @@ class TimeEntryPanelController < ApplicationController
   def index
     @user = User.current
     
-    # Get issues assigned to the logged-in user, ordered by latest updated first
+    # Get issues assigned to the logged-in user
     @issues = Issue.joins(:project)
                    .where(assigned_to_id: @user.id)
                    .where(projects: { status: Project::STATUS_ACTIVE })
                    .includes(:project, :tracker, :status, :priority)
-                   .order('issues.updated_on DESC')
+    
+    # Sort issues by last log time (by current user) or last update time
+    # This ensures that issues with recent activity appear at the top of both sections
+    last_log_dates = TimeEntry.where(issue_id: @issues.map(&:id), user_id: @user.id)
+                              .group(:issue_id)
+                              .maximum(:created_on)
+    
+    @issues = @issues.to_a.sort_by do |issue|
+      [last_log_dates[issue.id], issue.updated_on].compact.max
+    end.reverse
     
     # Get time entries for the selected date range
     @time_entries = TimeEntry.joins(:project, :issue)
