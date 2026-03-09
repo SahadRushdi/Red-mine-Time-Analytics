@@ -847,7 +847,13 @@ function switchChartType(chartType) {
                 <% @issues.each do |issue_info| %>
                   <% if issue_info[:issue] %>
                     <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                      <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: "_blank", class: "text-blue-600 hover:underline" %>
+                      <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), 
+                          target: "_blank", class: "text-blue-600 hover:underline", 
+                          data: { "tooltip-target": "tooltip-issue-det-#{issue_info[:key]}" } %>
+                      <div id="tooltip-issue-det-<%= issue_info[:key] %>" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip">
+                          <%= issue_info[:display] %>
+                          <div class="tooltip-arrow" data-popper-arrow></div>
+                      </div>
                     </th>
                   <% else %>
                     <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">No Issue</th>
@@ -889,13 +895,13 @@ function switchChartType(chartType) {
               <div class="bg-white">
                 <!-- Issue name and hours -->
                 <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
-                    <% if issue_info[:issue] %>
-                      <%= link_to issue_info[:display], issue_path(issue_info[:issue]), target: "_blank", class: "text-blue-600 hover:underline" %>
-                    <% else %>
-                      <%= issue_info[:display] %>
-                    <% end %>
-                  </h3>
+                    <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
+                      <% if issue_info[:issue] %>
+                        <%= link_to issue_info[:display], issue_path(issue_info[:issue]), target: "_blank", class: "text-blue-600 hover:underline" %>
+                      <% else %>
+                        <%= issue_info[:display] %>
+                      <% end %>
+                    </h3>
                   <div class="flex items-center gap-3 flex-shrink-0">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
                     <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
