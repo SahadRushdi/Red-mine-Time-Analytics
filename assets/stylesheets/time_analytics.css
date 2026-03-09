@@ -297,6 +297,39 @@ button[onclick*="setGroupingAndSubmit"] {
   box-shadow: none !important;
 }
 
+/* === Fix Redmine's Blue Border on Button Hover === */
+/* Prevent Redmine's default blue border (#628db6) on button hover */
+button:hover {
+  border-color: currentColor !important;
+}
+
+/* Specific fix for inactive time period buttons - keep gray border on hover */
+button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Specific fix for inactive Detailed/Summary buttons - keep gray border on hover */
+button[onclick*="showDetailedView"]:not([style*="background-color: #3b82f6"]):hover,
+button[onclick*="showSummaryView"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Specific fix for inactive Trend/Stacked chart buttons - keep gray border on hover */
+button[onclick*="switchChartType"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Remove any transform/scale animations on chart buttons */
+button[onclick*="switchChartType"] {
+  transform: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+button[onclick*="switchChartType"]:hover,
+button[onclick*="switchChartType"]:active {
+  transform: none !important;
+}
+
 /* === Log Time Modal Styles === */
 /* Modal backdrop with semi-transparent background - allows content to be visible behind modal */
 .modal-backdrop-overlay {

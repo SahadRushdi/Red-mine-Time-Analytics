@@ -392,17 +392,17 @@
     <h3 class="text-base font-semibold text-gray-900 mb-3" style="display: flex; justify-content: space-between; align-items: center;">
       <span><%= chart_breakdown_header(@grouping) %></span>
       <div class="inline-flex gap-2">
-        <%# Two buttons for chart type selection %>
+        <%# Two buttons for chart type selection - consistent with other Flowbite buttons %>
         <button type="button" 
                 onclick="switchChartType('line')"
                 style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!bg-blue-600 !text-white hover:!bg-blue-700' : '!bg-white !text-gray-700 border-gray-300 hover:!bg-gray-50' %>">
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Trend
         </button>
         <button type="button" 
                 onclick="switchChartType('bar')"
                 style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!bg-blue-600 !text-white hover:!bg-blue-700' : '!bg-white !text-gray-700 border-gray-300 hover:!bg-gray-50' %>">
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Stacked
         </button>
         
