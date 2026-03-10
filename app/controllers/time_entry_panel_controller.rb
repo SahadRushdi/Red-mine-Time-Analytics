@@ -43,6 +43,17 @@ class TimeEntryPanelController < ApplicationController
     
     # Calculate total hours for the period
     @total_hours = @time_entries.sum(:hours)
+    
+    # Issues with time entries in this period (for "Your Time Logs" tab)
+    @issues_with_logs = @issues.select { |issue| @time_entries_by_issue[issue.id].present? }
+    
+    # Issues without time entries in this period (for "Your Recent Work" tab)
+    @issues_without_logs = @issues.reject { |issue| @time_entries_by_issue[issue.id].present? }
+    
+    # Summary card data
+    @issues_worked_count = @issues_with_logs.count
+    @unique_projects_count = @time_entries.map { |te| te.project_id }.uniq.count
+    @all_issues_count = @issues.count
   end
 
   def get_activities

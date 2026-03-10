@@ -494,6 +494,179 @@ tbody tr:last-child {
   line-height: 1.4 !important;
 }
 
+/* === My Timesheet - Summary Cards === */
+.ts-summary-card {
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+.ts-summary-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* === My Timesheet - Tabs === */
+.ts-tab-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 3px;
+  background-color: #f9fafb;
+}
+.ts-tab {
+  color: #6b7280 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab:hover {
+  color: #374151 !important;
+  background: #f3f4f6 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab.ts-tab-active {
+  color: #111827 !important;
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  outline: none !important;
+}
+.ts-tab:focus,
+.ts-tab:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab.ts-tab-active:focus,
+.ts-tab.ts-tab-active:active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  outline: none !important;
+}
+.ts-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  color: #374151;
+}
+.ts-tab.ts-tab-active .ts-tab-badge {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* === My Timesheet - Search Input === */
+.ts-search-input {
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-search-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  outline: none !important;
+}
+
+/* === My Timesheet - Table === */
+.ts-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.ts-table thead th {
+  border-bottom: 1px solid #e5e7eb !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+.ts-table tbody tr.ts-issue-row {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+.ts-table tbody tr.ts-issue-row:last-child {
+  border-bottom: none !important;
+}
+.ts-table tbody tr.ts-expand-row {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+.ts-table tbody tr.ts-expand-row td {
+  border: none !important;
+}
+
+/* === My Timesheet - Status Badge === */
+.ts-status-badge {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* === My Timesheet - Progress Bar === */
+.ts-progress-bar-bg {
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #e5e7eb;
+  overflow: hidden;
+}
+.ts-progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* === My Timesheet - Log Button === */
+.ts-log-btn {
+  background-color: #111827 !important;
+  color: white !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-log-btn:hover {
+  background-color: #1f2937 !important;
+  color: white !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-log-btn:focus,
+.ts-log-btn:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* === My Timesheet - Expand Icon === */
+.ts-expand-icon {
+  transition: transform 0.2s ease;
+}
+
+/* === My Timesheet - Activity Badge in Expanded Row === */
+.ts-activity-badge {
+  white-space: nowrap;
+}
+
+/* === My Timesheet - Remove Redmine blue borders from table/tab components === */
+.ts-table a,
+.ts-table a:link,
+.ts-table a:visited,
+.ts-table a:hover,
+.ts-table a:active {
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+.ts-tab-group button,
+.ts-tab-group button:link,
+.ts-tab-group button:visited,
+.ts-tab-group button:hover,
+.ts-tab-group button:active,
+.ts-tab-group button:focus {
+  text-decoration: none !important;
+}
+
 /* === Responsive Design === */
 @media (max-width: 768px) {
   .analytics-section {

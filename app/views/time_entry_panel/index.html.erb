@@ -11,12 +11,17 @@
       <span>Back to My Time</span>
     <% end %>
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">My Timesheet</h1>
+      <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        My Timesheet
+      </h1>
       <p class="text-sm text-gray-500">
         <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : 'All Time' %>
         <% if @last_entry %>
           <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
-          <span class="ml-2">• Last entry: 
+          <span class="ml-2">· Last entry: 
             <% if local_time.to_date == Date.today %>
               Today, <%= local_time.strftime('%I:%M %p') %>
             <% elsif local_time.to_date == Date.yesterday %>
@@ -34,41 +39,19 @@
   <%= form_tag time_entry_panel_path, method: :get, local: true, id: 'time-entry-panel-form', class: 'flex items-center gap-3 flex-wrap' do %>
     <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
     
-    <%# Time Period Button Group %>
     <div class="inline-flex rounded-lg shadow-sm" role="group">
-      <button type="button" onclick="setFilterAndSubmit('last_7_days')" 
-          style="<%= @filter == 'last_7_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_7_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        Last 7 Days
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('last_14_days')" 
-          style="<%= @filter == 'last_14_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border-t border-b border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_14_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        Last 14 Days
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('this_week')" 
-          style="<%= @filter == 'this_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        This Week
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('last_week')" 
-          style="<%= @filter == 'last_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        Last Week
-      </button>
-      <button type="button" onclick="setFilterAndSubmit('this_month')" 
-          style="<%= @filter == 'this_month' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_month' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        This Month
-      </button>
-      <button type="button" onclick="toggleCustomDateRange()" 
-          style="<%= @filter == 'custom' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-          class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'custom' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-        Custom Range
-      </button>
+      <% ['last_7_days', 'last_14_days', 'this_week', 'last_week', 'this_month', 'custom'].each_with_index do |f, i| %>
+        <% labels = { 'last_7_days' => 'Last 7 Days', 'last_14_days' => 'Last 14 Days', 'this_week' => 'This Week', 'last_week' => 'Last Week', 'this_month' => 'This Month', 'custom' => 'Custom Range' } %>
+        <% is_active = @filter == f %>
+        <% rounded = i == 0 ? 'rounded-l-lg' : (i == 5 ? 'rounded-r-lg' : '') %>
+        <button type="button" onclick="<%= f == 'custom' ? 'toggleCustomDateRange()' : "setFilterAndSubmit('#{f}')" %>" 
+            style="<%= is_active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+            class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 <%= rounded %> focus:outline-none focus:ring-4 focus:ring-blue-300 <%= is_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+          <%= labels[f] %>
+        </button>
+      <% end %>
     </div>
     
-    <%# Custom Date Range (Hidden by default) - Inline with buttons %>
     <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2">
       <span class="text-sm text-gray-600">From:</span>
       <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
@@ -78,284 +61,307 @@
   <% end %>
 </div>
 
-<%# Main Content - Two Sections %>
-<div class="space-y-6">
-  <%# Section 1: Your Time Logs %>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Your Time Logs</h2>
-      <p class="text-sm text-gray-500 mt-1">
-        Total: <%= format_hours(@total_hours) %> hours logged in this period
-      </p>
+<%# Summary Cards %>
+<div class="grid grid-cols-1 sm:!grid-cols-2 lg:!grid-cols-4 gap-4 mb-6">
+  <%# Total Logged %>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
+      <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Total Logged</p>
+      <p class="text-2xl font-bold text-gray-900"><%= format_hours(@total_hours) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
+    </div>
+  </div>
+  
+  <%# Issues Worked %>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #eef2ff;">
+      <svg class="w-6 h-6" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Issues Worked</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @issues_worked_count %> <span class="text-sm font-normal text-gray-500">issues</span></p>
+    </div>
+  </div>
+  
+  <%# Projects %>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fef3c7;">
+      <svg class="w-6 h-6" style="color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Projects</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @unique_projects_count %> <span class="text-sm font-normal text-gray-500">active</span></p>
+    </div>
+  </div>
+  
+  <%# All Issues %>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fce7f3;">
+      <svg class="w-6 h-6" style="color: #ec4899;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">All Issues</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @all_issues_count %> <span class="text-sm font-normal text-gray-500">assigned</span></p>
+    </div>
+  </div>
+</div>
+
+<%# Tabs + Search + Table %>
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+  <%# Tab Bar and Search %>
+  <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-wrap gap-3">
+    <div class="inline-flex ts-tab-group" role="group">
+      <button type="button" id="tab-time-logs" onclick="switchTab('time-logs')"
+              class="ts-tab ts-tab-active inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        Your Time Logs
+        <span class="ts-tab-badge"><%= @issues_with_logs.count %></span>
+      </button>
+      <button type="button" id="tab-recent-work" onclick="switchTab('recent-work')"
+              class="ts-tab inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        Your Recent Work
+        <span class="ts-tab-badge"><%= @issues_without_logs.count %></span>
+      </button>
     </div>
     
-    <div class="p-6">
-      <% if @time_entries.any? %>
-        <div class="space-y-4">
-          <% @issues.each_with_index do |issue, index| %>
-            <% issue_entries = @time_entries_by_issue[issue.id] %>
-            <% if issue_entries.present? %>
-              <div class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-all duration-300 animate-fade-in" style="animation-delay: <%= index * 50 %>ms;">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded" 
-                            style="background-color: <%= issue.tracker.try(:color) || '#cccccc' %>20; color: <%= issue.tracker.try(:color) || '#333333' %>;">
-                        <%= issue.tracker.name %>
-                      </span>
-                      <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded"
-                            style="background-color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>20; color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>;">
-                        <%= issue.status.name %>
-                      </span>
-                      <span class="text-sm font-semibold text-gray-900">#<%= issue.id %></span>
-                    </div>
-                    <h3 class="text-base font-semibold text-gray-900 mb-1">
-                      <%= link_to issue.subject, issue_path(issue), class: 'hover:text-blue-600 transition-colors' %>
-                    </h3>
-                    <p class="text-sm text-gray-600 mb-2">
-                      <span class="font-medium">Project:</span> <%= issue.project.name %>
-                    </p>
-                    <div class="text-sm text-gray-600">
-                      <span class="font-medium">Time logged:</span> <%= format_hours(issue_entries.sum(&:hours)) %> hours
-                    </div>
-                  </div>
-                  
-                  <div class="flex-shrink-0">
-                    <button type="button" 
-                        onclick="openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
-                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-white !bg-green-600 rounded-lg hover:!bg-green-700 focus:ring-4 focus:ring-green-300 transition-colors shadow-sm"
-                        style="background-color: #16a34a !important; color: white !important;">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                      </svg>
-                      <span>Log Time</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <%# Show recent time entries for this issue %>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                  <div class="text-xs font-medium text-gray-500 mb-2">Recent entries:</div>
-                  <div class="space-y-1">
-                    <% issue_entries.first(3).each do |entry| %>
-                      <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-700">
-                          <%= entry.spent_on.strftime('%b %d, %Y') %> - 
-                          <%= entry.activity&.name || 'No Activity' %>
-                        </span>
-                        <span class="font-medium text-gray-900"><%= format_hours(entry.hours) %>h</span>
-                      </div>
-                    <% end %>
-                    <% if issue_entries.count > 3 %>
-                      <div class="text-xs text-gray-500">+ <%= issue_entries.count - 3 %> more entries</div>
-                    <% end %>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          <% end %>
-        </div>
-      <% else %>
-        <div class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">No time entries</h3>
-          <p class="mt-1 text-sm text-gray-500">You haven't logged any time in this period.</p>
-        </div>
-      <% end %>
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+      </div>
+      <input type="text" id="ts-search-input" placeholder="Search issues..." 
+             class="ts-search-input block w-64 pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+             oninput="filterTableRows()">
     </div>
   </div>
 
-  <%# Section 2: Your Recent Work %>
-  <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <div class="px-6 py-4 border-b border-gray-200">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-gray-900">Your Recent Work</h2>
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-600" id="suggested-issues-counter"></span>
-        </div>
-      </div>
-      <p class="text-sm text-gray-500 mt-1">
-        Issues assigned to you without time entries in this period
-      </p>
-      
-      <%# Progress Bar %>
-      <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3" id="suggested-progress-container" style="display: none;">
-        <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-500 ease-out" id="suggested-progress-bar" style="width: 0%"></div>
-      </div>
+  <%# Tab: Your Time Logs %>
+  <div id="panel-time-logs">
+    <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
+      <span><%= @issues_with_logs.count %> issues · Total: <strong><%= format_hours(@total_hours) %> hours</strong> logged this period</span>
+      <span class="text-xs text-gray-400 italic">Click a row to expand time entries</span>
     </div>
     
-    <div class="p-6">
-      <% issues_without_logs = @issues.reject { |issue| @time_entries_by_issue[issue.id].present? } %>
-      
-      <% if issues_without_logs.any? %>
-        <div class="space-y-4" id="suggested-issues-container">
-          <% issues_without_logs.each_with_index do |issue, index| %>
-            <div class="suggested-issue-card border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-all duration-300 bg-gray-50 animate-fade-in" 
-                 style="animation-delay: <%= index * 50 %>ms; <%= index >= 10 ? 'display: none;' : '' %>"
-                 data-issue-index="<%= index %>">
-              <div class="flex items-start justify-between gap-4">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded" 
-                          style="background-color: <%= issue.tracker.try(:color) || '#cccccc' %>20; color: <%= issue.tracker.try(:color) || '#333333' %>;">
-                      <%= issue.tracker.name %>
-                    </span>
-                    <span class="inline-flex items-center px-2 py-1 text-xs font-medium rounded"
-                          style="background-color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>20; color: <%= issue.status.try(:is_closed?) ? '#10b981' : '#3b82f6' %>;">
-                      <%= issue.status.name %>
-                    </span>
-                    <span class="text-sm font-semibold text-gray-900">#<%= issue.id %></span>
+    <% if @issues_with_logs.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead>
+            <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+              <th class="px-4 py-3 w-8"></th>
+              <th class="px-4 py-3">Ticket</th>
+              <th class="px-4 py-3">Issue</th>
+              <th class="px-4 py-3">Project</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">Estimate</th>
+              <th class="px-4 py-3 text-right">Logged</th>
+              <th class="px-4 py-3">Progress</th>
+              <th class="px-4 py-3 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @issues_with_logs.each do |issue| %>
+              <% issue_entries = @time_entries_by_issue[issue.id] || [] %>
+              <% logged_hours = issue_entries.sum(&:hours) %>
+              <% estimated = issue.estimated_hours %>
+              <% done_ratio = issue.done_ratio %>
+              <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onclick="toggleExpand(this)"
+                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
+                <td class="px-4 py-3 text-gray-400">
+                  <svg class="w-4 h-4 ts-expand-icon transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1.5">
+                    <% if issue.priority.try(:position).to_i >= 3 %>
+                      <svg class="w-4 h-4 flex-shrink-0" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                      </svg>
+                    <% else %>
+                      <svg class="w-4 h-4 flex-shrink-0" style="color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    <% end %>
+                    <span class="font-semibold text-gray-900">#<%= issue.id %></span>
                   </div>
-                  <h3 class="text-base font-semibold text-gray-900 mb-1">
-                    <%= link_to issue.subject, issue_path(issue), class: 'hover:text-blue-600 transition-colors' %>
-                  </h3>
-                  <p class="text-sm text-gray-600 mb-2">
-                    <span class="font-medium">Project:</span> <%= issue.project.name %>
-                  </p>
-                  <div class="text-sm text-gray-600">
-                    <span class="font-medium">Last updated:</span> <%= time_ago_in_words(issue.updated_on) %> ago
+                </td>
+                <td class="px-4 py-3">
+                  <div>
+                    <span class="font-medium text-gray-900"><%= link_to issue.subject, issue_path(issue), class: '!text-gray-900 hover:!text-blue-600 transition-colors', onclick: 'event.stopPropagation();' %></span>
+                    <% if issue.tracker.present? %>
+                      <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
+                    <% end %>
                   </div>
-                </div>
-                
-                <div class="flex-shrink-0">
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
+                <td class="px-4 py-3">
+                  <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-600"><%= estimated ? format_hours(estimated) : '—' %></td>
+                <td class="px-4 py-3 text-right font-semibold text-gray-900"><%= format_hours(logged_hours) %>h</td>
+                <td class="px-4 py-3">
+                  <% if estimated && estimated > 0 %>
+                    <div class="flex items-center gap-2">
+                      <div class="ts-progress-bar-bg">
+                        <% pct = [(done_ratio || 0), 100].min %>
+                        <% bar_color = pct >= 80 ? '#10b981' : (pct >= 50 ? '#3b82f6' : (pct >= 30 ? '#f59e0b' : '#ef4444')) %>
+                        <div class="ts-progress-bar-fill" style="width: <%= pct %>%; background-color: <%= bar_color %>;"></div>
+                      </div>
+                      <span class="text-xs text-gray-500 w-8 text-right"><%= pct %>%</span>
+                    </div>
+                  <% else %>
+                    <span class="text-gray-400">—</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-center">
                   <button type="button" 
-                      onclick="openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
-                      class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-white !bg-green-600 rounded-lg hover:!bg-green-700 focus:ring-4 focus:ring-green-300 transition-colors shadow-sm"
-                      style="background-color: #16a34a !important; color: white !important;">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      onclick="event.stopPropagation(); openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
+                      class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                      style="background-color: #111827 !important; color: white !important;">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    <span>Log Time</span>
+                    Log
                   </button>
-                </div>
-              </div>
-            </div>
-          <% end %>
-        </div>
-        
-        <%# Load More Button %>
-        <div id="load-more-container" class="mt-6 text-center" style="<%= issues_without_logs.length <= 10 ? 'display: none;' : '' %>">
-          <button type="button" id="load-more-btn" onclick="loadMoreSuggestedIssues()"
-                  class="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium !text-blue-600 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-blue-700 hover:!border-blue-400 focus:ring-4 focus:ring-blue-200 transition-all duration-300"
-                  style="background-color: white !important; color: #2563eb !important;">
-            <span id="load-more-text">Show 10 more</span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <p class="text-sm text-gray-500 mt-2" id="remaining-count-text"></p>
-        </div>
-        
-        <%# All Issues Loaded Message %>
-        <div id="all-loaded-message" class="mt-6 text-center py-3" style="display: none;">
-          <div class="flex items-center justify-center gap-2 text-gray-500">
-            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span class="text-sm">All issues loaded — you're all caught up</span>
-          </div>
-        </div>
-        
-        <script>
-          // Initialize suggested issues pagination
-          const ISSUES_PER_LOAD = 10;
-          let currentVisibleCount = 10;
-          const totalIssues = <%= issues_without_logs.length %>;
-          
-          function updateProgressBar() {
-            const progressContainer = document.getElementById('suggested-progress-container');
-            const progressBar = document.getElementById('suggested-progress-bar');
-            const counter = document.getElementById('suggested-issues-counter');
-            const remainingCountText = document.getElementById('remaining-count-text');
-            
-            if (totalIssues > 0) {
-              progressContainer.style.display = 'block';
-              const percentage = (currentVisibleCount / totalIssues) * 100;
-              progressBar.style.width = percentage + '%';
-              counter.textContent = currentVisibleCount + ' of ' + totalIssues + ' issues';
-              
-              // Update remaining count text
-              const remaining = totalIssues - currentVisibleCount;
-              if (remaining > 0 && remainingCountText) {
-                remainingCountText.textContent = remaining + ' more issue' + (remaining !== 1 ? 's' : '') + ' available';
-              }
-            }
-          }
-          
-          function loadMoreSuggestedIssues() {
-            const allCards = document.querySelectorAll('.suggested-issue-card');
-            const loadMoreBtn = document.getElementById('load-more-btn');
-            const loadMoreContainer = document.getElementById('load-more-container');
-            const allLoadedMessage = document.getElementById('all-loaded-message');
-            
-            // Calculate next batch
-            const nextCount = Math.min(currentVisibleCount + ISSUES_PER_LOAD, totalIssues);
-            
-            // Show next 10 issues with animation
-            for (let i = currentVisibleCount; i < nextCount; i++) {
-              const card = allCards[i];
-              if (card) {
-                card.style.display = 'block';
-                // Trigger animation
-                setTimeout(() => {
-                  card.style.opacity = '0';
-                  card.style.transform = 'translateY(10px)';
-                  setTimeout(() => {
-                    card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                  }, 10);
-                }, (i - currentVisibleCount) * 50);
-              }
-            }
-            
-            currentVisibleCount = nextCount;
-            updateProgressBar();
-            
-            // Update button text
-            const remaining = totalIssues - currentVisibleCount;
-            if (remaining > 0) {
-              document.getElementById('load-more-text').textContent = 'Show ' + Math.min(remaining, ISSUES_PER_LOAD) + ' more';
-            } else {
-              // All loaded
-              loadMoreContainer.style.display = 'none';
-              allLoadedMessage.style.display = 'block';
-              
-              // Scroll to the message smoothly
-              setTimeout(() => {
-                allLoadedMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }, 300);
-            }
-          }
-          
-          // Initialize on page load
-          document.addEventListener('DOMContentLoaded', function() {
-            updateProgressBar();
-          });
-        </script>
-      <% else %>
-        <div class="text-center py-12">
-          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <h3 class="mt-2 text-sm font-medium text-gray-900">All caught up!</h3>
-          <p class="mt-1 text-sm text-gray-500">You've logged time for all assigned issues in this period.</p>
-        </div>
-      <% end %>
+                </td>
+              </tr>
+              <%# Expandable time entries row %>
+              <tr class="ts-expand-row hidden">
+                <td colspan="9" class="px-0 py-0">
+                  <div class="ts-expand-content px-6 py-3 bg-gray-50 border-l-4 border-blue-400">
+                    <% issue_entries.each do |entry| %>
+                      <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                        <div class="flex items-center gap-6">
+                          <span class="text-sm text-gray-600 w-28"><%= entry.spent_on.strftime('%b %d, %Y') %></span>
+                          <span class="ts-activity-badge text-xs font-medium px-2.5 py-0.5 rounded" style="background-color: #e0e7ff; color: #3730a3;"><%= entry.activity&.name || 'No Activity' %></span>
+                          <span class="text-sm text-gray-600"><%= entry.comments.present? ? entry.comments : '' %></span>
+                        </div>
+                        <span class="text-sm font-semibold text-gray-900"><%= format_hours(entry.hours) %>h</span>
+                      </div>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No time entries</h3>
+        <p class="mt-1 text-sm text-gray-500">You haven't logged any time in this period.</p>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Tab: Your Recent Work %>
+  <div id="panel-recent-work" class="hidden">
+    <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
+      <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+      </svg>
+      <span>Issues assigned to you without time entries in this period. <%= @issues_without_logs.count %> of <%= @all_issues_count %> issues</span>
     </div>
+    
+    <% if @issues_without_logs.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead>
+            <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+              <th class="px-4 py-3">Ticket</th>
+              <th class="px-4 py-3">Issue</th>
+              <th class="px-4 py-3">Project</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3 text-right">Logged</th>
+              <th class="px-4 py-3">Updated</th>
+              <th class="px-4 py-3 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @issues_without_logs.each do |issue| %>
+              <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-1.5">
+                    <% if issue.priority.try(:position).to_i >= 3 %>
+                      <svg class="w-4 h-4 flex-shrink-0" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                      </svg>
+                    <% else %>
+                      <svg class="w-4 h-4 flex-shrink-0" style="color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    <% end %>
+                    <span class="font-semibold text-gray-900">#<%= issue.id %></span>
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <div>
+                    <span class="font-medium text-gray-900"><%= link_to issue.subject, issue_path(issue), class: '!text-gray-900 hover:!text-blue-600 transition-colors' %></span>
+                    <% if issue.tracker.present? %>
+                      <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
+                    <% end %>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
+                <td class="px-4 py-3">
+                  <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
+                </td>
+                <td class="px-4 py-3 text-right text-gray-500">0:00h</td>
+                <td class="px-4 py-3 text-gray-500"><%= time_ago_in_words(issue.updated_on) %> ago</td>
+                <td class="px-4 py-3 text-center">
+                  <button type="button" 
+                      onclick="openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
+                      class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                      style="background-color: #111827 !important; color: white !important;">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Log
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">All caught up!</h3>
+        <p class="mt-1 text-sm text-gray-500">You've logged time for all assigned issues in this period.</p>
+      </div>
+    <% end %>
   </div>
 </div>
 
 <%# Log Time Modal %>
 <div id="log-time-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-50 overflow-y-auto">
-  <%# Backdrop overlay %>
   <div class="modal-backdrop-overlay" onclick="closeLogTimeModal()"></div>
-
   <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 relative z-10">
     <div class="relative bg-white rounded-lg shadow-xl w-full max-w-lg z-50 overflow-hidden">
-      <%# Modal Header %>
       <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
         <div class="flex items-center gap-2">
           <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -367,62 +373,33 @@
           <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
           </svg>
-          <span class="sr-only">Close modal</span>
         </button>
       </div>
-      
-      <%# Modal Body %>
       <div class="p-4 md:p-5">
         <form id="log-time-form" onsubmit="submitLogTime(event)">
           <input type="hidden" id="modal-issue-id" name="issue_id">
-          
-          <%# Issue Information %>
           <div class="mb-4 p-3 bg-gray-50 rounded-lg">
             <div class="flex items-center gap-2 mb-1">
-              <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800" id="modal-issue-badge">
-                NEW
-              </span>
+              <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800" id="modal-issue-badge">NEW</span>
               <span class="text-sm font-semibold text-gray-900" id="modal-issue-number">#15005</span>
             </div>
             <h4 class="text-sm font-semibold text-gray-900 mb-1" id="modal-issue-subject">Issue Subject</h4>
-            <p class="text-xs text-gray-600">
-              <span class="font-medium">Project:</span> <span id="modal-project-name">Project Name</span>
-            </p>
+            <p class="text-xs text-gray-600"><span class="font-medium">Project:</span> <span id="modal-project-name">Project Name</span></p>
           </div>
-          
-          <%# Date Field %>
           <div class="mb-4">
-            <label for="modal-date" class="block mb-2 text-sm font-medium text-gray-900">
-              Date <span class="text-red-500">*</span>
-            </label>
-            <input type="date" id="modal-date" name="spent_on" value="<%= Date.current.strftime('%Y-%m-%d') %>" 
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
-                   required>
+            <label for="modal-date" class="block mb-2 text-sm font-medium text-gray-900">Date <span class="text-red-500">*</span></label>
+            <input type="date" id="modal-date" name="spent_on" value="<%= Date.current.strftime('%Y-%m-%d') %>" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
           </div>
-          
-          <%# Hours Field %>
           <div class="mb-4">
-            <label for="modal-hours" class="block mb-2 text-sm font-medium text-gray-900">
-              Hours <span class="text-red-500">*</span>
-            </label>
-            <input type="number" id="modal-hours" name="hours" step="0.01" min="0.01" placeholder="0.00" 
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
-                   required>
+            <label for="modal-hours" class="block mb-2 text-sm font-medium text-gray-900">Hours <span class="text-red-500">*</span></label>
+            <input type="number" id="modal-hours" name="hours" step="0.01" min="0.01" placeholder="0.00" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
           </div>
-          
-          <%# Comment Field %>
           <div class="mb-4">
             <label for="modal-comment" class="block mb-2 text-sm font-medium text-gray-900">Comment</label>
-            <textarea id="modal-comment" name="comments" rows="3" 
-                      class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
-                      placeholder="Add a comment..."></textarea>
+            <textarea id="modal-comment" name="comments" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Add a comment..."></textarea>
           </div>
-          
-          <%# Activity Dropdown - Flowbite Style %>
           <div class="mb-5 relative">
-            <label class="block mb-2 text-sm font-medium text-gray-900">
-              Activity <span class="text-red-500">*</span>
-            </label>
+            <label class="block mb-2 text-sm font-medium text-gray-900">Activity <span class="text-red-500">*</span></label>
             <input type="hidden" id="modal-activity" name="activity_id" required>
             <button type="button" id="activity-dropdown-button" onclick="toggleActivityDropdown()" 
                     class="inline-flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-gray-50 border border-gray-300 rounded-lg hover:!bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
@@ -433,21 +410,13 @@
             </button>
             <div id="activity-dropdown" class="hidden absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto z-[9999]">
               <ul class="text-sm" id="activity-dropdown-list">
-                <li>
-                  <button type="button" class="w-full text-left px-4 py-2 !text-gray-500 hover:!bg-gray-100">
-                    — Please select —
-                  </button>
-                </li>
+                <li><button type="button" class="w-full text-left px-4 py-2 !text-gray-500 hover:!bg-gray-100">— Please select —</button></li>
               </ul>
             </div>
           </div>
-          
-          <%# Error Message Container %>
           <div id="modal-error-message" class="hidden mb-4 p-3 text-sm text-red-800 rounded-lg bg-red-50" role="alert">
             <span class="font-medium">Error:</span> <span id="modal-error-text"></span>
           </div>
-          
-          <%# Modal Footer - Action Buttons %>
           <div class="flex items-center gap-3 pt-4 border-t border-gray-200">
             <button type="submit" id="modal-create-btn"
                     class="flex-1 !text-white !bg-blue-600 hover:!bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
@@ -474,17 +443,71 @@
   let currentIssueId = null;
   let addAnother = false;
   
-  // Toggle activity dropdown
+  // Tab switching
+  function switchTab(tabName) {
+    const tabs = ['time-logs', 'recent-work'];
+    tabs.forEach(function(t) {
+      const panel = document.getElementById('panel-' + t);
+      const tab = document.getElementById('tab-' + t);
+      if (t === tabName) {
+        panel.classList.remove('hidden');
+        tab.classList.add('ts-tab-active');
+      } else {
+        panel.classList.add('hidden');
+        tab.classList.remove('ts-tab-active');
+      }
+    });
+    // Clear search when switching tabs
+    document.getElementById('ts-search-input').value = '';
+    filterTableRows();
+  }
+  
+  // Expand/collapse table rows
+  function toggleExpand(row) {
+    const expandRow = row.nextElementSibling;
+    if (!expandRow || !expandRow.classList.contains('ts-expand-row')) return;
+    
+    const icon = row.querySelector('.ts-expand-icon');
+    if (expandRow.classList.contains('hidden')) {
+      expandRow.classList.remove('hidden');
+      if (icon) icon.style.transform = 'rotate(90deg)';
+    } else {
+      expandRow.classList.add('hidden');
+      if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+  }
+  
+  // Client-side search filter
+  function filterTableRows() {
+    const query = document.getElementById('ts-search-input').value.toLowerCase().trim();
+    const activePanel = document.querySelector('[id^="panel-"]:not(.hidden)');
+    if (!activePanel) return;
+    
+    const rows = activePanel.querySelectorAll('.ts-issue-row');
+    rows.forEach(function(row) {
+      const searchText = row.getAttribute('data-search-text') || '';
+      const expandRow = row.nextElementSibling;
+      
+      if (!query || searchText.includes(query)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+        if (expandRow && expandRow.classList.contains('ts-expand-row')) {
+          expandRow.classList.add('hidden');
+        }
+      }
+    });
+  }
+  
+  // Activity dropdown toggle
   function toggleActivityDropdown() {
-    const dropdown = document.getElementById('activity-dropdown');
-    dropdown.classList.toggle('hidden');
+    document.getElementById('activity-dropdown').classList.toggle('hidden');
   }
   
   // Close dropdown when clicking outside
   document.addEventListener('click', function(event) {
-    const dropdown = document.getElementById('activity-dropdown');
-    const button = document.getElementById('activity-dropdown-button');
-    
+    var dropdown = document.getElementById('activity-dropdown');
+    var button = document.getElementById('activity-dropdown-button');
     if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
       dropdown.classList.add('hidden');
     }
@@ -492,14 +515,11 @@
   
   async function openLogTimeModal(issueId, issueSubject, projectName) {
     currentIssueId = issueId;
-    
-    // Set issue information
     document.getElementById('modal-issue-id').value = issueId;
     document.getElementById('modal-issue-number').textContent = '#' + issueId;
     document.getElementById('modal-issue-subject').textContent = issueSubject;
     document.getElementById('modal-project-name').textContent = projectName;
     
-    // Reset form
     document.getElementById('log-time-form').reset();
     document.getElementById('modal-date').value = '<%= Date.current.strftime('%Y-%m-%d') %>';
     document.getElementById('modal-error-message').classList.add('hidden');
@@ -507,17 +527,14 @@
     document.getElementById('activity-selected-text').classList.add('text-gray-500');
     document.getElementById('activity-selected-text').classList.remove('text-gray-900');
     
-    // Fetch and populate activities
     try {
-      const response = await fetch(`<%= time_entry_panel_activities_path(':issue_id') %>`.replace(':issue_id', issueId));
-      const data = await response.json();
-      
-      const activityList = document.getElementById('activity-dropdown-list');
+      var response = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
+      var data = await response.json();
+      var activityList = document.getElementById('activity-dropdown-list');
       activityList.innerHTML = '';
       
-      // Add placeholder option
-      const placeholderLi = document.createElement('li');
-      const placeholderBtn = document.createElement('button');
+      var placeholderLi = document.createElement('li');
+      var placeholderBtn = document.createElement('button');
       placeholderBtn.type = 'button';
       placeholderBtn.className = 'w-full text-left px-4 py-2 !text-gray-500 hover:!bg-gray-100';
       placeholderBtn.textContent = '— Please select —';
@@ -531,10 +548,9 @@
       placeholderLi.appendChild(placeholderBtn);
       activityList.appendChild(placeholderLi);
       
-      // Sort activities alphabetically and populate dropdown
-      data.activities.forEach(activity => {
-        const li = document.createElement('li');
-        const button = document.createElement('button');
+      data.activities.forEach(function(activity) {
+        var li = document.createElement('li');
+        var button = document.createElement('button');
         button.type = 'button';
         button.className = 'w-full text-left px-4 py-2 !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900';
         button.textContent = activity.name;
@@ -553,15 +569,12 @@
       showModalError('Failed to load activities');
     }
     
-    // Show modal
-    const modal = document.getElementById('log-time-modal');
-    modal.classList.remove('hidden');
+    document.getElementById('log-time-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
   
   function closeLogTimeModal() {
-    const modal = document.getElementById('log-time-modal');
-    modal.classList.add('hidden');
+    document.getElementById('log-time-modal').classList.add('hidden');
     document.body.style.overflow = '';
     currentIssueId = null;
     addAnother = false;
@@ -590,28 +603,18 @@
   
   async function handleSubmitLogTime() {
     hideModalError();
+    var form = document.getElementById('log-time-form');
+    var formData = new FormData(form);
+    var activityId = document.getElementById('modal-activity').value;
+    if (!activityId) { showModalError('Please select an activity'); return; }
     
-    const form = document.getElementById('log-time-form');
-    const formData = new FormData(form);
-    
-    // Validate activity is selected
-    const activityId = document.getElementById('modal-activity').value;
-    if (!activityId) {
-      showModalError('Please select an activity');
-      return;
-    }
-    
-    // Disable buttons
     document.getElementById('modal-create-btn').disabled = true;
     document.getElementById('modal-create-add-btn').disabled = true;
     
     try {
-      const response = await fetch('<%= create_time_entry_panel_path %>', {
+      var response = await fetch('<%= create_time_entry_panel_path %>', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
         body: JSON.stringify({
           issue_id: formData.get('issue_id'),
           spent_on: formData.get('spent_on'),
@@ -620,23 +623,17 @@
           activity_id: formData.get('activity_id')
         })
       });
-      
-      const data = await response.json();
-      
+      var data = await response.json();
       if (data.success) {
         if (addAnother) {
-          // Reset form for another entry but keep the issue
           document.getElementById('modal-hours').value = '';
           document.getElementById('modal-comment').value = '';
           document.getElementById('modal-activity').value = '';
           document.getElementById('activity-selected-text').textContent = '— Please select —';
           document.getElementById('activity-selected-text').classList.add('text-gray-500');
           document.getElementById('activity-selected-text').classList.remove('text-gray-900');
-          
-          // Show success message briefly
           alert('Time entry created successfully!');
         } else {
-          // Close modal and reload page
           closeLogTimeModal();
           location.reload();
         }
@@ -647,42 +644,28 @@
       console.error('Error creating time entry:', error);
       showModalError('An error occurred while creating the time entry');
     } finally {
-      // Re-enable buttons
       document.getElementById('modal-create-btn').disabled = false;
       document.getElementById('modal-create-add-btn').disabled = false;
     }
   }
   
-  // Close modal when clicking outside
-  document.getElementById('log-time-modal')?.addEventListener('click', function(event) {
-    // Removed - modal closes via backdrop click in HTML
-  });
-  
   // Close modal with Escape key
   document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
-      const modal = document.getElementById('log-time-modal');
-      if (!modal.classList.contains('hidden')) {
-        closeLogTimeModal();
-      }
+      var modal = document.getElementById('log-time-modal');
+      if (!modal.classList.contains('hidden')) { closeLogTimeModal(); }
     }
   });
 
   function setFilterAndSubmit(filterValue) {
     document.getElementById('filter_hidden').value = filterValue;
-    
-    // Hide custom date range if not custom
-    if (filterValue !== 'custom') {
-      document.getElementById('custom-date-range').classList.add('hidden');
-    }
-    
+    if (filterValue !== 'custom') { document.getElementById('custom-date-range').classList.add('hidden'); }
     document.getElementById('time-entry-panel-form').submit();
   }
   
   function toggleCustomDateRange() {
-    const customRange = document.getElementById('custom-date-range');
-    const filterHidden = document.getElementById('filter_hidden');
-    
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
       filterHidden.value = 'custom';
@@ -691,21 +674,3 @@
     }
   }
 </script>
-
-<style>
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-    opacity: 0;
-  }
-</style>

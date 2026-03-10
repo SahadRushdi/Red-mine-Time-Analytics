@@ -421,4 +421,23 @@ module TimeAnalyticsHelper
       'Time Breakdown'
     end
   end
+
+  def status_badge_style(status)
+    if status.try(:is_closed?)
+      "background-color: #dcfce7; color: #166534; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500;"
+    else
+      color_map = {
+        'New' => ['#dbeafe', '#1e40af'],
+        'In Progress' => ['#fef9c3', '#854d0e'],
+        'Review' => ['#f3e8ff', '#6b21a8'],
+        'Feedback' => ['#fce7f3', '#9d174d'],
+        'Current Sprint' => ['#f3e8ff', '#6b21a8'],
+        'Resolved' => ['#dcfce7', '#166534'],
+        'Rejected' => ['#fee2e2', '#991b1b'],
+        'Closed' => ['#dcfce7', '#166534']
+      }
+      bg, text = color_map[status.name] || ['#f3f4f6', '#374151']
+      "background-color: #{bg}; color: #{text}; padding: 2px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500;"
+    end
+  end
 end
