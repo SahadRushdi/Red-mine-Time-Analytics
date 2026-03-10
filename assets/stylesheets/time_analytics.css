@@ -581,6 +581,11 @@ tbody tr:last-child {
   outline: none !important;
   box-shadow: none !important;
   -webkit-appearance: none !important;
+  padding-left: 2.25rem !important;
+  padding-right: 0.75rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  border-radius: 0.5rem !important;
 }
 .ts-search-input:focus,
 .ts-search-input:active {
@@ -670,9 +675,12 @@ tbody tr:last-child {
 .ts-table a,
 .ts-table a:link,
 .ts-table a:visited,
-.ts-table a:hover,
 .ts-table a:active {
   text-decoration: none !important;
+  box-shadow: none !important;
+}
+.ts-table a:hover {
+  text-decoration: underline !important;
   box-shadow: none !important;
 }
 .ts-tab-group button,
