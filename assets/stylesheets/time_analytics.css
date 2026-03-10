@@ -304,7 +304,8 @@ button:hover {
 }
 
 /* Specific fix for inactive time period buttons - keep gray border on hover */
-button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover {
+button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover,
+button[onclick*="toggleCustomDateRange"]:not([style*="background-color: #3b82f6"]):hover {
   border-color: #d1d5db !important;
 }
 
@@ -345,14 +346,18 @@ button[onclick*="switchChartType"]:active {
 
 /* Fix purple border on date and hours inputs - force blue focus */
 #log-time-modal input[type="date"],
-#log-time-modal input[type="number"] {
+#log-time-modal input[type="number"],
+#log-time-modal input[type="text"],
+#log-time-modal input[type="search"] {
   outline: none !important;
   box-shadow: none !important;
   border-color: #d1d5db !important;
 }
 
 #log-time-modal input[type="date"]:focus,
-#log-time-modal input[type="number"]:focus {
+#log-time-modal input[type="number"]:focus,
+#log-time-modal input[type="text"]:focus,
+#log-time-modal input[type="search"]:focus {
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
   outline: none !important;
@@ -416,6 +421,12 @@ button[onclick*="switchChartType"]:active {
 }
 
 /* Activity dropdown button focus state */
+#activity-dropdown-button:hover {
+  border-color: #d1d5db !important;
+  box-shadow: none !important;
+  background-color: #f9fafb !important;
+}
+
 #activity-dropdown-button:focus {
   outline: none !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
