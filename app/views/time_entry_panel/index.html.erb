@@ -61,8 +61,8 @@
   <% end %>
 </div>
 
-<%# Summary Cards %>
-<div class="grid grid-cols-1 sm:!grid-cols-2 lg:!grid-cols-4 gap-4 mb-6">
+<%# Summary Cards - forced horizontal with flexbox %>
+<div class="ts-summary-cards-row mb-6">
   <%# Total Logged %>
   <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
@@ -146,7 +146,7 @@
         </svg>
       </div>
       <input type="text" id="ts-search-input" placeholder="Search issues..." 
-             class="ts-search-input block w-64 pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+             class="ts-search-input block w-80 pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
              oninput="filterTableRows()">
     </div>
   </div>
@@ -171,6 +171,7 @@
               <th class="px-4 py-3 text-right">Estimate</th>
               <th class="px-4 py-3 text-right">Logged</th>
               <th class="px-4 py-3">Progress</th>
+              <th class="px-4 py-3">Updated</th>
               <th class="px-4 py-3 text-center">Action</th>
             </tr>
           </thead>
@@ -199,12 +200,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                       </svg>
                     <% end %>
-                    <span class="font-semibold text-gray-900">#<%= issue.id %></span>
+                    <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'font-semibold !text-blue-600 hover:!underline transition-colors', onclick: 'event.stopPropagation();' %>
                   </div>
                 </td>
                 <td class="px-4 py-3">
                   <div>
-                    <span class="font-medium text-gray-900"><%= link_to issue.subject, issue_path(issue), class: '!text-gray-900 hover:!text-blue-600 transition-colors', onclick: 'event.stopPropagation();' %></span>
+                    <span class="font-medium"><%= link_to issue.subject, issue_path(issue), target: '_blank', class: '!text-blue-600 hover:!underline transition-colors', onclick: 'event.stopPropagation();' %></span>
                     <% if issue.tracker.present? %>
                       <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
                     <% end %>
@@ -217,24 +218,20 @@
                 <td class="px-4 py-3 text-right text-gray-600"><%= estimated ? format_hours(estimated) : '—' %></td>
                 <td class="px-4 py-3 text-right font-semibold text-gray-900"><%= format_hours(logged_hours) %>h</td>
                 <td class="px-4 py-3">
-                  <% if estimated && estimated > 0 %>
-                    <div class="flex items-center gap-2">
-                      <div class="ts-progress-bar-bg">
-                        <% pct = [(done_ratio || 0), 100].min %>
-                        <% bar_color = pct >= 80 ? '#10b981' : (pct >= 50 ? '#3b82f6' : (pct >= 30 ? '#f59e0b' : '#ef4444')) %>
-                        <div class="ts-progress-bar-fill" style="width: <%= pct %>%; background-color: <%= bar_color %>;"></div>
-                      </div>
-                      <span class="text-xs text-gray-500 w-8 text-right"><%= pct %>%</span>
+                  <% pct = [(done_ratio || 0), 100].min %>
+                  <div class="flex items-center gap-2">
+                    <div class="ts-progress-bar-bg">
+                      <div class="ts-progress-bar-fill" style="width: <%= pct %>%; background-color: #3b82f6;"></div>
                     </div>
-                  <% else %>
-                    <span class="text-gray-400">—</span>
-                  <% end %>
+                    <span class="text-xs text-gray-500 w-8 text-right"><%= pct %>%</span>
+                  </div>
                 </td>
+                <td class="px-4 py-3 text-gray-500 text-sm"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
                 <td class="px-4 py-3 text-center">
                   <button type="button" 
                       onclick="event.stopPropagation(); openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
                       class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                      style="background-color: #111827 !important; color: white !important;">
+                      style="background-color: #16a34a !important; color: white !important;">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
@@ -244,7 +241,7 @@
               </tr>
               <%# Expandable time entries row %>
               <tr class="ts-expand-row hidden">
-                <td colspan="9" class="px-0 py-0">
+                <td colspan="10" class="px-0 py-0">
                   <div class="ts-expand-content px-6 py-3 bg-gray-50 border-l-4 border-blue-400">
                     <% issue_entries.each do |entry| %>
                       <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
@@ -312,12 +309,12 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                       </svg>
                     <% end %>
-                    <span class="font-semibold text-gray-900">#<%= issue.id %></span>
+                    <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'font-semibold !text-blue-600 hover:!underline transition-colors' %>
                   </div>
                 </td>
                 <td class="px-4 py-3">
                   <div>
-                    <span class="font-medium text-gray-900"><%= link_to issue.subject, issue_path(issue), class: '!text-gray-900 hover:!text-blue-600 transition-colors' %></span>
+                    <span class="font-medium"><%= link_to issue.subject, issue_path(issue), target: '_blank', class: '!text-blue-600 hover:!underline transition-colors' %></span>
                     <% if issue.tracker.present? %>
                       <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
                     <% end %>
@@ -328,12 +325,12 @@
                   <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
                 </td>
                 <td class="px-4 py-3 text-right text-gray-500">0:00h</td>
-                <td class="px-4 py-3 text-gray-500"><%= time_ago_in_words(issue.updated_on) %> ago</td>
+                <td class="px-4 py-3 text-gray-500"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
                 <td class="px-4 py-3 text-center">
                   <button type="button" 
                       onclick="openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
                       class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                      style="background-color: #111827 !important; color: white !important;">
+                      style="background-color: #16a34a !important; color: white !important;">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
@@ -392,7 +389,9 @@
           </div>
           <div class="mb-4">
             <label for="modal-hours" class="block mb-2 text-sm font-medium text-gray-900">Hours <span class="text-red-500">*</span></label>
-            <input type="number" id="modal-hours" name="hours" step="0.01" min="0.01" placeholder="0.00" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
+            <input type="text" id="modal-hours" name="hours" placeholder="H:MM" pattern="^\d+:\d{1,2}$" 
+                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required
+                   oninput="formatHoursInput(this)" title="Enter time as H:MM (e.g., 1:30, 0:15)">
           </div>
           <div class="mb-4">
             <label for="modal-comment" class="block mb-2 text-sm font-medium text-gray-900">Comment</label>
@@ -589,6 +588,23 @@
     document.getElementById('modal-error-message').classList.add('hidden');
   }
   
+  function formatHoursInput(input) {
+    // Allow only digits and colon
+    input.value = input.value.replace(/[^\d:]/g, '');
+  }
+  
+  function parseHoursMinutes(value) {
+    // Parse H:MM or H:M format to decimal hours
+    if (!value || value.trim() === '') return null;
+    var parts = value.split(':');
+    if (parts.length !== 2) return null;
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    if (isNaN(hours) || isNaN(minutes) || minutes < 0 || minutes > 59 || hours < 0) return null;
+    if (hours === 0 && minutes === 0) return null;
+    return hours + (minutes / 60.0);
+  }
+  
   async function submitLogTime(event) {
     event.preventDefault();
     addAnother = false;
@@ -608,6 +624,10 @@
     var activityId = document.getElementById('modal-activity').value;
     if (!activityId) { showModalError('Please select an activity'); return; }
     
+    var hoursRaw = document.getElementById('modal-hours').value;
+    var decimalHours = parseHoursMinutes(hoursRaw);
+    if (decimalHours === null) { showModalError('Please enter hours in H:MM format (e.g., 1:30, 0:15)'); return; }
+    
     document.getElementById('modal-create-btn').disabled = true;
     document.getElementById('modal-create-add-btn').disabled = true;
     
@@ -618,7 +638,7 @@
         body: JSON.stringify({
           issue_id: formData.get('issue_id'),
           spent_on: formData.get('spent_on'),
-          hours: formData.get('hours'),
+          hours: decimalHours,
           comments: formData.get('comments'),
           activity_id: formData.get('activity_id')
         })

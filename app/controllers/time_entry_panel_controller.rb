@@ -12,15 +12,8 @@ class TimeEntryPanelController < ApplicationController
                    .where(projects: { status: Project::STATUS_ACTIVE })
                    .includes(:project, :tracker, :status, :priority)
     
-    # Sort issues by last log time (by current user) or last update time
-    # This ensures that issues with recent activity appear at the top of both sections
-    last_log_dates = TimeEntry.where(issue_id: @issues.map(&:id), user_id: @user.id)
-                              .group(:issue_id)
-                              .maximum(:created_on)
-    
-    @issues = @issues.to_a.sort_by do |issue|
-      [last_log_dates[issue.id], issue.updated_on].compact.max
-    end.reverse
+    # so the most recently active issues rise to the top
+    @issues = @issues.to_a.sort_by { |issue| issue.updated_on }.reverse
     
     # Get time entries for the selected date range
     @time_entries = TimeEntry.joins(:project, :issue)
@@ -31,7 +24,6 @@ class TimeEntryPanelController < ApplicationController
                              .order('time_entries.spent_on DESC, time_entries.created_on DESC')
     
     # Get the most recently logged time entry across ALL time (not filtered by date range)
-    # This shows when the user actually last logged time, regardless of current filter
     @last_entry = TimeEntry.joins(:project)
                            .where(user: @user)
                            .where(projects: { status: Project::STATUS_ACTIVE })
@@ -54,6 +46,17 @@ class TimeEntryPanelController < ApplicationController
     @issues_worked_count = @issues_with_logs.count
     @unique_projects_count = @time_entries.map { |te| te.project_id }.uniq.count
     @all_issues_count = @issues.count
+    
+    # Build a map of the latest activity timestamp per issue
+    # considering both issue.updated_on and time entry created_on
+    last_te_dates = TimeEntry.where(issue_id: @issues.map(&:id), user_id: @user.id)
+                              .group(:issue_id)
+                              .maximum(:created_on)
+    @issue_last_activity = {}
+    @issues.each do |issue|
+      te_date = last_te_dates[issue.id]
+      @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
+    end
   end
 
   def get_activities

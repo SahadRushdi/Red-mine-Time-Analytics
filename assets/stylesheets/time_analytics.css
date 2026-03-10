@@ -494,6 +494,18 @@ tbody tr:last-child {
   line-height: 1.4 !important;
 }
 
+/* === My Timesheet - Summary Cards Row === */
+.ts-summary-cards-row {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px;
+  flex-wrap: nowrap !important;
+}
+.ts-summary-cards-row > .ts-summary-card {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+
 /* === My Timesheet - Summary Cards === */
 .ts-summary-card {
   transition: box-shadow 0.2s ease, transform 0.1s ease;
@@ -562,15 +574,20 @@ tbody tr:last-child {
 }
 
 /* === My Timesheet - Search Input === */
-.ts-search-input {
+.ts-search-input,
+.ts-search-input:link,
+.ts-search-input:visited {
   border-color: #d1d5db !important;
   outline: none !important;
   box-shadow: none !important;
+  -webkit-appearance: none !important;
 }
-.ts-search-input:focus {
+.ts-search-input:focus,
+.ts-search-input:active {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
   outline: none !important;
+  -webkit-appearance: none !important;
 }
 
 /* === My Timesheet - Table === */
@@ -617,16 +634,16 @@ tbody tr:last-child {
   transition: width 0.3s ease;
 }
 
-/* === My Timesheet - Log Button === */
+/* === My Timesheet - Log Button (Green) === */
 .ts-log-btn {
-  background-color: #111827 !important;
+  background-color: #16a34a !important;
   color: white !important;
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
 }
 .ts-log-btn:hover {
-  background-color: #1f2937 !important;
+  background-color: #15803d !important;
   color: white !important;
   border: none !important;
   outline: none !important;
