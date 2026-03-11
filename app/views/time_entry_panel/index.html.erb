@@ -1,9 +1,9 @@
 <%= render 'time_analytics/includes' %>
 
-<%# Time Entry Panel Header with Filter Controls %>
+<%# ── Header ──────────────────────────────────────────────────────────────── %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div class="flex items-center gap-4">
-    <%= link_to my_time_path(filter: @filter, from: @from, to: @to), 
+    <%= link_to my_time_path(filter: @filter, from: @from, to: @to),
         class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-blue-300 transition-colors' do %>
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -21,7 +21,7 @@
         <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : 'All Time' %>
         <% if @last_entry %>
           <% local_time = @last_entry.created_on.in_time_zone(User.current.time_zone || 'UTC') %>
-          <span class="ml-2">· Last entry: 
+          <span class="ml-2">· Last entry:
             <% if local_time.to_date == Date.today %>
               Today, <%= local_time.strftime('%I:%M %p') %>
             <% elsif local_time.to_date == Date.yesterday %>
@@ -34,24 +34,46 @@
       </p>
     </div>
   </div>
-  
-  <%# Date Filter Controls - Right Aligned %>
+
+  <%# Filter + Grouping Controls %>
   <%= form_tag time_entry_panel_path, method: :get, local: true, id: 'time-entry-panel-form', class: 'flex items-center gap-3 flex-wrap' do %>
     <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
-    
+    <%= hidden_field_tag :grouping, @grouping, id: 'tep_grouping_hidden' %>
+
+    <%# Time period buttons %>
     <div class="inline-flex rounded-lg shadow-sm" role="group">
       <% ['last_7_days', 'last_14_days', 'this_week', 'last_week', 'this_month', 'custom'].each_with_index do |f, i| %>
         <% labels = { 'last_7_days' => 'Last 7 Days', 'last_14_days' => 'Last 14 Days', 'this_week' => 'This Week', 'last_week' => 'Last Week', 'this_month' => 'This Month', 'custom' => 'Custom Range' } %>
         <% is_active = @filter == f %>
         <% rounded = i == 0 ? 'rounded-l-lg' : (i == 5 ? 'rounded-r-lg' : '') %>
-        <button type="button" onclick="<%= f == 'custom' ? 'toggleCustomDateRange()' : "setFilterAndSubmit('#{f}')" %>" 
+        <button type="button" onclick="<%= f == 'custom' ? 'toggleCustomDateRange()' : "setFilterAndSubmit('#{f}')" %>"
             style="<%= is_active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
             class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 <%= rounded %> focus:outline-none focus:ring-4 focus:ring-blue-300 <%= is_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           <%= labels[f] %>
         </button>
       <% end %>
     </div>
-    
+
+    <%# Grouping dropdown %>
+    <div class="relative tep-grouping-wrapper">
+      <button type="button" id="tep-grouping-btn" onclick="toggleTepGroupingDropdown()"
+              class="inline-flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors min-w-[110px]">
+        <span id="tep-grouping-text"><%= @grouping.capitalize %></span>
+        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+      <div id="tep-grouping-dropdown" class="hidden absolute right-0 z-20 mt-1 w-36 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+        <% [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']].each do |val, label| %>
+          <button type="button" onclick="setTepGroupingAndSubmit('<%= val %>')"
+                  class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == val ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
+            <%= label %>
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Custom date range %>
     <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2">
       <span class="text-sm text-gray-600">From:</span>
       <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
@@ -61,9 +83,8 @@
   <% end %>
 </div>
 
-<%# Summary Cards - forced horizontal with flexbox %>
+<%# ── Summary Cards ────────────────────────────────────────────────────────── %>
 <div class="ts-summary-cards-row mb-6">
-  <%# Total Logged %>
   <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
       <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,8 +96,7 @@
       <p class="text-2xl font-bold text-gray-900"><%= format_hours(@total_hours) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
     </div>
   </div>
-  
-  <%# Issues Worked %>
+
   <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #eef2ff;">
       <svg class="w-6 h-6" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,8 +108,7 @@
       <p class="text-2xl font-bold text-gray-900"><%= @issues_worked_count %> <span class="text-sm font-normal text-gray-500">issues</span></p>
     </div>
   </div>
-  
-  <%# Projects %>
+
   <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fef3c7;">
       <svg class="w-6 h-6" style="color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,8 +120,7 @@
       <p class="text-2xl font-bold text-gray-900"><%= @unique_projects_count %> <span class="text-sm font-normal text-gray-500">active</span></p>
     </div>
   </div>
-  
-  <%# All Issues %>
+
   <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
     <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fce7f3;">
       <svg class="w-6 h-6" style="color: #ec4899;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,9 +134,9 @@
   </div>
 </div>
 
-<%# Tabs + Search + Table %>
+<%# ── Tabs + Content ───────────────────────────────────────────────────────── %>
 <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-  <%# Tab Bar and Search %>
+  <%# Tab Bar + Search %>
   <div class="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-wrap gap-3">
     <div class="inline-flex ts-tab-group" role="group">
       <button type="button" id="tab-time-logs" onclick="switchTab('time-logs')"
@@ -127,7 +145,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         Time Logs
-        <span class="ts-tab-badge"><%= @issues_with_logs.count %></span>
+        <span class="ts-tab-badge"><%= @grouped_entries.count { |g| g[:entry_count] > 0 } %></span>
       </button>
       <button type="button" id="tab-recent-work" onclick="switchTab('recent-work')"
               class="ts-tab inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors">
@@ -138,7 +156,7 @@
         <span class="ts-tab-badge"><%= @issues_without_logs.count %></span>
       </button>
     </div>
-    
+
     <div class="relative">
       <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
         <svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -151,115 +169,272 @@
     </div>
   </div>
 
-  <%# Tab: Your Time Logs %>
+  <%# ── Tab: Time Logs (grouped) ─────────────────────────────────────────── %>
   <div id="panel-time-logs">
+    <% periods_with_entries = @grouped_entries.count { |g| g[:entry_count] > 0 } %>
+    <% period_label = @grouping == 'daily' ? 'day' : (@grouping == 'weekly' ? 'week' : 'month') %>
     <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
-      <span><%= @issues_with_logs.count %> issues · Total: <strong><%= format_hours(@total_hours) %> hours</strong> logged this period</span>
-      <span class="text-xs text-gray-400 italic">Click a row to expand time entries</span>
+      <span><%= pluralize(periods_with_entries, period_label) %> with entries · Total: <strong><%= format_hours(@total_hours) %> hours</strong> logged this period</span>
     </div>
-    
-    <% if @issues_with_logs.any? %>
-      <div class="overflow-x-auto">
-        <table class="ts-table w-full text-sm text-left">
-          <thead>
-            <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3 w-8"></th>
-              <th class="px-4 py-3">Ticket</th>
-              <th class="px-4 py-3">Issue</th>
-              <th class="px-4 py-3">Project</th>
-              <th class="px-4 py-3">Status</th>
-              <th class="px-4 py-3 text-right">Estimate</th>
-              <th class="px-4 py-3 text-right">Logged</th>
-              <th class="px-4 py-3">Progress</th>
-              <th class="px-4 py-3">Updated</th>
-              <th class="px-4 py-3 text-center">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @issues_with_logs.each do |issue| %>
-              <% issue_entries = @time_entries_by_issue[issue.id] || [] %>
-              <% logged_hours = issue_entries.sum(&:hours) %>
-              <% estimated = issue.estimated_hours %>
-              <% done_ratio = issue.done_ratio %>
-              <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onclick="toggleExpand(this)"
-                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
-                <td class="px-4 py-3 text-gray-400">
-                  <svg class="w-4 h-4 ts-expand-icon transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-1.5">
-                    <% if issue.priority.try(:position).to_i >= 3 %>
-                      <svg class="w-4 h-4 flex-shrink-0" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                      </svg>
-                    <% else %>
-                      <svg class="w-4 h-4 flex-shrink-0" style="color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                    <% end %>
-                    <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'font-semibold !text-blue-600 hover:!underline transition-colors', onclick: 'event.stopPropagation();' %>
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <div>
-                    <span class="font-medium"><%= link_to issue.subject, issue_path(issue), target: '_blank', class: '!text-blue-600 hover:!underline transition-colors', onclick: 'event.stopPropagation();' %></span>
-                    <% if issue.tracker.present? %>
-                      <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
-                    <% end %>
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
-                <td class="px-4 py-3">
-                  <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
-                </td>
-                <td class="px-4 py-3 text-right text-gray-600"><%= estimated ? format_hours(estimated) : '—' %></td>
-                <td class="px-4 py-3 text-right font-semibold text-gray-900"><%= format_hours(logged_hours) %>h</td>
-                <td class="px-4 py-3">
-                  <% pct = [(done_ratio || 0), 100].min %>
-                  <div class="flex items-center gap-2">
-                    <div class="ts-progress-bar-bg">
-                      <div class="ts-progress-bar-fill" style="width: <%= pct %>%; background-color: #3b82f6;"></div>
-                    </div>
-                    <span class="text-xs text-gray-500 w-8 text-right"><%= pct %>%</span>
-                  </div>
-                </td>
-                <td class="px-4 py-3 text-gray-500 text-sm"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
-                <td class="px-4 py-3 text-center">
-                  <button type="button" 
-                      onclick="event.stopPropagation(); openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
-                      class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                      style="background-color: #16a34a !important; color: white !important;">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Log
-                  </button>
-                </td>
-              </tr>
-              <%# Expandable time entries row %>
-              <tr class="ts-expand-row hidden">
-                <td colspan="10" class="px-0 py-0">
-                  <div class="ts-expand-content px-6 py-3 bg-gray-50 border-l-4 border-blue-400">
-                    <% issue_entries.each do |entry| %>
-                      <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                        <div class="flex items-center gap-6">
-                          <span class="text-sm text-gray-600 w-28"><%= entry.spent_on.strftime('%b %d, %Y') %></span>
-                          <span class="ts-activity-badge text-xs font-medium px-2.5 py-0.5 rounded" style="background-color: #e0e7ff; color: #3730a3;"><%= entry.activity&.name || 'No Activity' %></span>
-                          <span class="text-sm text-gray-600"><%= entry.comments.present? ? entry.comments : '' %></span>
-                        </div>
-                        <span class="text-sm font-semibold text-gray-900"><%= format_hours(entry.hours) %>h</span>
-                      </div>
-                    <% end %>
-                  </div>
-                </td>
-              </tr>
+
+    <% if @grouped_entries.any? %>
+      <% @grouped_entries.each_with_index do |group, idx| %>
+        <%
+          period_key = group[:key]
+          date_str   = period_key.strftime('%Y-%m-%d')
+
+          case @grouping
+          when 'weekly'
+            week_end   = [period_key + 6.days, @to].min
+            period_display = "Week of #{period_key.strftime('%b %-d')} - #{week_end.strftime('%b %-d, %Y')}"
+            is_today_group = (Date.current >= period_key && Date.current <= period_key + 6.days)
+          when 'monthly'
+            period_display = period_key.strftime('%B %Y')
+            is_today_group = (Date.current.beginning_of_month == period_key)
+          else # daily
+            period_display = period_key.strftime('%A, %b %-d, %Y')
+            is_today_group = (period_key == Date.current)
+          end
+
+          has_entries    = group[:entry_count] > 0
+          auto_expand    = has_entries
+        %>
+
+        <%# Group header row %>
+        <div id="tep-group-row-<%= idx %>"
+             class="tep-group-row flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+             onclick="toggleTepGroup(<%= idx %>)">
+          <div class="flex items-center gap-3">
+            <svg id="tep-chevron-<%= idx %>"
+                 class="w-4 h-4 text-gray-400 transition-transform duration-200 <%= auto_expand ? 'rotate-90' : '' %>"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            <% if @grouping == 'daily' %>
+              <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm
+                          <%= is_today_group ? 'text-white' : 'text-gray-600 bg-gray-100' %>"
+                   style="<%= is_today_group ? 'background-color: #3b82f6;' : '' %>">
+                <%= period_key.day %>
+              </div>
             <% end %>
-          </tbody>
-        </table>
-      </div>
+            <div>
+              <span class="font-medium text-gray-800 text-sm">
+                <%= period_display %>
+              </span>
+              <% if is_today_group %>
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Today</span>
+              <% end %>
+              <% if @grouping != 'daily' && has_entries %>
+                <span class="block text-xs text-gray-400 mt-0.5"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-1.5 text-sm text-gray-600">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="font-semibold text-gray-900"><%= format_hours(group[:total_hours]) %></span>
+              <% if @grouping == 'daily' %>
+                <span class="text-gray-400 text-xs"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
+              <% end %>
+            </div>
+
+            <button type="button"
+                    onclick="event.stopPropagation(); toggleTepInlineForm(<%= idx %>, '<%= date_str %>')"
+                    id="tep-log-btn-<%= idx %>"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                    style="background-color: #16a34a !important; color: white !important;">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              Log
+            </button>
+          </div>
+        </div>
+
+        <%# Expandable content %>
+        <div id="tep-expand-<%= idx %>" class="<%= auto_expand ? '' : 'hidden' %> border-b border-gray-100">
+
+          <%# ── Inline log form ──────────────────────────────────────────── %>
+          <div id="tep-inline-form-<%= idx %>" class="hidden tep-inline-form">
+            <%# Form header %>
+            <div class="flex items-center justify-between px-5 py-2.5 bg-blue-50 border-b border-blue-200 border-l-4 border-l-blue-400">
+              <div class="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Log time for <%= period_display %>
+              </div>
+              <button type="button" onclick="hideTepInlineForm(<%= idx %>)"
+                      class="tep-cancel-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors !text-white !border-0 !outline-none !shadow-none !ring-0"
+                      style="background-color: #f97316 !important;">
+                ✕ Cancel
+              </button>
+            </div>
+
+            <%# Form fields – 2-row layout %>
+            <div class="px-5 py-4 bg-blue-50 border-l-4 border-l-blue-400">
+              <%# Row 1: Issue + [Date] + Hours + Activity %>
+              <div class="grid gap-3 mb-3" style="grid-template-columns: 1fr<%= @grouping != 'daily' ? ' 160px' : '' %> 100px 180px;">
+                <%# Issue %>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Issue <span class="text-red-500">*</span></label>
+                  <select id="tep-issue-<%= idx %>"
+                          onchange="loadTepActivities(<%= idx %>)"
+                          class="tep-field bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                    <option value="">— Select issue —</option>
+                    <% @issues.each do |issue| %>
+                      <option value="<%= issue.id %>">#<%= issue.id %> – <%= h(issue.subject) %></option>
+                    <% end %>
+                  </select>
+                </div>
+
+                <%# Date (weekly/monthly only) %>
+                <% if @grouping != 'daily' %>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
+                    <input type="date" id="tep-date-<%= idx %>"
+                           value="<%= date_str %>"
+                           min="<%= period_key.strftime('%Y-%m-%d') %>"
+                           max="<%= [@to, (@grouping == 'weekly' ? period_key + 6.days : period_key.end_of_month)].min.strftime('%Y-%m-%d') %>"
+                           class="tep-field bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                  </div>
+                <% else %>
+                  <input type="hidden" id="tep-date-<%= idx %>" value="<%= date_str %>">
+                <% end %>
+
+                <%# Hours %>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Hours <span class="text-red-500">*</span></label>
+                  <input type="text" id="tep-hours-<%= idx %>"
+                         placeholder="H:MM"
+                         autocomplete="off"
+                         oninput="formatHoursInput(this)"
+                         class="tep-field bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                </div>
+
+                <%# Activity %>
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Activity <span class="text-red-500">*</span></label>
+                  <select id="tep-activity-<%= idx %>"
+                          disabled
+                          class="tep-field bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <option value="">— Select activity —</option>
+                  </select>
+                </div>
+              </div>
+
+              <%# Row 2: Comment + buttons %>
+              <div class="flex items-end gap-3">
+                <div class="flex-1">
+                  <label class="block text-xs font-medium text-gray-700 mb-1">Comment</label>
+                  <input type="text" id="tep-comment-<%= idx %>"
+                         placeholder="What did you work on?"
+                         autocomplete="off"
+                         class="tep-field bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                </div>
+                <div class="flex items-center gap-2 pb-0.5">
+                  <button type="button" onclick="hideTepInlineForm(<%= idx %>)"
+                          class="tep-btn-cancel px-4 py-2.5 text-sm font-medium rounded-lg transition-colors !text-gray-700 !bg-white !border !border-gray-300 hover:!bg-gray-100 !outline-none !shadow-none !ring-0">
+                    Cancel
+                  </button>
+                  <button type="button" onclick="submitTepInlineLog(event, <%= idx %>)"
+                          class="tep-btn-save inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors !text-white !border-0 !outline-none !shadow-none !ring-0"
+                          style="background-color: #2563eb !important;">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <div id="tep-inline-error-<%= idx %>" class="hidden mt-2 p-3 text-sm text-red-800 bg-red-50 rounded-lg border border-red-200" role="alert"></div>
+            </div>
+          </div>
+
+          <%# ── Issue rows table ────────────────────────────────────────── %>
+          <% issue_rows = group[:issue_rows] %>
+          <% if issue_rows.any? %>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm ts-table">
+                <thead>
+                  <tr class="text-xs font-medium text-gray-400 uppercase bg-gray-50 border-b border-gray-200">
+                    <% if @grouping != 'daily' %>
+                      <th class="px-4 py-2.5 text-left whitespace-nowrap">Date(s)</th>
+                    <% end %>
+                    <th class="px-4 py-2.5 text-left">Ticket</th>
+                    <th class="px-4 py-2.5 text-left">Issue</th>
+                    <th class="px-4 py-2.5 text-left">Project</th>
+                    <th class="px-4 py-2.5 text-left">Status</th>
+                    <th class="px-4 py-2.5 text-right">Estimate</th>
+                    <th class="px-4 py-2.5 text-right">Logged</th>
+                    <th class="px-4 py-2.5 min-w-[120px]">Progress</th>
+                    <th class="px-4 py-2.5 text-left whitespace-nowrap">Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% issue_rows.each do |row| %>
+                    <% issue     = row[:issue] %>
+                    <% logged    = row[:logged_hours] %>
+                    <% estimated = issue.estimated_hours %>
+                    <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
+                    <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <% if @grouping != 'daily' %>
+                        <td class="px-4 py-3 text-gray-400 text-xs whitespace-nowrap"><%= dates_str %></td>
+                      <% end %>
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-1.5">
+                          <% if issue.priority.try(:position).to_i >= 3 %>
+                            <svg class="w-3.5 h-3.5 flex-shrink-0" style="color:#ef4444;" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                            </svg>
+                          <% end %>
+                          <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'text-xs font-semibold !text-blue-600 hover:!underline', onclick: 'event.stopPropagation();' %>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3">
+                        <div>
+                          <%= link_to truncate(issue.subject, length: 55), issue_path(issue), target: '_blank', class: 'text-xs font-medium !text-blue-600 hover:!underline', onclick: 'event.stopPropagation();' %>
+                          <% if issue.tracker.present? %>
+                            <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
+                          <% end %>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap"><%= issue.project.name %></td>
+                      <td class="px-4 py-3">
+                        <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
+                      </td>
+                      <td class="px-4 py-3 text-right text-xs text-gray-500">
+                        <%= estimated ? "#{format_hours(estimated)}h" : '—' %>
+                      </td>
+                      <td class="px-4 py-3 text-right text-xs font-semibold text-gray-900 whitespace-nowrap">
+                        <%= format_hours(logged) %>h
+                      </td>
+                      <td class="px-4 py-3 min-w-[120px]">
+                        <div class="flex items-center gap-2">
+                          <div class="ts-progress-bar-bg flex-1">
+                            <div class="ts-progress-bar-fill" style="width:<%= pct %>%; background-color:#3b82f6;"></div>
+                          </div>
+                          <span class="text-xs text-gray-500 w-8 text-right"><%= pct %>%</span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                        <%= time_ago_in_words(issue.updated_on) %> ago
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <div class="px-5 py-4 text-sm text-gray-400 italic">No entries for this <%= period_label %>.</div>
+          <% end %>
+        </div>
+      <% end %>
     <% else %>
       <div class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +446,7 @@
     <% end %>
   </div>
 
-  <%# Tab: Your Recent Work %>
+  <%# ── Tab: Issues Worked On ─────────────────────────────────────────────── %>
   <div id="panel-recent-work" class="hidden">
     <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
       <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,7 +454,7 @@
       </svg>
       <span>Issues assigned to you without time entries in this period. <%= @issues_without_logs.count %> of <%= @all_issues_count %> issues</span>
     </div>
-    
+
     <% if @issues_without_logs.any? %>
       <div class="overflow-x-auto">
         <table class="ts-table w-full text-sm text-left">
@@ -289,7 +464,6 @@
               <th class="px-4 py-3">Issue</th>
               <th class="px-4 py-3">Project</th>
               <th class="px-4 py-3">Status</th>
-              <th class="px-4 py-3 text-right">Logged</th>
               <th class="px-4 py-3">Updated</th>
               <th class="px-4 py-3 text-center">Action</th>
             </tr>
@@ -324,11 +498,11 @@
                 <td class="px-4 py-3">
                   <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
                 </td>
-                <td class="px-4 py-3 text-right text-gray-500">0:00h</td>
-                <td class="px-4 py-3 text-gray-500"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
+                <td class="px-4 py-3 text-gray-500 text-sm"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
                 <td class="px-4 py-3 text-center">
-                  <button type="button" 
-                      onclick="openLogTimeModal(<%= issue.id %>, '<%= j(issue.subject) %>', '<%= j(issue.project.name) %>')"
+                  <button type="button"
+                      onclick="event.stopPropagation(); toggleIssueInlineForm(<%= issue.id %>)"
+                      id="issue-log-btn-<%= issue.id %>"
                       class="ts-log-btn inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
                       style="background-color: #16a34a !important; color: white !important;">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,6 +510,77 @@
                     </svg>
                     Log
                   </button>
+                </td>
+              </tr>
+
+              <%# Inline log form for this issue %>
+              <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
+                <td colspan="6" class="px-0 py-0">
+                  <div class="tep-inline-form bg-blue-50 border-l-4 border-blue-400 px-5 py-3">
+                    <div class="flex items-center gap-2 mb-3 text-sm font-medium text-blue-800">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Log time for #<%= issue.id %> – <%= truncate(issue.subject, length: 50) %>
+                    </div>
+                    <div class="flex items-end gap-3 flex-wrap">
+                      <%# Date %>
+                      <div class="w-36">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Date <span class="text-red-500">*</span></label>
+                        <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      </div>
+
+                      <%# Hours %>
+                      <div class="w-24">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Hours <span class="text-red-500">*</span></label>
+                        <input type="text" id="issue-hours-<%= issue.id %>" placeholder="H:MM"
+                               oninput="formatHoursInput(this)"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      </div>
+
+                      <%# Activity %>
+                      <div class="w-44">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Activity <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                          <select id="issue-activity-<%= issue.id %>"
+                                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8">
+                            <option value="">Loading...</option>
+                          </select>
+                          <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+
+                      <%# Comment %>
+                      <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Comment</label>
+                        <input type="text" id="issue-comment-<%= issue.id %>" placeholder="What did you work on?"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                      </div>
+
+                      <%# Buttons %>
+                      <div class="flex items-end gap-2 pb-0.5">
+                        <button type="button" onclick="hideIssueInlineForm(<%= issue.id %>)"
+                                class="px-3 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 transition-colors">
+                          Cancel
+                        </button>
+                        <button type="button" onclick="submitIssueInlineLog(event, <%= issue.id %>)"
+                                class="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium !text-white rounded-lg transition-colors"
+                                style="background-color: #2563eb !important;">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                          Save
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="issue-inline-error-<%= issue.id %>" class="hidden mt-2 px-3 py-2 text-xs text-red-800 bg-red-50 rounded-lg" role="alert"></div>
+                  </div>
                 </td>
               </tr>
             <% end %>
@@ -354,100 +599,12 @@
   </div>
 </div>
 
-<%# Log Time Modal %>
-<div id="log-time-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-50 overflow-y-auto">
-  <div class="modal-backdrop-overlay" onclick="closeLogTimeModal()"></div>
-  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 relative z-10">
-    <div class="relative bg-white rounded-lg shadow-xl w-full max-w-lg z-50 overflow-hidden">
-      <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <h3 class="text-lg font-semibold text-gray-900">Log Time</h3>
-        </div>
-        <button type="button" onclick="closeLogTimeModal()" class="!text-gray-500 bg-transparent hover:!bg-gray-200 hover:!text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center transition-colors !border-none">
-          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-          </svg>
-        </button>
-      </div>
-      <div class="p-4 md:p-5">
-        <form id="log-time-form" onsubmit="submitLogTime(event)">
-          <input type="hidden" id="modal-issue-id" name="issue_id">
-          <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800" id="modal-issue-badge">NEW</span>
-              <span class="text-sm font-semibold text-gray-900" id="modal-issue-number">#15005</span>
-            </div>
-            <h4 class="text-sm font-semibold text-gray-900 mb-1" id="modal-issue-subject">Issue Subject</h4>
-            <p class="text-xs text-gray-600"><span class="font-medium">Project:</span> <span id="modal-project-name">Project Name</span></p>
-          </div>
-          <div class="mb-4">
-            <label for="modal-date" class="block mb-2 text-sm font-medium text-gray-900">Date <span class="text-red-500">*</span></label>
-            <input type="date" id="modal-date" name="spent_on" value="<%= Date.current.strftime('%Y-%m-%d') %>" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
-          </div>
-          <div class="mb-4">
-            <label for="modal-hours" class="block mb-2 text-sm font-medium text-gray-900">Hours <span class="text-red-500">*</span></label>
-            <input type="text" id="modal-hours" name="hours" placeholder="H:MM" pattern="^\d+:\d{1,2}$" 
-                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required
-                   oninput="formatHoursInput(this)" title="Enter time as H:MM (e.g., 1:30, 0:15)">
-          </div>
-          <div class="mb-4">
-            <label for="modal-comment" class="block mb-2 text-sm font-medium text-gray-900">Comment</label>
-            <textarea id="modal-comment" name="comments" rows="3" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" placeholder="Add a comment..."></textarea>
-          </div>
-          <div class="mb-5 relative">
-            <label class="block mb-2 text-sm font-medium text-gray-900">Activity <span class="text-red-500">*</span></label>
-            <input type="hidden" id="modal-activity" name="activity_id" required>
-            <button type="button" id="activity-dropdown-button" onclick="toggleActivityDropdown()" 
-                    class="inline-flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-gray-50 border border-gray-300 rounded-lg hover:!bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
-              <span id="activity-selected-text" class="text-gray-500">— Please select —</span>
-              <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
-            </button>
-            <div id="activity-dropdown" class="hidden absolute bottom-full mb-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto z-[9999]">
-              <ul class="text-sm" id="activity-dropdown-list">
-                <li><button type="button" class="w-full text-left px-4 py-2 !text-gray-500 hover:!bg-gray-100">— Please select —</button></li>
-              </ul>
-            </div>
-          </div>
-          <div id="modal-error-message" class="hidden mb-4 p-3 text-sm text-red-800 rounded-lg bg-red-50" role="alert">
-            <span class="font-medium">Error:</span> <span id="modal-error-text"></span>
-          </div>
-          <div class="flex items-center gap-3 pt-4 border-t border-gray-200">
-            <button type="submit" id="modal-create-btn"
-                    class="flex-1 !text-white !bg-blue-600 hover:!bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
-                    style="background-color: #2563eb !important; color: white !important;">
-              Create
-            </button>
-            <button type="button" id="modal-create-add-btn" onclick="submitLogTimeAndAddAnother(event)"
-                    class="flex-1 !text-white !bg-blue-600 hover:!bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors"
-                    style="background-color: #2563eb !important; color: white !important;">
-              Create and add another
-            </button>
-            <button type="button" onclick="closeLogTimeModal()" 
-                    class="px-5 py-2.5 text-sm font-medium !text-gray-900 focus:outline-none !bg-white rounded-lg border border-gray-200 hover:!bg-gray-100 hover:!text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 transition-colors">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-  let currentIssueId = null;
-  let addAnother = false;
-  
-  // Tab switching
+  // ── Tab switching ────────────────────────────────────────────────────────
   function switchTab(tabName) {
-    const tabs = ['time-logs', 'recent-work'];
-    tabs.forEach(function(t) {
-      const panel = document.getElementById('panel-' + t);
-      const tab = document.getElementById('tab-' + t);
+    ['time-logs', 'recent-work'].forEach(function(t) {
+      var panel = document.getElementById('panel-' + t);
+      var tab   = document.getElementById('tab-' + t);
       if (t === tabName) {
         panel.classList.remove('hidden');
         tab.classList.add('ts-tab-active');
@@ -456,235 +613,38 @@
         tab.classList.remove('ts-tab-active');
       }
     });
-    // Clear search when switching tabs
     document.getElementById('ts-search-input').value = '';
     filterTableRows();
   }
-  
-  // Expand/collapse table rows
-  function toggleExpand(row) {
-    const expandRow = row.nextElementSibling;
-    if (!expandRow || !expandRow.classList.contains('ts-expand-row')) return;
-    
-    const icon = row.querySelector('.ts-expand-icon');
-    if (expandRow.classList.contains('hidden')) {
-      expandRow.classList.remove('hidden');
-      if (icon) icon.style.transform = 'rotate(90deg)';
-    } else {
-      expandRow.classList.add('hidden');
-      if (icon) icon.style.transform = 'rotate(0deg)';
-    }
-  }
-  
-  // Client-side search filter
+
+  // ── Search / filter ──────────────────────────────────────────────────────
   function filterTableRows() {
-    const query = document.getElementById('ts-search-input').value.toLowerCase().trim();
-    const activePanel = document.querySelector('[id^="panel-"]:not(.hidden)');
+    var query = document.getElementById('ts-search-input').value.toLowerCase().trim();
+    var activePanel = document.querySelector('[id^="panel-"]:not(.hidden)');
     if (!activePanel) return;
-    
-    const rows = activePanel.querySelectorAll('.ts-issue-row');
-    rows.forEach(function(row) {
-      const searchText = row.getAttribute('data-search-text') || '';
-      const expandRow = row.nextElementSibling;
-      
-      if (!query || searchText.includes(query)) {
+    activePanel.querySelectorAll('.ts-issue-row').forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      var expandRow = row.nextElementSibling;
+      if (!query || text.includes(query)) {
         row.style.display = '';
       } else {
         row.style.display = 'none';
-        if (expandRow && expandRow.classList.contains('ts-expand-row')) {
+        if (expandRow && expandRow.id && expandRow.id.startsWith('issue-inline-row-')) {
           expandRow.classList.add('hidden');
         }
       }
     });
   }
-  
-  // Activity dropdown toggle
-  function toggleActivityDropdown() {
-    document.getElementById('activity-dropdown').classList.toggle('hidden');
-  }
-  
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function(event) {
-    var dropdown = document.getElementById('activity-dropdown');
-    var button = document.getElementById('activity-dropdown-button');
-    if (dropdown && button && !dropdown.contains(event.target) && !button.contains(event.target)) {
-      dropdown.classList.add('hidden');
-    }
-  });
-  
-  async function openLogTimeModal(issueId, issueSubject, projectName) {
-    currentIssueId = issueId;
-    document.getElementById('modal-issue-id').value = issueId;
-    document.getElementById('modal-issue-number').textContent = '#' + issueId;
-    document.getElementById('modal-issue-subject').textContent = issueSubject;
-    document.getElementById('modal-project-name').textContent = projectName;
-    
-    document.getElementById('log-time-form').reset();
-    document.getElementById('modal-date').value = '<%= Date.current.strftime('%Y-%m-%d') %>';
-    document.getElementById('modal-error-message').classList.add('hidden');
-    document.getElementById('activity-selected-text').textContent = '— Please select —';
-    document.getElementById('activity-selected-text').classList.add('text-gray-500');
-    document.getElementById('activity-selected-text').classList.remove('text-gray-900');
-    
-    try {
-      var response = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
-      var data = await response.json();
-      var activityList = document.getElementById('activity-dropdown-list');
-      activityList.innerHTML = '';
-      
-      var placeholderLi = document.createElement('li');
-      var placeholderBtn = document.createElement('button');
-      placeholderBtn.type = 'button';
-      placeholderBtn.className = 'w-full text-left px-4 py-2 !text-gray-500 hover:!bg-gray-100';
-      placeholderBtn.textContent = '— Please select —';
-      placeholderBtn.onclick = function() {
-        document.getElementById('modal-activity').value = '';
-        document.getElementById('activity-selected-text').textContent = '— Please select —';
-        document.getElementById('activity-selected-text').classList.add('text-gray-500');
-        document.getElementById('activity-selected-text').classList.remove('text-gray-900');
-        document.getElementById('activity-dropdown').classList.add('hidden');
-      };
-      placeholderLi.appendChild(placeholderBtn);
-      activityList.appendChild(placeholderLi);
-      
-      data.activities.forEach(function(activity) {
-        var li = document.createElement('li');
-        var button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'w-full text-left px-4 py-2 !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900';
-        button.textContent = activity.name;
-        button.onclick = function() {
-          document.getElementById('modal-activity').value = activity.id;
-          document.getElementById('activity-selected-text').textContent = activity.name;
-          document.getElementById('activity-selected-text').classList.remove('text-gray-500');
-          document.getElementById('activity-selected-text').classList.add('text-gray-900');
-          document.getElementById('activity-dropdown').classList.add('hidden');
-        };
-        li.appendChild(button);
-        activityList.appendChild(li);
-      });
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-      showModalError('Failed to load activities');
-    }
-    
-    document.getElementById('log-time-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
-  
-  function closeLogTimeModal() {
-    document.getElementById('log-time-modal').classList.add('hidden');
-    document.body.style.overflow = '';
-    currentIssueId = null;
-    addAnother = false;
-  }
-  
-  function showModalError(message) {
-    document.getElementById('modal-error-text').textContent = message;
-    document.getElementById('modal-error-message').classList.remove('hidden');
-  }
-  
-  function hideModalError() {
-    document.getElementById('modal-error-message').classList.add('hidden');
-  }
-  
-  function formatHoursInput(input) {
-    // Allow only digits and colon
-    input.value = input.value.replace(/[^\d:]/g, '');
-  }
-  
-  function parseHoursMinutes(value) {
-    // Parse H:MM or H:M format to decimal hours
-    if (!value || value.trim() === '') return null;
-    var parts = value.split(':');
-    if (parts.length !== 2) return null;
-    var hours = parseInt(parts[0], 10);
-    var minutes = parseInt(parts[1], 10);
-    if (isNaN(hours) || isNaN(minutes) || minutes < 0 || minutes > 59 || hours < 0) return null;
-    if (hours === 0 && minutes === 0) return null;
-    return hours + (minutes / 60.0);
-  }
-  
-  async function submitLogTime(event) {
-    event.preventDefault();
-    addAnother = false;
-    await handleSubmitLogTime();
-  }
-  
-  async function submitLogTimeAndAddAnother(event) {
-    event.preventDefault();
-    addAnother = true;
-    await handleSubmitLogTime();
-  }
-  
-  async function handleSubmitLogTime() {
-    hideModalError();
-    var form = document.getElementById('log-time-form');
-    var formData = new FormData(form);
-    var activityId = document.getElementById('modal-activity').value;
-    if (!activityId) { showModalError('Please select an activity'); return; }
-    
-    var hoursRaw = document.getElementById('modal-hours').value;
-    var decimalHours = parseHoursMinutes(hoursRaw);
-    if (decimalHours === null) { showModalError('Please enter hours in H:MM format (e.g., 1:30, 0:15)'); return; }
-    
-    document.getElementById('modal-create-btn').disabled = true;
-    document.getElementById('modal-create-add-btn').disabled = true;
-    
-    try {
-      var response = await fetch('<%= create_time_entry_panel_path %>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-        body: JSON.stringify({
-          issue_id: formData.get('issue_id'),
-          spent_on: formData.get('spent_on'),
-          hours: decimalHours,
-          comments: formData.get('comments'),
-          activity_id: formData.get('activity_id')
-        })
-      });
-      var data = await response.json();
-      if (data.success) {
-        if (addAnother) {
-          document.getElementById('modal-hours').value = '';
-          document.getElementById('modal-comment').value = '';
-          document.getElementById('modal-activity').value = '';
-          document.getElementById('activity-selected-text').textContent = '— Please select —';
-          document.getElementById('activity-selected-text').classList.add('text-gray-500');
-          document.getElementById('activity-selected-text').classList.remove('text-gray-900');
-          alert('Time entry created successfully!');
-        } else {
-          closeLogTimeModal();
-          location.reload();
-        }
-      } else {
-        showModalError(data.errors ? data.errors.join(', ') : data.error || 'Failed to create time entry');
-      }
-    } catch (error) {
-      console.error('Error creating time entry:', error);
-      showModalError('An error occurred while creating the time entry');
-    } finally {
-      document.getElementById('modal-create-btn').disabled = false;
-      document.getElementById('modal-create-add-btn').disabled = false;
-    }
-  }
-  
-  // Close modal with Escape key
-  document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-      var modal = document.getElementById('log-time-modal');
-      if (!modal.classList.contains('hidden')) { closeLogTimeModal(); }
-    }
-  });
 
+  // ── Period filter ────────────────────────────────────────────────────────
   function setFilterAndSubmit(filterValue) {
     document.getElementById('filter_hidden').value = filterValue;
     if (filterValue !== 'custom') { document.getElementById('custom-date-range').classList.add('hidden'); }
     document.getElementById('time-entry-panel-form').submit();
   }
-  
+
   function toggleCustomDateRange() {
-    var customRange = document.getElementById('custom-date-range');
+    var customRange  = document.getElementById('custom-date-range');
     var filterHidden = document.getElementById('filter_hidden');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
@@ -692,5 +652,278 @@
     } else {
       customRange.classList.add('hidden');
     }
+  }
+
+  // ── Grouping dropdown ────────────────────────────────────────────────────
+  function toggleTepGroupingDropdown() {
+    document.getElementById('tep-grouping-dropdown').classList.toggle('hidden');
+  }
+
+  function setTepGroupingAndSubmit(groupingValue) {
+    document.getElementById('tep_grouping_hidden').value = groupingValue;
+    document.getElementById('tep-grouping-dropdown').classList.add('hidden');
+    document.getElementById('time-entry-panel-form').submit();
+  }
+
+  document.addEventListener('click', function(e) {
+    var dropdown = document.getElementById('tep-grouping-dropdown');
+    var btn      = document.getElementById('tep-grouping-btn');
+    if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  // ── Group expand / collapse ──────────────────────────────────────────────
+  function toggleTepGroup(idx) {
+    var expand  = document.getElementById('tep-expand-' + idx);
+    var chevron = document.getElementById('tep-chevron-' + idx);
+    if (!expand) return;
+    if (expand.classList.contains('hidden')) {
+      expand.classList.remove('hidden');
+      if (chevron) chevron.classList.add('rotate-90');
+    } else {
+      expand.classList.add('hidden');
+      if (chevron) chevron.classList.remove('rotate-90');
+      // Hide inline form when collapsing
+      var form = document.getElementById('tep-inline-form-' + idx);
+      if (form) form.classList.add('hidden');
+    }
+  }
+
+  // ── Inline form (Time Logs tab) ──────────────────────────────────────────
+  function toggleTepInlineForm(idx, dateStr) {
+    // Ensure group is expanded
+    var expand  = document.getElementById('tep-expand-' + idx);
+    var chevron = document.getElementById('tep-chevron-' + idx);
+    if (expand && expand.classList.contains('hidden')) {
+      expand.classList.remove('hidden');
+      if (chevron) chevron.classList.add('rotate-90');
+    }
+
+    var form = document.getElementById('tep-inline-form-' + idx);
+    if (!form) return;
+
+    if (form.classList.contains('hidden')) {
+      // Close any other open inline forms
+      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      form.classList.remove('hidden');
+      // Reset fields
+      var issueSelect = document.getElementById('tep-issue-' + idx);
+      if (issueSelect) issueSelect.value = '';
+      var hoursInput = document.getElementById('tep-hours-' + idx);
+      if (hoursInput) hoursInput.value = '';
+      var commentInput = document.getElementById('tep-comment-' + idx);
+      if (commentInput) commentInput.value = '';
+      resetTepActivityDropdown(idx);
+      hideTepInlineError(idx);
+      // Scroll form into view
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      form.classList.add('hidden');
+    }
+  }
+
+  function hideTepInlineForm(idx) {
+    var form = document.getElementById('tep-inline-form-' + idx);
+    if (form) form.classList.add('hidden');
+  }
+
+  function resetTepActivityDropdown(idx) {
+    var select = document.getElementById('tep-activity-' + idx);
+    if (!select) return;
+    select.innerHTML = '<option value="">Select activity</option>';
+    select.disabled = true;
+  }
+
+  async function loadTepActivities(idx) {
+    var issueId = document.getElementById('tep-issue-' + idx).value;
+    var select  = document.getElementById('tep-activity-' + idx);
+    if (!issueId) { resetTepActivityDropdown(idx); return; }
+    select.innerHTML = '<option value="">Loading...</option>';
+    select.disabled = true;
+    try {
+      var resp = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
+      var data = await resp.json();
+      select.innerHTML = '<option value="">Select activity</option>';
+      (data.activities || []).forEach(function(a) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.name;
+        select.appendChild(opt);
+      });
+      select.disabled = false;
+    } catch(e) {
+      select.innerHTML = '<option value="">Failed to load</option>';
+    }
+  }
+
+  function showTepInlineError(idx, msg) {
+    var el = document.getElementById('tep-inline-error-' + idx);
+    if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+  }
+
+  function hideTepInlineError(idx) {
+    var el = document.getElementById('tep-inline-error-' + idx);
+    if (el) el.classList.add('hidden');
+  }
+
+  async function submitTepInlineLog(event, idx) {
+    event.preventDefault();
+    hideTepInlineError(idx);
+
+    var dateStr    = (document.getElementById('tep-date-'     + idx) || {}).value;
+    var issueId    = (document.getElementById('tep-issue-'    + idx) || {}).value;
+    var hoursRaw   = (document.getElementById('tep-hours-'    + idx) || {}).value;
+    var activityId = (document.getElementById('tep-activity-' + idx) || {}).value;
+    var comment    = (document.getElementById('tep-comment-'  + idx) || {}).value;
+
+    if (!issueId)    { showTepInlineError(idx, 'Please select an issue.');   return; }
+    var hours = parseHoursMinutes(hoursRaw);
+    if (!hours)      { showTepInlineError(idx, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (!activityId) { showTepInlineError(idx, 'Please select an activity.'); return; }
+
+    var saveBtn = event.target;
+    saveBtn.disabled = true;
+
+    try {
+      var resp = await fetch('<%= create_time_entry_panel_path %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+        },
+        body: JSON.stringify({ issue_id: issueId, spent_on: dateStr, hours: hours, activity_id: activityId, comments: comment })
+      });
+      var data = await resp.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        showTepInlineError(idx, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
+      }
+    } catch(e) {
+      showTepInlineError(idx, 'Network error. Please try again.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  // ── Inline form (Issues Worked On tab) ──────────────────────────────────
+  var issueActivitiesLoaded = {};
+
+  async function toggleIssueInlineForm(issueId) {
+    var row = document.getElementById('issue-inline-row-' + issueId);
+    if (!row) return;
+
+    if (row.classList.contains('hidden')) {
+      // Close any other open inline forms
+      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.querySelectorAll('[id^="issue-inline-row-"]').forEach(function(r) { r.classList.add('hidden'); });
+
+      row.classList.remove('hidden');
+      // Load activities if not yet loaded
+      if (!issueActivitiesLoaded[issueId]) {
+        await loadIssueActivities(issueId);
+        issueActivitiesLoaded[issueId] = true;
+      }
+      // Reset fields
+      var dateEl = document.getElementById('issue-date-' + issueId);
+      if (dateEl) dateEl.value = '<%= Date.current.strftime('%Y-%m-%d') %>';
+      var hoursEl = document.getElementById('issue-hours-' + issueId);
+      if (hoursEl) hoursEl.value = '';
+      var commentEl = document.getElementById('issue-comment-' + issueId);
+      if (commentEl) commentEl.value = '';
+      hideIssueInlineError(issueId);
+      row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      row.classList.add('hidden');
+    }
+  }
+
+  function hideIssueInlineForm(issueId) {
+    var row = document.getElementById('issue-inline-row-' + issueId);
+    if (row) row.classList.add('hidden');
+  }
+
+  async function loadIssueActivities(issueId) {
+    var select = document.getElementById('issue-activity-' + issueId);
+    if (!select) return;
+    try {
+      var resp = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
+      var data = await resp.json();
+      select.innerHTML = '<option value="">Select activity</option>';
+      (data.activities || []).forEach(function(a) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.name;
+        select.appendChild(opt);
+      });
+    } catch(e) {
+      select.innerHTML = '<option value="">Failed to load</option>';
+    }
+  }
+
+  function showIssueInlineError(issueId, msg) {
+    var el = document.getElementById('issue-inline-error-' + issueId);
+    if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+  }
+
+  function hideIssueInlineError(issueId) {
+    var el = document.getElementById('issue-inline-error-' + issueId);
+    if (el) el.classList.add('hidden');
+  }
+
+  async function submitIssueInlineLog(event, issueId) {
+    event.preventDefault();
+    hideIssueInlineError(issueId);
+
+    var date       = (document.getElementById('issue-date-'     + issueId) || {}).value;
+    var hoursRaw   = (document.getElementById('issue-hours-'    + issueId) || {}).value;
+    var activityId = (document.getElementById('issue-activity-' + issueId) || {}).value;
+    var comment    = (document.getElementById('issue-comment-'  + issueId) || {}).value;
+
+    if (!date)       { showIssueInlineError(issueId, 'Please select a date.');    return; }
+    var hours = parseHoursMinutes(hoursRaw);
+    if (!hours)      { showIssueInlineError(issueId, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (!activityId) { showIssueInlineError(issueId, 'Please select an activity.'); return; }
+
+    var saveBtn = event.target;
+    saveBtn.disabled = true;
+
+    try {
+      var resp = await fetch('<%= create_time_entry_panel_path %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+        },
+        body: JSON.stringify({ issue_id: issueId, spent_on: date, hours: hours, activity_id: activityId, comments: comment })
+      });
+      var data = await resp.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        showIssueInlineError(issueId, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
+      }
+    } catch(e) {
+      showIssueInlineError(issueId, 'Network error. Please try again.');
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  // ── Shared utilities ─────────────────────────────────────────────────────
+  function formatHoursInput(input) {
+    input.value = input.value.replace(/[^\d:]/g, '');
+  }
+
+  function parseHoursMinutes(value) {
+    if (!value || !value.trim()) return null;
+    var parts = value.split(':');
+    if (parts.length !== 2) return null;
+    var h = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
+    if (h === 0 && m === 0) return null;
+    return h + (m / 60.0);
   }
 </script>

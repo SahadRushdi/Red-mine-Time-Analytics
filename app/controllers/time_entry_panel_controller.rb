@@ -1,6 +1,7 @@
 class TimeEntryPanelController < ApplicationController
   before_action :require_login
   before_action :set_date_range, only: [:index]
+  before_action :set_grouping, only: [:index]
   helper :time_analytics
 
   def index
@@ -28,14 +29,13 @@ class TimeEntryPanelController < ApplicationController
                            .order(created_on: :desc, id: :desc)
                            .first
     
-    # Group time entries by issue for display
-    @time_entries_by_issue = @time_entries.group_by(&:issue_id)
-    
     # Calculate total hours for the period
     @total_hours = @time_entries.sum(:hours)
 
+    # Build grouped entries for the Time Logs tab
+    @grouped_entries = build_grouped_entries(@time_entries.to_a, @grouping, @from, @to)
+
     # Build a map of the latest activity timestamp per issue
-    # considering both issue.updated_on and any time entry ever logged against it
     last_te_dates = TimeEntry.where(issue_id: @issues.map(&:id), user_id: @user.id)
                               .group(:issue_id)
                               .maximum(:created_on)
@@ -45,18 +45,16 @@ class TimeEntryPanelController < ApplicationController
       @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
     end
 
-    # Sort issues by most recent activity (issue edit OR time entry) descending
+    # Sort issues by most recent activity descending
     @issues = @issues.sort_by { |issue| @issue_last_activity[issue.id] }.reverse
 
-    # Issues with time entries in this period (for "Your Time Logs" tab)
-    @issues_with_logs = @issues.select { |issue| @time_entries_by_issue[issue.id].present? }
-    
-    # Issues without time entries in this period (for "Your Recent Work" tab)
-    @issues_without_logs = @issues.reject { |issue| @time_entries_by_issue[issue.id].present? }
+    # Issues without time entries in this period (for "Issues Worked On" tab)
+    issues_with_log_ids = @time_entries.map(&:issue_id).uniq
+    @issues_without_logs = @issues.reject { |issue| issues_with_log_ids.include?(issue.id) }
     
     # Summary card data
-    @issues_worked_count = @issues_with_logs.count
-    @unique_projects_count = @time_entries.map { |te| te.project_id }.uniq.count
+    @issues_worked_count = issues_with_log_ids.count
+    @unique_projects_count = @time_entries.map(&:project_id).uniq.count
     @all_issues_count = @issues.count
   end
 
@@ -92,6 +90,75 @@ class TimeEntryPanelController < ApplicationController
   end
 
   private
+
+  def set_grouping
+    if params[:grouping].present?
+      session[:tep_grouping] = params[:grouping]
+    end
+    @grouping = params[:grouping].presence || session[:tep_grouping] || 'daily'
+    @grouping = 'daily' unless %w[daily weekly monthly].include?(@grouping)
+    session[:tep_grouping] = @grouping
+  end
+
+  def build_grouped_entries(entries, grouping, from_date, to_date)
+    raw_groups = case grouping
+    when 'weekly'
+      entries.group_by { |te| te.spent_on.beginning_of_week(:monday) }
+    when 'monthly'
+      entries.group_by { |te| te.spent_on.beginning_of_month }
+    else # daily
+      entries.group_by(&:spent_on)
+    end
+
+    all_period_keys = case grouping
+    when 'weekly'
+      periods = []
+      current = from_date.beginning_of_week(:monday)
+      while current <= to_date
+        periods << current
+        current += 1.week
+      end
+      periods
+    when 'monthly'
+      periods = []
+      current = from_date.beginning_of_month
+      while current <= to_date.beginning_of_month
+        periods << current
+        current = current.next_month
+      end
+      periods
+    else # daily
+      (from_date..to_date).to_a
+    end
+
+    all_period_keys.sort.reverse.map do |period_key|
+      period_entries = raw_groups[period_key] || []
+
+      # Deduplicate: group entries by issue, summing hours
+      issue_map = {}
+      period_entries.each do |entry|
+        next unless entry.issue
+        key = entry.issue_id
+        issue_map[key] ||= {
+          issue:           entry.issue,
+          logged_hours:    0.0,
+          spent_on_dates:  []
+        }
+        issue_map[key][:logged_hours] += entry.hours
+        issue_map[key][:spent_on_dates] |= [entry.spent_on]
+      end
+
+      # Sort by most recently updated within the period
+      issue_rows = issue_map.values.sort_by { |r| r[:issue].updated_on || Time.at(0) }.reverse
+
+      {
+        key:          period_key,
+        issue_rows:   issue_rows,
+        total_hours:  period_entries.sum(&:hours),
+        entry_count:  period_entries.count
+      }
+    end
+  end
 
   def set_date_range
     @filter = params[:filter]

@@ -331,160 +331,69 @@ button[onclick*="switchChartType"]:active {
   transform: none !important;
 }
 
-/* === Log Time Modal Styles === */
-/* Modal backdrop with semi-transparent background - allows content to be visible behind modal */
-.modal-backdrop-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.4) !important;
-  transition: opacity 0.3s ease;
+/* === Inline Time Log Form (My Work Log) === */
+.tep-inline-form {
+  animation: tepSlideDown 0.15s ease-out;
 }
 
-#log-time-modal {
-  /* Container itself has no background to allow backdrop overlay to control dimming */
+@keyframes tepSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Fix purple border on date and hours inputs - force blue focus */
-#log-time-modal input[type="date"],
-#log-time-modal input[type="number"],
-#log-time-modal input[type="text"],
-#log-time-modal input[type="search"] {
+/* Grouping dropdown - remove Redmine borders */
+.tep-grouping-wrapper #tep-grouping-dropdown button,
+.tep-grouping-wrapper #tep-grouping-dropdown button:focus,
+.tep-grouping-wrapper #tep-grouping-dropdown button:active {
+  border: none !important;
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* Grouping button hover border fix */
+#tep-grouping-btn:not([style*="background-color: #3b82f6"]):hover {
   border-color: #d1d5db !important;
 }
 
-#log-time-modal input[type="date"]:focus,
-#log-time-modal input[type="number"]:focus,
-#log-time-modal input[type="text"]:focus,
-#log-time-modal input[type="search"]:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
-  outline: none !important;
-}
-
-/* Log time modal specific button fixes */
-#log-time-modal button[onclick="closeLogTimeModal()"]:hover {
-  background-color: #e5e7eb !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important; /* Force gray border instead of Redmine blue */
-}
-
-/* Header X button should not have a border on hover or focus */
-#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"],
-#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"]:hover,
-#log-time-modal .flex.items-center.justify-between button[onclick="closeLogTimeModal()"]:focus {
-  border: none !important;
-  outline: none !important;
-}
-
-#log-time-modal button[onclick="closeLogTimeModal()"]:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Fix activity dropdown to open upwards (dropup) and remove blue borders */
-#activity-dropdown {
-  position: absolute !important;
-  bottom: 100% !important;
-  margin-bottom: 4px !important;
-  z-index: 9999 !important;
-  max-height: 240px !important;
-  overflow-y: auto !important;
-  background-color: white !important;
+/* Inline form selects and inputs — Flowbite-style, Redmine override */
+.tep-inline-form .tep-field,
+.tep-inline-form select,
+.tep-inline-form input[type="text"],
+.tep-inline-form input[type="date"] {
   border: 1px solid #d1d5db !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-}
-
-/* Remove Redmine's default blue borders from activity dropdown items - reusing pattern */
-#activity-dropdown button,
-#activity-dropdown button:link,
-#activity-dropdown button:visited,
-#activity-dropdown button:active,
-#activity-dropdown button:focus {
-  border: none !important;
   outline: none !important;
   box-shadow: none !important;
-  text-decoration: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
 }
 
-/* Fix hover state for dropdown items - ensure text is visible */
-#activity-dropdown button:hover {
-  background-color: #f3f4f6 !important;
-  color: #111827 !important;
-}
-
-#activity-dropdown li button {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Activity dropdown button focus state */
-#activity-dropdown-button:hover {
-  border-color: #d1d5db !important;
-  box-shadow: none !important;
-  background-color: #f9fafb !important;
-}
-
-#activity-dropdown-button:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+.tep-inline-form .tep-field:focus,
+.tep-inline-form select:focus,
+.tep-inline-form input[type="text"]:focus,
+.tep-inline-form input[type="date"]:focus {
   border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
 }
 
-/* Remove any inherited Redmine styles from modal form elements */
-#log-time-modal textarea {
+/* Block Redmine's blue hover border on inline form buttons */
+.tep-cancel-btn,
+.tep-cancel-btn:hover,
+.tep-cancel-btn:focus,
+.tep-btn-cancel,
+.tep-btn-cancel:hover,
+.tep-btn-cancel:focus,
+.tep-btn-save,
+.tep-btn-save:hover,
+.tep-btn-save:focus {
   outline: none !important;
   box-shadow: none !important;
-  border-color: #d1d5db !important;
 }
 
-#log-time-modal textarea:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
-  outline: none !important;
-}
-
-/* Ensure modal buttons have visible borders */
-#log-time-modal button[type="submit"],
-#log-time-modal button[type="button"] {
-  outline: none !important;
-}
-
-#log-time-modal button[type="submit"]:focus,
-#log-time-modal button[type="button"]:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
-}
-
-/* Update "Create and add another" button to match "Create" button style */
-#modal-create-add-btn {
-  background-color: #2563eb !important;
-  color: white !important;
-}
-
-#modal-create-add-btn:hover {
-  background-color: #1d4ed8 !important;
-}
-
-/* Cancel button with underline by default as shown in Figma */
-/* Log time modal specific button fixes */
-#log-time-modal button[onclick="closeLogTimeModal()"]:hover {
-  background-color: #e5e7eb !important;
-  color: #111827 !important;
-}
-
-/* Remove Redmine's default link styling from activity dropdown - reusing pattern */
-#activity-dropdown a,
-#activity-dropdown a:link,
-#activity-dropdown a:visited,
-#activity-dropdown a:hover,
-#activity-dropdown a:active {
-  border: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-  text-decoration: none !important;
+/* Group header row chevron rotation */
+.rotate-90 {
+  transform: rotate(90deg);
 }
 
 /* === Fix Extra Bottom Borders on Tables === */
