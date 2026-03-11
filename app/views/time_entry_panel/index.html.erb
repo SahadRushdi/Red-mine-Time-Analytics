@@ -218,7 +218,7 @@
                 <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Today</span>
               <% end %>
               <% if @grouping != 'daily' && has_entries %>
-                <span class="block text-xs text-gray-400 mt-0.5"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
+                <span class="block text-sm font-medium text-gray-500 mt-0.5"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
               <% end %>
             </div>
           </div>
@@ -230,7 +230,7 @@
               </svg>
               <span class="font-semibold text-gray-900"><%= format_hours(group[:total_hours]) %></span>
               <% if @grouping == 'daily' %>
-                <span class="text-gray-400 text-xs"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
+                <span class="text-sm font-medium text-gray-500"><%= group[:entry_count] %> entr<%= group[:entry_count] == 1 ? 'y' : 'ies' %></span>
               <% end %>
             </div>
 
@@ -259,7 +259,7 @@
                 <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <span class="text-xs font-bold text-blue-700 whitespace-nowrap"><%= period_display %></span>
+                <span class="text-sm font-bold text-blue-700 whitespace-nowrap"><%= period_display %></span>
               </div>
               <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
@@ -272,13 +272,13 @@
                        onfocus="openTepIssueDropdown(<%= idx %>)"
                        oninput="filterTepIssues(<%= idx %>)"
                        onkeydown="handleTepIssueKey(event, <%= idx %>)"
-                       class="tep-field w-full text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white">
+                       class="tep-field w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white">
                 <input type="hidden" id="tep-issue-<%= idx %>">
                 <div id="tep-issue-list-<%= idx %>"
                      class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                      style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
                   <% @issues.each do |issue| %>
-                    <div class="tep-issue-option px-3 py-2 text-xs cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                    <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                          tabindex="0"
                          data-id="<%= issue.id %>"
                          data-text="#<%= issue.id %> – <%= j(issue.subject) %>"
@@ -299,7 +299,7 @@
                        min="<%= period_key.strftime('%Y-%m-%d') %>"
                        max="<%= [@to, (@grouping == 'weekly' ? period_key + 6.days : period_key.end_of_month)].min.strftime('%Y-%m-%d') %>"
                        title="Date"
-                       class="tep-field text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                       class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
               <% else %>
                 <input type="hidden" id="tep-date-<%= idx %>" value="<%= date_str %>">
               <% end %>
@@ -310,14 +310,14 @@
                      autocomplete="off"
                      oninput="formatHoursInput(this)"
                      title="Hours (e.g. 1:30)"
-                     class="tep-field text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
+                     class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
 
               <%# Activity — custom Flowbite-style dropdown %>
               <div class="relative flex-shrink-0" id="tep-activity-wrapper-<%= idx %>">
                 <button type="button"
                         id="tep-activity-btn-<%= idx %>"
                         onclick="toggleTepActivityDropdown(<%= idx %>)"
-                        class="tep-field tep-action-btn flex items-center justify-between gap-2 text-xs px-3 border border-gray-300 rounded-lg bg-white w-44 text-left whitespace-nowrap">
+                        class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                   <span id="tep-activity-text-<%= idx %>" class="text-gray-400 truncate flex-1">Activity *</span>
                   <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -327,7 +327,7 @@
                 <div id="tep-activity-list-<%= idx %>"
                      class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                      style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
-                  <div class="px-3 py-2 text-xs text-gray-400 italic">Select an issue first</div>
+                  <div class="px-3 py-2 text-sm text-gray-400 italic">Select an issue first</div>
                 </div>
               </div>
 
@@ -335,18 +335,18 @@
               <input type="text" id="tep-comment-<%= idx %>"
                      placeholder="Comment (optional)"
                      autocomplete="off"
-                     class="tep-field text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white flex-1 min-w-[100px]">
+                     class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-1 min-w-[100px]">
 
               <%# Cancel %>
               <button type="button" onclick="hideTepInlineForm(<%= idx %>)"
-                      class="tep-action-btn flex-shrink-0 px-4 py-2.5 text-xs font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                      class="tep-action-btn flex-shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
                       style="background-color: #dc2626 !important;">
                 ✕ Cancel
               </button>
 
               <%# Save %>
               <button type="button" onclick="submitTepInlineLog(event, <%= idx %>)"
-                      class="tep-action-btn flex-shrink-0 inline-flex items-center gap-1 px-4 py-2.5 text-xs font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                      class="tep-action-btn flex-shrink-0 inline-flex items-center gap-1 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
                       style="background-color: #2563eb !important;">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -354,7 +354,7 @@
                 Save
               </button>
             </div>
-            <div id="tep-inline-error-<%= idx %>" class="hidden px-4 py-2 text-xs text-red-800 bg-red-50 border-b border-red-100 border-l-4 border-l-red-400" role="alert"></div>
+            <div id="tep-inline-error-<%= idx %>" class="hidden px-4 py-2 text-sm text-red-800 bg-red-50 border-b border-red-100 border-l-4 border-l-red-400" role="alert"></div>
           </div>
 
           <%# ── Issue rows table ────────────────────────────────────────── %>
@@ -425,7 +425,7 @@
                         </div>
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                        <%= time_ago_in_words(issue.updated_on) %> ago
+                        <%= time_ago_in_words(row[:effective_updated] || issue.updated_on) %> ago
                       </td>
                     </tr>
                   <% end %>
@@ -737,7 +737,7 @@
     var list   = document.getElementById('tep-activity-list-' + idx);
     if (hidden) hidden.value = '';
     if (text)   { text.textContent = 'Activity *'; text.classList.add('text-gray-400'); text.classList.remove('text-gray-900'); }
-    if (list)   { list.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400 italic">Select an issue first</div>'; }
+    if (list)   { list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">Select an issue first</div>'; }
     closeTepActivityDropdown(idx);
   }
 
@@ -784,18 +784,20 @@
     if (!issueId) { resetTepActivityDropdown(idx); return; }
     if (hidden) hidden.value = '';
     if (text)   { text.textContent = 'Loading…'; }
-    list.innerHTML = '<div class="px-3 py-2 text-xs text-gray-400 italic">Loading…</div>';
+    list.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400 italic">Loading…</div>';
     try {
       var resp = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
       var data = await resp.json();
       list.innerHTML = '';
       (data.activities || []).forEach(function(a) {
-        var div = document.createElement('div');
-        div.className = 'tep-activity-option px-3 py-2 text-xs cursor-pointer border-b border-gray-50 last:border-0 text-gray-700';
-        div.textContent = a.name;
-        div.setAttribute('data-id', a.id);
-        div.onclick = function() { selectTepActivity(idx, a.id, a.name); };
-        list.appendChild(div);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tep-activity-option w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700';
+        btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
+        btn.textContent = a.name;
+        btn.setAttribute('data-id', a.id);
+        btn.onclick = function() { selectTepActivity(idx, a.id, a.name); };
+        list.appendChild(btn);
       });
       if (text) { text.textContent = 'Activity *'; text.classList.add('text-gray-400'); text.classList.remove('text-gray-900'); }
     } catch(e) {

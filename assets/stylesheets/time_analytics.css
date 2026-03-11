@@ -405,6 +405,20 @@ button[onclick*="switchChartType"]:active {
   text-decoration: none !important;
 }
 
+/* Activity trigger button — stay white, never turn blue */
+#tep-activity-btn,
+[id^="tep-activity-btn"],
+[id^="tep-activity-btn"]:hover,
+[id^="tep-activity-btn"]:focus,
+[id^="tep-activity-btn"]:active,
+[id^="tep-activity-btn"]:focus-visible {
+  background-color: #ffffff !important;
+  color: inherit !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
 /* Search issues input — no blue focus ring */
 .ts-search-input,
 .ts-search-input:focus,
@@ -443,8 +457,25 @@ button[onclick*="switchChartType"]:active {
   line-height: 1 !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  font-size: 0.75rem !important;
+  font-size: 0.875rem !important;
   vertical-align: middle !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Activity option buttons — pure gray hover, never blue */
+.tep-activity-option {
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.tep-activity-option:hover,
+.tep-activity-option:focus,
+.tep-activity-option:focus-visible {
+  background-color: #f3f4f6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 /* === Fix Extra Bottom Borders on Tables === */

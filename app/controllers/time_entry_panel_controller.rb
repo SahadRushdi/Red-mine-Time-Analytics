@@ -142,16 +142,22 @@ class TimeEntryPanelController < ApplicationController
         next unless entry.issue
         key = entry.issue_id
         issue_map[key] ||= {
-          issue:           entry.issue,
-          logged_hours:    0.0,
-          spent_on_dates:  []
+          issue:          entry.issue,
+          logged_hours:   0.0,
+          spent_on_dates: [],
+          last_entry_at:  nil
         }
-        issue_map[key][:logged_hours] += entry.hours
+        issue_map[key][:logged_hours]   += entry.hours
         issue_map[key][:spent_on_dates] |= [entry.spent_on]
+        issue_map[key][:last_entry_at]  = [issue_map[key][:last_entry_at], entry.created_on].compact.max
       end
 
-      # Sort by most recently updated within the period
-      issue_rows = issue_map.values.sort_by { |r| r[:issue].updated_on || Time.at(0) }.reverse
+      # Compute effective "last activity" = max(issue.updated_on, last time entry created_on)
+      # Sort by this descending (most recently active first)
+      issue_rows = issue_map.values.map do |row|
+        effective = [row[:issue].updated_on, row[:last_entry_at]].compact.max || Time.at(0)
+        row.merge(effective_updated: effective)
+      end.sort_by { |r| r[:effective_updated] }.reverse
 
       {
         key:          period_key,
