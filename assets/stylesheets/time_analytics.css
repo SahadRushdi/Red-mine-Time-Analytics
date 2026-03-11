@@ -333,16 +333,12 @@ button[onclick*="switchChartType"]:active {
 
 /* === Inline Time Log Form (My Work Log) === */
 .tep-inline-form {
-  animation: tepSlideDown 0.15s ease-out;
-}
-
-@keyframes tepSlideDown {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  /* no animation */
 }
 
 /* Grouping dropdown - remove Redmine borders */
 .tep-grouping-wrapper #tep-grouping-dropdown button,
+.tep-grouping-wrapper #tep-grouping-dropdown button:hover,
 .tep-grouping-wrapper #tep-grouping-dropdown button:focus,
 .tep-grouping-wrapper #tep-grouping-dropdown button:active {
   border: none !important;
@@ -351,49 +347,104 @@ button[onclick*="switchChartType"]:active {
 }
 
 /* Grouping button hover border fix */
-#tep-grouping-btn:not([style*="background-color: #3b82f6"]):hover {
+#tep-grouping-btn:hover,
+#tep-grouping-btn:focus {
   border-color: #d1d5db !important;
-}
-
-/* Inline form selects and inputs — Flowbite-style, Redmine override */
-.tep-inline-form .tep-field,
-.tep-inline-form select,
-.tep-inline-form input[type="text"],
-.tep-inline-form input[type="date"] {
-  border: 1px solid #d1d5db !important;
   outline: none !important;
   box-shadow: none !important;
+}
+
+/* ── Comprehensive Redmine blue border/outline removal ───────────────────── */
+/* All inline form inputs and dropdowns */
+.tep-inline-form input,
+.tep-inline-form input:focus,
+.tep-inline-form input:hover,
+.tep-inline-form input:active,
+.tep-inline-form select,
+.tep-inline-form select:focus,
+.tep-inline-form select:hover,
+.tep-inline-form select:active,
+.tep-inline-form button,
+.tep-inline-form button:focus,
+.tep-inline-form button:hover,
+.tep-inline-form button:active,
+.tep-issue-dropdown,
+.tep-activity-dropdown,
+.tep-issue-option:focus,
+.tep-activity-option:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tep-inline-form .tep-field,
+.tep-inline-form input[type="text"],
+.tep-inline-form input[type="date"],
+.tep-inline-form input[type="search"] {
+  border: 1px solid #d1d5db !important;
   -webkit-appearance: none !important;
   appearance: none !important;
   background-image: none !important;
 }
 
 .tep-inline-form .tep-field:focus,
-.tep-inline-form select:focus,
 .tep-inline-form input[type="text"]:focus,
 .tep-inline-form input[type="date"]:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
-  outline: none !important;
-}
-
-/* Block Redmine's blue hover border on inline form buttons */
-.tep-cancel-btn,
-.tep-cancel-btn:hover,
-.tep-cancel-btn:focus,
-.tep-btn-cancel,
-.tep-btn-cancel:hover,
-.tep-btn-cancel:focus,
-.tep-btn-save,
-.tep-btn-save:hover,
-.tep-btn-save:focus {
+  border-color: #9ca3af !important;
   outline: none !important;
   box-shadow: none !important;
 }
 
-/* Group header row chevron rotation */
-.rotate-90 {
+/* All tep action buttons — no Redmine hover border */
+.tep-action-btn,
+.tep-action-btn:hover,
+.tep-action-btn:focus,
+.tep-action-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+/* Search issues input — no blue focus ring */
+.ts-search-input,
+.ts-search-input:focus,
+.ts-search-input:hover {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+.ts-search-input:focus {
+  border-color: #9ca3af !important;
+}
+
+/* Group header row chevron rotation — points DOWN when expanded */
+.tep-chevron-open {
   transform: rotate(90deg);
+}
+
+/* Custom issue + activity searchable dropdown panels */
+.tep-issue-dropdown,
+.tep-activity-dropdown {
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06) !important;
+  outline: none !important;
+}
+.tep-issue-option:hover,
+.tep-issue-option:focus,
+.tep-activity-option:hover,
+.tep-activity-option:focus {
+  background-color: #f3f4f6 !important;
+  outline: none !important;
+}
+
+/* Inline form fields — fixed height for single-row alignment */
+.tep-inline-form .tep-field {
+  height: 34px !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.75rem !important;
+  vertical-align: middle !important;
 }
 
 /* === Fix Extra Bottom Borders on Tables === */

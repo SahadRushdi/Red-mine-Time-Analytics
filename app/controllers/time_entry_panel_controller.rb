@@ -127,8 +127,10 @@ class TimeEntryPanelController < ApplicationController
         current = current.next_month
       end
       periods
-    else # daily
-      (from_date..to_date).to_a
+    else # daily — include working days OR days with entries (skip empty non-working days)
+      (from_date..to_date).select do |date|
+        RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) || raw_groups.key?(date)
+      end
     end
 
     all_period_keys.sort.reverse.map do |period_key|
