@@ -286,8 +286,7 @@
                          onclick="selectTepIssue(<%= idx %>, '<%= issue.id %>', this.getAttribute('data-text'))"
                          onkeydown="handleTepIssueOptionKey(event, <%= idx %>, '<%= issue.id %>', this.getAttribute('data-text'))">
                       <span class="font-bold text-blue-600 flex-shrink-0">#<%= issue.id %></span>
-                      <span class="text-gray-700 leading-relaxed"><%= truncate(issue.subject, length: 75) %></span>
-                    </div>
+                      <span class="text-gray-700 leading-relaxed"><%= issue.subject %></span>                    </div>
                   <% end %>
                 </div>
               </div>
@@ -367,7 +366,7 @@
                     <% if @grouping != 'daily' %>
                       <th class="px-4 py-2.5 text-left whitespace-nowrap">Date(s)</th>
                     <% end %>
-                    <th class="px-4 py-2.5 text-left" style="width:45%">Issue</th>
+                    <th class="px-4 py-2.5 text-left" style="width:65%">Issue</th>
                     <th class="px-4 py-2.5 text-left">Project</th>
                     <th class="px-4 py-2.5 text-left">Status</th>
                     <th class="px-4 py-2.5 text-right">Logged</th>
@@ -397,7 +396,7 @@
                                   class: 'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded !text-white !no-underline hover:opacity-80 mr-1',
                                   style: 'background-color: #3b82f6;',
                                   onclick: 'event.stopPropagation();' %>
-                            <%= link_to ": #{h(truncate(issue.subject, length: 60))}".html_safe, issue_path(issue), target: '_blank',
+                            <%= link_to ": #{h(issue.subject)}".html_safe, issue_path(issue), target: '_blank',
                                   class: 'text-sm !text-blue-600 hover:!underline',
                                   onclick: 'event.stopPropagation();' %>
                           </div>
@@ -456,7 +455,7 @@
         <table class="ts-table w-full text-sm text-left">
           <thead>
             <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3" style="width:45%">Issue</th>
+              <th class="px-4 py-3" style="width:65%">Issue</th>
               <th class="px-4 py-3">Project</th>
               <th class="px-4 py-3">Status</th>
               <th class="px-4 py-3">Updated</th>
@@ -510,7 +509,7 @@
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                       </svg>
-                      Log time for #<%= issue.id %> – <%= truncate(issue.subject, length: 50) %>
+                      Log time for #<%= issue.id %> – <%= issue.subject %>
                     </div>
                     <div class="flex items-end gap-3 flex-wrap">
                       <%# Date %>
