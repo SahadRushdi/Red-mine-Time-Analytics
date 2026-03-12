@@ -367,11 +367,9 @@
                     <% if @grouping != 'daily' %>
                       <th class="px-4 py-2.5 text-left whitespace-nowrap">Date(s)</th>
                     <% end %>
-                    <th class="px-4 py-2.5 text-left">Ticket</th>
-                    <th class="px-4 py-2.5 text-left">Issue</th>
+                    <th class="px-4 py-2.5 text-left" style="width:45%">Issue</th>
                     <th class="px-4 py-2.5 text-left">Project</th>
                     <th class="px-4 py-2.5 text-left">Status</th>
-                    <th class="px-4 py-2.5 text-right">Estimate</th>
                     <th class="px-4 py-2.5 text-right">Logged</th>
                     <th class="px-4 py-2.5 text-left">Progress</th>
                     <th class="px-4 py-2.5 text-left whitespace-nowrap">Updated</th>
@@ -381,7 +379,6 @@
                   <% issue_rows.each do |row| %>
                     <% issue     = row[:issue] %>
                     <% logged    = row[:logged_hours] %>
-                    <% estimated = issue.estimated_hours %>
                     <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
                     <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
                     <tr class="border-b border-gray-100 hover:bg-gray-50">
@@ -389,29 +386,26 @@
                         <td class="px-4 py-3 text-gray-400 text-sm whitespace-nowrap"><%= dates_str %></td>
                       <% end %>
                       <td class="px-4 py-3">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-start gap-1.5">
                           <% if issue.priority.try(:position).to_i >= 3 %>
-                            <svg class="w-3.5 h-3.5 flex-shrink-0" style="color:#ef4444;" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style="color:#ef4444;" fill="currentColor" viewBox="0 0 20 20">
                               <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                             </svg>
                           <% end %>
-                          <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'text-sm font-semibold !text-blue-600 hover:!underline', onclick: 'event.stopPropagation();' %>
-                        </div>
-                      </td>
-                      <td class="px-4 py-3">
-                        <div>
-                          <%= link_to truncate(issue.subject, length: 55), issue_path(issue), target: '_blank', class: 'text-sm font-medium !text-blue-600 hover:!underline', onclick: 'event.stopPropagation();' %>
-                          <% if issue.tracker.present? %>
-                            <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
-                          <% end %>
+                          <div>
+                            <%= link_to "#{issue.tracker.name} ##{issue.id}", issue_path(issue), target: '_blank',
+                                  class: 'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded !text-white !no-underline hover:opacity-80 mr-1',
+                                  style: 'background-color: #3b82f6;',
+                                  onclick: 'event.stopPropagation();' %>
+                            <%= link_to ": #{h(truncate(issue.subject, length: 60))}".html_safe, issue_path(issue), target: '_blank',
+                                  class: 'text-sm !text-blue-600 hover:!underline',
+                                  onclick: 'event.stopPropagation();' %>
+                          </div>
                         </div>
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><%= issue.project.name %></td>
                       <td class="px-4 py-3">
                         <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
-                      </td>
-                      <td class="px-4 py-3 text-right text-sm text-gray-500">
-                        <%= estimated ? "#{format_hours(estimated)}h" : '—' %>
                       </td>
                       <td class="px-4 py-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">
                         <%= format_hours(logged) %>h
@@ -462,8 +456,7 @@
         <table class="ts-table w-full text-sm text-left">
           <thead>
             <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3">Ticket</th>
-              <th class="px-4 py-3">Issue</th>
+              <th class="px-4 py-3" style="width:45%">Issue</th>
               <th class="px-4 py-3">Project</th>
               <th class="px-4 py-3">Status</th>
               <th class="px-4 py-3">Updated</th>
@@ -475,25 +468,19 @@
               <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
                 <td class="px-4 py-3">
-                  <div class="flex items-center gap-1.5">
+                  <div class="flex items-start gap-1.5">
                     <% if issue.priority.try(:position).to_i >= 3 %>
-                      <svg class="w-4 h-4 flex-shrink-0" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
+                      <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                       </svg>
-                    <% else %>
-                      <svg class="w-4 h-4 flex-shrink-0" style="color: #3b82f6;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
                     <% end %>
-                    <%= link_to "##{issue.id}", issue_path(issue), target: '_blank', class: 'font-semibold !text-blue-600 hover:!underline transition-colors' %>
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <div>
-                    <span class="font-medium"><%= link_to issue.subject, issue_path(issue), target: '_blank', class: '!text-blue-600 hover:!underline transition-colors' %></span>
-                    <% if issue.tracker.present? %>
-                      <span class="block text-xs text-gray-400 mt-0.5"><%= issue.tracker.name %></span>
-                    <% end %>
+                    <div>
+                      <%= link_to "#{issue.tracker.name} ##{issue.id}", issue_path(issue), target: '_blank',
+                            class: 'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded !text-white !no-underline hover:opacity-80 mr-1 transition-colors',
+                            style: 'background-color: #3b82f6;' %>
+                      <%= link_to ": #{h(issue.subject)}".html_safe, issue_path(issue), target: '_blank',
+                            class: 'text-sm !text-blue-600 hover:!underline transition-colors' %>
+                    </div>
                   </div>
                 </td>
                 <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
@@ -517,7 +504,7 @@
 
               <%# Inline log form for this issue %>
               <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
-                <td colspan="6" class="px-0 py-0">
+                <td colspan="5" class="px-0 py-0">
                   <div class="tep-inline-form bg-blue-50 border-l-4 border-blue-400 px-5 py-3">
                     <div class="flex items-center gap-2 mb-3 text-sm font-medium text-blue-800">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

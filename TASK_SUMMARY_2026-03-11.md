@@ -76,3 +76,32 @@ The popup modal HTML, all its JavaScript functions (`openLogTimeModal`, `closeLo
 
 - Consider adding edit/delete actions for existing time entries inline (right now they are read-only)
 - Add a "log time" summary badge count to the Time Logs tab showing total entries vs entries in period
+
+---
+
+## 5. Updates – 2026-03-12
+
+### Merge Ticket + Issue columns → single Issue column
+
+Both tables (Time Logs tab and Issues Worked On tab) previously had separate `Ticket` and `Issue` columns. These are now merged into a single **Issue** column that renders the combined format Redmine uses by default:
+
+```
+[Tracker #ID]  : Subject text
+```
+
+- The `[Tracker #ID]` part (e.g. `Task #13449`) is a blue pill badge and a link to the issue.
+- The `: Subject text` part is a plain-text link that also navigates to the issue on click.
+- High-priority issues still show the red warning icon to the left.
+
+**Files changed:** `app/views/time_entry_panel/index.html.erb`
+- Removed `<th>Ticket</th>` in both tables; merged into `<th>Issue</th>`
+- Replaced the two separate `<td>` cells with a single combined cell per row
+- Updated `colspan="6"` → `colspan="5"` on the Issues Worked On inline form row to match the new column count
+
+### Remove Estimate column
+
+The `Estimate` column (and `estimated_hours` variable) has been fully removed from the Time Logs tab.
+
+- Removed `<th>Estimate</th>` header
+- Removed `<% estimated = issue.estimated_hours %>` variable
+- Removed the estimate `<td>` cell that rendered `—` or `98:00h`
