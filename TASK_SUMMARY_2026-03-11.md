@@ -105,3 +105,38 @@ The `Estimate` column (and `estimated_hours` variable) has been fully removed fr
 - Removed `<th>Estimate</th>` header
 - Removed `<% estimated = issue.estimated_hours %>` variable
 - Removed the estimate `<td>` cell that rendered `—` or `98:00h`
+
+---
+
+## 6. Updates – 2026-03-12 (expandable entry rows)
+
+### Feature: Click-to-expand individual time entries per issue
+
+Each issue row in the **Time Logs tab** is now expandable. By default rows are collapsed. Clicking any row (or its chevron `›`) reveals a sub-table of the individual time entries logged against that issue in the period.
+
+#### Sub-table columns
+| Date | Activity | Comment | Hours | ✏️ Edit | 🗑 Delete |
+
+- **Edit**: clicking the pencil icon toggles an inline edit form (Activity dropdown, Comment text input, Hours H:MM input). Save submits `PATCH /time_entry_panel/entry/:id`, Cancel reverts.
+- **Delete**: clicking the trash icon shows a `confirm()` dialog, then submits a `DELETE /time_entry_panel/entry/:id` form. Both redirect back to the same page.
+
+#### Files changed
+**`config/routes.rb`**
+- Added `PATCH time_entry_panel/entry/:id → #update_entry`
+- Added `DELETE time_entry_panel/entry/:id → #destroy_entry`
+
+**`app/controllers/time_entry_panel_controller.rb`**
+- `build_grouped_entries`: added `entries: []` to `issue_map[key]`; each `TimeEntry` record is pushed into the array and sorted by `[spent_on, created_on]` in the final row merge
+- Added `update_entry` action (validates ownership, updates hours/activity/comments, redirects back)
+- Added `destroy_entry` action (validates ownership, destroys entry, redirects back)
+- Added `parse_hours(value)` helper converting H:MM or decimal string → Float
+
+**`app/views/time_entry_panel/index.html.erb`**
+- `<thead>`: added empty chevron `<th class="w-8">` before Issue column
+- `issue_rows.each` → `issue_rows.each_with_index` to build unique `entry_uid = "#{idx}-#{row_idx}"`
+- Issue `<tr>`: added `onclick="tepToggleIssueEntries(uid)"`, cursor-pointer; chevron `<td>` with rotating SVG
+- New hidden `<tr id="tep-issue-expand-…">` after each issue row with entries sub-table + display/edit rows
+- JS: `tepToggleIssueEntries`, `tepToggleEditEntry`, `tepDeleteEntry` functions
+
+**`assets/stylesheets/time_analytics.css`**
+- Added `.tep-entry-edit-form` styles for input/select focus states

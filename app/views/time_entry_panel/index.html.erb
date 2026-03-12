@@ -366,6 +366,7 @@
                     <% if @grouping != 'daily' %>
                       <th class="px-4 py-2.5 text-left whitespace-nowrap">Date(s)</th>
                     <% end %>
+                    <th class="w-8 px-2 py-2.5"></th>
                     <th class="px-4 py-2.5 text-left" style="width:65%">Issue</th>
                     <th class="px-4 py-2.5 text-left">Project</th>
                     <th class="px-4 py-2.5 text-left">Status</th>
@@ -375,15 +376,24 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <% issue_rows.each do |row| %>
+                  <% issue_rows.each_with_index do |row, row_idx| %>
                     <% issue     = row[:issue] %>
                     <% logged    = row[:logged_hours] %>
                     <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
                     <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <% entry_uid = "#{idx}-#{row_idx}" %>
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                        onclick="tepToggleIssueEntries('<%= entry_uid %>')">
                       <% if @grouping != 'daily' %>
                         <td class="px-4 py-3 text-gray-400 text-sm whitespace-nowrap"><%= dates_str %></td>
                       <% end %>
+                      <td class="px-2 py-3 w-8 text-center">
+                        <svg id="tep-issue-chevron-<%= entry_uid %>"
+                             class="w-4 h-4 text-gray-400 inline-block transition-transform duration-200"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                      </td>
                       <td class="px-4 py-3">
                         <div class="flex items-start gap-1.5">
                           <% if issue.priority.try(:position).to_i >= 3 %>
@@ -419,6 +429,102 @@
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                         <%= time_ago_in_words(row[:effective_updated] || issue.updated_on) %> ago
+                      </td>
+                    </tr>
+                    <%# ── Expanded entries sub-table ────────────────────────── %>
+                    <tr id="tep-issue-expand-<%= entry_uid %>" class="hidden">
+                      <td colspan="<%= @grouping != 'daily' ? 9 : 8 %>" class="px-0 py-0 bg-slate-50 border-b border-gray-200">
+                        <div class="pl-10 pr-4 py-3 border-l-4 border-blue-300">
+                          <% if row[:entries].any? %>
+                            <table class="w-full">
+                              <tbody>
+                                <% row[:entries].each do |entry| %>
+                                  <%# Display row %>
+                                  <tr id="tep-entry-display-<%= entry.id %>" class="border-b border-gray-100 hover:bg-white transition-colors group">
+                                    <td class="px-3 py-2.5 text-sm text-gray-500 whitespace-nowrap font-medium w-32"><%= entry.spent_on.strftime('%b %-d, %Y') %></td>
+                                    <td class="px-3 py-2.5 w-52 ">
+                                      <span class="inline-flex items-center px-2.5 py-1 rounded text-sm font-medium bg-blue-100 text-blue-700"><%= entry.activity.name %></span>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-sm text-gray-600"><%= entry.comments.present? ? h(entry.comments) : '<span class="italic text-gray-300">—</span>'.html_safe %></td>
+                                    <td class="px-3 py-2.5 text-right text-sm font-semibold text-gray-900 whitespace-nowrap w-16"><%= format_hours(entry.hours) %>h</td>
+                                    <td class="px-3 py-2.5 w-20">
+                                      <div class="flex items-center justify-end gap-1">
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); tepToggleEditEntry(<%= entry.id %>)"
+                                                class="tep-entry-icon-btn p-1 text-blue-500 hover:text-blue-700"
+                                                title="Edit">
+                                          <span class="material-icons" style="font-size:18px;line-height:1;">edit</span>
+                                        </button>
+                                        <button type="button"
+                                                onclick="event.stopPropagation(); tepDeleteEntry(<%= entry.id %>, '<%= tep_entry_destroy_path(entry.id) %>', '<%= form_authenticity_token %>')"
+                                                class="tep-entry-icon-btn p-1 text-red-400 hover:text-red-600"
+                                                title="Delete">
+                                          <span class="material-icons" style="font-size:18px;line-height:1;">delete</span>
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  <%# Edit form row (hidden by default) %>
+                                  <tr id="tep-entry-edit-<%= entry.id %>" class="hidden bg-blue-50 border-b border-blue-100">
+                                    <td colspan="5" class="px-3 py-3">
+                                      <%= form_tag tep_entry_update_path(entry.id), method: :patch,
+                                            class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
+                                            onsubmit: 'event.stopPropagation()' do %>
+                                        <div>
+                                          <p class="text-sm font-medium text-gray-500 mb-1">Date</p>
+                                          <span class="text-sm font-medium text-gray-700"><%= entry.spent_on.strftime('%b %-d, %Y') %></span>
+                                        </div>
+                                        <%# Flowbite-style activity dropdown %>
+                                        <div class="relative flex-shrink-0" id="tep-edit-act-wrapper-<%= entry.id %>">
+                                          <label class="block text-sm font-medium text-gray-500 mb-1">Activity</label>
+                                          <button type="button"
+                                                  onclick="event.stopPropagation(); tepToggleEditActivityDropdown(<%= entry.id %>)"
+                                                  class="tep-field tep-entry-act-trigger flex items-center justify-between gap-2 text-sm px-3 py-2 !border !border-gray-300 !rounded-lg !bg-white w-64 text-left !outline-none !shadow-none !ring-0">
+                                            <span id="tep-edit-act-text-<%= entry.id %>" class="text-gray-700 truncate flex-1"><%= entry.activity.name %></span>
+                                            <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                          </button>
+                                          <input type="hidden" name="activity_id" id="tep-edit-act-val-<%= entry.id %>" value="<%= entry.activity_id %>">
+                                          <div id="tep-edit-act-list-<%= entry.id %>"
+                                               class="hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                                               style="min-width:200px; max-height:220px; top:calc(100% + 2px);">
+                                            <% entry.project.activities.active.sorted.each do |act| %>
+                                              <button type="button"
+                                                      onclick="event.stopPropagation(); tepSetEditActivity(<%= entry.id %>, <%= act.id %>, '<%= j(act.name) %>')"
+                                                      class="tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
+                                                <%= act.name %>
+                                              </button>
+                                            <% end %>
+                                          </div>
+                                        </div>
+                                        <div class="flex-1" style="min-width:160px;">
+                                          <label class="block text-sm font-medium text-gray-500 mb-1">Comment</label>
+                                          <input type="text" name="comments" value="<%= h(entry.comments) %>"
+                                                 class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white" />
+                                        </div>
+                                        <div>
+                                          <label class="block text-sm font-medium text-gray-500 mb-1">Hours</label>
+                                          <input type="text" name="hours" value="<%= format_hours(entry.hours) %>"
+                                                 class="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white"
+                                                 placeholder="H:MM" />
+                                        </div>
+                                        <div class="flex items-end gap-2">
+                                          <button type="submit"
+                                                  class="tep-entry-save-btn px-4 py-2 text-sm font-semibold !text-white rounded-lg !border-0 !outline-none !shadow-none !ring-0"
+                                                  style="background-color:#3b82f6 !important;">Save</button>
+                                          <button type="button"
+                                                  onclick="event.stopPropagation(); tepToggleEditEntry(<%= entry.id %>)"
+                                                  class="tep-entry-cancel-btn px-4 py-2 text-sm font-medium !text-gray-600 !bg-white rounded-lg">Cancel</button>
+                                        </div>
+                                      <% end %>
+                                    </td>
+                                  </tr>
+                                <% end %>
+                              </tbody>
+                            </table>
+                          <% end %>
+                        </div>
                       </td>
                     </tr>
                   <% end %>
@@ -659,6 +765,14 @@
     if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
       dropdown.classList.add('hidden');
     }
+    // Close any open edit-form activity dropdowns
+    document.querySelectorAll('[id^="tep-edit-act-list-"]').forEach(function(list) {
+      if (!list.classList.contains('hidden')) {
+        var eid = list.id.replace('tep-edit-act-list-', '');
+        var wrapper = document.getElementById('tep-edit-act-wrapper-' + eid);
+        if (wrapper && !wrapper.contains(e.target)) list.classList.add('hidden');
+      }
+    });
   });
 
   // ── Group expand / collapse ──────────────────────────────────────────────
@@ -1067,5 +1181,58 @@
     if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
     if (h === 0 && m === 0) return null;
     return h + (m / 60.0);
+  }
+
+  // ── Edit-form activity dropdown ──────────────────────────────────────────────
+  function tepToggleEditActivityDropdown(entryId) {
+    document.querySelectorAll('[id^="tep-edit-act-list-"]').forEach(function(l) {
+      if (l.id !== 'tep-edit-act-list-' + entryId) l.classList.add('hidden');
+    });
+    var list = document.getElementById('tep-edit-act-list-' + entryId);
+    if (list) list.classList.toggle('hidden');
+  }
+
+  function tepSetEditActivity(entryId, activityId, activityName) {
+    var hidden = document.getElementById('tep-edit-act-val-'  + entryId);
+    var text   = document.getElementById('tep-edit-act-text-' + entryId);
+    if (hidden) hidden.value = activityId;
+    if (text)   text.textContent = activityName;
+    var list = document.getElementById('tep-edit-act-list-' + entryId);
+    if (list) list.classList.add('hidden');
+  }
+
+  // ── Issue entries: expand / collapse ────────────────────────────────────────
+  function tepToggleIssueEntries(uid) {    var expand  = document.getElementById('tep-issue-expand-' + uid);
+    var chevron = document.getElementById('tep-issue-chevron-' + uid);
+    if (!expand) return;
+    var isHidden = expand.classList.contains('hidden');
+    expand.classList.toggle('hidden');
+    if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : '';
+  }
+
+  // ── Entry inline edit toggle ─────────────────────────────────────────────────
+  function tepToggleEditEntry(entryId) {
+    var display = document.getElementById('tep-entry-display-' + entryId);
+    var edit    = document.getElementById('tep-entry-edit-'    + entryId);
+    if (!display || !edit) return;
+    display.classList.toggle('hidden');
+    edit.classList.toggle('hidden');
+    if (!edit.classList.contains('hidden')) {
+      edit.querySelector('input[name="hours"]').focus();
+    }
+  }
+
+  // ── Entry delete ─────────────────────────────────────────────────────────────
+  function tepDeleteEntry(entryId, url, token) {    if (!confirm('Delete this time entry? This cannot be undone.')) return;
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    [['_method', 'DELETE'], ['authenticity_token', token]].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden'; input.name = pair[0]; input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
   }
 </script>

@@ -89,6 +89,24 @@ class TimeEntryPanelController < ApplicationController
     render json: { success: false, error: 'Issue not found' }, status: :not_found
   end
 
+  def update_entry
+    entry = TimeEntry.find_by(id: params[:id], user_id: User.current.id)
+    if entry
+      entry.update(
+        hours:       parse_hours(params[:hours]),
+        activity_id: params[:activity_id],
+        comments:    params[:comments]
+      )
+    end
+    redirect_back fallback_location: time_entry_panel_path
+  end
+
+  def destroy_entry
+    entry = TimeEntry.find_by(id: params[:id], user_id: User.current.id)
+    entry&.destroy
+    redirect_back fallback_location: time_entry_panel_path
+  end
+
   private
 
   def set_grouping
@@ -145,18 +163,20 @@ class TimeEntryPanelController < ApplicationController
           issue:          entry.issue,
           logged_hours:   0.0,
           spent_on_dates: [],
-          last_entry_at:  nil
+          last_entry_at:  nil,
+          entries:        []
         }
         issue_map[key][:logged_hours]   += entry.hours
         issue_map[key][:spent_on_dates] |= [entry.spent_on]
         issue_map[key][:last_entry_at]  = [issue_map[key][:last_entry_at], entry.created_on].compact.max
+        issue_map[key][:entries]        << entry
       end
 
       # Compute effective "last activity" = max(issue.updated_on, last time entry created_on)
       # Sort by this descending (most recently active first)
       issue_rows = issue_map.values.map do |row|
         effective = [row[:issue].updated_on, row[:last_entry_at]].compact.max || Time.at(0)
-        row.merge(effective_updated: effective)
+        row.merge(effective_updated: effective, entries: row[:entries].sort_by { |e| [e.spent_on, e.created_on] })
       end.sort_by { |r| r[:effective_updated] }.reverse
 
       {
@@ -199,5 +219,16 @@ class TimeEntryPanelController < ApplicationController
     # Handle invalid date format
     @from = Date.current - 6.days
     @to = Date.current
+  end
+
+  def parse_hours(value)
+    return 0.0 if value.blank?
+    str = value.to_s.strip
+    if str.include?(':')
+      h, m = str.split(':').map(&:to_i)
+      h + m / 60.0
+    else
+      str.to_f
+    end
   end
 end

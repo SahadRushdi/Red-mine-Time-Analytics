@@ -462,6 +462,18 @@ button[onclick*="switchChartType"]:active {
   border-radius: 0.5rem !important;
 }
 
+/* Entry edit form fields — same height/radius as log-time inline form */
+.tep-entry-edit-form .tep-field,
+.tep-entry-edit-form input[type="text"] {
+  height: 34px !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.875rem !important;
+  vertical-align: middle !important;
+  border-radius: 0.5rem !important;
+}
+
 /* Activity option buttons — pure gray hover, never blue */
 .tep-activity-option {
   background-color: transparent !important;
@@ -720,4 +732,118 @@ tbody tr:last-child {
   #chart-container {
     height: auto !important;
   }
+}
+/* === Entry Sub-Table (Time Logs expand rows) === */
+.tep-entry-edit-form input,
+.tep-entry-edit-form input:focus,
+.tep-entry-edit-form select,
+.tep-entry-edit-form select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.tep-entry-edit-form input:focus,
+.tep-entry-edit-form select:focus {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2) !important;
+}
+
+/* === Entry sub-table: override Redmine button styles === */
+
+/* Edit / Delete icon buttons — no border, no bg, no blue ring */
+.tep-entry-icon-btn,
+.tep-entry-icon-btn:hover,
+.tep-entry-icon-btn:focus,
+.tep-entry-icon-btn:focus-visible,
+.tep-entry-icon-btn:active {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0.25rem !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+/* Prevent Redmine's button:hover{color:white} from overriding icon colors */
+.tep-entry-icon-btn.text-blue-500,
+.tep-entry-icon-btn.text-blue-500:focus,
+.tep-entry-icon-btn.text-blue-500:focus-visible,
+.tep-entry-icon-btn.text-blue-500:active {
+  color: #3b82f6 !important;
+}
+.tep-entry-icon-btn.text-blue-500:hover {
+  color: #1d4ed8 !important;
+}
+.tep-entry-icon-btn.text-red-400,
+.tep-entry-icon-btn.text-red-400:focus,
+.tep-entry-icon-btn.text-red-400:focus-visible,
+.tep-entry-icon-btn.text-red-400:active {
+  color: #f87171 !important;
+}
+.tep-entry-icon-btn.text-red-400:hover {
+  color: #dc2626 !important;
+}
+
+/* Save button — no Redmine border/ring/animation */
+.tep-entry-save-btn,
+.tep-entry-save-btn:hover,
+.tep-entry-save-btn:focus,
+.tep-entry-save-btn:focus-visible,
+.tep-entry-save-btn:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  color: #ffffff !important;
+}
+
+/* Cancel button — keep gray text + white bg + gray border on all states */
+.tep-entry-cancel-btn,
+.tep-entry-cancel-btn:hover,
+.tep-entry-cancel-btn:focus,
+.tep-entry-cancel-btn:focus-visible,
+.tep-entry-cancel-btn:active {
+  color: #4b5563 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+.tep-entry-cancel-btn:hover {
+  color: #4b5563 !important;
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+/* Activity dropdown trigger button — no Redmine border/ring */
+.tep-entry-act-trigger,
+.tep-entry-act-trigger:hover,
+.tep-entry-act-trigger:focus,
+.tep-entry-act-trigger:focus-visible,
+.tep-entry-act-trigger:active {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* Activity option buttons in dropdown — no Redmine borders between items */
+.tep-entry-act-option,
+.tep-entry-act-option:hover,
+.tep-entry-act-option:focus,
+.tep-entry-act-option:focus-visible,
+.tep-entry-act-option:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  background-color: transparent !important;
+}
+.tep-entry-act-option:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }

@@ -8,6 +8,8 @@ RedmineApp::Application.routes.draw do
   get 'time_entry_panel', to: 'time_entry_panel#index', as: :time_entry_panel
   get 'time_entry_panel/activities/:issue_id', to: 'time_entry_panel#get_activities', as: :time_entry_panel_activities
   post 'time_entry_panel/create', to: 'time_entry_panel#create_time_entry', as: :create_time_entry_panel
+  patch 'time_entry_panel/entry/:id', to: 'time_entry_panel#update_entry', as: :tep_entry_update
+  delete 'time_entry_panel/entry/:id', to: 'time_entry_panel#destroy_entry', as: :tep_entry_destroy
   
   resources :custom_holidays
 end
