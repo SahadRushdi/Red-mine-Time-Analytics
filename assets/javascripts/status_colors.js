@@ -33,10 +33,10 @@
     },
 
     /**
-     * Applies automatic coloring to all status badges on the page.
+     * Applies automatic coloring to all status and tracker badges on the page.
      */
     apply: function() {
-      const badges = document.querySelectorAll('.ts-status-badge');
+      const badges = document.querySelectorAll('.ts-status-badge, .ts-tracker-badge');
       badges.forEach(badge => {
         const text = badge.textContent.trim();
         if (text) {

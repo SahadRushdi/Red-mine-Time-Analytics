@@ -229,7 +229,7 @@
           end
 
           has_entries    = group[:entry_count] > 0
-          auto_expand    = has_entries
+          auto_expand    = false
         %>
 
         <%# Group header row %>
@@ -430,12 +430,12 @@
                             </svg>
                           <% end %>
                           <div>
-                            <%= link_to "#{issue.tracker.name} ##{issue.id}", issue_path(issue), target: '_blank',
-                                  class: 'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded !text-white !no-underline hover:opacity-80 mr-1',
-                                  style: 'background-color: #3b82f6;',
+                            <span class="ts-tracker-badge"><%= issue.tracker.name %></span>
+                            <%= link_to "##{issue.id}", issue_path(issue), target: '_blank',
+                                  class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1',
                                   onclick: 'event.stopPropagation();' %>
                             <%= link_to ": #{h(issue.subject)}".html_safe, issue_path(issue), target: '_blank',
-                                  class: 'text-sm !text-blue-600 hover:!underline',
+                                  class: 'text-sm !text-black hover:!text-blue-600 hover:!underline',
                                   onclick: 'event.stopPropagation();' %>
                           </div>
                         </div>
@@ -608,11 +608,11 @@
                       </svg>
                     <% end %>
                     <div>
-                      <%= link_to "#{issue.tracker.name} ##{issue.id}", issue_path(issue), target: '_blank',
-                            class: 'inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded !text-white !no-underline hover:opacity-80 mr-1 transition-colors',
-                            style: 'background-color: #3b82f6;' %>
+                      <span class="ts-tracker-badge"><%= issue.tracker.name %></span>
+                      <%= link_to "##{issue.id}", issue_path(issue), target: '_blank',
+                            class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors' %>
                       <%= link_to ": #{h(issue.subject)}".html_safe, issue_path(issue), target: '_blank',
-                            class: 'text-sm !text-blue-600 hover:!underline transition-colors' %>
+                            class: 'text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                     </div>
                   </div>
                 </td>
