@@ -620,6 +620,10 @@ tbody tr:last-child {
   border-left: none !important;
   border-right: none !important;
 }
+.ts-table th.ts-logged-col,
+.ts-table td.ts-logged-col {
+  padding-right: 1.75rem !important;
+}
 .ts-table tbody tr.ts-issue-row {
   border-bottom: 1px solid #f3f4f6 !important;
 }
