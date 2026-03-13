@@ -1059,26 +1059,37 @@ function initChart() {
     
     // Filter out zero-value items from tooltip (Chart.js v2)
     config.options.tooltips.filter = function(tooltipItem, data) {
-      var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+      if (!tooltipItem || !data || !data.datasets) return false;
+      var dataset = data.datasets[tooltipItem.datasetIndex];
+      if (!dataset || !dataset.data) return false;
+      var value = dataset.data[tooltipItem.index];
       return value !== 0 && value !== '0.00';
     };
     
     // Custom title callback for weekly format
     config.options.tooltips.callbacks.title = function(tooltipItems, data) {
-      if (tooltipItems && tooltipItems.length > 0) {
-        var index = tooltipItems[0].index;
-        var dataset = data.datasets[0];
-        // Use custom tooltip labels if available (for weekly format)
-        if (dataset.tooltipLabels && dataset.tooltipLabels[index]) {
-          return dataset.tooltipLabels[index];
-        }
+      if (!tooltipItems || tooltipItems.length === 0 || !tooltipItems[0]) return '';
+      var index = tooltipItems[0].index;
+      if (index === undefined || index === null) return '';
+      
+      var dataset = data && data.datasets ? data.datasets[0] : null;
+      // Use custom tooltip labels if available (for weekly format)
+      if (dataset && dataset.tooltipLabels && dataset.tooltipLabels[index]) {
+        return dataset.tooltipLabels[index];
       }
-      return data.labels[tooltipItems[0].index];
+      
+      if (data && data.labels && data.labels[index] !== undefined) {
+        return data.labels[index];
+      }
+      return '';
     };
     
     // Custom label callback for formatted hours
     config.options.tooltips.callbacks.label = function(tooltipItem, data) {
+      if (!tooltipItem || !data || !data.datasets) return '';
       var dataset = data.datasets[tooltipItem.datasetIndex];
+      if (!dataset) return '';
+      
       var label = dataset.label || '';
       
       // Use formatted hours if available

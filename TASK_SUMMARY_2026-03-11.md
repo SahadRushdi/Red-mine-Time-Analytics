@@ -140,3 +140,35 @@ Each issue row in the **Time Logs tab** is now expandable. By default rows are c
 
 **`assets/stylesheets/time_analytics.css`**
 - Added `.tep-entry-edit-form` styles for input/select focus states
+
+---
+
+## 7. Updates – 2026-03-13 (My Time tooltip crash fix)
+
+### Overview
+
+Fixed a JavaScript runtime crash on the **My Time** chart tooltip after navigating from **Log time** back to **My Time**.  
+The crash occurred when tooltip callbacks assumed `tooltipItems[0]` and dataset payloads were always present.
+
+### Code Changes
+
+**`app/views/time_analytics/individual_dashboard.html.erb`**
+
+- Hardened `config.options.tooltips.filter` with guards for missing `tooltipItem`, missing `data.datasets`, and missing dataset `data`.
+- Hardened `config.options.tooltips.callbacks.title`:
+  - Returns `''` when `tooltipItems` is empty or index is unavailable.
+  - Safely resolves weekly `tooltipLabels` only when dataset exists.
+  - Safely falls back to `data.labels[index]` only when present.
+- Hardened `config.options.tooltips.callbacks.label` with early guards for missing tooltip/data/dataset.
+
+### Verification Notes
+
+- Standalone test executed successfully:
+  - `ruby test/test_working_days.rb` ✅
+- Tooltip callback now returns safe fallback values instead of throwing when hover context is incomplete.
+
+### Next Steps
+
+- Manually verify in Redmine UI:
+  - Go to **Log time** page, return to **My Time**, hover chart points/bars.
+  - Confirm no tooltip-related console errors (`index`/`length`) are emitted.
