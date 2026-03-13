@@ -275,16 +275,45 @@ button:active,
 /* Remove borders from view mode tab buttons */
 button[onclick*="toggleViewMode"],
 button[onclick*="toggleViewMode"]:focus,
+button[onclick*="toggleViewMode"]:focus-visible,
 button[onclick*="toggleViewMode"]:active {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
 }
 
-/* Prevent hover state on active tabs */
-button[onclick*="toggleViewMode"].active:hover {
+button[onclick*="toggleViewMode"]:focus,
+button[onclick*="toggleViewMode"]:focus-visible,
+button[onclick*="toggleViewMode"]:active {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
+/* Visible selected state for Issue/Activity/Project tabs */
+button[onclick*="toggleViewMode"].ta-view-tab-active,
+button[onclick*="toggleViewMode"].ta-view-tab-active:hover,
+button[onclick*="toggleViewMode"].ta-view-tab-active:focus,
+button[onclick*="toggleViewMode"].ta-view-tab-active:focus-visible,
+button[onclick*="toggleViewMode"].ta-view-tab-active:active {
   background-color: rgb(243 244 246) !important;
   color: rgb(37 99 235) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Prevent black pressed/focus border on Detailed/Summary toggle buttons */
+button[onclick*="showDetailedView"],
+button[onclick*="showSummaryView"],
+button[onclick*="showDetailedView"]:focus,
+button[onclick*="showSummaryView"]:focus,
+button[onclick*="showDetailedView"]:focus-visible,
+button[onclick*="showSummaryView"]:focus-visible,
+button[onclick*="showDetailedView"]:active,
+button[onclick*="showSummaryView"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
 }
 
 /* Remove borders from grouping dropdown items */
@@ -875,4 +904,3 @@ tbody tr:last-child {
   text-transform: uppercase !important;
   letter-spacing: 0.025em !important;
 }
-
