@@ -712,6 +712,18 @@ tbody tr:last-child {
 
 /* === Responsive Design === */
 @media (max-width: 768px) {
+  .ts-summary-cards-row {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 12px !important;
+  }
+
+  .ts-summary-cards-row > .ts-summary-card {
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
   .analytics-section {
     flex-direction: column;
   }
@@ -863,5 +875,4 @@ tbody tr:last-child {
   text-transform: uppercase !important;
   letter-spacing: 0.025em !important;
 }
-
 

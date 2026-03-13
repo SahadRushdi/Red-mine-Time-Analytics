@@ -172,3 +172,30 @@ The crash occurred when tooltip callbacks assumed `tooltipItems[0]` and dataset 
 - Manually verify in Redmine UI:
   - Go to **Log time** page, return to **My Time**, hover chart points/bars.
   - Confirm no tooltip-related console errors (`index`/`length`) are emitted.
+
+---
+
+## 8. Updates – 2026-03-13 (My Work Log mobile summary cards)
+
+### Overview
+
+Fixed the **My Work Log** summary cards in mobile view so they no longer shrink/collapse into narrow columns.  
+Cards now stack vertically (one per row) on small screens, matching the responsive behavior expected from the My Time page.
+
+### Code Changes
+
+**`assets/stylesheets/time_analytics.css`**
+
+- Added mobile overrides inside `@media (max-width: 768px)`:
+  - `.ts-summary-cards-row` now uses `flex-direction: column` with consistent spacing.
+  - `.ts-summary-cards-row > .ts-summary-card` now forces full width (`width/min-width: 100%`).
+
+### Verification Notes
+
+- Standalone plugin test still passes:
+  - `ruby test/test_working_days.rb` ✅
+- CSS diff confirms only responsive summary-card behavior was changed.
+
+### Next Steps
+
+- Quick browser check on iPhone SE / narrow viewport to confirm cards render as 4 full-width stacked cards.
