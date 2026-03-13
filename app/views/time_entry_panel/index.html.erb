@@ -442,7 +442,7 @@
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><%= issue.project.name %></td>
                       <td class="px-4 py-3">
-                        <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
+                        <span class="ts-status-badge"><%= issue.status.name %></span>
                       </td>
                       <td class="px-4 py-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap ts-logged-col">
                         <%= format_hours(logged) %>h
@@ -618,7 +618,7 @@
                 </td>
                 <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
                 <td class="px-4 py-3">
-                  <span class="ts-status-badge" style="<%= status_badge_style(issue.status) %>"><%= issue.status.name %></span>
+                  <span class="ts-status-badge"><%= issue.status.name %></span>
                 </td>
                 <td class="px-4 py-3 text-gray-500 text-sm"><%= time_ago_in_words(@issue_last_activity[issue.id] || issue.updated_on) %> ago</td>
                 <td class="px-4 py-3 text-center">
