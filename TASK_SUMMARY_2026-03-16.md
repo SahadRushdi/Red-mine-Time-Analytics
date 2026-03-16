@@ -30,6 +30,11 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
     - Tracker badge (`ts-tracker-badge`) with status color script support.
     - Bold black Issue ID link.
     - Black subject link (non-bold) with blue hover state.
+- Flowbite delete confirmation modal migration (My Work Log):
+  - Replaced browser-native `confirm()` deletion prompt in `app/views/time_entry_panel/index.html.erb` with a Flowbite-style default delete confirmation modal (`deleteModal`).
+  - Added modal open/close/confirm handlers (`tepOpenDeleteModal`, `tepCloseDeleteModal`, `tepConfirmDelete`) and moved delete submission to modal confirm action.
+  - Added fallback modal opening logic in case Flowbite auto-toggle does not initialize.
+  - Added Redmine override-safe modal button styles in `assets/stylesheets/time_analytics.css` to prevent inherited blue borders/outlines on modal controls.
 
 # Verification Notes
 - Ran Tailwind build successfully:
@@ -44,6 +49,9 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
   - `npm run build` completed successfully.
   - `ruby test/test_working_days.rb` completed with exit code `0`.
 - Issue summary style verification: `ruby test/test_working_days.rb` completed with exit code `0`.
+- Delete modal verification:
+  - `npm run build` completed successfully.
+  - `ruby test/test_working_days.rb` completed with exit code `0`.
 
 # Next Steps
 - Validate the My Time page in Redmine UI for spacing and icon feel across filters (`last week`, `this week`, `custom`) and groupings (`daily`, `weekly`, `monthly`).

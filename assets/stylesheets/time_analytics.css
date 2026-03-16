@@ -904,3 +904,40 @@ tbody tr:last-child {
   text-transform: uppercase !important;
   letter-spacing: 0.025em !important;
 }
+
+/* === Flowbite delete confirmation modal (My Work Log) === */
+#deleteModal button,
+#deleteModal button:hover,
+#deleteModal button:focus,
+#deleteModal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#deleteModal .tep-delete-close {
+  border: none !important;
+}
+
+#deleteModal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#deleteModal .tep-delete-cancel,
+#deleteModal .tep-delete-cancel:hover,
+#deleteModal .tep-delete-cancel:focus,
+#deleteModal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#deleteModal .tep-delete-confirm,
+#deleteModal .tep-delete-confirm:hover,
+#deleteModal .tep-delete-confirm:focus,
+#deleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
