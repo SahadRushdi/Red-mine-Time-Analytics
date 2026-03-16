@@ -25,6 +25,11 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
   - Removed table header rows for both Logged and Unlogged tabs in `app/views/time_entry_panel/index.html.erb`.
 - Expanded date-section indentation fix:
   - Updated `app/views/time_entry_panel/index.html.erb` so expanded issue rows are wrapped with a left blue guide border and left padding (`border-l-4 border-blue-300 pl-4`) to align issue content with the date-section guide line.
+- My Time Issue summary style parity update:
+  - Updated `app/views/time_analytics/individual_dashboard.html.erb` (Issue tab → Summary view) to render issue rows using the same visual pattern as My Work Log:
+    - Tracker badge (`ts-tracker-badge`) with status color script support.
+    - Bold black Issue ID link.
+    - Black subject link (non-bold) with blue hover state.
 
 # Verification Notes
 - Ran Tailwind build successfully:
@@ -38,6 +43,7 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
 - Indentation fix verification:
   - `npm run build` completed successfully.
   - `ruby test/test_working_days.rb` completed with exit code `0`.
+- Issue summary style verification: `ruby test/test_working_days.rb` completed with exit code `0`.
 
 # Next Steps
 - Validate the My Time page in Redmine UI for spacing and icon feel across filters (`last week`, `this week`, `custom`) and groupings (`daily`, `weekly`, `monthly`).

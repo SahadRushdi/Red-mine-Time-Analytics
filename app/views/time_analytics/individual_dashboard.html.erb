@@ -814,7 +814,11 @@ function switchChartType(chartType) {
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
                       <% if issue_info[:issue] %>
-                        <%= link_to issue_info[:display], issue_path(issue_info[:issue]), target: "_blank", class: "text-blue-600 hover:underline" %>
+                        <span class="ts-tracker-badge"><%= issue_info[:issue].tracker.name %></span>
+                        <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: '_blank',
+                              class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors' %>
+                        <%= link_to ": #{h(issue_info[:issue].subject)}".html_safe, issue_path(issue_info[:issue]), target: '_blank',
+                              class: 'text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                       <% else %>
                         <%= issue_info[:display] %>
                       <% end %>
