@@ -179,37 +179,6 @@
     </div>
 
     <% if @grouped_entries.any? %>
-      <div class="ts-common-header-wrapper">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm ts-table">
-            <colgroup>
-              <% if show_dates_column %><col style="width: 148px;"><% end %>
-              <col style="width: 32px;">
-              <col style="width: 55%;">
-              <col style="width: 150px;">
-              <col style="width: 130px;">
-              <col style="width: 96px;">
-              <col style="width: 130px;">
-              <col style="width: 130px;">
-            </colgroup>
-            <thead>
-              <tr class="text-xs font-medium text-gray-400 uppercase bg-gray-50 border-b border-gray-200">
-                <% if show_dates_column %>
-                  <th class="px-4 py-2.5 text-left whitespace-nowrap">Date(s)</th>
-                <% end %>
-                <th class="w-8 px-2 py-2.5"></th>
-                <th class="px-4 py-2.5 text-left">Issue</th>
-                <th class="px-4 py-2.5 text-left">Project</th>
-                <th class="px-4 py-2.5 text-left">Status</th>
-                <th class="px-4 py-2.5 text-right ts-logged-col">Logged</th>
-                <th class="px-4 py-2.5 text-left">Progress</th>
-                <th class="px-4 py-2.5 text-left whitespace-nowrap">Updated</th>
-              </tr>
-            </thead>
-          </table>
-        </div>
-      </div>
-
       <% @grouped_entries.each_with_index do |group, idx| %>
         <%
           period_key = group[:key]
@@ -587,15 +556,6 @@
     <% if @issues_without_logs.any? %>
       <div class="overflow-x-auto">
         <table class="ts-table w-full text-sm text-left">
-          <thead>
-            <tr class="text-xs font-medium text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-              <th class="px-4 py-3" style="width:65%">Issue</th>
-              <th class="px-4 py-3">Project</th>
-              <th class="px-4 py-3">Status</th>
-              <th class="px-4 py-3">Updated</th>
-              <th class="px-4 py-3 text-center">Action</th>
-            </tr>
-          </thead>
           <tbody>
             <% @issues_without_logs.each do |issue| %>
               <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"

@@ -20,6 +20,9 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
 - Active Days denominator fix:
   - Updated `app/controllers/time_analytics_controller.rb` so `@active_days_count` now uses working days for the selected range (`calculate_working_days_count`), matching the Daily Average denominator.
   - Updated `app/views/time_analytics/individual_dashboard.html.erb` summary view rows to compute `avg/active day` using `@active_days_count` instead of calendar days (`@to - @from + 1`).
+- Summary/detail and table-header cleanup:
+  - Removed the `minutes · avg/active day` subtext rows from all My Time summary views in `app/views/time_analytics/individual_dashboard.html.erb`.
+  - Removed table header rows for both Logged and Unlogged tabs in `app/views/time_entry_panel/index.html.erb`.
 
 # Verification Notes
 - Ran Tailwind build successfully:
@@ -29,6 +32,7 @@ Updated the **My Time** summary cards to match the visual style and behavior of 
 - Result: build/test commands completed with exit code `0`.
 - Follow-up verification: `ruby test/test_working_days.rb` completed with exit code `0`.
 - Active Days fix verification: `ruby test/test_working_days.rb` completed with exit code `0`.
+- UI cleanup verification: `ruby test/test_working_days.rb` completed with exit code `0`.
 
 # Next Steps
 - Validate the My Time page in Redmine UI for spacing and icon feel across filters (`last week`, `this week`, `custom`) and groupings (`daily`, `weekly`, `monthly`).
