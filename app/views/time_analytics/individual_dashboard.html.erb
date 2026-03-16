@@ -174,16 +174,6 @@
   });
 </script>
 
-<%# Modern Status Indicator %>
-<% 
-  target_hours = 40.0  # Weekly target
-  hours_logged = @total_hours.to_f
-  percentage_complete = target_hours > 0 ? (hours_logged / target_hours * 100).round : 0
-  
-  # Calculate comparison with last period
-  hours_vs_last = hours_logged * 0.15  # Simulated 15% increase
-%>
-
 <div class="mb-4 animate-fade-in text-right">
   <div class="text-base text-gray-600">
     <span class="font-medium">Last entry:</span> 
@@ -202,124 +192,55 @@
   </div>
 </div>
 
-<%# Modern Metrics Grid - 5 Cards %>
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-  <%# Total Hours Card with Progress Bar %>
-  <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+<%# My Time Summary Cards (aligned with My Work Log style) %>
+<div class="ts-summary-cards-row mb-6">
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
+      <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">Total Hours</p>
     </div>
-    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@total_hours) %></p>
-    <% if hours_vs_last > 0 %>
-      <p class="text-sm text-green-600 font-semibold">↑ <%= format_hours(hours_vs_last) %> vs last week</p>
-    <% end %>
-    <div class="mt-2 text-sm text-gray-600">Weekly target</div>
-    <div class="flex items-center gap-2 mt-1">
-      <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-full rounded-full transition-all duration-500" style="width: <%= [percentage_complete, 100].min %>%; background-color: #3b82f6 !important;"></div>
-      </div>
-      <span class="text-sm font-semibold text-gray-700"><%= percentage_complete %>%</span>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Total Hours</p>
+      <p class="text-2xl font-bold text-gray-900"><%= format_hours(@total_hours) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
     </div>
   </div>
 
-  <%# Daily/Weekly/Monthly Average Card %>
-  <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #eef2ff;">
+      <svg class="w-6 h-6" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
       </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">
-        <%= @grouping == 'daily' ? 'Daily Average' : (@grouping == 'weekly' ? 'Weekly Average' : 'Monthly Average') %>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Issues Worked</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @issues_worked_count %> <span class="text-sm font-normal text-gray-500">issues</span></p>
+    </div>
+  </div>
+
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
+      <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l6-6 4 4 8-8M21 10V4h-6"></path>
+      </svg>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-500">
+        <%= @grouping == 'daily' ? 'Daily Average' : (@grouping == 'weekly' ? 'Weekly Average' : (@grouping == 'monthly' ? 'Monthly Average' : 'Yearly Average')) %>
       </p>
-    </div>
-    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@avg_hours_per_period) %></p>
-    <% avg_vs_last = @avg_hours_per_period.to_f * 0.1 %>
-    <% if avg_vs_last > 0 %>
-      <p class="text-sm text-green-600 font-semibold">↑ <%= format_hours(avg_vs_last) %> vs last week</p>
-    <% end %>
-    <div class="text-sm text-gray-600 mt-2">Target: <%= format_hours(8.0) %>/day</div>
-  </div>
-
-  <%# Best Day/Week/Month Card %>
-  <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-      </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">
-        <%= @grouping == 'daily' ? 'Best Day' : (@grouping == 'weekly' ? 'Best Week' : 'Best Month') %>
-      </p>
-    </div>
-    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@max_period_hours) %></p>
-    <p class="text-sm text-gray-600">
-      <% if @max_period_key %>
-        <% if @grouping == 'daily' %>
-          <%= @max_period_key.strftime('%b %d, %Y • %a') %>
-        <% elsif @grouping == 'weekly' %>
-          <%= "#{@max_period_key.year}-#{@max_period_key.cweek}" %>
-        <% elsif @grouping == 'monthly' %>
-          <%= @max_period_key.strftime('%B %Y') %>
-        <% else %>
-          <%= @max_period_key.strftime('%Y') %>
-        <% end %>
-      <% else %>
-        N/A
-      <% end %>
-    </p>
-    <div class="text-sm text-gray-600 mt-2">
-      <%= @max_period_hours.to_f >= 8.0 ? 'Full day logged' : 'Partial day' %>
+      <p class="text-2xl font-bold text-gray-900"><%= format_hours(@avg_hours_per_period) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
     </div>
   </div>
 
-  <%# Lightest Day/Week/Month Card %>
-  <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
+  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
+    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fef3c7;">
+      <svg class="w-6 h-6" style="color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M6 11h12M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
       </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">
-        <%= @grouping == 'daily' ? 'Lightest Day' : (@grouping == 'weekly' ? 'Lightest Week' : 'Lightest Month') %>
-      </p>
     </div>
-    <p class="text-4xl font-bold text-gray-900 mb-1"><%= format_hours(@min_period_hours) %></p>
-    <p class="text-sm text-gray-600">
-      <% if @min_period_key %>
-        <% if @grouping == 'daily' %>
-          <%= @min_period_key.strftime('%b %d, %Y • %a') %>
-        <% elsif @grouping == 'weekly' %>
-          <%= "#{@min_period_key.year}-#{@min_period_key.cweek}" %>
-        <% elsif @grouping == 'monthly' %>
-          <%= @min_period_key.strftime('%B %Y') %>
-        <% else %>
-          <%= @min_period_key.strftime('%Y') %>
-        <% end %>
-      <% else %>
-        N/A
-      <% end %>
-    </p>
-    <div class="text-sm text-gray-600 mt-2">
-      <%= @min_period_hours.to_f < 1.0 ? 'Low activity' : 'Moderate activity' %>
-    </div>
-  </div>
-
-  <%# Active Days Card %>
-  <div class="bg-white rounded-lg shadow-md p-5 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
-    <div class="flex items-center gap-2 mb-1">
-      <svg class="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-      </svg>
-      <p class="text-sm font-semibold text-gray-500 uppercase">Active Days</p>
-    </div>
-    <p class="text-4xl font-bold text-gray-900 mb-1">
-      <%= @period_count %><span class="text-xl">/5</span>
-    </p>
-    <% zero_days = [5 - @period_count, 0].max %>
-    <p class="text-sm text-gray-600"><%= zero_days > 0 ? "#{zero_days} zero-day#{zero_days > 1 ? 's' : ''}" : 'All days active' %></p>
-    <div class="text-sm text-gray-600 mt-2">
-      <%= zero_days > 0 ? (@from ? (@from + 4.days).strftime('%b %d') : 'Last day') + ' no entries' : 'Perfect week' %>
+    <div>
+      <p class="text-sm font-medium text-gray-500">Active Days</p>
+      <p class="text-2xl font-bold text-gray-900"><%= @active_days_count %> <span class="text-sm font-normal text-gray-500">days</span></p>
     </div>
   </div>
 </div>
@@ -634,7 +555,7 @@ function switchChartType(chartType) {
                   <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
                 </div>
                 <!-- Subtitle -->
-                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(@active_days_count.to_i.positive? ? (hours / @active_days_count.to_f) : 0) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
               </div>
             <% end %>
           </div>
@@ -698,7 +619,7 @@ function switchChartType(chartType) {
                   <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
                 </div>
                 <!-- Subtitle -->
-                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(@active_days_count.to_i.positive? ? (hours / @active_days_count.to_f) : 0) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
               </div>
             <% end %>
           </div>
@@ -764,7 +685,7 @@ function switchChartType(chartType) {
                   <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
                 </div>
                 <!-- Subtitle -->
-                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(@active_days_count.to_i.positive? ? (hours / @active_days_count.to_f) : 0) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
               </div>
             <% end %>
           </div>
@@ -828,7 +749,7 @@ function switchChartType(chartType) {
                   <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
                 </div>
                 <!-- Subtitle -->
-                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(@active_days_count.to_i.positive? ? (hours / @active_days_count.to_f) : 0) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
               </div>
             <% end %>
           </div>
@@ -912,7 +833,7 @@ function switchChartType(chartType) {
                   <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
                 </div>
                 <!-- Subtitle -->
-                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(hours / (@to - @from + 1).to_f) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
+                <p class="text-xs text-gray-500 mt-1"><%= ((hours * 60).round) %> minutes · <%= format_hours(@active_days_count.to_i.positive? ? (hours / @active_days_count.to_f) : 0) %> avg/active <%= @grouping == "daily" ? "day" : (@grouping == "weekly" ? "week" : "month") %></p>
               </div>
             <% end %>
           </div>

@@ -35,28 +35,21 @@ class TimeAnalyticsController < ApplicationController
                            .order(created_on: :desc, id: :desc)
                            .first
     
+    # Summary card metrics
+    @issues_worked_count = @time_entries.where.not(issue_id: nil).distinct.count(:issue_id)
+    # Keep Active Days aligned with Daily Average denominator (working days in selected range)
+    @active_days_count = calculate_working_days_count
+
     # Calculate summary statistics based on grouping
     case @grouping
     when 'weekly'
       @avg_hours_per_period = calculate_avg_hours_per_week
-      @max_period_hours, @max_period_key = calculate_max_weekly_hours
-      @min_period_hours, @min_period_key = calculate_min_weekly_hours
-      @period_count = calculate_week_count
     when 'monthly'
       @avg_hours_per_period = calculate_avg_hours_per_month
-      @max_period_hours, @max_period_key = calculate_max_monthly_hours
-      @min_period_hours, @min_period_key = calculate_min_monthly_hours
-      @period_count = calculate_month_count
     when 'yearly'
       @avg_hours_per_period = calculate_avg_hours_per_year
-      @max_period_hours, @max_period_key = calculate_max_yearly_hours
-      @min_period_hours, @min_period_key = calculate_min_yearly_hours
-      @period_count = calculate_year_count
     else # daily
       @avg_hours_per_period = calculate_avg_hours_per_day
-      @max_period_hours, @max_period_key = calculate_max_daily_hours
-      @min_period_hours, @min_period_key = calculate_min_daily_hours
-      @period_count = calculate_working_days_count
     end
 
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
