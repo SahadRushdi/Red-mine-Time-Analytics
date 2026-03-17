@@ -194,53 +194,53 @@
 
 <%# My Time Summary Cards (aligned with My Work Log style) %>
 <div class="ts-summary-cards-row mb-6">
-  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
-    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
-      <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+  <div class="ts-summary-card ts-summary-card--total flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"></path>
       </svg>
     </div>
-    <div>
-      <p class="text-sm font-medium text-gray-500">Total Hours</p>
-      <p class="text-2xl font-bold text-gray-900"><%= format_hours(@total_hours) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label">Total Hours</p>
+      <p class="ts-summary-card-value"><%= format_hours(@total_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
     </div>
   </div>
 
-  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
-    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #eef2ff;">
-      <svg class="w-6 h-6" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+  <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3M4 10h16M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
       </svg>
     </div>
-    <div>
-      <p class="text-sm font-medium text-gray-500">Issues Worked</p>
-      <p class="text-2xl font-bold text-gray-900"><%= @issues_worked_count %> <span class="text-sm font-normal text-gray-500">issues</span></p>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label">Active Days</p>
+      <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
     </div>
   </div>
 
-  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
-    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #ecfdf5;">
-      <svg class="w-6 h-6" style="color: #10b981;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l6-6 4 4 8-8M21 10V4h-6"></path>
+  <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 19h16M7 16v-4m5 4V8m5 8v-6"></path>
       </svg>
     </div>
-    <div>
-      <p class="text-sm font-medium text-gray-500">
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label">
         <%= @grouping == 'daily' ? 'Daily Average' : (@grouping == 'weekly' ? 'Weekly Average' : (@grouping == 'monthly' ? 'Monthly Average' : 'Yearly Average')) %>
       </p>
-      <p class="text-2xl font-bold text-gray-900"><%= format_hours(@avg_hours_per_period) %> <span class="text-sm font-normal text-gray-500">hrs</span></p>
+      <p class="ts-summary-card-value"><%= format_hours(@avg_hours_per_period) %> <span class="ts-summary-card-unit">hrs</span></p>
     </div>
   </div>
 
-  <div class="ts-summary-card bg-white rounded-lg border border-gray-200 p-5 flex items-center gap-4">
-    <div class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center" style="background-color: #fef3c7;">
-      <svg class="w-6 h-6" style="color: #f59e0b;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M6 11h12M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+  <div class="ts-summary-card ts-summary-card--issues flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9 5h6M8 3h8a2 2 0 012 2v14a2 2 0 01-2 2H8a2 2 0 01-2-2V5a2 2 0 012-2zm2 7h6m-6 4h4"></path>
       </svg>
     </div>
-    <div>
-      <p class="text-sm font-medium text-gray-500">Active Days</p>
-      <p class="text-2xl font-bold text-gray-900"><%= @active_days_count %> <span class="text-sm font-normal text-gray-500">days</span></p>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label">Issues Worked</p>
+      <p class="ts-summary-card-value"><%= @issues_worked_count %> <span class="ts-summary-card-unit">issues</span></p>
     </div>
   </div>
 </div>

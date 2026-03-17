@@ -54,6 +54,8 @@ class TimeEntryPanelController < ApplicationController
     
     # Summary card data
     @issues_worked_count = issues_with_log_ids.count
+    @active_days_count = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+    @avg_hours_per_period = calculate_avg_hours_per_period
     @unique_projects_count = @time_entries.map(&:project_id).uniq.count
     @all_issues_count = @issues.count
   end
@@ -230,5 +232,41 @@ class TimeEntryPanelController < ApplicationController
     else
       str.to_f
     end
+  end
+
+  def calculate_avg_hours_per_period
+    case @grouping
+    when 'weekly'
+      calculate_avg_hours_per_week
+    when 'monthly'
+      calculate_avg_hours_per_month
+    else
+      calculate_avg_hours_per_day
+    end
+  end
+
+  def calculate_avg_hours_per_day
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+    return 0 if working_days.zero?
+
+    (@total_hours / working_days).round(2)
+  end
+
+  def calculate_avg_hours_per_week
+    start_week = @from.beginning_of_week(:monday)
+    end_week = @to.beginning_of_week(:monday)
+    week_count = ((end_week - start_week).to_i / 7) + 1
+    return 0 if week_count <= 0
+
+    (@total_hours / week_count).round(2)
+  end
+
+  def calculate_avg_hours_per_month
+    start_month = @from.beginning_of_month
+    end_month = @to.beginning_of_month
+    month_count = (end_month.year * 12 + end_month.month) - (start_month.year * 12 + start_month.month) + 1
+    return 0 if month_count <= 0
+
+    (@total_hours / month_count).round(2)
   end
 end

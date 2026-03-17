@@ -539,22 +539,97 @@ tbody tr:last-child {
 
 /* === My Timesheet - Summary Cards Row === */
 .ts-summary-cards-row {
-  display: flex !important;
-  flex-direction: row !important;
-  gap: 16px;
-  flex-wrap: nowrap !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px;
+  width: 100%;
+  align-items: stretch;
 }
 .ts-summary-cards-row > .ts-summary-card {
-  flex: 1 1 0% !important;
+  width: 100% !important;
   min-width: 0 !important;
+  max-width: none !important;
 }
 
 /* === My Timesheet - Summary Cards === */
 .ts-summary-card {
+  border-radius: 14px !important;
+  border: 1px solid #e5e7eb !important;
+  min-height: 132px;
+  padding: 22px 18px 18px !important;
+  box-sizing: border-box;
   transition: box-shadow 0.2s ease, transform 0.1s ease;
 }
 .ts-summary-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.ts-summary-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ts-summary-card-icon-svg {
+  width: 30px;
+  height: 30px;
+}
+.ts-summary-card-content {
+  min-width: 0;
+}
+.ts-summary-card-label {
+  margin: 2px 0 12px 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #4b5563;
+}
+.ts-summary-card-value {
+  margin: 0;
+  font-size: 33px;
+  line-height: 1.05;
+  font-weight: 700;
+  color: #111827;
+}
+.ts-summary-card-unit {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+.ts-summary-card--total {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+.ts-summary-card--total .ts-summary-card-icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.ts-summary-card--active-days {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+}
+.ts-summary-card--active-days .ts-summary-card-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.ts-summary-card--average {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+.ts-summary-card--average .ts-summary-card-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+.ts-summary-card--issues {
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+}
+.ts-summary-card--issues .ts-summary-card-icon {
+  background: #f3e8ff;
+  color: #9333ea;
 }
 
 /* === My Timesheet - Tabs === */
@@ -740,17 +815,22 @@ tbody tr:last-child {
 }
 
 /* === Responsive Design === */
+@media (max-width: 1200px) {
+  .ts-summary-cards-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+}
+
 @media (max-width: 768px) {
   .ts-summary-cards-row {
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    gap: 12px !important;
+    grid-template-columns: 1fr;
+    gap: 14px !important;
   }
 
   .ts-summary-cards-row > .ts-summary-card {
-    flex: 1 1 auto !important;
     width: 100% !important;
-    min-width: 100% !important;
+    min-height: 116px;
   }
 
   .analytics-section {
