@@ -272,29 +272,29 @@ button:active,
   box-shadow: none !important;
 }
 
-/* Remove borders from view mode tab buttons */
-button[onclick*="toggleViewMode"],
-button[onclick*="toggleViewMode"]:focus,
-button[onclick*="toggleViewMode"]:focus-visible,
-button[onclick*="toggleViewMode"]:active {
+/* Remove borders from dashboard tab buttons */
+button.ta-view-tab,
+button.ta-view-tab:focus,
+button.ta-view-tab:focus-visible,
+button.ta-view-tab:active {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
 }
 
-button[onclick*="toggleViewMode"]:focus,
-button[onclick*="toggleViewMode"]:focus-visible,
-button[onclick*="toggleViewMode"]:active {
+button.ta-view-tab:focus,
+button.ta-view-tab:focus-visible,
+button.ta-view-tab:active {
   background-color: inherit !important;
   color: inherit !important;
 }
 
 /* Visible selected state for Issue/Activity/Project tabs */
-button[onclick*="toggleViewMode"].ta-view-tab-active,
-button[onclick*="toggleViewMode"].ta-view-tab-active:hover,
-button[onclick*="toggleViewMode"].ta-view-tab-active:focus,
-button[onclick*="toggleViewMode"].ta-view-tab-active:focus-visible,
-button[onclick*="toggleViewMode"].ta-view-tab-active:active {
+button.ta-view-tab.ta-view-tab-active,
+button.ta-view-tab.ta-view-tab-active:hover,
+button.ta-view-tab.ta-view-tab-active:focus,
+button.ta-view-tab.ta-view-tab-active:focus-visible,
+button.ta-view-tab.ta-view-tab-active:active {
   background-color: rgb(243 244 246) !important;
   color: rgb(37 99 235) !important;
   border: none !important;
@@ -711,6 +711,13 @@ tbody tr:last-child {
   box-shadow: 0 0 0 1px #3b82f6 !important;
   outline: none !important;
   -webkit-appearance: none !important;
+}
+
+#ts-search-input.ts-search-input {
+  min-height: 42px;
+  font-size: 15px !important;
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
 }
 
 /* === My Timesheet - Table === */

@@ -77,3 +77,112 @@ Updated My Time summary-view bars (for Activity, Project, and Issue tabs) to use
 
 ### Next Steps
 - Optional visual QA to confirm row-color and donut legend match exactly for current sorted ordering.
+
+---
+
+## Update: Apply My Time tab design to My Work Log + attached tab feel
+
+### Overview
+Per latest direction, updated **My Work Log** to use the same tab visual style as **My Time** (Flowbite-like top tabs), and added a small shared style so tabs feel attached to their related table container in both pages.
+
+### Code Changes
+- Updated `app/views/time_entry_panel/index.html.erb`
+  - Replaced segmented `ts-tab-group` markup for `Logged / Unlogged` with My Time-like tab markup (`ul` + `rounded-t` tab buttons).
+  - Added active class `ta-worklog-tab-active`.
+  - Updated tab-switch JS to toggle `ta-worklog-tab-active` instead of `ts-tab-active`.
+- Updated `app/views/time_analytics/individual_dashboard.html.erb`
+  - Added `ta-attached-tabs` wrapper class to the top tab section.
+- Updated `assets/stylesheets/time_analytics.css`
+  - Added active-state styling for `ta-worklog-tab-active` matching My Time tab behavior.
+  - Added badge color state for active Work Log tab.
+  - Added `.ta-attached-tabs { margin-bottom: -1px; }` so tabs visually connect to table borders.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Quick visual QA in browser to confirm attachment feel across responsive breakpoints.
+
+---
+
+## Update: Resolved My Work Log tab style conflict
+
+### Overview
+Removed the newly introduced Work Log-specific CSS overrides and switched both pages to reuse the same existing My Time tab override pattern to avoid Redmine style conflicts.
+
+### Code Changes
+- Updated `assets/stylesheets/time_analytics.css`
+  - Removed the custom `ta-worklog-tab-active` and `ta-attached-tabs` style blocks that were added in the previous step.
+  - Generalized existing tab conflict overrides to shared class-based selectors:
+    - `button.ta-view-tab`
+    - `button.ta-view-tab.ta-view-tab-active`
+- Updated `app/views/time_entry_panel/index.html.erb`
+  - Replaced `ta-worklog-tab-active` with `ta-view-tab-active`.
+  - Added shared `ta-view-tab` class to both Work Log tab buttons.
+  - Kept attached feel via inline `style="margin-bottom: -1px;"` (no new CSS block).
+  - Updated JS tab toggle class target to `ta-view-tab-active`.
+- Updated `app/views/time_analytics/individual_dashboard.html.erb`
+  - Added shared `ta-view-tab` class to My Time tab buttons.
+  - Kept attached feel via inline `style="margin-bottom: -1px;"`.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Verify in browser that Work Log tabs no longer pick up Redmine conflicting states under hover/focus/active.
+
+---
+
+## Update: Hover state parity fix for Logged/Unlogged tabs
+
+### Overview
+Fixed the asymmetric hover behavior where **Logged** could turn blue when hovering from the **Unlogged** state.
+
+### Code Changes
+- Updated `app/views/time_entry_panel/index.html.erb`
+  - Added the same inactive hover utility classes to `Logged` tab as `Unlogged`:
+    - `text-gray-500 hover:text-gray-600 hover:bg-gray-50`
+  - Kept active state controlled by `ta-view-tab-active`.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Quick visual confirmation in browser for both hover directions:
+  - Unlogged → hover Logged
+  - Logged → hover Unlogged
+
+---
+
+## Update: Summary row spacing + Work Log tab strip/search refinements
+
+### Overview
+Applied requested spacing and layout refinements with minimal changes:
+- Increased row spacing in My Time summary views.
+- Removed unused vertical tab-strip space in My Work Log so tabs feel attached to the table.
+- Increased My Work Log search bar height and font size.
+
+### Code Changes
+- `app/views/time_analytics/individual_dashboard.html.erb`
+  - Updated summary list container spacing:
+    - `space-y-4 px-2` → `space-y-6 px-2` (all summary blocks).
+- `app/views/time_entry_panel/index.html.erb`
+  - Tightened tab-strip container:
+    - `items-center px-6 py-3` → `items-end px-6 pt-2 pb-0`
+  - Added `-mb-px` on tab list and reduced tab padding:
+    - `p-4` → `px-4 py-2.5`
+  - Increased search input text size class:
+    - `text-sm` → `text-base`.
+- `assets/stylesheets/time_analytics.css`
+  - Added targeted Work Log search input sizing override:
+    - `#ts-search-input.ts-search-input { min-height: 42px; font-size: 15px; padding-top/bottom: 0.625rem; }`
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Quick UI pass in browser to confirm tab strip now appears fully attached and summary row density matches expectation.
