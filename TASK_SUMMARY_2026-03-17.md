@@ -54,3 +54,26 @@ Adjusted summary card layout again to address follow-up feedback: increase gap b
 
 ### Next Steps
 - Quick visual check in browser at desktop/tablet/mobile widths to confirm spacing preference.
+
+---
+
+## Update: Summary view bar colors aligned with donut chart
+
+### Overview
+Updated My Time summary-view bars (for Activity, Project, and Issue tabs) to use the same color palette sequence as the adjacent donut chart.
+
+### Code Changes
+- File updated: `app/views/time_analytics/individual_dashboard.html.erb`
+- Added one shared in-view palette array (Tableau10 colors).
+- Replaced hardcoded `bg-blue-600` summary bars with index-based inline colors from that palette.
+- Applied consistently across all summary loops:
+  - Activity summary (weekly/monthly and daily variants)
+  - Project summary (weekly/monthly and daily variants)
+  - Issue summary
+
+### Verification Notes
+- `ruby test/test_working_days.rb` ✅
+- Change is view-only and minimal; no controller/chart generation logic was altered.
+
+### Next Steps
+- Optional visual QA to confirm row-color and donut legend match exactly for current sorted ordering.

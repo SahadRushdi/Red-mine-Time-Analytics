@@ -407,7 +407,8 @@ function switchChartType(chartType) {
           <!-- Left: Title and View Toggle Buttons -->
           <div class="flex items-center gap-4">
             <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">
-              <% if @view_mode == 'activity' %>
+    <% summary_chart_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'] %>
+    <% if @view_mode == 'activity' %>
                 Time by Activity
               <% elsif @view_mode == 'project' %>
                 Time by Project
@@ -537,10 +538,11 @@ function switchChartType(chartType) {
             <% 
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each do |activity| 
+              sorted_activities.each_with_index do |activity, index| 
             %>
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
               <div class="bg-white">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
@@ -552,7 +554,7 @@ function switchChartType(chartType) {
                 </div>
                 <!-- Progress bar -->
                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
                 </div>
                 <!-- Subtitle -->
               </div>
@@ -600,10 +602,11 @@ function switchChartType(chartType) {
             <% 
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each do |activity| 
+              sorted_activities.each_with_index do |activity, index| 
             %>
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
               <div class="bg-white">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
@@ -615,7 +618,7 @@ function switchChartType(chartType) {
                 </div>
                 <!-- Progress bar -->
                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
                 </div>
                 <!-- Subtitle -->
               </div>
@@ -665,10 +668,11 @@ function switchChartType(chartType) {
             <% 
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each do |project| 
+              sorted_projects.each_with_index do |project, index| 
             %>
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
               <div class="bg-white">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
@@ -680,7 +684,7 @@ function switchChartType(chartType) {
                 </div>
                 <!-- Progress bar -->
                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
                 </div>
                 <!-- Subtitle -->
               </div>
@@ -728,10 +732,11 @@ function switchChartType(chartType) {
             <% 
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each do |project| 
+              sorted_projects.each_with_index do |project, index| 
             %>
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
               <div class="bg-white">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
@@ -743,7 +748,7 @@ function switchChartType(chartType) {
                 </div>
                 <!-- Progress bar -->
                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
                 </div>
                 <!-- Subtitle -->
               </div>
@@ -805,10 +810,11 @@ function switchChartType(chartType) {
             <% 
               # Sort issues by hours (highest to lowest)
               sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
-              sorted_issues.each do |issue_info| 
+              sorted_issues.each_with_index do |issue_info, index| 
             %>
               <% hours = @issue_totals[issue_info[:key]] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
               <div class="bg-white">
                 <!-- Issue name and hours -->
                 <div class="flex items-center justify-between mb-2">
@@ -830,7 +836,7 @@ function switchChartType(chartType) {
                 </div>
                 <!-- Progress bar -->
                 <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-600 rounded-full transition-all duration-300" style="width: <%= percentage %>%"></div>
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
                 </div>
                 <!-- Subtitle -->
               </div>
