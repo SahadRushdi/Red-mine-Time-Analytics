@@ -534,7 +534,7 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-4 px-2">
+          <div class="space-y-6 px-2 pt-4">
             <% 
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
@@ -543,7 +543,7 @@ function switchChartType(chartType) {
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
@@ -598,7 +598,7 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-4 px-2">
+          <div class="space-y-6 px-2 pt-4">
             <% 
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
@@ -607,7 +607,7 @@ function switchChartType(chartType) {
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
@@ -664,7 +664,7 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-4 px-2">
+          <div class="space-y-6 px-2 pt-4">
             <% 
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
@@ -673,7 +673,7 @@ function switchChartType(chartType) {
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
@@ -728,7 +728,7 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-4 px-2">
+          <div class="space-y-6 px-2 pt-4">
             <% 
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
@@ -737,7 +737,7 @@ function switchChartType(chartType) {
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
@@ -806,7 +806,7 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Issue Table (Hidden by default) %>
         <div id="issue-summary-view" style="display: none;">
-          <div class="space-y-4 px-2">
+          <div class="space-y-6 px-2 pt-4">
             <% 
               # Sort issues by hours (highest to lowest)
               sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
@@ -815,7 +815,7 @@ function switchChartType(chartType) {
               <% hours = @issue_totals[issue_info[:key]] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
                 <!-- Issue name and hours -->
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
