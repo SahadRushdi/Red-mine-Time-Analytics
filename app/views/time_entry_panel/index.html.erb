@@ -212,6 +212,9 @@
         <%# Group header row %>
         <div id="tep-group-row-<%= idx %>"
              class="tep-group-row flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+             data-period-key="<%= date_str %>"
+             data-expand-id="tep-expand-<%= idx %>"
+             data-chevron-id="tep-chevron-<%= idx %>"
              onclick="toggleTepGroup(<%= idx %>)">
           <div class="flex items-center gap-3">
             <svg id="tep-chevron-<%= idx %>"
@@ -257,7 +260,7 @@
         </div>
 
         <%# Expandable content %>
-        <div id="tep-expand-<%= idx %>" class="<%= auto_expand ? '' : 'hidden' %> border-b border-gray-100">
+        <div id="tep-expand-<%= idx %>" class="<%= auto_expand ? '' : 'hidden' %> border-b border-gray-100" data-period-key="<%= date_str %>">
 
           <%# ── Inline log form — single horizontal strip ──────────────── %>
           <div id="tep-inline-form-<%= idx %>" class="hidden tep-inline-form">
@@ -387,7 +390,11 @@
                     <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
                     <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
                     <% entry_uid = "#{idx}-#{row_idx}" %>
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    <tr class="tep-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                        data-period-key="<%= date_str %>"
+                        data-issue-id="<%= issue.id %>"
+                        data-expand-id="tep-issue-expand-<%= entry_uid %>"
+                        data-chevron-id="tep-issue-chevron-<%= entry_uid %>"
                         onclick="tepToggleIssueEntries('<%= entry_uid %>')">
                       <% if @grouping != 'daily' %>
                         <td class="px-4 py-3 text-gray-400 text-sm whitespace-nowrap"><%= dates_str %></td>
@@ -437,7 +444,7 @@
                       </td>
                     </tr>
                     <%# ── Expanded entries sub-table ────────────────────────── %>
-                    <tr id="tep-issue-expand-<%= entry_uid %>" class="hidden">
+                    <tr id="tep-issue-expand-<%= entry_uid %>" class="tep-issue-expand-row hidden" data-period-key="<%= date_str %>" data-issue-id="<%= issue.id %>">
                       <td colspan="<%= @grouping != 'daily' ? 9 : 8 %>" class="px-0 py-0 bg-slate-50 border-b border-gray-200">
                         <div class="pl-10 pr-4 py-3 border-l-4 border-blue-300">
                           <% if row[:entries].any? %>
@@ -472,9 +479,9 @@
                                   <%# Edit form row (hidden by default) %>
                                   <tr id="tep-entry-edit-<%= entry.id %>" class="hidden bg-blue-50 border-b border-blue-100">
                                     <td colspan="5" class="px-3 py-3">
-                                      <%= form_tag tep_entry_update_path(entry.id), method: :patch,
-                                            class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
-                                            onsubmit: 'event.stopPropagation()' do %>
+                                       <%= form_tag tep_entry_update_path(entry.id), method: :patch,
+                                             class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
+                                             onsubmit: 'tepPersistOpenState(); event.stopPropagation()' do %>
                                         <div>
                                           <p class="text-sm font-medium text-gray-500 mb-1">Date</p>
                                           <span class="text-sm font-medium text-gray-700"><%= entry.spent_on.strftime('%b %-d, %Y') %></span>
@@ -812,6 +819,7 @@
       var form = document.getElementById('tep-inline-form-' + idx);
       if (form) form.classList.add('hidden');
     }
+    tepPersistOpenState();
   }
 
   // ── Inline form (Time Logs tab) ──────────────────────────────────────────
@@ -1284,6 +1292,7 @@
     var isHidden = expand.classList.contains('hidden');
     expand.classList.toggle('hidden');
     if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : '';
+    tepPersistOpenState();
   }
 
   // ── Entry inline edit toggle ─────────────────────────────────────────────────
@@ -1336,6 +1345,7 @@
     if (!tepPendingDelete) return;
     var url = tepPendingDelete.url;
     var token = tepPendingDelete.token;
+    tepPersistOpenState();
     tepCloseDeleteModal();
 
     var form = document.createElement('form');
@@ -1348,5 +1358,111 @@
     });
     document.body.appendChild(form);
     form.submit();
+  }
+
+  // ── Persist/restore Logged tab expanded state ────────────────────────────
+  var tepLoggedStateKey = 'tep-logged-state:' + window.location.pathname + '?' + window.location.search;
+
+  function tepGetLoggedState() {
+    try {
+      var raw = localStorage.getItem(tepLoggedStateKey);
+      return raw ? JSON.parse(raw) : { openGroups: [], openIssues: [] };
+    } catch (e) {
+      return { openGroups: [], openIssues: [] };
+    }
+  }
+
+  function tepSetLoggedState(state) {
+    try {
+      localStorage.setItem(tepLoggedStateKey, JSON.stringify(state));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepPersistOpenState() {
+    var openGroups = [];
+    var openIssues = [];
+
+    document.querySelectorAll('.tep-group-row[data-period-key]').forEach(function(row) {
+      var expandId = row.getAttribute('data-expand-id');
+      var expand = expandId ? document.getElementById(expandId) : null;
+      if (expand && !expand.classList.contains('hidden')) {
+        openGroups.push(row.getAttribute('data-period-key'));
+      }
+    });
+
+    document.querySelectorAll('.tep-issue-row[data-period-key][data-issue-id]').forEach(function(row) {
+      var expandId = row.getAttribute('data-expand-id');
+      var expand = expandId ? document.getElementById(expandId) : null;
+      if (expand && !expand.classList.contains('hidden')) {
+        openIssues.push(row.getAttribute('data-period-key') + '::' + row.getAttribute('data-issue-id'));
+      }
+    });
+
+    tepSetLoggedState({
+      openGroups: Array.from(new Set(openGroups)),
+      openIssues: Array.from(new Set(openIssues))
+    });
+  }
+
+  function tepFindGroupRow(periodKey) {
+    return Array.from(document.querySelectorAll('.tep-group-row[data-period-key]')).find(function(row) {
+      return row.getAttribute('data-period-key') === periodKey;
+    });
+  }
+
+  function tepFindIssueRow(periodKey, issueId) {
+    return Array.from(document.querySelectorAll('.tep-issue-row[data-period-key][data-issue-id]')).find(function(row) {
+      return row.getAttribute('data-period-key') === periodKey && row.getAttribute('data-issue-id') === issueId;
+    });
+  }
+
+  function tepRestoreOpenState() {
+    var state = tepGetLoggedState();
+    if (!state) return;
+
+    (state.openGroups || []).forEach(function(periodKey) {
+      var row = tepFindGroupRow(periodKey);
+      if (!row) return;
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.remove('hidden');
+      if (chevron) chevron.classList.add('tep-chevron-open');
+    });
+
+    (state.openIssues || []).forEach(function(token) {
+      var parts = token.split('::');
+      if (parts.length !== 2) return;
+      var periodKey = parts[0];
+      var issueId = parts[1];
+
+      var issueRow = tepFindIssueRow(periodKey, issueId);
+      if (!issueRow) return;
+
+      var groupRow = tepFindGroupRow(periodKey);
+      if (groupRow) {
+        var groupExpand = document.getElementById(groupRow.getAttribute('data-expand-id'));
+        var groupChevron = document.getElementById(groupRow.getAttribute('data-chevron-id'));
+        if (groupExpand) groupExpand.classList.remove('hidden');
+        if (groupChevron) groupChevron.classList.add('tep-chevron-open');
+      }
+
+      var expand = document.getElementById(issueRow.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(issueRow.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.remove('hidden');
+      if (chevron) chevron.style.transform = 'rotate(90deg)';
+    });
+  }
+
+  function tepInitLoggedStatePersistence() {
+    tepRestoreOpenState();
+    tepPersistOpenState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tepInitLoggedStatePersistence);
+  } else {
+    tepInitLoggedStatePersistence();
   }
 </script>
