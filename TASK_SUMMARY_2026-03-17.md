@@ -241,3 +241,28 @@ Fixed My Time responsive behavior for the Activity/Project/Issue analysis area s
   - table scroll remains internal,
   - donut card appears below table,
   - desktop layout remains unchanged.
+
+---
+
+## Update: Responsive time period filters on My Time + My Work Log
+
+### Overview
+Resolved mobile overflow for time period filter controls on both pages below ~`670px`. The root cause was the fixed single-row `inline-flex` period button group (6 buttons) plus custom date range controls, which exceeded viewport width and caused page-level horizontal scrolling.
+
+### Code Changes
+- Updated `app/views/time_analytics/individual_dashboard.html.erb`:
+  - Added shared class hooks: `ta-filter-form`, `ta-period-group`, `ta-period-btn`, `ta-custom-range`, `ta-custom-range-label`, `ta-date-input`.
+- Updated `app/views/time_entry_panel/index.html.erb`:
+  - Applied the same shared class hooks for parity with My Time.
+- Updated `assets/stylesheets/time_analytics.css`:
+  - Added `@media (max-width: 670px)` rules:
+    - period button group wraps into responsive rows (`2` buttons per row),
+    - buttons get full rounded corners in wrapped mode,
+    - custom range labels and date inputs stack cleanly and use full width.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Visual QA on both pages at widths below `670px` with and without `Custom Range` expanded.

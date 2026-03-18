@@ -36,19 +36,19 @@
   </div>
 
   <%# Filter + Grouping Controls %>
-  <%= form_tag time_entry_panel_path, method: :get, local: true, id: 'time-entry-panel-form', class: 'flex items-center gap-3 flex-wrap' do %>
+  <%= form_tag time_entry_panel_path, method: :get, local: true, id: 'time-entry-panel-form', class: 'ta-filter-form flex items-center gap-3 flex-wrap' do %>
     <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
     <%= hidden_field_tag :grouping, @grouping, id: 'tep_grouping_hidden' %>
 
     <%# Time period buttons %>
-    <div class="inline-flex rounded-lg shadow-sm" role="group">
+    <div class="ta-period-group inline-flex rounded-lg shadow-sm" role="group">
       <% ['last_7_days', 'last_14_days', 'this_week', 'last_week', 'this_month', 'custom'].each_with_index do |f, i| %>
         <% labels = { 'last_7_days' => 'Last 7 Days', 'last_14_days' => 'Last 14 Days', 'this_week' => 'This Week', 'last_week' => 'Last Week', 'this_month' => 'This Month', 'custom' => 'Custom Range' } %>
         <% is_active = @filter == f %>
         <% rounded = i == 0 ? 'rounded-l-lg' : (i == 5 ? 'rounded-r-lg' : '') %>
         <button type="button" onclick="<%= f == 'custom' ? 'toggleCustomDateRange()' : "setFilterAndSubmit('#{f}')" %>"
             style="<%= is_active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-            class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 <%= rounded %> focus:outline-none focus:ring-4 focus:ring-blue-300 <%= is_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+            class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 <%= rounded %> focus:outline-none focus:ring-4 focus:ring-blue-300 <%= is_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           <%= labels[f] %>
         </button>
       <% end %>
@@ -74,11 +74,11 @@
     </div>
 
     <%# Custom date range %>
-    <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2">
-      <span class="text-sm text-gray-600">From:</span>
-      <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
-      <span class="text-sm text-gray-600">To:</span>
-      <%= date_field_tag :to, params[:to] || @to, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-wrap items-center gap-2">
+      <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
+      <%= date_field_tag :from, params[:from] || @from, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+      <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
+      <%= date_field_tag :to, params[:to] || @to, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
     </div>
   <% end %>
 </div>

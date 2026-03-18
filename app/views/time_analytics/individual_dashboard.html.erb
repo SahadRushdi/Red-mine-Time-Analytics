@@ -10,7 +10,7 @@
   </div>
   
   <%# Modern Filter Controls - Horizontal Layout %>
-  <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form', class: 'flex items-center gap-3 flex-wrap' do %>
+  <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form', class: 'ta-filter-form flex items-center gap-3 flex-wrap' do %>
     <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
@@ -18,44 +18,44 @@
     <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
     
         <%# Time Period Button Group %>
-        <div class="inline-flex rounded-lg shadow-sm" role="group">
+        <div class="ta-period-group inline-flex rounded-lg shadow-sm" role="group">
           <button type="button" onclick="setFilterAndSubmit('last_7_days')" 
               style="<%= @filter == 'last_7_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_7_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_7_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             Last 7 Days
           </button>
           <button type="button" onclick="setFilterAndSubmit('last_14_days')" 
               style="<%= @filter == 'last_14_days' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border-t border-b border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_14_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border-t border-b border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_14_days' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             Last 14 Days
           </button>
           <button type="button" onclick="setFilterAndSubmit('this_week')" 
               style="<%= @filter == 'this_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             This Week
           </button>
           <button type="button" onclick="setFilterAndSubmit('last_week')" 
               style="<%= @filter == 'last_week' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'last_week' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             Last Week
           </button>
           <button type="button" onclick="setFilterAndSubmit('this_month')" 
               style="<%= @filter == 'this_month' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_month' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'this_month' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             This Month
           </button>
           <button type="button" onclick="toggleCustomDateRange()" 
               style="<%= @filter == 'custom' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-              class="px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'custom' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              class="ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @filter == 'custom' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
             Custom Range
           </button>
         </div>    
     <%# Custom Date Range (Hidden by default) - Reverted to Browser Default with Auto-submit %>
-    <div id="custom-date-range" class="<%= 'hidden' unless @filter == 'custom' %> flex items-center gap-2">
-      <span class="text-sm text-gray-600">From:</span>
-      <%= date_field_tag :from, params[:from] || @from, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
-      <span class="text-sm text-gray-600">To:</span>
-      <%= date_field_tag :to, params[:to] || @to, class: 'px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-wrap items-center gap-2">
+      <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
+      <%= date_field_tag :from, params[:from] || @from, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+      <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
+      <%= date_field_tag :to, params[:to] || @to, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
     </div>
     
     <%# Group By Dropdown - Flowbite Style %>

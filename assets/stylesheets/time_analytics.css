@@ -865,6 +865,43 @@ tbody tr:last-child {
   }
 }
 
+@media (max-width: 670px) {
+  .ta-filter-form {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .ta-period-group {
+    width: 100%;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px;
+    box-shadow: none !important;
+  }
+
+  .ta-period-group .ta-period-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    border-radius: 0.5rem !important;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .ta-custom-range {
+    width: 100%;
+  }
+
+  .ta-custom-range .ta-custom-range-label {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .ta-custom-range .ta-date-input {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .ts-summary-cards-row {
     grid-template-columns: 1fr;
