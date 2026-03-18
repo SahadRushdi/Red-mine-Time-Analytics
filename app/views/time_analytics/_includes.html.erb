@@ -1,6 +1,27 @@
 <% content_for :header_tags do %>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Flowbite CSS (local) -->
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Tailwind CSS (compiled) -->
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Legacy CSS (will be removed after migration) -->
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
-  <%= javascript_include_tag 'time_analytics.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Chart.js v2.9.4 (local - compatible with colorschemes plugin) -->
+  <%= javascript_include_tag 'chart.min.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Chart.js Color Schemes Plugin (local) -->
+  <%= javascript_include_tag 'chartjs-plugin-colorschemes.min.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Flowbite JS (local) -->
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+  
+  <!-- Automatic Status Badge Coloring (Automatic logic - no manual color mapping) -->
+  <%= javascript_include_tag 'status_colors.js', plugin: 'redmine_time_analytics' %>
 <% end %>

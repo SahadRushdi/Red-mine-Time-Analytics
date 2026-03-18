@@ -1,0 +1,22 @@
+# Node.js dependencies (never commit)
+node_modules/
+
+# Backup files
+*.backup
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+.github/
+*.swp
+*.swo
+
+# Note: We commit the following for deployment simplicity:
+# - package-lock.json (dependency locking)
+# - assets/stylesheets/tailwind.output.css (compiled CSS - no Node.js needed on deployment)
+# - assets/javascripts/flowbite.min.js (local copy - no CDN dependency)
