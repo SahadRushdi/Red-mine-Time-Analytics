@@ -3,259 +3,7 @@
   display: none !important;
 }
 
-/* === Redmine-style Collapsible Filter Toggle === */
-.filters-toggle-wrapper fieldset {
-  border: none;
-  border-top: 1px solid #d7d7d7;
-  background-color: transparent;
-  padding: 0;
-  margin: 0 0 10px 0;
-}
-
-.filters-toggle-wrapper legend {
-  cursor: pointer;
-  color: #0957cd;
-  font-weight: normal;
-  font-size: 13px;
-  margin: 0;
-  padding: 0 10px 0 18px; /* Reduce left padding to shift text left */
-  background-color: transparent;
-  position: relative;
-  display: inline-block;
-  line-height: 24px;
-  vertical-align: middle;
-}
-
-.filters-toggle-wrapper legend.collapsed::before,
-.filters-toggle-wrapper legend:not(.collapsed)::before {
-  content: 'chevron_right'; /* Will be overridden below */
-  font-family: 'Material Icons';
-  position: absolute;
-  left: -5px; /* Shift icon left to match My Time baseline */
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-  line-height: 1;
-}
-
-.filters-toggle-wrapper legend:not(.collapsed)::before {
-  content: 'expand_more';
-}
-
-/* === Shared Button Base Styles === */
-.button-base {
-  box-sizing: border-box;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-  transition: all 0.2s ease;
-  border-radius: 4px;
-}
-
-/* Neutral/Default Button State (White background) */
-.button-neutral {
-  background-color: #fff !important;
-  color: #333 !important;
-  border: 1px solid #ccc !important;
-}
-
-.button-neutral:hover {
-  background-color: #f0f0f0 !important;
-  border-color: #999 !important;
-}
-
-/* Primary/Active Button State (Bright Blue) */
-.button-primary {
-  background-color: #0065ff !important;
-  color: white !important;
-  border: 1px solid #0065ff !important;
-}
-
-.button-primary:hover {
-  background-color: #0052cc !important;
-  border-color: #0052cc !important;
-}
-
-/* Secondary Button State (Light Gray) */
-.button-secondary {
-  background-color: #f0f0f0 !important;
-  color: #333 !important;
-  border: 1px solid #ccc !important;
-}
-
-.button-secondary:hover {
-  background-color: #e0e0e0 !important;
-  border-color: #999 !important;
-}
-
-/* === Toggle Buttons Wrapper === */
-.toggle-buttons-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.toggle-label {
-  font-weight: bold;
-  font-size: 13px;
-  color: #555;
-  white-space: nowrap;
-}
-
-.toggle-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.button-toggle {
-  flex: 0 0 auto;
-  min-width: auto;
-  padding: 4px 12px !important;
-  font-size: 13px !important;
-  font-weight: normal !important;
-  height: 30px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-/* === View Toggle Controls === */
-.view-toggle-controls {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 15px;
-}
-
-.view-toggle-controls .button {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 6px 12px !important;
-  font-size: 12px !important;
-  line-height: 1 !important;
-}
-
-/* === Form Controls === */
-.filter-select,
-.date-input,
-.search-input,
-.chart-type-select,
-.pagination-form select {
-  box-sizing: border-box;
-  font-size: 13px;
-  line-height: 1.4;
-  height: 30px;
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  overflow: visible;
-  background-clip: padding-box;
-}
-
-/* === Filter Action Buttons === */
-.button-apply,
-.button-clear {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  height: 30px !important;
-  padding: 0 15px !important;
-  line-height: 1 !important;
-  margin: 0;
-  font-size: 13px !important;
-}
-
-.button-apply {
-  font-weight: 600 !important;
-  background-color: #0065ff !important;
-  border: 1px solid #0065ff !important;
-}
-
-.button-apply:hover {
-  background-color: #0052cc !important;
-  border-color: #0052cc !important;
-}
-
-.button-clear {
-  font-size: 13px !important;
-}
-
-.search-input {
-  min-width: 220px;
-  flex-shrink: 0; 
-}
-
-/* === Filter Section === */
-.filter-row {
-  display: flex !important;
-  flex-wrap: wrap;
-  gap: 15px;
-  align-items: flex-end;
-  width: 100%;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  min-width: 160px;
-  flex-shrink: 1;
-}
-
-.filter-group label {
-  font-weight: bold;
-  margin-bottom: 5px;
-  font-size: 12px;
-}
-
-/* === Fieldset Box Legend Styling === */
-/* === Fieldset Box Legend Styling Fix === */
-fieldset.box legend {
-  padding: 0 5px;          /* Adjusted padding */
-  font-weight: bold;
-  font-size: 13px;
-  color: #555;
-  margin-left: 10px;
-  
-  /* The Fix: This pushes the text down into the box space 
-     to align with the 'Time Period' label above it */
-  position: relative;
-  top: 12px;               
-  background-color: #fff;  /* Ensures the background covers the border line */
-}
-
-/* Ensure the fieldset has enough top padding so the buttons don't 
-   crash into the newly positioned legend */
-fieldset.box {
-  padding-top: 8px !important;
-  margin-top: 8px;
-  margin-bottom: 20px;
-  border: 1px solid #d7d7d7;
-  border-radius: 4px;
-}
-
-/* Ensure the button container inside doesn't have extra top margin */
-.toggle-buttons {
-  display: flex;
-  gap: 10px; 
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  margin-top: 5px; 
-}
-
-/* Force consistent spacing - override theme conflicts */
-fieldset.box {
-  margin-bottom: 20px !important;
-  padding-bottom: 15px !important;
-}
-
-#filters fieldset.box {
-  margin-bottom: 20px !important;
-}
-
-/* === Analytics Section === */
+/* === Analytics Section Layout === */
 .analytics-section {
   display: flex;
   gap: 15px;
@@ -264,7 +12,6 @@ fieldset.box {
   align-items: stretch !important;
 }
 
-/* Force top alignment for all analytics boxes - override ALL theme conflicts */
 .analytics-section > .box,
 .analytics-section > div.box,
 .analytics-section .stats-summary,
@@ -274,12 +21,11 @@ fieldset.box {
   padding: 12px !important;
   box-sizing: border-box !important;
   align-self: stretch !important;
-}
-
-/* Reset ALL h3 margins inside analytics boxes */
-.analytics-section h3 {
-  margin: 0 0 10px 0 !important;
-  padding: 0 !important;
+  height: 470px;
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 6px !important;
+  border: none !important;
 }
 
 .analytics-section .stats-summary {
@@ -289,11 +35,7 @@ fieldset.box {
   flex-direction: column;
   justify-content: flex-start;
   align-self: stretch;
-}
-
-.analytics-section .stats-summary h3 {
-  text-align: center;
-  margin-bottom: 10px;
+  overflow: auto;
 }
 
 .analytics-section .time-overview-box {
@@ -302,48 +44,13 @@ fieldset.box {
   display: flex;
   flex-direction: column;
   align-self: stretch;
-}
-
-.analytics-section .time-overview-box h3 {
-  text-align: center;
-  margin-bottom: 8px;
-  font-size: 16px;
-}
-
-.analytics-section .time-overview-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.analytics-section .time-overview-table th,
-.analytics-section .time-overview-table td {
-  text-align: center;
-  padding: 6px 8px;
-  border-bottom: 1px solid #eee;
-}
-
-.analytics-section .time-overview-table th {
-  background-color: #f1f1f1;
-  font-weight: bold;
-  font-size: 12px;
-  border-bottom: 2px solid #ddd;
-}
-
-.analytics-section .time-overview-table .hours-column {
-  text-align: right;
-  font-family: monospace;
-}
-
-.analytics-section .time-overview-table .total-row {
-  background-color: #f0f0f0;
-  border-top: 2px solid #ddd;
-  font-weight: bold;
+  overflow: visible;
 }
 
 .analytics-section .time-overview-box .pagination-wrapper {
   text-align: center;
-  margin-top: 8px;
+  margin-top: 4px;
+  margin-bottom: 0;
   font-size: 11px;
 }
 
@@ -355,84 +62,69 @@ fieldset.box {
   width: 100%;
   max-width: none;
   align-self: stretch;
-}
-
-/* === Stats Summary Grid === */
-.summary-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 0;
 }
 
-.summary-item {
-  text-align: center;
-  padding: 6px 8px;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.summary-value {
+.analytics-section h3 {
+  margin: 0 0 10px 0 !important;
+  padding: 0 !important;
   font-size: 16px;
-  font-weight: bold;
-  color: #36a2eb;
-  margin-bottom: 2px;
+  font-weight: 500;
 }
 
-.summary-label {
-  font-size: 10px;
-  color: #666;
-  text-transform: uppercase;
-  font-weight: 600;
-  line-height: 1.1;
-}
-
-/* === Chart === */
-.visualization-controls,
-.table-controls {
-  float: right;
+/* === Chart Container === */
+#chart-container {
+  flex-grow: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  height: 0; /* Allows flex-grow to work correctly */
 }
 
 .chart-wrapper {
   position: relative;
-  height: 275px;
-  margin: 10px 0 5px;
+  flex-grow: 1;
+  height: 100%;
+  margin: 0;
   width: 100%;
   min-width: 0;
 }
 
-/* === Tables === */
-.time-entries-table,
-.pivot-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 15px;
+.chart-wrapper canvas {
+  width: 100% !important;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
+.chart-wrapper canvas:hover {
+  transform: scale(1.002);
+}
+
+/* === Pivot Tables === */
 .pivot-table-wrapper {
   overflow-x: auto;
   margin-bottom: 20px;
 }
 
 .pivot-table {
+  width: 100%;
   min-width: 800px;
   border: 1px solid #ddd;
+  border-collapse: collapse;
+  margin-bottom: 0;
+  font-size: 13px;
 }
 
-/* Table Headers */
 .pivot-table th.period-header,
 .pivot-table th.activity-header,
-.pivot-table th.total-header,
-.time-entries-table th {
+.pivot-table th.project-header,
+.pivot-table th.total-header {
   font-weight: bold;
   padding: 10px 8px;
   border-bottom: 2px solid #ddd;
   vertical-align: middle;
   font-size: 12px;
+  color: #212136;
 }
 
 .pivot-table th.period-header {
@@ -441,7 +133,8 @@ fieldset.box {
   text-align: center;
 }
 
-.pivot-table th.activity-header {
+.pivot-table th.activity-header,
+.pivot-table th.project-header {
   background-color: #f0f8e8;
   min-width: 100px;
   text-align: center;
@@ -454,15 +147,7 @@ fieldset.box {
   text-align: center;
 }
 
-.time-entries-table th {
-  background-color: #f1f1f1;
-  text-align: center;
-  padding: 8px;
-}
-
-/* Table Cells */
 .pivot-table .period-cell {
-  background-color: #f9f9f9;
   font-weight: bold;
   padding: 8px;
   border-right: 2px solid #ddd;
@@ -484,104 +169,21 @@ fieldset.box {
 }
 
 .pivot-table .total-cell {
-  background-color: #f5f5f5;
   border-left: 2px solid #ddd;
 }
 
-.pivot-table .grand-total-cell {
-  background-color: #ffe6cc;
-  border-left: 2px solid #ff9900;
-  font-weight: bold;
-}
-
-.time-entries-table td {
-  padding: 8px;
-  border-bottom: 1px solid #eee;
-  vertical-align: top;
-}
-
-.pivot-table tr:nth-child(even),
-.time-entries-table tr:hover {
+.pivot-table tr:nth-child(even) {
   background-color: #fafafa;
 }
 
-.time-entries-table tr:hover {
-  background-color: #f9f9f9;
-}
-
-/* Total Rows */
-.pivot-table .total-row,
-.time-entries-table .total-row {
-  background-color: #f0f0f0;
-  border-top: 2px solid #ddd;
-}
-
-.pivot-table .total-row td,
-.time-entries-table .total-row td {
-  font-weight: bold;
-  border-bottom: none;
-}
-
-/* === Column Widths === */
-.date-column { width: 100px; white-space: nowrap; }
-.project-column { width: 150px; }
-.activity-column { width: 120px; }
-.issue-column { width: 200px; }
-.comment-column { max-width: 250px; word-wrap: break-word; }
-.hours-column { width: 80px; text-align: right; font-family: monospace; }
-
-/* === Summary Table with Horizontal Bars === */
-.summary-with-bars .bar-column {
-  width: 60%;
-}
-
-.summary-with-bars th:first-child,
-.summary-with-bars td:first-child {
-  text-align: left;
-  padding-left: 12px;
-}
-
-.summary-with-bars .hours-column {
-  width: 120px;
-  text-align: right;
-  padding-right: 20px;
-}
-
-.bar-container {
-  position: relative;
-  width: 100%;
-  height: 24px;
-  background-color: #f0f0f0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #007cba 0%, #36a2eb 100%);
-  transition: width 0.3s ease;
-  min-width: 2px;
-}
-
-.bar-label {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  text-shadow: 0 0 3px rgba(255,255,255,0.8);
-  z-index: 1;
+.pivot-table th .issue-link {
+  color: #2563eb;
 }
 
 /* === Links === */
 .project-link,
 .issue-link {
-  color: #628db6;
+  color: #2563eb;
   text-decoration: none;
 }
 
@@ -601,14 +203,19 @@ fieldset.box {
   justify-content: space-between;
   align-items: center;
   margin-top: 15px;
+  margin-bottom: 0;
   padding-top: 15px;
+  padding-bottom: 0;
   border-top: 1px solid #eee;
+  flex-wrap: nowrap;
+  gap: 10px;
 }
 
 .pagination {
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .pagination-link,
@@ -630,36 +237,20 @@ fieldset.box {
 }
 
 .pagination-current {
-  border-color: #628db6;
-  background-color: #628db6;
+  border-color: #0065ff;
+  background-color: #0065ff;
   color: white;
   font-weight: bold;
 }
 
 .pagination-info,
 .pagination-form label {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
+  white-space: nowrap;
 }
 
 /* === Messages === */
-.error-message {
-  background-color: #ffebee;
-  color: #c62828;
-  padding: 10px;
-  border: 1px solid #ffcdd2;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.info {
-  background-color: #e3f2fd;
-  color: #1565c0;
-  padding: 10px;
-  border: 1px solid #bbdefb;
-  border-radius: 4px;
-}
-
 .nodata {
   text-align: center;
   color: #999;
@@ -667,38 +258,670 @@ fieldset.box {
   padding: 20px;
 }
 
-/* === Responsive === */
-@media (max-width: 768px) {
-  .filter-row {
+/* === Remove Button Borders and Outlines === */
+/* Remove blue borders/outlines from all buttons */
+button,
+button:link,
+button:visited,
+button:hover,
+button:active,
+[type="button"],
+[type="submit"],
+[role="button"] {
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove borders from dashboard tab buttons */
+button.ta-view-tab,
+button.ta-view-tab:focus,
+button.ta-view-tab:focus-visible,
+button.ta-view-tab:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button.ta-view-tab:focus,
+button.ta-view-tab:focus-visible,
+button.ta-view-tab:active {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
+/* Visible selected state for Issue/Activity/Project tabs */
+button.ta-view-tab.ta-view-tab-active,
+button.ta-view-tab.ta-view-tab-active:hover,
+button.ta-view-tab.ta-view-tab-active:focus,
+button.ta-view-tab.ta-view-tab-active:focus-visible,
+button.ta-view-tab.ta-view-tab-active:active {
+  background-color: rgb(243 244 246) !important;
+  color: rgb(37 99 235) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Prevent black pressed/focus border on Detailed/Summary toggle buttons */
+button[onclick*="showDetailedView"],
+button[onclick*="showSummaryView"],
+button[onclick*="showDetailedView"]:focus,
+button[onclick*="showSummaryView"]:focus,
+button[onclick*="showDetailedView"]:focus-visible,
+button[onclick*="showSummaryView"]:focus-visible,
+button[onclick*="showDetailedView"]:active,
+button[onclick*="showSummaryView"]:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
+/* Remove borders from grouping dropdown items */
+#grouping-dropdown button,
+#grouping-dropdown button:focus,
+#grouping-dropdown button:active,
+button[onclick*="setGroupingAndSubmit"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* === Fix Redmine's Blue Border on Button Hover === */
+/* Prevent Redmine's default blue border (#628db6) on button hover */
+button:hover {
+  border-color: currentColor !important;
+}
+
+/* Specific fix for inactive time period buttons - keep gray border on hover */
+button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover,
+button[onclick*="toggleCustomDateRange"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Specific fix for inactive Detailed/Summary buttons - keep gray border on hover */
+button[onclick*="showDetailedView"]:not([style*="background-color: #3b82f6"]):hover,
+button[onclick*="showSummaryView"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Specific fix for inactive Trend/Stacked chart buttons - keep gray border on hover */
+button[onclick*="switchChartType"]:not([style*="background-color: #3b82f6"]):hover {
+  border-color: #d1d5db !important;
+}
+
+/* Remove any transform/scale animations on chart buttons */
+button[onclick*="switchChartType"] {
+  transform: none !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
+}
+
+button[onclick*="switchChartType"]:hover,
+button[onclick*="switchChartType"]:active {
+  transform: none !important;
+}
+
+/* === Inline Time Log Form (My Work Log) === */
+.tep-inline-form {
+  /* no animation */
+}
+
+/* Grouping dropdown - remove Redmine borders */
+.tep-grouping-wrapper #tep-grouping-dropdown button,
+.tep-grouping-wrapper #tep-grouping-dropdown button:hover,
+.tep-grouping-wrapper #tep-grouping-dropdown button:focus,
+.tep-grouping-wrapper #tep-grouping-dropdown button:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Grouping button hover border fix */
+#tep-grouping-btn:hover,
+#tep-grouping-btn:focus {
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Comprehensive Redmine blue border/outline removal ───────────────────── */
+/* All inline form inputs and dropdowns */
+.tep-inline-form input,
+.tep-inline-form input:focus,
+.tep-inline-form input:hover,
+.tep-inline-form input:active,
+.tep-inline-form select,
+.tep-inline-form select:focus,
+.tep-inline-form select:hover,
+.tep-inline-form select:active,
+.tep-inline-form button,
+.tep-inline-form button:focus,
+.tep-inline-form button:hover,
+.tep-inline-form button:active,
+.tep-issue-dropdown,
+.tep-activity-dropdown,
+.tep-issue-option:focus,
+.tep-activity-option:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tep-inline-form .tep-field,
+.tep-inline-form input[type="text"],
+.tep-inline-form input[type="date"],
+.tep-inline-form input[type="search"] {
+  border: 1px solid #d1d5db !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+}
+
+.tep-inline-form .tep-field:focus,
+.tep-inline-form input[type="text"]:focus,
+.tep-inline-form input[type="date"]:focus {
+  border-color: #9ca3af !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* All tep action buttons — no Redmine hover border */
+.tep-action-btn,
+.tep-action-btn:hover,
+.tep-action-btn:focus,
+.tep-action-btn:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-decoration: none !important;
+}
+
+/* Activity trigger button — stay white, never turn blue */
+#tep-activity-btn,
+[id^="tep-activity-btn"],
+[id^="tep-activity-btn"]:hover,
+[id^="tep-activity-btn"]:focus,
+[id^="tep-activity-btn"]:active,
+[id^="tep-activity-btn"]:focus-visible {
+  background-color: #ffffff !important;
+  color: inherit !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
+/* Search issues input — no blue focus ring */
+.ts-search-input,
+.ts-search-input:focus,
+.ts-search-input:hover {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+.ts-search-input:focus {
+  border-color: #9ca3af !important;
+}
+
+/* Group header row chevron rotation — points DOWN when expanded */
+.tep-chevron-open {
+  transform: rotate(90deg);
+}
+
+/* Custom issue + activity searchable dropdown panels */
+.tep-issue-dropdown,
+.tep-activity-dropdown {
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06) !important;
+  outline: none !important;
+}
+.tep-issue-option:hover,
+.tep-issue-option:focus,
+.tep-activity-option:hover,
+.tep-activity-option:focus {
+  background-color: #f3f4f6 !important;
+  outline: none !important;
+}
+
+/* Inline form fields — fixed height for single-row alignment */
+.tep-inline-form .tep-field {
+  height: 34px !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.875rem !important;
+  vertical-align: middle !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Entry edit form fields — same height/radius as log-time inline form */
+.tep-entry-edit-form .tep-field,
+.tep-entry-edit-form input[type="text"] {
+  height: 34px !important;
+  line-height: 1 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 0.875rem !important;
+  vertical-align: middle !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Activity option buttons — pure gray hover, never blue */
+.tep-activity-option {
+  background-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.tep-activity-option:hover,
+.tep-activity-option:focus,
+.tep-activity-option:focus-visible {
+  background-color: #f3f4f6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* === Fix Extra Bottom Borders on Tables === */
+/* Remove the bottom border from the last row in table bodies */
+tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+/* Specifically target Flowbite-style tables */
+.overflow-x-auto table tbody tr:last-child,
+.pivot-table-wrapper table tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+/* === My Time Analysis (table + donut) === */
+#view-mode-table {
+  min-width: 0;
+}
+
+.ta-analysis-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ta-analysis-table-scroll table {
+  min-width: max-content;
+}
+
+.ta-analysis-donut {
+  width: 20rem;
+}
+
+@media (max-width: 1123px) {
+  .ta-analysis-layout {
     flex-direction: column;
+  }
+
+  .ta-analysis-layout > .ta-analysis-table,
+  .ta-analysis-layout > .ta-analysis-donut {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ta-analysis-donut {
+    order: 2;
+    flex-shrink: 1;
+  }
+}
+
+/* === Tooltips === */
+.tooltip {
+  font-size: 14px !important; /* Base 14px + 3px */
+  line-height: 1.4 !important;
+}
+
+/* === My Timesheet - Summary Cards Row === */
+.ts-summary-cards-row {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px;
+  width: 100%;
+  align-items: stretch;
+}
+.ts-summary-cards-row > .ts-summary-card {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+/* === My Timesheet - Summary Cards === */
+.ts-summary-card {
+  border-radius: 14px !important;
+  border: 1px solid #e5e7eb !important;
+  min-height: 132px;
+  padding: 22px 18px 18px !important;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+}
+.ts-summary-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.ts-summary-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ts-summary-card-icon-svg {
+  width: 30px;
+  height: 30px;
+}
+.ts-summary-card-content {
+  min-width: 0;
+}
+.ts-summary-card-label {
+  margin: 2px 0 12px 0;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #4b5563;
+}
+.ts-summary-card-value {
+  margin: 0;
+  font-size: 33px;
+  line-height: 1.05;
+  font-weight: 700;
+  color: #111827;
+}
+.ts-summary-card-unit {
+  margin-left: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+.ts-summary-card--total {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+.ts-summary-card--total .ts-summary-card-icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.ts-summary-card--active-days {
+  background: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+}
+.ts-summary-card--active-days .ts-summary-card-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.ts-summary-card--average {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+.ts-summary-card--average .ts-summary-card-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+.ts-summary-card--issues {
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+}
+.ts-summary-card--issues .ts-summary-card-icon {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+/* === My Timesheet - Tabs === */
+.ts-tab-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 3px;
+  background-color: #f9fafb;
+}
+.ts-tab {
+  color: #6b7280 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab:hover {
+  color: #374151 !important;
+  background: #f3f4f6 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab.ts-tab-active {
+  color: #111827 !important;
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  outline: none !important;
+}
+.ts-tab:focus,
+.ts-tab:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-tab.ts-tab-active:focus,
+.ts-tab.ts-tab-active:active {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: none !important;
+  outline: none !important;
+}
+.ts-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  color: #374151;
+}
+.ts-tab.ts-tab-active .ts-tab-badge {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* === My Timesheet - Search Input === */
+.ts-search-input,
+.ts-search-input:link,
+.ts-search-input:visited {
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none !important;
+  padding-left: 2.25rem !important;
+  padding-right: 0.75rem !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  border-radius: 0.5rem !important;
+}
+.ts-search-input:focus,
+.ts-search-input:active {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+  outline: none !important;
+  -webkit-appearance: none !important;
+}
+
+#ts-search-input.ts-search-input {
+  min-height: 42px;
+  font-size: 15px !important;
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
+}
+
+/* === My Timesheet - Table === */
+.ts-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.ts-table thead th {
+  border-bottom: 1px solid #e5e7eb !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+.ts-table th.ts-logged-col,
+.ts-table td.ts-logged-col {
+  padding-right: 1.75rem !important;
+}
+.ts-table tbody tr.ts-issue-row {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+.ts-table tbody tr.ts-issue-row:last-child {
+  border-bottom: none !important;
+}
+.ts-table tbody tr.ts-expand-row {
+  border-bottom: 1px solid #e5e7eb !important;
+}
+.ts-table tbody tr.ts-expand-row td {
+  border: none !important;
+}
+
+/* === My Timesheet - Status Badge === */
+.ts-status-badge {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* === My Timesheet - Progress Bar === */
+.ts-progress-bar-bg {
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #e5e7eb;
+  overflow: hidden;
+}
+.ts-progress-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* === My Timesheet - Log Button (Green) === */
+.ts-log-btn {
+  background-color: #16a34a !important;
+  color: white !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-log-btn:hover {
+  background-color: #15803d !important;
+  color: white !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.ts-log-btn:focus,
+.ts-log-btn:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* === My Timesheet - Expand Icon === */
+.ts-expand-icon {
+  transition: transform 0.2s ease;
+}
+
+/* === My Timesheet - Activity Badge in Expanded Row === */
+.ts-activity-badge {
+  white-space: nowrap;
+}
+
+/* === My Timesheet - Remove Redmine blue borders from table/tab components === */
+.ts-table a,
+.ts-table a:link,
+.ts-table a:visited,
+.ts-table a:active {
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+.ts-table a:hover {
+  text-decoration: underline !important;
+  box-shadow: none !important;
+}
+.ts-tab-group button,
+.ts-tab-group button:link,
+.ts-tab-group button:visited,
+.ts-tab-group button:hover,
+.ts-tab-group button:active,
+.ts-tab-group button:focus {
+  text-decoration: none !important;
+}
+
+/* === Responsive Design === */
+@media (max-width: 1200px) {
+  .ts-summary-cards-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+}
+
+@media (max-width: 670px) {
+  .ta-filter-form {
+    width: 100%;
     align-items: stretch;
   }
 
-  .search-range-wrapper {
-    flex-direction: column; /* Allows stacking only on mobile */
-    align-items: stretch !important;
+  .ta-period-group {
+    width: 100%;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px;
+    box-shadow: none !important;
   }
 
-  .filter-group,
-  .filter-select,
-  .date-input,
-  .search-input {
+  .ta-period-group .ta-period-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    border-radius: 0.5rem !important;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .ta-custom-range {
+    width: 100%;
+  }
+
+  .ta-custom-range .ta-custom-range-label {
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .ta-custom-range .ta-date-input {
     width: 100%;
     min-width: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .ts-summary-cards-row {
+    grid-template-columns: 1fr;
+    gap: 14px !important;
+  }
+
+  .ts-summary-cards-row > .ts-summary-card {
+    width: 100% !important;
+    min-height: 116px;
   }
 
   .analytics-section {
     flex-direction: column;
   }
 
-  .analytics-section .stats-summary {
-    flex: none;
-  }
-
-  .visualization-controls,
-  .table-controls {
-    float: none;
-    margin: 10px 0;
+  .analytics-section .stats-summary,
+  .analytics-section .time-overview-box,
+  .analytics-section .visualization-section {
+    height: auto !important;
+    flex: none !important;
   }
 
   .pagination-wrapper {
@@ -707,12 +930,174 @@ fieldset.box {
     text-align: center;
   }
 
-  .time-entries-table .activity-column,
-  .time-entries-table .comment-column {
-    display: none;
-  }
-
   .chart-wrapper {
     height: 280px;
   }
+
+  #chart-container {
+    height: auto !important;
+  }
+}
+/* === Entry Sub-Table (Time Logs expand rows) === */
+.tep-entry-edit-form input,
+.tep-entry-edit-form input:focus,
+.tep-entry-edit-form select,
+.tep-entry-edit-form select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.tep-entry-edit-form input:focus,
+.tep-entry-edit-form select:focus {
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2) !important;
+}
+
+/* === Entry sub-table: override Redmine button styles === */
+
+/* Edit / Delete icon buttons — no border, no bg, no blue ring */
+.tep-entry-icon-btn,
+.tep-entry-icon-btn:hover,
+.tep-entry-icon-btn:focus,
+.tep-entry-icon-btn:focus-visible,
+.tep-entry-icon-btn:active {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0.25rem !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+/* Prevent Redmine's button:hover{color:white} from overriding icon colors */
+.tep-entry-icon-btn.text-blue-500,
+.tep-entry-icon-btn.text-blue-500:focus,
+.tep-entry-icon-btn.text-blue-500:focus-visible,
+.tep-entry-icon-btn.text-blue-500:active {
+  color: #3b82f6 !important;
+}
+.tep-entry-icon-btn.text-blue-500:hover {
+  color: #1d4ed8 !important;
+}
+.tep-entry-icon-btn.text-red-400,
+.tep-entry-icon-btn.text-red-400:focus,
+.tep-entry-icon-btn.text-red-400:focus-visible,
+.tep-entry-icon-btn.text-red-400:active {
+  color: #f87171 !important;
+}
+.tep-entry-icon-btn.text-red-400:hover {
+  color: #dc2626 !important;
+}
+
+/* Save button — no Redmine border/ring/animation */
+.tep-entry-save-btn,
+.tep-entry-save-btn:hover,
+.tep-entry-save-btn:focus,
+.tep-entry-save-btn:focus-visible,
+.tep-entry-save-btn:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  color: #ffffff !important;
+}
+
+/* Cancel button — keep gray text + white bg + gray border on all states */
+.tep-entry-cancel-btn,
+.tep-entry-cancel-btn:hover,
+.tep-entry-cancel-btn:focus,
+.tep-entry-cancel-btn:focus-visible,
+.tep-entry-cancel-btn:active {
+  color: #4b5563 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+.tep-entry-cancel-btn:hover {
+  color: #4b5563 !important;
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+/* Activity dropdown trigger button — no Redmine border/ring */
+.tep-entry-act-trigger,
+.tep-entry-act-trigger:hover,
+.tep-entry-act-trigger:focus,
+.tep-entry-act-trigger:focus-visible,
+.tep-entry-act-trigger:active {
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* Activity option buttons in dropdown — no Redmine borders between items */
+.tep-entry-act-option,
+.tep-entry-act-option:hover,
+.tep-entry-act-option:focus,
+.tep-entry-act-option:focus-visible,
+.tep-entry-act-option:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  background-color: transparent !important;
+}
+.tep-entry-act-option:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+/* === Status and Tracker Badges === */
+.ts-status-badge, .ts-tracker-badge {
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.025em !important;
+}
+
+/* === Flowbite delete confirmation modal (My Work Log) === */
+#deleteModal button,
+#deleteModal button:hover,
+#deleteModal button:focus,
+#deleteModal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#deleteModal .tep-delete-close {
+  border: none !important;
+}
+
+#deleteModal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#deleteModal .tep-delete-cancel,
+#deleteModal .tep-delete-cancel:hover,
+#deleteModal .tep-delete-cancel:focus,
+#deleteModal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#deleteModal .tep-delete-confirm,
+#deleteModal .tep-delete-confirm:hover,
+#deleteModal .tep-delete-confirm:focus,
+#deleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
 }

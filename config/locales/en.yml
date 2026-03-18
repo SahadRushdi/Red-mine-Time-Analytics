@@ -12,7 +12,9 @@ en:
   label_search: "Search"
   label_visualization: "Visualization"
   label_time_entries: "Time"
-  label_time_overview: "Time Overview"
+  label_time_overview_daily: "Daily Time Log"
+  label_time_overview_weekly: "Weekly Time Log"
+  label_time_overview_monthly: "Monthly Time Log"
   label_summary: "Summary"
   label_export_csv: "Export CSV"
   label_members: "Members"
@@ -48,7 +50,6 @@ en:
   label_total: "Total"
   
   # Summary statistics
-  label_total_hours: "Total Hours"
   label_entries_count: "Entries"
   label_avg_per_day: "Avg/Day"
   label_avg_per_week: "Avg/Week"
@@ -85,7 +86,7 @@ en:
   text_custom_dashboard_description: "Custom Dashboard will allow you to create personalized analytics views with configurable widgets and metrics."
   text_search_placeholder: "Search projects, issues, or comments..."
   text_export_confirm: "Export time entries as CSV?"
-  text_pagination_info: "Showing %{from} to %{to} of %{total} entries"
+  text_pagination_info: "%{from} to %{to} of %{total} entries"
   
   # Date/Time formats
   label_from: "From"

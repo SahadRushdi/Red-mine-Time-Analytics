@@ -1,0 +1,36 @@
+{
+  "name": "redmine_time_analytics",
+  "version": "1.0.0",
+  "description": "[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Redmine Compatibility](https://img.shields.io/badge/Redmine-5.0.x+-green.svg)](https://www.redmine.org/)",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "build": "npx tailwindcss -i ./assets/stylesheets/tailwind.input.css -o ./assets/stylesheets/tailwind.output.css --minify",
+    "watch": "npx tailwindcss -i ./assets/stylesheets/tailwind.input.css -o ./assets/stylesheets/tailwind.output.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SahadRushdi/Red-mine-Time-Analytics.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SahadRushdi/Red-mine-Time-Analytics/issues"
+  },
+  "homepage": "https://github.com/SahadRushdi/Red-mine-Time-Analytics#readme",
+  "devDependencies": {
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19"
+  },
+  "dependencies": {
+    "chart.js": "^2.9.4",
+    "chartjs-plugin-colorschemes": "^0.4.0",
+    "flowbite": "^4.0.1"
+  }
+}

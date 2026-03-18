@@ -200,8 +200,7 @@ module TimeAnalyticsHelper
   def chart_type_options
     [
       [l(:label_bar_chart), 'bar'],
-      [l(:label_line_chart), 'line'],
-      [l(:label_pie_chart), 'pie']
+      [l(:label_line_chart), 'line']
     ]
   end
 
@@ -262,6 +261,33 @@ module TimeAnalyticsHelper
     content_tag(:div, links.join(' ').html_safe, class: 'pagination')
   end
 
+  def overview_pagination_links(current_page, total_pages, base_params)
+    return '' if total_pages <= 1
+
+    links = []
+    
+    # Previous link
+    if current_page > 1
+      prev_params = base_params.merge(overview_page: current_page - 1)
+      links << link_to('‹ ' + l(:label_previous), 
+                       my_time_path(prev_params), 
+                       class: 'pagination-link')
+    end
+    
+    # Show only current page number to save space
+    links << content_tag(:span, current_page, class: 'pagination-current')
+    
+    # Next link
+    if current_page < total_pages
+      next_params = base_params.merge(overview_page: current_page + 1)
+      links << link_to(l(:label_next) + ' ›', 
+                       my_time_path(next_params), 
+                       class: 'pagination-link')
+    end
+    
+    content_tag(:div, links.join(' ').html_safe, class: 'pagination')
+  end
+
   def issue_link_or_text(issue)
     if issue
       link_to "##{issue.id}: #{truncate(issue.subject, length: 50)}", 
@@ -281,14 +307,7 @@ module TimeAnalyticsHelper
   end
 
   def default_chart_type(view_mode)
-    case view_mode
-    when 'time_entries'
-      'line'
-    when 'activity', 'project'
-      'pie'
-    else
-      'bar'
-    end
+    'line'
   end
 
   def avg_label_for_grouping(grouping)
@@ -346,7 +365,7 @@ module TimeAnalyticsHelper
   def grouping_label(grouping)
     case grouping
     when 'daily'
-      l(:label_daily)
+      l(:label_date)
     when 'weekly'
       l(:label_weekly)
     when 'monthly'
@@ -356,5 +375,51 @@ module TimeAnalyticsHelper
     else
       grouping.humanize
     end
+  end
+  
+  def activity_color(activity_name)
+    colors = {
+      'Development' => '#6366f1',
+      'Testing' => '#3b82f6',
+      'Learning' => '#10b981',
+      'Design' => '#f97316',
+      'Documentation' => '#8b5cf6',
+      'Meeting' => '#ec4899',
+      'Code Review' => '#14b8a6',
+      'Bug Fix' => '#ef4444',
+      'Research' => '#f59e0b',
+      'Planning' => '#06b6d4'
+    }
+    colors[activity_name] || '#6b7280'
+  end
+  
+  def time_overview_header(grouping)
+    case grouping
+    when 'daily'
+      'Daily Time Log'
+    when 'weekly'
+      'Weekly Time Log'
+    when 'monthly'
+      'Monthly Time Log'
+    else
+      'Time Log'
+    end
+  end
+  
+  def chart_breakdown_header(grouping)
+    case grouping
+    when 'daily'
+      'Daily Breakdown'
+    when 'weekly'
+      'Weekly Breakdown'
+    when 'monthly'
+      'Monthly Breakdown'
+    else
+      'Time Breakdown'
+    end
+  end
+
+  def status_badge_class(status)
+    "ts-status-badge"
   end
 end

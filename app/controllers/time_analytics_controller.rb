@@ -6,7 +6,7 @@ class TimeAnalyticsController < ApplicationController
 
   def index
     # Default to individual dashboard
-    permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page)
+    permitted_params = params.permit(:filter, :from, :to, :grouping, :search, :chart_type, :per_page, :page, :overview_page)
     redirect_to my_time_path(permitted_params)
   end
 
@@ -25,6 +25,9 @@ class TimeAnalyticsController < ApplicationController
     end
     
     @view_mode = params[:view_mode] || 'time_entries'
+    @user = User.current
+    # Default to issue view
+    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
     
     # Get time entries for the user with project visibility check
     @time_entries = TimeEntry.joins(:project)
@@ -34,49 +37,46 @@ class TimeAnalyticsController < ApplicationController
                              .includes(:project, :issue, :activity)
                              .order('time_entries.spent_on DESC, time_entries.created_on DESC')
 
-    # Apply search filter if present
-    if params[:search].present?
-      search_term = "%#{params[:search]}%"
-      # Use database-agnostic search - ActiveRecord handles case sensitivity based on database
-      @time_entries = @time_entries.where(
-        "LOWER(projects.name) LIKE LOWER(?) OR LOWER(issues.subject) LIKE LOWER(?) OR LOWER(time_entries.comments) LIKE LOWER(?)",
-        search_term, search_term, search_term
-      )
-    end
-
     # Calculate totals and statistics
     @total_hours = @time_entries.sum(:hours)
     @entry_count = @time_entries.count
     
+    # Get the most recently logged time entry across ALL time (not filtered by date range)
+    # This shows when the user actually last logged time, regardless of current filter
+    @last_entry = TimeEntry.joins(:project)
+                           .where(user: @user)
+                           .where(projects: { status: Project::STATUS_ACTIVE })
+                           .order(created_on: :desc, id: :desc)
+                           .first
+    
+    # Summary card metrics
+    @issues_worked_count = @time_entries.where.not(issue_id: nil).distinct.count(:issue_id)
+    # Keep Active Days aligned with Daily Average denominator (working days in selected range)
+    @active_days_count = calculate_working_days_count
+
     # Calculate summary statistics based on grouping
     case @grouping
     when 'weekly'
       @avg_hours_per_period = calculate_avg_hours_per_week
-      @max_period_hours = calculate_max_weekly_hours
-      @min_period_hours = calculate_min_weekly_hours
-      @period_count = calculate_week_count
     when 'monthly'
       @avg_hours_per_period = calculate_avg_hours_per_month
-      @max_period_hours = calculate_max_monthly_hours
-      @min_period_hours = calculate_min_monthly_hours
-      @period_count = calculate_month_count
     when 'yearly'
       @avg_hours_per_period = calculate_avg_hours_per_year
-      @max_period_hours = calculate_max_yearly_hours
-      @min_period_hours = calculate_min_yearly_hours
-      @period_count = calculate_year_count
     else # daily
       @avg_hours_per_period = calculate_avg_hours_per_day
-      @max_period_hours = calculate_max_daily_hours
-      @min_period_hours = calculate_min_daily_hours
-      @period_count = calculate_working_days_count
     end
 
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
 
+    # Time Overview pagination (separate from Activity/Project pagination)
+    @overview_limit = 6
+    @overview_page = params[:overview_page].to_i > 0 ? params[:overview_page].to_i : 1
+    @overview_offset = (@overview_page - 1) * @overview_limit
+
     # Generate Time Overview data (always grouped by date for consistency across all views)
     @time_overview_data = generate_time_overview_data(@time_entries, @grouping)
+    @overview_total_pages = (@time_overview_data.count.to_f / @overview_limit).ceil
 
     if @view_mode == 'activity'
       # Generate Activity × Time Period pivot table for ALL groupings (including daily)
@@ -88,16 +88,17 @@ class TimeAnalyticsController < ApplicationController
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
       
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Also generate simple activity summary for daily toggle view
       if @grouping == 'daily'
         grouped_data = group_time_entries(@time_entries, 'activity')
-        # Sort by activity name
-        sorted_data = grouped_data.sort_by { |activity_name, _| activity_name || 'No Activity' }
-        @paginated_entries = sorted_data.slice(@offset, @limit).map do |activity_name, hours|
+        # Sort by hours (highest to lowest) for summary view
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |activity_name, hours|
           Struct.new(:period, :hours).new(activity_name || 'No Activity', hours)
         end
       end
@@ -111,17 +112,42 @@ class TimeAnalyticsController < ApplicationController
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
       
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit)
       
       # Also generate simple project summary for daily toggle view
       if @grouping == 'daily'
         grouped_data = group_time_entries(@time_entries, 'project')
-        # Sort by project name
-        sorted_data = grouped_data.sort_by { |project_name, _| project_name || 'No Project' }
-        @paginated_entries = sorted_data.slice(@offset, @limit).map do |project_name, hours|
+        # Sort by hours (highest to lowest) for summary view
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |project_name, hours|
           Struct.new(:period, :hours).new(project_name || 'No Project', hours)
+        end
+      end
+    elsif @view_mode == 'issue'
+      # Generate Issue × Time Period pivot table for ALL groupings (including daily)
+      @issue_pivot_data = generate_issue_pivot_table(@time_entries, @grouping)
+      @time_periods = @issue_pivot_data[:periods]
+      @issues = @issue_pivot_data[:issues]
+      @matrix_data = @issue_pivot_data[:matrix]
+      @period_totals = @issue_pivot_data[:period_totals]
+      @issue_totals = @issue_pivot_data[:issue_totals]
+      @grand_total = @issue_pivot_data[:grand_total]
+      
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit)
+      
+      # Also generate simple issue summary for daily toggle view
+      if @grouping == 'daily'
+        grouped_data = group_time_entries(@time_entries, 'issue')
+        # Sort by hours (highest to lowest)
+        sorted_data = grouped_data.sort_by { |_, hours| -hours }
+        sliced_data = sorted_data.slice(@offset, @limit) || []
+        @paginated_entries = sliced_data.map do |issue_info, hours|
+          Struct.new(:period, :hours, :issue).new(issue_info[:display], hours, issue_info[:issue])
         end
       end
     elsif ['weekly', 'monthly'].include?(@grouping)
@@ -171,13 +197,14 @@ class TimeAnalyticsController < ApplicationController
     # Track activity/project view state (summary vs detailed) for chart generation
     @activity_view_state = params[:activity_view_state] || 'detailed'
     @project_view_state = params[:project_view_state] || 'detailed'
+    @issue_view_state = params[:issue_view_state] || 'detailed'
     
     if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
     elsif @view_mode == 'project' && ['weekly', 'monthly'].include?(@grouping) && defined?(@project_pivot_data)
       @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
     else
-      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state)
+      @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state, @issue_view_state)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -216,6 +243,9 @@ class TimeAnalyticsController < ApplicationController
     end
     
     @view_mode = params[:view_mode] || 'time_entries'
+    @user = User.current
+    # Use same logic as individual_dashboard for consistency
+    @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
     
     @time_entries = TimeEntry.joins(:project)
                              .where(user: @user)
@@ -223,16 +253,6 @@ class TimeAnalyticsController < ApplicationController
                              .where(projects: { status: Project::STATUS_ACTIVE })
                              .includes(:project, :issue, :activity)
                              .order('time_entries.spent_on DESC')
-
-    # Apply search filter if present
-    if params[:search].present?
-      search_term = "%#{params[:search]}%"
-      # Use database-agnostic search - ActiveRecord handles case sensitivity based on database
-      @time_entries = @time_entries.where(
-        "LOWER(projects.name) LIKE LOWER(?) OR LOWER(issues.subject) LIKE LOWER(?) OR LOWER(time_entries.comments) LIKE LOWER(?)",
-        search_term, search_term, search_term
-      )
-    end
 
     if @view_mode == 'activity'
       csv_data = export_activity_analysis_to_csv(@time_entries)
@@ -253,20 +273,12 @@ class TimeAnalyticsController < ApplicationController
   private
 
   def get_default_chart_type(view_mode)
-    case view_mode
-    when 'time_entries'
-      'line'
-    when 'activity'
-      'pie'
-    when 'project'
-      'pie'
-    else
-      'bar'
-    end
+    'line'
   end
 
   def set_date_range
-    case params[:filter]
+    @filter = params[:filter]
+    case @filter
     when 'last_7_days'
       @from = Date.current - 6.days
       @to = Date.current
@@ -287,7 +299,7 @@ class TimeAnalyticsController < ApplicationController
       @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
     else
       # Default to last 7 days
-      params[:filter] = 'last_7_days'
+      @filter = 'last_7_days'
       @from = Date.current - 6.days
       @to = Date.current
     end
@@ -323,15 +335,18 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_daily_hours
     # Remove order clause to avoid ambiguity in GROUP BY
-    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours).values
-    daily_totals.max || 0
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    max_date = daily_totals.max_by { |date, hours| hours }
+    [max_date[1], max_date[0]]
   end
 
   def calculate_min_daily_hours
     # Remove order clause to avoid ambiguity in GROUP BY
-    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours).values
-    return 0 if daily_totals.empty?
-    daily_totals.min
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    min_date = daily_totals.min_by { |date, hours| hours }
+    [min_date[1], min_date[0]]
   end
 
   # Weekly grouping calculations
@@ -349,14 +364,17 @@ class TimeAnalyticsController < ApplicationController
   def calculate_max_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
-    weekly_totals.values.max || 0
+    return [0, nil] if weekly_totals.empty?
+    max_week = weekly_totals.max_by { |week, hours| hours }
+    [max_week[1], max_week[0]]
   end
 
   def calculate_min_weekly_hours
     weekly_totals = get_weekly_totals(@time_entries)
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
-    return 0 if weekly_totals.empty?
-    weekly_totals.values.min
+    return [0, nil] if weekly_totals.empty?
+    min_week = weekly_totals.min_by { |week, hours| hours }
+    [min_week[1], min_week[0]]
   end
 
   def get_weekly_totals(time_entries)
@@ -384,14 +402,17 @@ class TimeAnalyticsController < ApplicationController
   def calculate_max_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
-    monthly_totals.values.max || 0
+    return [0, nil] if monthly_totals.empty?
+    max_month = monthly_totals.max_by { |month, hours| hours }
+    [max_month[1], max_month[0]]
   end
 
   def calculate_min_monthly_hours
     monthly_totals = get_monthly_totals(@time_entries)
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
-    return 0 if monthly_totals.empty?
-    monthly_totals.values.min
+    return [0, nil] if monthly_totals.empty?
+    min_month = monthly_totals.min_by { |month, hours| hours }
+    [min_month[1], min_month[0]]
   end
 
   def get_monthly_totals(time_entries)
@@ -416,13 +437,16 @@ class TimeAnalyticsController < ApplicationController
 
   def calculate_max_yearly_hours
     yearly_totals = get_yearly_totals(@time_entries)
-    yearly_totals.values.max || 0
+    return [0, nil] if yearly_totals.empty?
+    max_year = yearly_totals.max_by { |year, hours| hours }
+    [max_year[1], max_year[0]]
   end
 
   def calculate_min_yearly_hours
     yearly_totals = get_yearly_totals(@time_entries)
-    return 0 if yearly_totals.empty?
-    yearly_totals.values.min
+    return [0, nil] if yearly_totals.empty?
+    min_year = yearly_totals.min_by { |year, hours| hours }
+    [min_year[1], min_year[0]]
   end
 
   def get_yearly_totals(time_entries)
@@ -458,21 +482,15 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # Inline Chart Helper methods
-  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed')
-    # Group data by the specified view mode and grouping
-    # For activity view, use activity_view_state to determine grouping
-    # For project view, use project_view_state to determine grouping
-    if view_mode == 'activity'
-      # Summary view: always group by activity
-      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
-      grouped_data = activity_view_state == 'summary' ? group_time_entries(time_entries, 'activity') : group_time_entries(time_entries, grouping)
-    elsif view_mode == 'project'
-      # Summary view: always group by project
-      # Detailed view: group by selected time period (daily/weekly/monthly/yearly)
-      grouped_data = project_view_state == 'summary' ? group_time_entries(time_entries, 'project') : group_time_entries(time_entries, grouping)
-    else
+  def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed', issue_view_state = 'detailed')
+    # For bar charts, always generate stacked activity breakdown
+    # For line charts, generate simple total hours
+    case chart_type
+    when 'line'
+      # Group by time period for line chart (total hours only)
       grouped_data = group_time_entries(time_entries, grouping)
-      # Fill in missing periods to ensure chart matches table
+      
+      # Fill in missing periods
       case grouping
       when 'daily'
         grouped_data = fill_missing_working_days(grouped_data, @from, @to)
@@ -481,16 +499,175 @@ class TimeAnalyticsController < ApplicationController
       when 'monthly'
         grouped_data = fill_missing_months(grouped_data, @from, @to)
       end
-    end
-    
-    case chart_type
-    when 'pie'
-      generate_pie_chart_data(grouped_data, view_mode)
-    when 'line'
+      
       generate_line_chart_data(grouped_data, view_mode)
     else
-      generate_bar_chart_data(grouped_data, view_mode)
+      # Bar charts always show stacked activity breakdown
+      generate_bar_chart_data_with_activities(time_entries, grouping, view_mode)
     end
+  end
+  
+  def generate_bar_chart_data_with_activities(time_entries, grouping, view_mode = 'time_entries')
+    return empty_chart_data('bar') if time_entries.empty?
+
+    # Determine what to group by based on view mode
+    group_by = case view_mode
+    when 'activity'
+      :activity
+    when 'project'
+      :project
+    when 'issue'
+      :issue
+    else
+      :activity  # default
+    end
+
+    # Generate breakdown for each period based on view mode
+    category_breakdown = {}
+    case group_by
+    when :activity
+      time_entries.includes(:activity).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        category_name = entry.activity&.name || 'No Activity'
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
+    when :project
+      time_entries.includes(:project).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        category_name = entry.project&.name || 'No Project'
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
+    when :issue
+      time_entries.includes(:issue).each do |entry|
+        period_key = get_activity_period_key(entry.spent_on, grouping)
+        if entry.issue
+          category_name = "##{entry.issue.id}"
+        else
+          category_name = 'No Issue'
+        end
+        
+        category_breakdown[period_key] ||= {}
+        category_breakdown[period_key][category_name] ||= 0
+        category_breakdown[period_key][category_name] += entry.hours
+      end
+    end
+    
+    # Get all unique periods, sorted
+    all_periods = category_breakdown.keys.sort
+    
+    # Return empty if no data
+    return empty_chart_data('bar') if all_periods.empty?
+    
+    # Get all unique categories across all periods, sorted by total hours (highest to lowest)
+    all_categories = {}
+    category_breakdown.each do |_, categories|
+      categories.each do |category, hours|
+        all_categories[category] ||= 0
+        all_categories[category] += hours
+      end
+    end
+    categories_sorted = all_categories.sort_by { |_, h| -h }.map(&:first)
+    
+    # Generate labels for chart
+    formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+    
+    # Generate tooltip labels (detailed format for weekly grouping)
+    tooltip_labels = if grouping == 'weekly'
+      all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Create datasets for each category (stacked)
+    # Colors will be assigned by chartjs-plugin-colorschemes
+    datasets = categories_sorted.map do |category|
+      data = all_periods.map do |period_key|
+        category_breakdown[period_key]&.[](category) || 0
+      end
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: category,
+        data: data,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          gridLines: {
+            display: false
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          gridLines: {
+            color: '#f3f4f6'
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: chart_options
+    }.to_json.html_safe
   end
 
   def group_time_entries(time_entries, grouping)
@@ -511,6 +688,33 @@ class TimeAnalyticsController < ApplicationController
       base_query.joins('LEFT JOIN projects ON time_entries.project_id = projects.id')
                 .group('projects.name')
                 .sum(:hours)
+    when 'issue'
+      # Group by issue - return hash with issue info and hours
+      result = {}
+      time_entries.each do |entry|
+        if entry.issue
+          issue = entry.issue
+          key = issue.id
+          if !result[key]
+            result[key] = { issue: issue, display: format_issue_display(issue) }
+          end
+        else
+          key = 'no_issue'
+          if !result[key]
+            result[key] = { issue: nil, display: 'No Issue' }
+          end
+        end
+      end
+      # Return hash mapping issue_info => hours
+      issue_hours = {}
+      time_entries.each do |entry|
+        key = entry.issue_id || 'no_issue'
+        if result[key]
+          issue_hours[result[key]] ||= 0
+          issue_hours[result[key]] += entry.hours
+        end
+      end
+      issue_hours
     when 'daily'
       base_query.group(:spent_on).sum(:hours)
     when 'weekly'
@@ -549,9 +753,11 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_colors(count)
+    # Consistent color palette matching bar and donut charts
     colors = [
-      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-      '#FF9F40', '#8AC249', '#EA5F89', '#00D1B2', '#958AF7'
+      '#FF6B9D', '#FF8FB1', '#C77DFF', '#A259F7',
+      '#4CC9F0', '#00B4D8', '#06D6A0', '#00F5A0',
+      '#FFD166', '#FFBE0B', '#FF9F1C', '#FF5733'
     ]
     
     if count <= colors.size
@@ -587,190 +793,46 @@ class TimeAnalyticsController < ApplicationController
         else
           key.to_s
         end
-      end
-    end
+  
+  def lighten_color(hex_color, percent)
+    # Convert hex to RGB
+    hex = hex_color.gsub('#', '')
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
     
-    formatted_labels = if is_activity_data
-      # Data grouped by activity names
-      sorted_data.map { |key, _| key || 'No Activity' }
-    else
-      # Data grouped by time periods (dates, weeks, months, years)
-      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    end
+    # Lighten by increasing towards 255
+    r = [255, r + (255 - r) * percent / 100].min.to_i
+    g = [255, g + (255 - g) * percent / 100].min.to_i
+    b = [255, b + (255 - b) * percent / 100].min.to_i
     
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if !is_activity_data && @grouping == 'weekly'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
-    else
-      formatted_labels
-    end
-    
-    # Calculate total for percentage calculation
-    total_hours = sorted_data.map { |_, value| value }.sum
-    
-    # Format labels with percentages and hours for pie chart
-    labels_with_percentages = formatted_labels.each_with_index.map do |label, index|
-      hours = sorted_data[index][1]
-      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      formatted_hours = helpers.format_hours(hours)
-      "#{label} (#{percentage}%, #{formatted_hours})"
-    end
-    
-    chart_data = {
-      labels: labels_with_percentages,
-      datasets: [{
-        data: sorted_data.map { |_, value| value },
-        backgroundColor: generate_colors(sorted_data.size),
-        borderWidth: 1,
-        borderColor: '#fff',
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            padding: 15,
-            boxWidth: 12
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (@grouping == 'weekly' && !is_activity_data) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      # Add total hours for percentage calculation in JavaScript
-      total_hours: total_hours
-    }
-
-    {
-      type: 'pie',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
+    # Convert back to hex
+    "#%02x%02x%02x" % [r, g, b]
   end
 
-  def generate_bar_chart_data(data_hash, view_mode = 'time_entries')
-    return empty_chart_data('bar') if data_hash.empty?
-
-    # Sort data by date keys for proper chronological order (except for activity/project views)
-    sorted_data = if view_mode == 'activity' || view_mode == 'project'
-      data_hash.sort_by { |key, _| key || '' }
-    else
-      data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
-      end
-    end
-
-    # Generate labels and tooltip data
-    formatted_labels = if view_mode == 'activity'
-      sorted_data.map { |key, _| key || 'No Activity' }
-    else
-      sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    end
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if @grouping == 'weekly' && view_mode != 'activity'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
-    else
-      formatted_labels
-    end
-    
-    # Generate formatted hours for tooltips
-    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
-    
-    chart_data = {
-      labels: formatted_labels,
-      datasets: [{
-        label: 'Hours',
-        data: sorted_data.map { |_, value| value },
-        backgroundColor: generate_colors(sorted_data.size),
-        borderWidth: 1,
-        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
-        formattedHours: formatted_hours  # Add formatted hours for value display
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {}
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: helpers.grouping_label(@grouping)
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        }
-      }
-    }
-
-    {
-      type: 'bar',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
-  end
 
   def generate_line_chart_data(data_hash, view_mode = 'time_entries')
     return empty_chart_data('line') if data_hash.empty?
 
-    if view_mode == 'activity' || view_mode == 'project'
-      # For activity/project view, sort by name
-      sorted_data = data_hash.sort_by { |key, _| key || 'No Activity' }
-      formatted_labels = sorted_data.map { |key, _| key || 'No Activity' }
-      tooltip_labels = formatted_labels
-    else
-      # Sort data by date for proper line chart display
-      sorted_data = data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
-      end
-      formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-      
-      # Generate detailed tooltip labels for weekly grouping
-      tooltip_labels = if @grouping == 'weekly'
-        sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    # Sort data by date for proper line chart display
+    sorted_data = data_hash.sort_by do |key, _|
+      case key
+      when Date
+        key
+      when String
+        Date.parse(key) rescue key
       else
-        formatted_labels
+        key.to_s
       end
+    end
+    
+    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
     end
     
     # Generate formatted hours for tooltips
@@ -788,46 +850,359 @@ class TimeAnalyticsController < ApplicationController
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels,  # Add custom tooltip labels for title
-        formattedHours: formatted_hours  # Add formatted hours for value display
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
       }]
     }
 
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {}
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
         }
       },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: helpers.grouping_label(@grouping)
+            labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
             maxRotation: 45,
             minRotation: 45
           }
-        }
+        }]
       }
     }
 
     {
       type: 'line',
       data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Simple bar chart generator for pivot table data (total hours per period)
+  def generate_simple_bar_chart_data(data_hash)
+    return empty_chart_data('bar') if data_hash.empty?
+
+    # Sort data by date for proper bar chart display
+    sorted_data = data_hash.sort_by do |key, _|
+      case key
+      when Date
+        key
+      when String
+        Date.parse(key) rescue key
+      else
+        key.to_s
+      end
+    end
+    
+    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Generate formatted hours for tooltips
+    formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
+    
+    chart_data = {
+      labels: formatted_labels,
+      datasets: [{
+        label: 'Hours',
+        data: sorted_data.map { |_, value| value },
+        borderWidth: 1,
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }]
+    }
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours'
+          }
+        }],
+        xAxes: [{
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(@grouping)
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: chart_data,
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Stacked bar chart generator for activity breakdown (colorful bars by activity)
+  def generate_stacked_bar_chart_data(period_keys, activities, matrix_data)
+    return empty_chart_data('bar') if period_keys.empty? || activities.empty?
+
+    # Sort periods by date
+    sorted_periods = period_keys.sort
+    
+    # Generate labels for chart
+    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Create datasets for each activity (stacked)
+    # Colors will be assigned by chartjs-plugin-colorschemes
+    datasets = activities.map do |activity|
+      data = sorted_periods.map do |period_key|
+        matrix_data[period_key]&.[](activity) || 0
+      end
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: activity,
+        data: data,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(@grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: chart_options
+    }.to_json.html_safe
+  end
+
+  # Stacked bar chart generator for project breakdown (colorful bars by project)
+  def generate_stacked_bar_chart_by_project(period_keys, projects, matrix_data)
+    return empty_chart_data('bar') if period_keys.empty? || projects.empty?
+
+    # Sort periods by date
+    sorted_periods = period_keys.sort
+    
+    # Generate labels for chart
+    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    
+    # Generate detailed tooltip labels for weekly grouping
+    tooltip_labels = if @grouping == 'weekly'
+      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+    
+    # Create datasets for each project (stacked)
+    # Colors will be assigned by chartjs-plugin-colorschemes
+    datasets = projects.map do |project|
+      data = sorted_periods.map do |period_key|
+        matrix_data[period_key]&.[](project) || 0
+      end
+      
+      # Format hours for tooltips
+      formatted_hours = data.map { |hours| helpers.format_hours(hours) }
+      
+      {
+        label: project,
+        data: data,
+        borderWidth: 0,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: formatted_hours
+      }
+    end
+
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(@grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
+          },
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45,
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
       options: chart_options
     }.to_json.html_safe
   end
@@ -946,8 +1321,8 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Get unique periods and activities
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    activities = entries_with_details.map { |e| e[:activity_name] }.uniq.sort
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
+    activities = entries_with_details.map { |e| e[:activity_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -974,6 +1349,9 @@ class TimeAnalyticsController < ApplicationController
     activities.each do |activity|
       activity_totals[activity] = periods.sum { |period| matrix_data[period][activity] || 0 }
     end
+    
+    # Sort activities by total hours (highest to lowest) for summary view
+    activities = activities.sort_by { |activity| -activity_totals[activity] }
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
@@ -1044,14 +1422,22 @@ class TimeAnalyticsController < ApplicationController
       data_values = sorted_combined.map { |item| item[:value] }
       raw_keys = sorted_combined.map { |item| item[:raw_key] }
     end
+    # Get time period data and activity breakdown
+    raw_keys = pivot_data[:raw_periods]
+    activities = pivot_data[:activities]
+    matrix_data = pivot_data[:matrix]
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      # Line chart shows only total hours per period
+      data_hash = {}
+      raw_keys.each_with_index do |key, index|
+        data_hash[key] = pivot_data[:period_totals][key] || 0
+      end
+      generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      # Bar chart shows stacked activities per period (colorful breakdown)
+      generate_stacked_bar_chart_data(raw_keys, activities, matrix_data)
     end
   end
 
@@ -1068,8 +1454,8 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Get unique periods and projects
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    projects = entries_with_details.map { |e| e[:project_name] }.uniq.sort
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
+    projects = entries_with_details.map { |e| e[:project_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -1097,6 +1483,9 @@ class TimeAnalyticsController < ApplicationController
       project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
     end
     
+    # Sort projects by total hours (highest to lowest) for summary view
+    projects = projects.sort_by { |project| -project_totals[project] }
+    
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       projects: projects,
@@ -1109,26 +1498,22 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if project_view_state == 'summary'
-      # Summary view: group by project
-      labels = pivot_data[:projects]
-      data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
-      raw_keys = nil  # No raw keys for project names
-    else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
-    end
+    # Get time period data and project breakdown
+    raw_keys = pivot_data[:raw_periods]
+    projects = pivot_data[:projects]
+    matrix_data = pivot_data[:matrix]
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      # Line chart shows only total hours per period
+      data_hash = {}
+      raw_keys.each_with_index do |key, index|
+        data_hash[key] = pivot_data[:period_totals][key] || 0
+      end
+      generate_line_chart_data(data_hash)
     else
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      # Bar chart shows stacked projects per period (colorful breakdown)
+      generate_stacked_bar_chart_by_project(raw_keys, projects, matrix_data)
     end
   end
 
@@ -1210,189 +1595,68 @@ class TimeAnalyticsController < ApplicationController
     end
   end
 
-  def generate_bar_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if raw_keys && grouping == 'weekly'
-      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
-    else
-      labels
+  def generate_issue_pivot_table(time_entries, grouping)
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:issue).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      issue_key = entry.issue_id || 'no_issue'
+      issue_display = entry.issue ? format_issue_display(entry.issue) : 'No Issue'
+      {
+        period_key: period_key,
+        issue_key: issue_key,
+        issue_display: issue_display,
+        issue: entry.issue,
+        hours: entry.hours
+      }
     end
     
-    chart_data = {
-      labels: labels,
-      datasets: [{
-        label: 'Hours',
-        data: data_values,
-        backgroundColor: generate_colors(labels.size),
-        borderWidth: 1,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: grouping ? helpers.grouping_label(grouping) : ''
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        }
-      }
-    }
-
+    # Get unique periods and issues
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
+    issues = entries_with_details.map { |e| { key: e[:issue_key], display: e[:issue_display], issue: e[:issue] } }
+                                  .uniq { |i| i[:key] }
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      issue_key = entry[:issue_key]
+      matrix_data[period][issue_key] ||= 0
+      matrix_data[period][issue_key] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    issue_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = issues.sum { |issue| matrix_data[period][issue[:key]] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    issues.each do |issue|
+      issue_totals[issue[:key]] = periods.sum { |period| matrix_data[period][issue[:key]] || 0 }
+    end
+    
+    # Sort issues by total hours (highest to lowest) for summary view
+    issues = issues.sort_by { |issue| -issue_totals[issue[:key]] }
+    
     {
-      type: 'bar',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      issues: issues,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      issue_totals: issue_totals,
+      grand_total: grand_total,
+      raw_periods: periods
+    }
   end
 
-  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if raw_keys && grouping == 'weekly'
-      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
-    else
-      labels
-    end
-    
-    chart_data = {
-      labels: labels,
-      datasets: [{
-        label: 'Hours',
-        data: data_values,
-        borderColor: '#36a2eb',
-        backgroundColor: 'rgba(54, 162, 235, 0.1)',
-        fill: true,
-        tension: 0.2,
-        borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: grouping ? helpers.grouping_label(grouping) : ''
-          },
-          ticks: {
-            maxRotation: 45,
-            minRotation: 45
-          }
-        }
-      }
-    }
-
-    {
-      type: 'line',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
-  end
-
-  def generate_pie_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Calculate total for percentage calculation
-    total_hours = data_values.sum
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if raw_keys && grouping == 'weekly'
-      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
-    else
-      labels
-    end
-    
-    # Format labels with percentages and hours for pie chart
-    labels_with_percentages = labels.each_with_index.map do |label, index|
-      hours = data_values[index]
-      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      "#{label} (#{percentage}%, #{hours.round(1)}h)"
-    end
-    
-    chart_data = {
-      labels: labels_with_percentages,
-      datasets: [{
-        data: data_values,
-        backgroundColor: generate_colors(labels.size),
-        borderWidth: 1,
-        borderColor: '#fff',
-        tooltipLabels: tooltip_labels  # Add custom tooltip labels for detailed format
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            padding: 15,
-            boxWidth: 12
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      # Add total hours for percentage calculation in JavaScript
-      total_hours: total_hours
-    }
-
-    {
-      type: 'pie',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
+  def format_issue_display(issue)
+    "#{issue.tracker.name} ##{issue.id}: #{issue.subject}"
   end
 
   def generate_time_overview_data(time_entries, grouping)
@@ -1412,7 +1676,7 @@ class TimeAnalyticsController < ApplicationController
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
     
-    # Format data with proper date display
+    # Format data with proper date display (no activity breakdown)
     sorted_data.map do |period, hours|
       formatted_period = if grouping == 'daily'
         helpers.format_chart_label(period)
