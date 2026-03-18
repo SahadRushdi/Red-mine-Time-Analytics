@@ -793,7 +793,10 @@ class TimeAnalyticsController < ApplicationController
         else
           key.to_s
         end
-  
+      end
+    end
+  end
+
   def lighten_color(hex_color, percent)
     # Convert hex to RGB
     hex = hex_color.gsub('#', '')
