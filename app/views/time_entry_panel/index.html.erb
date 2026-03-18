@@ -606,70 +606,61 @@
               <%# Inline log form for this issue %>
               <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
                 <td colspan="5" class="px-0 py-0">
-                  <div class="tep-inline-form bg-blue-50 border-l-4 border-blue-400 px-5 py-3">
-                    <div class="flex items-center gap-2 mb-3 text-sm font-medium text-blue-800">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Log time for #<%= issue.id %> – <%= issue.subject %>
-                    </div>
-                    <div class="flex items-end gap-3 flex-wrap">
-                      <%# Date %>
-                      <div class="w-36">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Date <span class="text-red-500">*</span></label>
-                        <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <div id="issue-inline-form-<%= issue.id %>" class="tep-inline-form">
+                    <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 flex-wrap">
+                      <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-sm font-bold text-blue-700 whitespace-nowrap">#<%= issue.id %> – <%= issue.subject %></span>
                       </div>
+                      <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
-                      <%# Hours %>
-                      <div class="w-24">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Hours <span class="text-red-500">*</span></label>
-                        <input type="text" id="issue-hours-<%= issue.id %>" placeholder="H:MM"
-                               oninput="formatHoursInput(this)"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      </div>
+                      <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
+                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
 
-                      <%# Activity %>
-                      <div class="w-44">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Activity <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                          <select id="issue-activity-<%= issue.id %>"
-                                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8">
-                            <option value="">Loading...</option>
-                          </select>
-                          <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                          </div>
+                      <input type="text" id="issue-hours-<%= issue.id %>" placeholder="H:MM  *"
+                             autocomplete="off"
+                             oninput="formatHoursInput(this)"
+                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
+
+                      <div class="relative flex-shrink-0" id="issue-activity-wrapper-<%= issue.id %>">
+                        <button type="button"
+                                id="issue-activity-btn-<%= issue.id %>"
+                                onclick="toggleIssueActivityDropdown(<%= issue.id %>)"
+                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                          <span id="issue-activity-text-<%= issue.id %>" class="text-gray-400 truncate flex-1">Activity *</span>
+                          <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                          </svg>
+                        </button>
+                        <input type="hidden" id="issue-activity-<%= issue.id %>">
+                        <div id="issue-activity-list-<%= issue.id %>"
+                             class="hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                             style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                          <div class="px-3 py-2 text-sm text-gray-400 italic">Loading...</div>
                         </div>
                       </div>
 
-                      <%# Comment %>
-                      <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Comment</label>
-                        <input type="text" id="issue-comment-<%= issue.id %>" placeholder="What did you work on?"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      </div>
+                      <input type="text" id="issue-comment-<%= issue.id %>" placeholder="Comment (optional)"
+                             autocomplete="off"
+                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-1 min-w-[200px]">
 
-                      <%# Buttons %>
-                      <div class="flex items-end gap-2 pb-0.5">
-                        <button type="button" onclick="hideIssueInlineForm(<%= issue.id %>)"
-                                class="px-3 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 transition-colors">
-                          Cancel
-                        </button>
-                        <button type="button" onclick="submitIssueInlineLog(event, <%= issue.id %>)"
-                                class="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium !text-white rounded-lg transition-colors"
-                                style="background-color: #2563eb !important;">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          Save
-                        </button>
-                      </div>
+                      <button type="button" onclick="hideIssueInlineForm(<%= issue.id %>)"
+                              class="tep-action-btn flex-shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                              style="background-color: #dc2626 !important;">
+                        ✕ Cancel
+                      </button>
+                      <button type="button" onclick="submitIssueInlineLog(event, <%= issue.id %>)"
+                              class="tep-action-btn flex-shrink-0 inline-flex items-center gap-1 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                              style="background-color: #2563eb !important;">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Save
+                      </button>
                     </div>
-
-                    <div id="issue-inline-error-<%= issue.id %>" class="hidden mt-2 px-3 py-2 text-xs text-red-800 bg-red-50 rounded-lg" role="alert"></div>
+                    <div id="issue-inline-error-<%= issue.id %>" class="hidden px-4 py-2 text-sm text-red-800 bg-red-50 border-b border-red-100 border-l-4 border-l-red-400" role="alert"></div>
                   </div>
                 </td>
               </tr>
@@ -838,7 +829,7 @@
 
     if (form.classList.contains('hidden')) {
       // Close any other open inline forms
-      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.querySelectorAll('[id^="tep-inline-form-"]').forEach(function(f) { f.classList.add('hidden'); });
       form.classList.remove('hidden');
       // Reset fields
       var issueSelect = document.getElementById('tep-issue-' + idx);
@@ -1103,10 +1094,12 @@
 
     if (row.classList.contains('hidden')) {
       // Close any other open inline forms
-      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.querySelectorAll('[id^="tep-inline-form-"]').forEach(function(f) { f.classList.add('hidden'); });
       document.querySelectorAll('[id^="issue-inline-row-"]').forEach(function(r) { r.classList.add('hidden'); });
 
       row.classList.remove('hidden');
+      var inlineForm = document.getElementById('issue-inline-form-' + issueId);
+      if (inlineForm) inlineForm.classList.remove('hidden');
       // Load activities if not yet loaded
       if (!issueActivitiesLoaded[issueId]) {
         await loadIssueActivities(issueId);
@@ -1119,6 +1112,7 @@
       if (hoursEl) hoursEl.value = '';
       var commentEl = document.getElementById('issue-comment-' + issueId);
       if (commentEl) commentEl.value = '';
+      resetIssueActivityDropdown(issueId);
       hideIssueInlineError(issueId);
       row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
@@ -1129,23 +1123,64 @@
   function hideIssueInlineForm(issueId) {
     var row = document.getElementById('issue-inline-row-' + issueId);
     if (row) row.classList.add('hidden');
+    closeIssueActivityDropdown(issueId);
+  }
+
+  function toggleIssueActivityDropdown(issueId) {
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    if (!list) return;
+    list.classList.toggle('hidden');
+  }
+
+  function closeIssueActivityDropdown(issueId) {
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    if (list) list.classList.add('hidden');
+  }
+
+  function resetIssueActivityDropdown(issueId) {
+    var hidden = document.getElementById('issue-activity-' + issueId);
+    var text = document.getElementById('issue-activity-text-' + issueId);
+    if (hidden) hidden.value = '';
+    if (text) {
+      text.textContent = 'Activity *';
+      text.classList.add('text-gray-400');
+      text.classList.remove('text-gray-900');
+    }
+    closeIssueActivityDropdown(issueId);
+  }
+
+  function selectIssueActivity(issueId, activityId, activityName) {
+    var hidden = document.getElementById('issue-activity-' + issueId);
+    var text = document.getElementById('issue-activity-text-' + issueId);
+    if (hidden) hidden.value = activityId;
+    if (text) {
+      text.textContent = activityName;
+      text.classList.remove('text-gray-400');
+      text.classList.add('text-gray-900');
+    }
+    closeIssueActivityDropdown(issueId);
   }
 
   async function loadIssueActivities(issueId) {
-    var select = document.getElementById('issue-activity-' + issueId);
-    if (!select) return;
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    if (!list) return;
     try {
       var resp = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
       var data = await resp.json();
-      select.innerHTML = '<option value="">Select activity</option>';
+      list.innerHTML = '';
       (data.activities || []).forEach(function(a) {
-        var opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = a.name;
-        select.appendChild(opt);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700';
+        btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
+        btn.textContent = a.name;
+        btn.setAttribute('data-id', a.id);
+        btn.onclick = function() { selectIssueActivity(issueId, a.id, a.name); };
+        list.appendChild(btn);
       });
+      resetIssueActivityDropdown(issueId);
     } catch(e) {
-      select.innerHTML = '<option value="">Failed to load</option>';
+      list.innerHTML = '<div class="px-3 py-2 text-sm text-red-400">Failed to load</div>';
     }
   }
 
@@ -1173,7 +1208,7 @@
     if (!hours)      { showIssueInlineError(issueId, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
     if (!activityId) { showIssueInlineError(issueId, 'Please select an activity.'); return; }
 
-    var saveBtn = event.target;
+    var saveBtn = event.currentTarget || event.target;
     saveBtn.disabled = true;
 
     try {
@@ -1197,6 +1232,16 @@
       saveBtn.disabled = false;
     }
   }
+
+  // Close unlogged activity dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('[id^="issue-activity-wrapper-"]').forEach(function(wrapper) {
+      if (!wrapper.contains(e.target)) {
+        var issueId = wrapper.id.replace('issue-activity-wrapper-', '');
+        closeIssueActivityDropdown(issueId);
+      }
+    });
+  });
 
   // ── Shared utilities ─────────────────────────────────────────────────────
   function formatHoursInput(input) {
