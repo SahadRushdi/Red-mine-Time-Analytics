@@ -24,8 +24,6 @@ class TimeAnalyticsController < ApplicationController
       @user = User.current
     end
     
-    @view_mode = params[:view_mode] || 'time_entries'
-    @user = User.current
     # Default to issue view
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
     
@@ -242,8 +240,6 @@ class TimeAnalyticsController < ApplicationController
       @user = User.current
     end
     
-    @view_mode = params[:view_mode] || 'time_entries'
-    @user = User.current
     # Use same logic as individual_dashboard for consistency
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
     
@@ -769,31 +765,6 @@ class TimeAnalyticsController < ApplicationController
         result << "hsl(#{hue}, 70%, 60%)"
       end
       result
-    end
-  end
-
-  def generate_pie_chart_data(data_hash, view_mode = 'time_entries')
-    return empty_chart_data('pie') if data_hash.empty?
-
-    # Sort data based on data type
-    first_key = data_hash.keys.first
-    is_activity_data = first_key.is_a?(String)
-    
-    sorted_data = if is_activity_data
-      # Sort by hours (descending) for activity/project data
-      data_hash.sort_by { |_, value| -value }
-    else
-      # Sort by date for proper chronological order
-      data_hash.sort_by do |key, _|
-        case key
-        when Date
-          key
-        when String
-          Date.parse(key) rescue key
-        else
-          key.to_s
-        end
-      end
     end
   end
 
@@ -1589,8 +1560,6 @@ class TimeAnalyticsController < ApplicationController
     end
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
     when 'line'
       generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     else
