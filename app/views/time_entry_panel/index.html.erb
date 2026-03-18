@@ -100,26 +100,24 @@
   <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3M4 10h16M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label">Active Days</p>
-      <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
+      <p class="ts-summary-card-label">Projects</p>
+      <p class="ts-summary-card-value"><%= @unique_projects_count %> <span class="ts-summary-card-unit">active</span></p>
     </div>
   </div>
 
   <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 19h16M7 16v-4m5 4V8m5 8v-6"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label">
-        <%= @grouping == 'daily' ? 'Daily Average' : (@grouping == 'weekly' ? 'Weekly Average' : 'Monthly Average') %>
-      </p>
-      <p class="ts-summary-card-value"><%= format_hours(@avg_hours_per_period) %> <span class="ts-summary-card-unit">hrs</span></p>
+      <p class="ts-summary-card-label">All Issues</p>
+      <p class="ts-summary-card-value"><%= @all_issues_count %> <span class="ts-summary-card-unit">assigned</span></p>
     </div>
   </div>
 

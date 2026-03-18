@@ -186,3 +186,29 @@ Applied requested spacing and layout refinements with minimal changes:
 
 ### Next Steps
 - Quick UI pass in browser to confirm tab strip now appears fully attached and summary row density matches expectation.
+
+---
+
+## Update: Restore My Work Log "Projects" and "All Issues" summary cards
+
+### Overview
+Reverted My Work Log summary metrics to the intended card set by replacing the recently introduced **Active Days** and **Daily/Weekly/Monthly Average** cards with **Projects** and **All Issues**, while keeping **Total hours** and **Issues Worked** unchanged in place and color.
+
+### Code Changes
+- Updated `app/views/time_entry_panel/index.html.erb`:
+  - Card #2 now shows **Projects** using `@unique_projects_count` (`active` unit).
+  - Card #3 now shows **All Issues** using `@all_issues_count` (`assigned` unit).
+  - Reused the previous icon set used for these two cards.
+- Updated `app/controllers/time_entry_panel_controller.rb`:
+  - Removed Work Log-only metrics that powered removed cards:
+    - `@active_days_count`
+    - `@avg_hours_per_period`
+  - Removed now-unused average calculation helper methods (`calculate_avg_hours_per_period`, day/week/month variants).
+  - Kept existing `@unique_projects_count` and `@all_issues_count` logic.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Visual QA in Redmine My Work Log page for card labels/values and alignment with current theme.
