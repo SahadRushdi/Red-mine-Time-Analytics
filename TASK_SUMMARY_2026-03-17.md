@@ -212,3 +212,32 @@ Reverted My Work Log summary metrics to the intended card set by replacing the r
 
 ### Next Steps
 - Visual QA in Redmine My Work Log page for card labels/values and alignment with current theme.
+
+---
+
+## Update: My Time mobile responsiveness for analysis table + donut chart
+
+### Overview
+Fixed My Time responsive behavior for the Activity/Project/Issue analysis area so narrow viewports no longer force whole-page horizontal scrolling to reach the donut chart. The table stays first, with horizontal scrolling contained inside the table area, and the donut card moves below the table on smaller widths.
+
+### Code Changes
+- Updated `app/views/time_analytics/individual_dashboard.html.erb`:
+  - Added `ta-analysis-layout` wrapper class to the table+donut row.
+  - Added `ta-analysis-table` and `ta-analysis-donut` classes for targeted responsive behavior.
+  - Replaced generic table wrapper with `ta-analysis-table-scroll overflow-x-auto` to make table-level horizontal scrolling explicit.
+  - Improved header and pagination wrappers with responsive flex classes to avoid overflow in narrow widths.
+- Updated `assets/stylesheets/time_analytics.css`:
+  - Added analysis-specific responsive rules.
+  - Set `#view-mode-table { min-width: 0; }` to prevent flex overflow.
+  - Added smooth horizontal scrolling on table wrapper (`-webkit-overflow-scrolling: touch`).
+  - Added `@media (max-width: 1123px)` breakpoint to stack layout vertically and keep donut card below the table at full width.
+
+### Verification Notes
+- `npm run build` ✅
+- `ruby test/test_working_days.rb` ✅
+
+### Next Steps
+- Visual QA on My Time in browser responsive mode around `1123px` and below to confirm:
+  - table scroll remains internal,
+  - donut card appears below table,
+  - desktop layout remains unchanged.

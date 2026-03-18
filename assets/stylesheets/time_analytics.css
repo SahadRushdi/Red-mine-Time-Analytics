@@ -531,6 +531,42 @@ tbody tr:last-child {
   border-bottom: none !important;
 }
 
+/* === My Time Analysis (table + donut) === */
+#view-mode-table {
+  min-width: 0;
+}
+
+.ta-analysis-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ta-analysis-table-scroll table {
+  min-width: max-content;
+}
+
+.ta-analysis-donut {
+  width: 20rem;
+}
+
+@media (max-width: 1123px) {
+  .ta-analysis-layout {
+    flex-direction: column;
+  }
+
+  .ta-analysis-layout > .ta-analysis-table,
+  .ta-analysis-layout > .ta-analysis-donut {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .ta-analysis-donut {
+    order: 2;
+    flex-shrink: 1;
+  }
+}
+
 /* === Tooltips === */
 .tooltip {
   font-size: 14px !important; /* Base 14px + 3px */

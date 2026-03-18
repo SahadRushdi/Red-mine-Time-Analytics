@@ -398,14 +398,14 @@ function switchChartType(chartType) {
 
 <!-- Activity/Project/Issue Analysis Tables with Donut Chart - Only shown for activity, project, and issue views -->
 <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
-  <div class="flex gap-6 mb-6">
+  <div class="ta-analysis-layout flex gap-6 mb-6">
     <!-- Table Section (flexible width) -->
-    <div class="flex-1 bg-white rounded-lg shadow-md border border-gray-200" id="view-mode-table">
+    <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200" id="view-mode-table">
       <!-- Header with Title and Controls - All in One Line -->
       <div class="px-6 py-4 border-b border-gray-200">
-        <div class="flex items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
           <!-- Left: Title and View Toggle Buttons -->
-          <div class="flex items-center gap-4">
+          <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">
     <% summary_chart_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'] %>
     <% if @view_mode == 'activity' %>
@@ -469,7 +469,7 @@ function switchChartType(chartType) {
           </div>
           
           <!-- Right: Hours and Per Page -->
-          <div class="flex items-center gap-4">
+          <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
             <%= form_tag my_time_path, method: :get, local: true, 
                 class: 'flex items-center gap-2' do %>
@@ -495,7 +495,7 @@ function switchChartType(chartType) {
   
   <% if has_data %>
     <!-- Flowbite Table with Modern Design -->
-    <div class="overflow-x-auto">
+    <div class="ta-analysis-table-scroll overflow-x-auto">
       <% if @view_mode == 'activity' %>
       <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Activity pivot table for cross-tabulation (Activity × Time Period matrix) - Dual View System %>
@@ -850,7 +850,7 @@ function switchChartType(chartType) {
     
     <!-- Flowbite Pagination -->
     <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
-      <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div class="text-sm text-gray-700" id="pagination-info-text" 
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
              data-activity-count="<%= @activities&.count || 0 %>"
@@ -859,7 +859,7 @@ function switchChartType(chartType) {
              data-view-mode="<%= @view_mode %>">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
-        <nav class="flex gap-1">
+        <nav class="flex gap-1 max-w-full overflow-x-auto">
           <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
           <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
@@ -875,7 +875,7 @@ function switchChartType(chartType) {
     </div>
     
     <!-- Donut Chart Section (fixed narrow width) -->
-    <div class="w-80 flex-shrink-0 bg-white rounded-lg shadow-md p-4 border border-gray-200">
+    <div class="ta-analysis-donut w-80 flex-shrink-0 bg-white rounded-lg shadow-md p-4 border border-gray-200">
       
       <div class="relative h-80 flex items-center justify-center">
         <canvas id="donut-chart" class="chart"></canvas>
