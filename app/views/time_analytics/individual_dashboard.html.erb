@@ -271,7 +271,7 @@
       <%# Flowbite Default Table - Date and Hours only %>
       <div class="relative">
         <table class="w-full text-sm text-left text-gray-500">
-          <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+          <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
               <th scope="col" class="px-6 py-3">
                 <%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %>
@@ -482,7 +482,7 @@ function switchChartType(chartType) {
               <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
               <%= select_tag :per_page, options_for_select(per_page_options, @limit),
                   onchange: 'this.form.submit()',
-                  class: 'px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+                  class: 'px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
             <% end %>
           </div>
         </div>
@@ -503,7 +503,7 @@ function switchChartType(chartType) {
         <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
         <div id="daily-detailed-view" class="pivot-table-wrapper">
           <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
                 <% @activities.each do |activity| %>
@@ -567,7 +567,7 @@ function switchChartType(chartType) {
         <%# Detailed View: Daily Pivot Table (Date × Activity matrix) - Default %>
         <div id="daily-detailed-view" class="pivot-table-wrapper">
           <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
                 <% @activities.each do |activity| %>
@@ -633,7 +633,7 @@ function switchChartType(chartType) {
         <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
         <div id="project-detailed-view" class="pivot-table-wrapper">
           <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
                 <% @projects.each do |project| %>
@@ -697,7 +697,7 @@ function switchChartType(chartType) {
         <%# Detailed View: Daily Pivot Table (Date × Project matrix) - Default %>
         <div id="project-detailed-view" class="pivot-table-wrapper">
           <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
                 <% @projects.each do |project| %>
@@ -763,7 +763,7 @@ function switchChartType(chartType) {
         <%# Detailed View: Pivot Table (Time Period × Issue matrix) - Default %>
         <div id="issue-detailed-view" class="pivot-table-wrapper">
           <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
                 <% @issues.each do |issue_info| %>
