@@ -535,8 +535,8 @@ class TimeAnalyticsController < ApplicationController
       end
     end
     
-    # Get all unique periods, sorted
-    all_periods = category_breakdown.keys.sort
+    # Build the full period list so zero-hour working days still appear in the bar chart.
+    all_periods = fill_missing_periods_for_grouping(group_time_entries(time_entries, grouping), grouping).keys.sort
     
     # Return empty if no data
     return empty_chart_data('bar') if all_periods.empty?
@@ -956,8 +956,8 @@ class TimeAnalyticsController < ApplicationController
   def generate_stacked_bar_chart_data(period_keys, activities, matrix_data)
     return empty_chart_data('bar') if period_keys.empty? || activities.empty?
 
-    # Sort periods by date
-    sorted_periods = period_keys.sort
+    # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
+    sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
     
     # Generate labels for chart
     formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
@@ -1061,8 +1061,8 @@ class TimeAnalyticsController < ApplicationController
   def generate_stacked_bar_chart_by_project(period_keys, projects, matrix_data)
     return empty_chart_data('bar') if period_keys.empty? || projects.empty?
 
-    # Sort periods by date
-    sorted_periods = period_keys.sort
+    # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
+    sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
     
     # Generate labels for chart
     formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
@@ -1181,6 +1181,19 @@ class TimeAnalyticsController < ApplicationController
         }
       }
     }.to_json.html_safe
+  end
+
+  def fill_missing_periods_for_grouping(grouped_data, grouping)
+    case grouping
+    when 'daily'
+      fill_missing_working_days(grouped_data, @from, @to)
+    when 'weekly'
+      fill_missing_weeks(grouped_data, @from, @to)
+    when 'monthly'
+      fill_missing_months(grouped_data, @from, @to)
+    else
+      grouped_data
+    end
   end
 
   # Inline CSV Export methods
@@ -1362,10 +1375,10 @@ class TimeAnalyticsController < ApplicationController
     case chart_type
     when 'line'
       # Line chart shows only total hours per period
-      data_hash = {}
-      raw_keys.each_with_index do |key, index|
-        data_hash[key] = pivot_data[:period_totals][key] || 0
-      end
+      data_hash = fill_missing_periods_for_grouping(
+        pivot_data[:period_totals].each_with_object({}) { |(period_key, hours), hash| hash[period_key] = hours },
+        @grouping
+      )
       generate_line_chart_data(data_hash)
     else
       # Bar chart shows stacked activities per period (colorful breakdown)
@@ -1438,10 +1451,10 @@ class TimeAnalyticsController < ApplicationController
     case chart_type
     when 'line'
       # Line chart shows only total hours per period
-      data_hash = {}
-      raw_keys.each_with_index do |key, index|
-        data_hash[key] = pivot_data[:period_totals][key] || 0
-      end
+      data_hash = fill_missing_periods_for_grouping(
+        pivot_data[:period_totals].each_with_object({}) { |(period_key, hours), hash| hash[period_key] = hours },
+        @grouping
+      )
       generate_line_chart_data(data_hash)
     else
       # Bar chart shows stacked projects per period (colorful breakdown)
