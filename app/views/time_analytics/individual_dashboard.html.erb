@@ -1,11 +1,12 @@
 <%= render 'includes' %>
+<% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
 
 <%# Modern Dashboard Header with Tailwind %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div>
     <h1 class="text-2xl font-bold text-gray-900"><%= l(:label_individual_dashboard) %></h1>
     <p class="text-sm text-gray-500">
-      <%= @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
+      <%= date_range_label %>
     </p>
   </div>
   
@@ -918,6 +919,15 @@ function formatHours(hours) {
   }
 }
 
+var emptyChartMessage = '<%= j(l(:label_no_chart_data_for_range, range: date_range_label)) %>';
+
+function renderEmptyState(container, message, wrapperClass) {
+  if (!container) return;
+
+  var classes = wrapperClass || 'h-80 flex items-center justify-center';
+  container.innerHTML = '<div class="' + classes + '"><p class="text-center text-gray-500 text-sm px-4">' + message + '</p></div>';
+}
+
 // Get localized grouping label from chart element data attribute
 function getGroupingLabel() {
   var chartElement = document.getElementById('time-chart');
@@ -964,11 +974,15 @@ function initChart() {
   try {
     var chartData = chartElement.getAttribute('data-chart');
     if (!chartData || chartData === 'null' || chartData === '') {
-      chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No data available for chart</p>';
+      renderEmptyState(chartElement.parentElement, emptyChartMessage);
       return;
     }
 
     var config = JSON.parse(chartData);
+    if (config && (config.empty || !config.data || !config.data.labels || config.data.labels.length === 0 || !config.data.datasets || config.data.datasets.length === 0)) {
+      renderEmptyState(chartElement.parentElement, emptyChartMessage);
+      return;
+    }
     
     // Ensure responsive configuration
     if (!config.options) {
@@ -1578,7 +1592,7 @@ function initDonutChart() {
   <% end %>
   
   if (chartLabels.length === 0 || chartValues.length === 0) {
-    donutCanvas.parentElement.innerHTML = '<p class="text-center text-gray-500 text-sm">No data available</p>';
+    renderEmptyState(donutCanvas.closest('.ta-analysis-donut'), emptyChartMessage);
     return;
   }
   

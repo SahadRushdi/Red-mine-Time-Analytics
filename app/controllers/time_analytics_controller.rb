@@ -1164,21 +1164,20 @@ class TimeAnalyticsController < ApplicationController
 
   def empty_chart_data(chart_type)
     {
+      empty: true,
       type: chart_type,
       data: {
-        labels: ['No Data'],
-        datasets: [{
-          data: [1],
-          backgroundColor: ['rgba(200, 200, 200, 0.2)'],
-          borderColor: ['rgba(200, 200, 200, 0.6)'],
-          borderWidth: 1
-        }]
+        labels: [],
+        datasets: []
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
+        legend: {
+          display: false
+        },
+        tooltips: {
+          enabled: false
         }
       }
     }.to_json.html_safe

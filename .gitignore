@@ -16,6 +16,9 @@ Thumbs.db
 *.swp
 *.swo
 
+#Summary Files
+TASK_SUMMARY*
+
 # Note: We commit the following for deployment simplicity:
 # - package-lock.json (dependency locking)
 # - assets/stylesheets/tailwind.output.css (compiled CSS - no Node.js needed on deployment)
