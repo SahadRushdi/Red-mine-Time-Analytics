@@ -317,10 +317,10 @@
 
               <%# Hours %>
               <input type="text" id="tep-hours-<%= idx %>"
-                     placeholder="H:MM  *"
+                     placeholder="Hours *"
                      autocomplete="off"
                      oninput="formatHoursInput(this)"
-                     title="Hours (e.g. 1:30)"
+                     title="Hours (e.g. 1, 1:30, 10)"
                      class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
 
               <%# Activity — custom Flowbite-style dropdown %>
@@ -519,8 +519,8 @@
                                         <div>
                                           <label class="block text-sm font-medium text-gray-500 mb-1">Hours</label>
                                           <input type="text" name="hours" value="<%= format_hours(entry.hours) %>"
-                                                 class="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white"
-                                                 placeholder="H:MM" />
+                                                  class="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white"
+                                                  placeholder="Hours" title="Hours (e.g. 1, 1:30, 10)" />
                                         </div>
                                         <div class="flex items-end gap-2">
                                           <button type="submit"
@@ -627,10 +627,11 @@
                       <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
                              class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
 
-                      <input type="text" id="issue-hours-<%= issue.id %>" placeholder="H:MM  *"
-                             autocomplete="off"
-                             oninput="formatHoursInput(this)"
-                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
+                      <input type="text" id="issue-hours-<%= issue.id %>" placeholder="Hours *"
+                              autocomplete="off"
+                              oninput="formatHoursInput(this)"
+                              title="Hours (e.g. 1, 1:30, 10)"
+                              class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
 
                       <div class="relative flex-shrink-0" id="issue-activity-wrapper-<%= issue.id %>">
                         <button type="button"
@@ -1133,7 +1134,7 @@
 
     if (!issueId)    { showTepInlineError(idx, 'Please select an issue.');   return; }
     var hours = parseHoursMinutes(hoursRaw);
-    if (!hours)      { showTepInlineError(idx, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (hours === null) { showTepInlineError(idx, 'Enter a valid number of hours.'); return; }
     if (!activityId) { showTepInlineError(idx, 'Please select an activity.'); return; }
 
     var saveBtn = event.target;
@@ -1281,7 +1282,7 @@
 
     if (!date)       { showIssueInlineError(issueId, 'Please select a date.');    return; }
     var hours = parseHoursMinutes(hoursRaw);
-    if (!hours)      { showIssueInlineError(issueId, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (hours === null) { showIssueInlineError(issueId, 'Enter a valid number of hours.'); return; }
     if (!activityId) { showIssueInlineError(issueId, 'Please select an activity.'); return; }
 
     var saveBtn = event.currentTarget || event.target;
@@ -1321,18 +1322,26 @@
 
   // ── Shared utilities ─────────────────────────────────────────────────────
   function formatHoursInput(input) {
-    input.value = input.value.replace(/[^\d:]/g, '');
+    input.value = input.value.replace(/[^\d:.]/g, '');
   }
 
   function parseHoursMinutes(value) {
     if (!value || !value.trim()) return null;
-    var parts = value.split(':');
-    if (parts.length !== 2) return null;
-    var h = parseInt(parts[0], 10);
-    var m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
-    if (h === 0 && m === 0) return null;
-    return h + (m / 60.0);
+    var trimmed = value.trim();
+
+    if (trimmed.includes(':')) {
+      var parts = trimmed.split(':');
+      if (parts.length !== 2) return null;
+      var h = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10);
+      if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
+      if (h === 0 && m === 0) return null;
+      return h + (m / 60.0);
+    }
+
+    var hours = parseFloat(trimmed);
+    if (isNaN(hours) || hours < 0) return null;
+    return hours;
   }
 
   // ── Edit-form activity dropdown ──────────────────────────────────────────────
