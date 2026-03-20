@@ -385,17 +385,18 @@
                 </colgroup>
                 <tbody>
                   <% issue_rows.each_with_index do |row, row_idx| %>
-                    <% issue     = row[:issue] %>
-                    <% logged    = row[:logged_hours] %>
-                    <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
-                    <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
-                    <% entry_uid = "#{idx}-#{row_idx}" %>
-                    <tr class="tep-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                        data-period-key="<%= date_str %>"
-                        data-issue-id="<%= issue.id %>"
-                        data-expand-id="tep-issue-expand-<%= entry_uid %>"
-                        data-chevron-id="tep-issue-chevron-<%= entry_uid %>"
-                        onclick="tepToggleIssueEntries('<%= entry_uid %>')">
+              <% issue     = row[:issue] %>
+              <% logged    = row[:logged_hours] %>
+              <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
+              <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
+              <% entry_uid = "#{idx}-#{row_idx}" %>
+              <tr class="tep-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
+                  data-period-key="<%= date_str %>"
+                  data-issue-id="<%= issue.id %>"
+                  data-expand-id="tep-issue-expand-<%= entry_uid %>"
+                  data-chevron-id="tep-issue-chevron-<%= entry_uid %>"
+                  onclick="tepToggleIssueEntries('<%= entry_uid %>')">
                       <% if @grouping != 'daily' %>
                         <td class="px-4 py-3 text-gray-400 text-sm whitespace-nowrap"><%= dates_str %></td>
                       <% end %>
@@ -745,6 +746,12 @@
     var query = document.getElementById('ts-search-input').value.toLowerCase().trim();
     var activePanel = document.querySelector('[id^="panel-"]:not(.hidden)');
     if (!activePanel) return;
+
+    if (activePanel.id === 'panel-time-logs') {
+      filterLoggedRows(query);
+      return;
+    }
+
     activePanel.querySelectorAll('.ts-issue-row').forEach(function(row) {
       var text = row.getAttribute('data-search-text') || '';
       var expandRow = row.nextElementSibling;
@@ -754,6 +761,67 @@
         row.style.display = 'none';
         if (expandRow && expandRow.id && expandRow.id.startsWith('issue-inline-row-')) {
           expandRow.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  function resetLoggedRows() {
+    document.querySelectorAll('#panel-time-logs .tep-group-row[data-period-key]').forEach(function(row) {
+      row.style.display = '';
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.add('hidden');
+      if (chevron) chevron.classList.remove('tep-chevron-open');
+    });
+
+    document.querySelectorAll('#panel-time-logs .tep-issue-row[data-period-key][data-issue-id]').forEach(function(row) {
+      row.style.display = '';
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.add('hidden');
+      if (chevron) chevron.style.transform = '';
+    });
+  }
+
+  function filterLoggedRows(query) {
+    if (!query) {
+      resetLoggedRows();
+      tepRestoreOpenState();
+      return;
+    }
+
+    var matchedPeriods = {};
+
+    document.querySelectorAll('#panel-time-logs .tep-issue-row[data-search-text]').forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      var matches = text.includes(query);
+      var periodKey = row.getAttribute('data-period-key');
+      var expandRow = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+
+      if (matches && periodKey) {
+        matchedPeriods[periodKey] = true;
+      }
+
+      row.style.display = matches ? '' : 'none';
+      if (expandRow) expandRow.classList.add('hidden');
+      if (chevron) chevron.style.transform = '';
+    });
+
+    document.querySelectorAll('#panel-time-logs .tep-group-row[data-period-key]').forEach(function(row) {
+      var periodKey = row.getAttribute('data-period-key');
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      var shouldShow = !!matchedPeriods[periodKey];
+
+      row.style.display = shouldShow ? '' : 'none';
+      if (expand) expand.classList.toggle('hidden', !shouldShow);
+      if (chevron) {
+        if (shouldShow) {
+          chevron.classList.add('tep-chevron-open');
+        } else {
+          chevron.classList.remove('tep-chevron-open');
         }
       }
     });
