@@ -214,8 +214,8 @@ class TimeEntryPanelController < ApplicationController
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
     when 'custom'
-      @from = params[:from].present? ? Date.parse(params[:from]) : (Date.current - 6.days)
-      @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
+      @from = parse_custom_date(params[:from]) || (Date.current - 6.days)
+      @to = parse_custom_date(params[:to]) || Date.current
     else
       # Default to last 7 days
       @filter = 'last_7_days'
@@ -237,6 +237,14 @@ class TimeEntryPanelController < ApplicationController
     else
       str.to_f
     end
+  end
+
+  def parse_custom_date(value)
+    return nil if value.blank?
+
+    Date.strptime(value, '%m/%d/%Y')
+  rescue ArgumentError
+    Date.parse(value)
   end
 
 end

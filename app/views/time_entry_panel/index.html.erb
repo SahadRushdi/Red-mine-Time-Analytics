@@ -74,11 +74,13 @@
     </div>
 
     <%# Custom date range %>
-    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-wrap items-center gap-2">
-      <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-      <%= date_field_tag :from, params[:from] || @from, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
-      <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-      <%= date_field_tag :to, params[:to] || @to, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
+      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" class="flex flex-nowrap items-center gap-2">
+        <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy' %>
+        <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy' %>
+      </div>
     </div>
   <% end %>
 </div>
@@ -859,6 +861,46 @@
     }
   }
 
+  function submitTepCustomDateRangeIfComplete() {
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
+    var filterHidden = document.getElementById('filter_hidden');
+    var form = document.getElementById('time-entry-panel-form');
+
+    if (filterHidden) {
+      filterHidden.value = 'custom';
+    }
+
+    if (!(startInput && endInput)) return;
+    if (!startInput.value || !endInput.value) return;
+    if (!form || form.dataset.submitting === '1') return;
+    form.dataset.submitting = '1';
+    form.submit();
+  }
+
+  function bindTepCustomDateRangeEvents() {
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
+    var picker = document.getElementById('tep-date-range-picker');
+    var datepickerInstances = [startInput && startInput.datepicker, endInput && endInput.datepicker].filter(Boolean);
+
+    function handleDateRangeChange() {
+      submitTepCustomDateRangeIfComplete();
+    }
+
+    [startInput, endInput, picker].forEach(function(element) {
+      if (element) {
+        element.addEventListener('changeDate', handleDateRangeChange);
+      }
+    });
+
+    datepickerInstances.forEach(function(datepicker) {
+      if (datepicker && datepicker.setOptions) {
+        datepicker.setOptions({ todayHighlight: true });
+      }
+    });
+  }
+
   // ── Grouping dropdown ────────────────────────────────────────────────────
   function toggleTepGroupingDropdown() {
     document.getElementById('tep-grouping-dropdown').classList.toggle('hidden');
@@ -885,6 +927,12 @@
       }
     });
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindTepCustomDateRangeEvents);
+  } else {
+    bindTepCustomDateRangeEvents();
+  }
 
   // ── Group expand / collapse ──────────────────────────────────────────────
   function toggleTepGroup(idx) {
