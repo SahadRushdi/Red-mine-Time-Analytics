@@ -197,12 +197,18 @@
             week_end   = [period_key + 6.days, @to].min
             period_display = "Week of #{period_key.strftime('%b %-d')} - #{week_end.strftime('%b %-d, %Y')}"
             is_today_group = (Date.current >= period_key && Date.current <= period_key + 6.days)
+            period_start = period_key
+            period_end   = week_end
           when 'monthly'
             period_display = period_key.strftime('%B %Y')
             is_today_group = (Date.current.beginning_of_month == period_key)
+            period_start = period_key
+            period_end   = [period_key.end_of_month, @to].min
           else # daily
             period_display = period_key.strftime('%A, %b %-d, %Y')
             is_today_group = (period_key == Date.current)
+            period_start = period_key
+            period_end   = period_key
           end
 
           has_entries    = group[:entry_count] > 0
@@ -273,6 +279,12 @@
                 </svg>
                 <span class="text-sm font-bold text-blue-700 whitespace-nowrap"><%= period_display %></span>
               </div>
+              <% if @grouping != 'daily' %>
+                <span id="tep-period-hint-<%= idx %>"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
+                  <%= @grouping == 'weekly' ? 'Current week highlighted in picker' : 'Current month highlighted in picker' %>
+                </span>
+              <% end %>
               <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
               <%# Issue — custom searchable dropdown %>
@@ -306,9 +318,10 @@
               <%# Date – weekly/monthly only %>
               <% if @grouping != 'daily' %>
                 <input type="date" id="tep-date-<%= idx %>"
-                       value="<%= date_str %>"
-                       min="<%= period_key.strftime('%Y-%m-%d') %>"
-                       max="<%= [@to, (@grouping == 'weekly' ? period_key + 6.days : period_key.end_of_month)].min.strftime('%Y-%m-%d') %>"
+                       value="<%= is_today_group ? Date.current.strftime('%Y-%m-%d') : date_str %>"
+                       data-grouping="<%= @grouping %>"
+                       data-period-start="<%= period_start.strftime('%Y-%m-%d') %>"
+                       data-period-end="<%= period_end.strftime('%Y-%m-%d') %>"
                        title="Date"
                        class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
               <% else %>
