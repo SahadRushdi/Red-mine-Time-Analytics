@@ -1076,21 +1076,33 @@ body .datepicker-cell.range.focused {
   color: #1d4ed8 !important;
 }
 
-body .datepicker-cell.tep-period-range {
+/* Period highlighting for weekly/monthly inline pickers */
+.datepicker-cell.day.tep-period-range,
+body .datepicker-cell.day.tep-period-range,
+body .datepicker-picker .datepicker-cell.day.tep-period-range {
   background-color: #dbeafe !important;
   color: #1d4ed8 !important;
   border-radius: 0 !important;
 }
 
-body .datepicker-cell.tep-period-start,
-body .datepicker-cell.tep-period-end {
+.datepicker-cell.day.tep-period-start,
+.datepicker-cell.day.tep-period-end,
+body .datepicker-cell.day.tep-period-start,
+body .datepicker-cell.day.tep-period-end,
+body .datepicker-picker .datepicker-cell.day.tep-period-start,
+body .datepicker-picker .datepicker-cell.day.tep-period-end {
   background-color: #3b82f6 !important;
   border-color: #2563eb !important;
   color: #fff !important;
+  border-radius: 9999px !important;
 }
 
-body .datepicker-cell.today.tep-period-start,
-body .datepicker-cell.today.tep-period-end {
+.datepicker-cell.day.today.tep-period-start,
+.datepicker-cell.day.today.tep-period-end,
+body .datepicker-cell.day.today.tep-period-start,
+body .datepicker-cell.day.today.tep-period-end,
+body .datepicker-picker .datepicker-cell.day.today.tep-period-start,
+body .datepicker-picker .datepicker-cell.day.today.tep-period-end {
   background-color: #eff6ff !important;
   border-color: #93c5fd !important;
   color: #1d4ed8 !important;

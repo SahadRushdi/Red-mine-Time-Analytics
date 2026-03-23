@@ -281,12 +281,7 @@
                 </svg>
                 <span class="text-sm font-bold text-blue-700 whitespace-nowrap"><%= period_display %></span>
               </div>
-              <% if @grouping != 'daily' %>
-                <span id="tep-period-hint-<%= idx %>"
-                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 whitespace-nowrap">
-                  <%= @grouping == 'weekly' ? 'Current week highlighted in picker' : 'Current month highlighted in picker' %>
-                </span>
-              <% end %>
+
               <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
               <%# Issue — custom searchable dropdown %>
@@ -1079,43 +1074,43 @@
 
     var periodStart = new Date(periodStartRaw + 'T00:00:00');
     var periodEnd = new Date(periodEndRaw + 'T00:00:00');
+    var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
+    var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
 
-    function inlinePeriodClassFor(date) {
-      var current = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-      var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
-      var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
-      if (current === startMs) return 'tep-period-start';
-      if (current === endMs) return 'tep-period-end';
-      if (current > startMs && current < endMs) return 'tep-period-range';
-      return '';
-    }
-
-    if (input.datepicker && input.datepicker.destroy) {
-      input.datepicker.destroy();
-    }
-
-    if (window.Datepicker) {
-      var instance = new window.Datepicker(input, {
-        format: 'mm/dd/yyyy',
-        autohide: true,
-        showOnFocus: false,
-        showOnClick: true,
-        todayHighlight: true,
-        beforeShowDay: function(date) {
-          var className = inlinePeriodClassFor(date);
-          if (className === 'tep-period-start') return 'range-start tep-period-start';
-          if (className === 'tep-period-end') return 'range-end tep-period-end';
-          if (className === 'tep-period-range') return 'range tep-period-range';
-          return '';
-        }
+    function applyHighlight() {
+      var pickers = document.querySelectorAll('.datepicker-picker');
+      pickers.forEach(function(picker) {
+        if (picker.offsetParent === null) return; // Skip hidden pickers
+        var cells = picker.querySelectorAll('.datepicker-cell.day[data-date]');
+        cells.forEach(function(cell) {
+          var rawDate = Number(cell.getAttribute('data-date'));
+          if (!rawDate) return;
+          // Remove old classes first
+          cell.classList.remove('tep-period-start', 'tep-period-end', 'tep-period-range');
+          // Add appropriate class
+          if (rawDate === startMs) {
+            cell.classList.add('tep-period-start');
+          } else if (rawDate === endMs) {
+            cell.classList.add('tep-period-end');
+          } else if (rawDate > startMs && rawDate < endMs) {
+            cell.classList.add('tep-period-range');
+          }
+        });
       });
-      if (input.value && instance.setDate) {
-        instance.setDate(input.value, { render: true, autohide: false });
-      }
-      if (instance.refresh) {
-        instance.refresh('picker', true);
-      }
     }
+
+    function scheduleHighlight() {
+      setTimeout(applyHighlight, 50);
+      setTimeout(applyHighlight, 200);
+    }
+
+    // Clean up previous listeners
+    if (input._tepClickHandler) {
+      input.removeEventListener('click', input._tepClickHandler);
+    }
+
+    input._tepClickHandler = scheduleHighlight;
+    input.addEventListener('click', input._tepClickHandler);
   }
 
   function initIssueInlineDatepicker(issueId) {
