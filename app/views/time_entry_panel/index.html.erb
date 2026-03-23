@@ -75,11 +75,11 @@
 
     <%# Custom date range %>
     <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
-      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" class="flex flex-nowrap items-center gap-2">
+      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
         <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy' %>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
         <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy' %>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
       </div>
     </div>
   <% end %>
@@ -319,13 +319,16 @@
 
               <%# Date – weekly/monthly only %>
               <% if @grouping != 'daily' %>
-                <input type="date" id="tep-date-<%= idx %>"
-                       value="<%= is_today_group ? Date.current.strftime('%Y-%m-%d') : date_str %>"
+                <input type="text" id="tep-date-<%= idx %>"
+                       value="<%= (is_today_group ? Date.current : period_key).strftime('%m/%d/%Y') %>"
                        data-grouping="<%= @grouping %>"
                        data-period-start="<%= period_start.strftime('%Y-%m-%d') %>"
                        data-period-end="<%= period_end.strftime('%Y-%m-%d') %>"
+                       datepicker
+                       datepicker-format="mm/dd/yyyy"
+                       datepicker-autohide
                        title="Date"
-                       class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                       class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
               <% else %>
                 <input type="hidden" id="tep-date-<%= idx %>" value="<%= date_str %>">
               <% end %>
@@ -853,11 +856,16 @@
   function toggleCustomDateRange() {
     var customRange  = document.getElementById('custom-date-range');
     var filterHidden = document.getElementById('filter_hidden');
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
       filterHidden.value = 'custom';
     } else {
       customRange.classList.add('hidden');
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
     }
   }
 
@@ -896,9 +904,66 @@
 
     datepickerInstances.forEach(function(datepicker) {
       if (datepicker && datepicker.setOptions) {
-        datepicker.setOptions({ todayHighlight: true, showOnFocus: false });
+        datepicker.setOptions({ todayHighlight: true, showOnFocus: false, showOnClick: false, autohide: true });
       }
     });
+
+    function hideTepRangePickers() {
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
+
+    function bindManualToggle(input, otherInput) {
+      if (!input || input.dataset.manualToggleBound === '1') return;
+      input.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!input.datepicker) return;
+        if (otherInput && otherInput.datepicker && otherInput.datepicker.active) {
+          otherInput.datepicker.hide();
+        }
+        if (input.datepicker.active) {
+          input.datepicker.hide();
+        } else {
+          input.datepicker.show();
+        }
+      });
+      input.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && input.datepicker && input.datepicker.hide) {
+          input.datepicker.hide();
+          input.blur();
+        }
+      });
+      input.dataset.manualToggleBound = '1';
+    }
+
+    bindManualToggle(startInput, endInput);
+    bindManualToggle(endInput, startInput);
+
+    function suppressAutoOpen() {
+      [startInput, endInput].forEach(function(input) {
+        if (!input) return;
+        if (document.activeElement === input) input.blur();
+      });
+      hideTepRangePickers();
+    }
+
+    setTimeout(suppressAutoOpen, 0);
+    setTimeout(suppressAutoOpen, 120);
+
+    if (!window.__tepRangeOutsideCloseBound) {
+      document.addEventListener('mousedown', function(event) {
+        var target = event.target;
+        var isInsideRangeUi = (picker && picker.contains(target)) ||
+          (startInput && target === startInput) ||
+          (endInput && target === endInput) ||
+          !!target.closest('.datepicker');
+        if (isInsideRangeUi) return;
+        hideTepRangePickers();
+      });
+      window.__tepRangeOutsideCloseBound = true;
+    }
   }
 
   // ── Grouping dropdown ────────────────────────────────────────────────────
@@ -979,10 +1044,132 @@
       resetTepActivityDropdown(idx);
       resetTepIssueDropdown(idx);
       hideTepInlineError(idx);
+      initTepInlinePeriodDatepicker(idx);
       // Scroll form into view
       form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
       form.classList.add('hidden');
+    }
+  }
+
+  function normalizeTepDateForSubmit(value) {
+    if (!value) return value;
+    var yyyymmdd = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (yyyymmdd) return value;
+
+    var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mmddyyyy) {
+      var month = mmddyyyy[1].padStart(2, '0');
+      var day = mmddyyyy[2].padStart(2, '0');
+      return mmddyyyy[3] + '-' + month + '-' + day;
+    }
+    return value;
+  }
+
+  function initTepInlinePeriodDatepicker(idx) {
+    var input = document.getElementById('tep-date-' + idx);
+    if (!input || input.type === 'hidden') return;
+
+    var periodStartRaw = input.getAttribute('data-period-start');
+    var periodEndRaw = input.getAttribute('data-period-end');
+    if (!periodStartRaw || !periodEndRaw) return;
+
+    var periodStart = new Date(periodStartRaw + 'T00:00:00');
+    var periodEnd = new Date(periodEndRaw + 'T00:00:00');
+
+    function inlinePeriodClassFor(date) {
+      var current = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+      var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
+      var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
+      if (current === startMs) return 'tep-period-start';
+      if (current === endMs) return 'tep-period-end';
+      if (current > startMs && current < endMs) return 'tep-period-range';
+      return '';
+    }
+
+    function applyTepInlinePeriodHighlight() {
+      if (!input.datepicker || !input.datepicker.pickerElement) return;
+      var pickerEl = input.datepicker.pickerElement;
+      var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
+      var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
+      var cells = pickerEl.querySelectorAll('.datepicker-cell[data-date]');
+
+      cells.forEach(function(cell) {
+        cell.classList.remove('tep-period-start', 'tep-period-end', 'tep-period-range');
+        var raw = Number(cell.getAttribute('data-date'));
+        if (!raw) return;
+        var d = new Date(raw);
+        var cellMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+        if (cellMs === startMs) {
+          cell.classList.add('tep-period-start');
+        } else if (cellMs === endMs) {
+          cell.classList.add('tep-period-end');
+        } else if (cellMs > startMs && cellMs < endMs) {
+          cell.classList.add('tep-period-range');
+        }
+      });
+    }
+
+    function scheduleTepInlinePeriodHighlight() {
+      requestAnimationFrame(function() {
+        requestAnimationFrame(applyTepInlinePeriodHighlight);
+      });
+    }
+
+    if (input.datepicker && input.datepicker.destroy) {
+      input.datepicker.destroy();
+    }
+    if (input._tepPeriodObserver) {
+      input._tepPeriodObserver.disconnect();
+      input._tepPeriodObserver = null;
+    }
+    if (input._tepPeriodEventHandler) {
+      ['show', 'changeMonth', 'changeYear', 'changeView', 'changeDate'].forEach(function(eventName) {
+        input.removeEventListener(eventName, input._tepPeriodEventHandler);
+      });
+      input._tepPeriodEventHandler = null;
+    }
+
+    if (window.Datepicker) {
+      var instance = new window.Datepicker(input, {
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        showOnFocus: false,
+        showOnClick: true,
+        todayHighlight: true,
+        beforeShowDay: function(date) {
+          return inlinePeriodClassFor(date);
+        }
+      });
+      if (input.value && instance.setDate) {
+        instance.setDate(input.value, { render: true, autohide: false });
+      }
+      if (instance.refresh) {
+        instance.refresh('picker', true);
+      }
+
+      input._tepPeriodEventHandler = function() {
+        scheduleTepInlinePeriodHighlight();
+      };
+      ['show', 'changeMonth', 'changeYear', 'changeView', 'changeDate'].forEach(function(eventName) {
+        input.addEventListener(eventName, input._tepPeriodEventHandler);
+      });
+
+      if (instance.pickerElement && window.MutationObserver) {
+        input._tepPeriodObserver = new MutationObserver(function() {
+          scheduleTepInlinePeriodHighlight();
+        });
+        input._tepPeriodObserver.observe(instance.pickerElement, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      }
+
+      scheduleTepInlinePeriodHighlight();
+      setTimeout(scheduleTepInlinePeriodHighlight, 80);
     }
   }
 
@@ -1192,6 +1379,8 @@
     var hoursRaw   = (document.getElementById('tep-hours-'    + idx) || {}).value;
     var activityId = (document.getElementById('tep-activity-' + idx) || {}).value;
     var comment    = (document.getElementById('tep-comment-'  + idx) || {}).value;
+
+    dateStr = normalizeTepDateForSubmit(dateStr);
 
     if (!issueId)    { showTepInlineError(idx, 'Please select an issue.');   return; }
     var hours = parseHoursMinutes(hoursRaw);

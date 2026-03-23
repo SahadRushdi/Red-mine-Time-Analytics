@@ -1076,6 +1076,26 @@ body .datepicker-cell.range.focused {
   color: #1d4ed8 !important;
 }
 
+body .datepicker-cell.tep-period-range {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-radius: 0 !important;
+}
+
+body .datepicker-cell.tep-period-start,
+body .datepicker-cell.tep-period-end {
+  background-color: #3b82f6 !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+}
+
+body .datepicker-cell.today.tep-period-start,
+body .datepicker-cell.today.tep-period-end {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
 body .datepicker-cell.selected:hover,
 body .datepicker-cell.range-start:hover,
 body .datepicker-cell.range-end:hover,
