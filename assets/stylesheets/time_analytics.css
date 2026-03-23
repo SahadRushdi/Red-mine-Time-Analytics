@@ -1064,6 +1064,18 @@ body .datepicker-cell.range-end {
   color: #fff !important;
 }
 
+body .datepicker-cell.range {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-radius: 0 !important;
+}
+
+body .datepicker-cell.range:hover,
+body .datepicker-cell.range.focused {
+  background-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
 body .datepicker-cell.selected:hover,
 body .datepicker-cell.range-start:hover,
 body .datepicker-cell.range-end:hover,
