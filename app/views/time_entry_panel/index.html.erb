@@ -642,8 +642,11 @@
                       </div>
                       <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
-                      <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
-                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                      <input type="text" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%m/%d/%Y') %>"
+                             datepicker
+                             datepicker-format="mm/dd/yyyy"
+                             datepicker-autohide
+                             class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
 
                       <input type="text" id="issue-hours-<%= issue.id %>" placeholder="Hours *"
                               autocomplete="off"
@@ -1087,48 +1090,8 @@
       return '';
     }
 
-    function applyTepInlinePeriodHighlight() {
-      if (!input.datepicker || !input.datepicker.pickerElement) return;
-      var pickerEl = input.datepicker.pickerElement;
-      var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
-      var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
-      var cells = pickerEl.querySelectorAll('.datepicker-cell[data-date]');
-
-      cells.forEach(function(cell) {
-        cell.classList.remove('tep-period-start', 'tep-period-end', 'tep-period-range');
-        var raw = Number(cell.getAttribute('data-date'));
-        if (!raw) return;
-        var d = new Date(raw);
-        var cellMs = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-
-        if (cellMs === startMs) {
-          cell.classList.add('tep-period-start');
-        } else if (cellMs === endMs) {
-          cell.classList.add('tep-period-end');
-        } else if (cellMs > startMs && cellMs < endMs) {
-          cell.classList.add('tep-period-range');
-        }
-      });
-    }
-
-    function scheduleTepInlinePeriodHighlight() {
-      requestAnimationFrame(function() {
-        requestAnimationFrame(applyTepInlinePeriodHighlight);
-      });
-    }
-
     if (input.datepicker && input.datepicker.destroy) {
       input.datepicker.destroy();
-    }
-    if (input._tepPeriodObserver) {
-      input._tepPeriodObserver.disconnect();
-      input._tepPeriodObserver = null;
-    }
-    if (input._tepPeriodEventHandler) {
-      ['show', 'changeMonth', 'changeYear', 'changeView', 'changeDate'].forEach(function(eventName) {
-        input.removeEventListener(eventName, input._tepPeriodEventHandler);
-      });
-      input._tepPeriodEventHandler = null;
     }
 
     if (window.Datepicker) {
@@ -1139,7 +1102,11 @@
         showOnClick: true,
         todayHighlight: true,
         beforeShowDay: function(date) {
-          return inlinePeriodClassFor(date);
+          var className = inlinePeriodClassFor(date);
+          if (className === 'tep-period-start') return 'range-start tep-period-start';
+          if (className === 'tep-period-end') return 'range-end tep-period-end';
+          if (className === 'tep-period-range') return 'range tep-period-range';
+          return '';
         }
       });
       if (input.value && instance.setDate) {
@@ -1148,28 +1115,31 @@
       if (instance.refresh) {
         instance.refresh('picker', true);
       }
+    }
+  }
 
-      input._tepPeriodEventHandler = function() {
-        scheduleTepInlinePeriodHighlight();
-      };
-      ['show', 'changeMonth', 'changeYear', 'changeView', 'changeDate'].forEach(function(eventName) {
-        input.addEventListener(eventName, input._tepPeriodEventHandler);
+  function initIssueInlineDatepicker(issueId) {
+    var input = document.getElementById('issue-date-' + issueId);
+    if (!input) return;
+
+    if (input.datepicker && input.datepicker.setOptions) {
+      input.datepicker.setOptions({
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        showOnFocus: false
       });
-
-      if (instance.pickerElement && window.MutationObserver) {
-        input._tepPeriodObserver = new MutationObserver(function() {
-          scheduleTepInlinePeriodHighlight();
-        });
-        input._tepPeriodObserver.observe(instance.pickerElement, {
-          subtree: true,
-          childList: true,
-          attributes: true,
-          attributeFilter: ['class']
-        });
+      if (input.value && input.datepicker.setDate) {
+        input.datepicker.setDate(input.value, { render: true, autohide: false });
       }
+      return;
+    }
 
-      scheduleTepInlinePeriodHighlight();
-      setTimeout(scheduleTepInlinePeriodHighlight, 80);
+    if (window.Datepicker) {
+      new window.Datepicker(input, {
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        showOnFocus: false
+      });
     }
   }
 
@@ -1434,11 +1404,12 @@
       }
       // Reset fields
       var dateEl = document.getElementById('issue-date-' + issueId);
-      if (dateEl) dateEl.value = '<%= Date.current.strftime('%Y-%m-%d') %>';
+      if (dateEl) dateEl.value = '<%= Date.current.strftime('%m/%d/%Y') %>';
       var hoursEl = document.getElementById('issue-hours-' + issueId);
       if (hoursEl) hoursEl.value = '';
       var commentEl = document.getElementById('issue-comment-' + issueId);
       if (commentEl) commentEl.value = '';
+      initIssueInlineDatepicker(issueId);
       resetIssueActivityDropdown(issueId);
       hideIssueInlineError(issueId);
       row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1529,6 +1500,8 @@
     var hoursRaw   = (document.getElementById('issue-hours-'    + issueId) || {}).value;
     var activityId = (document.getElementById('issue-activity-' + issueId) || {}).value;
     var comment    = (document.getElementById('issue-comment-'  + issueId) || {}).value;
+
+    date = normalizeTepDateForSubmit(date);
 
     if (!date)       { showIssueInlineError(issueId, 'Please select a date.');    return; }
     var hours = parseHoursMinutes(hoursRaw);
