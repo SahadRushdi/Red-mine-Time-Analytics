@@ -665,7 +665,7 @@
                         </button>
                         <input type="hidden" id="issue-activity-<%= issue.id %>">
                         <div id="issue-activity-list-<%= issue.id %>"
-                             class="hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                             class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                              style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
                           <div class="px-3 py-2 text-sm text-gray-400 italic">Loading...</div>
                         </div>
@@ -1469,7 +1469,7 @@
       (data.activities || []).forEach(function(a) {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700';
+        btn.className = 'tep-activity-option w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700';
         btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
         btn.textContent = a.name;
         btn.setAttribute('data-id', a.id);
