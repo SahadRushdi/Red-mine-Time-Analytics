@@ -515,13 +515,13 @@
                                           </button>
                                           <input type="hidden" name="activity_id" id="tep-edit-act-val-<%= entry.id %>" value="<%= entry.activity_id %>">
                                           <div id="tep-edit-act-list-<%= entry.id %>"
-                                               class="hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                                               class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                                                style="min-width:200px; max-height:min(320px, calc(100vh - 240px)); top:calc(100% + 2px); bottom:auto;">
                                             <% entry.project.activities.active.sorted.each do |act| %>
                                               <button type="button"
                                                       onclick="event.stopPropagation(); tepSetEditActivity(<%= entry.id %>, <%= act.id %>, '<%= j(act.name) %>')"
                                                       onkeydown="tepHandleActivityDropdownOptionKey(event, 'tep-edit-act-list-<%= entry.id %>')"
-                                                      class="tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
+                                                      class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
                                                 <%= act.name %>
                                               </button>
                                             <% end %>
