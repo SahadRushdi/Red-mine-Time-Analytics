@@ -582,7 +582,9 @@ class TimeAnalyticsController < ApplicationController
       {
         label: category,
         data: data,
-        borderWidth: 0,
+        borderColor: '#ffffff',
+        borderWidth: 1,
+        hoverBorderColor: '#ffffff',
         maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
@@ -991,7 +993,9 @@ class TimeAnalyticsController < ApplicationController
       {
         label: activity,
         data: data,
-        borderWidth: 0,
+        borderColor: '#ffffff',
+        borderWidth: 1,
+        hoverBorderColor: '#ffffff',
         maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
@@ -1097,7 +1101,9 @@ class TimeAnalyticsController < ApplicationController
       {
         label: project,
         data: data,
-        borderWidth: 0,
+        borderColor: '#ffffff',
+        borderWidth: 1,
+        hoverBorderColor: '#ffffff',
         maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
