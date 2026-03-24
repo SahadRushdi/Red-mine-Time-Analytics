@@ -495,7 +495,7 @@
                                     <td colspan="5" class="px-3 py-3">
                                        <%= form_tag tep_entry_update_path(entry.id), method: :patch,
                                              class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
-                                             onsubmit: 'tepPersistOpenState(); event.stopPropagation()' do %>
+                                             onsubmit: 'tepMarkStateForRestore(); tepPersistOpenState(); event.stopPropagation()' do %>
                                         <div>
                                           <p class="text-sm font-medium text-gray-500 mb-1">Date</p>
                                           <span class="text-sm font-medium text-gray-700"><%= entry.spent_on.strftime('%b %-d, %Y') %></span>
@@ -1640,6 +1640,7 @@
     if (!tepPendingDelete) return;
     var url = tepPendingDelete.url;
     var token = tepPendingDelete.token;
+    tepMarkStateForRestore();
     tepPersistOpenState();
     tepCloseDeleteModal();
 
@@ -1657,6 +1658,25 @@
 
   // ── Persist/restore Logged tab expanded state ────────────────────────────
   var tepLoggedStateKey = 'tep-logged-state:' + window.location.pathname + '?' + window.location.search;
+  var tepRestoreFlagKey = 'tep-logged-state-restore:' + window.location.pathname;
+
+  function tepMarkStateForRestore() {
+    try {
+      sessionStorage.setItem(tepRestoreFlagKey, '1');
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepConsumeStateRestoreFlag() {
+    try {
+      var shouldRestore = sessionStorage.getItem(tepRestoreFlagKey) === '1';
+      sessionStorage.removeItem(tepRestoreFlagKey);
+      return shouldRestore;
+    } catch (e) {
+      return false;
+    }
+  }
 
   function tepGetLoggedState() {
     try {
@@ -1751,7 +1771,9 @@
   }
 
   function tepInitLoggedStatePersistence() {
-    tepRestoreOpenState();
+    if (tepConsumeStateRestoreFlag()) {
+      tepRestoreOpenState();
+    }
     tepPersistOpenState();
   }
 

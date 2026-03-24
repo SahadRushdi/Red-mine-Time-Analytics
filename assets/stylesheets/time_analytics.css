@@ -865,7 +865,7 @@ tbody tr:last-child {
   }
 }
 
-@media (max-width: 670px) {
+@media (max-width: 699px) {
   .ta-filter-form {
     width: 100%;
     align-items: stretch;
@@ -889,6 +889,14 @@ tbody tr:last-child {
 
   .ta-custom-range {
     width: 100%;
+  }
+
+  .ta-custom-range,
+  #my-time-date-range-picker,
+  #tep-date-range-picker {
+    flex-wrap: wrap !important;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   .ta-custom-range .ta-custom-range-label {
@@ -994,6 +1002,7 @@ body .datepicker-picker {
   border: 1px solid #d1d5db !important;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12) !important;
   border-radius: 0.75rem !important;
+  max-width: min(20rem, calc(100vw - 1rem)) !important;
 }
 
 body .datepicker-header,
@@ -1161,6 +1170,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 
   #chart-container {
     height: auto !important;
+  }
+
+  body .datepicker-picker {
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 1rem) !important;
   }
 }
 /* === Entry Sub-Table (Time Logs expand rows) === */
