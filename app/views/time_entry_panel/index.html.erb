@@ -341,6 +341,7 @@
                 <button type="button"
                         id="tep-activity-btn-<%= idx %>"
                         onclick="toggleTepActivityDropdown(<%= idx %>)"
+                        onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-activity-list-<%= idx %>')"
                         class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                   <span id="tep-activity-text-<%= idx %>" class="text-gray-400 truncate flex-1">Activity *</span>
                   <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,6 +506,7 @@
                                           <label class="block text-sm font-medium text-gray-500 mb-1">Activity</label>
                                           <button type="button"
                                                   onclick="event.stopPropagation(); tepToggleEditActivityDropdown(<%= entry.id %>)"
+                                                  onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-edit-act-list-<%= entry.id %>')"
                                                   class="tep-field tep-entry-act-trigger flex items-center justify-between gap-2 text-sm px-3 py-2 !border !border-gray-300 !rounded-lg !bg-white w-64 text-left !outline-none !shadow-none !ring-0">
                                             <span id="tep-edit-act-text-<%= entry.id %>" class="text-gray-700 truncate flex-1"><%= entry.activity.name %></span>
                                             <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -518,6 +520,7 @@
                                             <% entry.project.activities.active.sorted.each do |act| %>
                                               <button type="button"
                                                       onclick="event.stopPropagation(); tepSetEditActivity(<%= entry.id %>, <%= act.id %>, '<%= j(act.name) %>')"
+                                                      onkeydown="tepHandleActivityDropdownOptionKey(event, 'tep-edit-act-list-<%= entry.id %>')"
                                                       class="tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
                                                 <%= act.name %>
                                               </button>
@@ -653,6 +656,7 @@
                         <button type="button"
                                 id="issue-activity-btn-<%= issue.id %>"
                                 onclick="toggleIssueActivityDropdown(<%= issue.id %>)"
+                                onkeydown="tepHandleActivityDropdownTriggerKey(event, 'issue-activity-list-<%= issue.id %>')"
                                 class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                           <span id="issue-activity-text-<%= issue.id %>" class="text-gray-400 truncate flex-1">Activity *</span>
                           <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1208,6 +1212,7 @@
         btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
         btn.textContent = a.name;
         btn.setAttribute('data-id', a.id);
+        btn.setAttribute('onkeydown', "tepHandleActivityDropdownOptionKey(event, 'tep-activity-list-" + idx + "')");
         btn.onclick = function() { selectTepActivity(idx, a.id, a.name); };
         list.appendChild(btn);
       });
@@ -1468,6 +1473,7 @@
         btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
         btn.textContent = a.name;
         btn.setAttribute('data-id', a.id);
+        btn.setAttribute('onkeydown', "tepHandleActivityDropdownOptionKey(event, 'issue-activity-list-" + issueId + "')");
         btn.onclick = function() { selectIssueActivity(issueId, a.id, a.name); };
         list.appendChild(btn);
       });
@@ -1560,6 +1566,101 @@
     var hours = parseFloat(trimmed);
     if (isNaN(hours) || hours < 0) return null;
     return hours;
+  }
+
+  function tepIsPrintableActivityKey(key) {
+    return !!key && key.length === 1 && /^[a-z0-9]$/i.test(key);
+  }
+
+  function tepGetActivityDropdownButtons(list) {
+    return Array.from(list.querySelectorAll('button')).filter(function(button) {
+      return button.offsetParent !== null && !button.disabled;
+    });
+  }
+
+  function tepFindActivityDropdownMatch(list, key) {
+    var normalizedKey = key.toLowerCase();
+    return tepGetActivityDropdownButtons(list).find(function(button) {
+      var text = (button.textContent || '').trim().toLowerCase();
+      return text.indexOf(normalizedKey) === 0;
+    }) || null;
+  }
+
+  function tepFocusActivityDropdownButton(buttons, index) {
+    if (index < 0 || index >= buttons.length) return;
+    buttons[index].focus();
+  }
+
+  function tepHandleActivityDropdownTriggerKey(event, listId) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+
+    var key = event.key;
+    if (key !== 'ArrowDown' && key !== 'ArrowUp' && !tepIsPrintableActivityKey(key)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    var trigger = event.currentTarget;
+    var wasHidden = list.classList.contains('hidden');
+    if (wasHidden && trigger && typeof trigger.click === 'function') {
+      trigger.click();
+    }
+
+    setTimeout(function() {
+      var buttons = tepGetActivityDropdownButtons(list);
+      if (!buttons.length) return;
+
+      if (tepIsPrintableActivityKey(key)) {
+        var match = tepFindActivityDropdownMatch(list, key);
+        if (match) {
+          match.click();
+          return;
+        }
+      }
+
+      if (key === 'ArrowUp') {
+        tepFocusActivityDropdownButton(buttons, buttons.length - 1);
+      } else {
+        tepFocusActivityDropdownButton(buttons, 0);
+      }
+    }, 0);
+  }
+
+  function tepHandleActivityDropdownOptionKey(event, listId) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+
+    var buttons = tepGetActivityDropdownButtons(list);
+    var current = event.currentTarget;
+    var currentIndex = buttons.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (current && typeof current.click === 'function') current.click();
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      tepFocusActivityDropdownButton(buttons, currentIndex + 1 < buttons.length ? currentIndex + 1 : 0);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      tepFocusActivityDropdownButton(buttons, currentIndex > 0 ? currentIndex - 1 : buttons.length - 1);
+      return;
+    }
+
+    if (tepIsPrintableActivityKey(event.key)) {
+      event.preventDefault();
+      var match = tepFindActivityDropdownMatch(list, event.key);
+      if (match) {
+        match.click();
+      }
+    }
   }
 
   // ── Edit-form activity dropdown ──────────────────────────────────────────────
