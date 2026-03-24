@@ -1615,7 +1615,7 @@
       if (tepIsPrintableActivityKey(key)) {
         var match = tepFindActivityDropdownMatch(list, key);
         if (match) {
-          match.click();
+          match.focus();
           return;
         }
       }
@@ -1658,7 +1658,7 @@
       event.preventDefault();
       var match = tepFindActivityDropdownMatch(list, event.key);
       if (match) {
-        match.click();
+        match.focus();
       }
     }
   }
