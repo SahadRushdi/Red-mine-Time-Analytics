@@ -583,6 +583,7 @@ class TimeAnalyticsController < ApplicationController
         label: category,
         data: data,
         borderWidth: 0,
+        maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
@@ -991,6 +992,7 @@ class TimeAnalyticsController < ApplicationController
         label: activity,
         data: data,
         borderWidth: 0,
+        maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
@@ -1096,6 +1098,7 @@ class TimeAnalyticsController < ApplicationController
         label: project,
         data: data,
         borderWidth: 0,
+        maxBarThickness: 197,
         stack: 'stack0',
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
