@@ -593,7 +593,7 @@ function switchChartType(chartType) {
               <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
               <%= select_tag :per_page, options_for_select(per_page_options, @limit),
                   onchange: 'this.form.submit()',
-                  class: 'px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+                  class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
             <% end %>
           </div>
         </div>
