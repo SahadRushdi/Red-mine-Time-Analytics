@@ -791,6 +791,8 @@ class TimeAnalyticsController < ApplicationController
         key.to_s
       end
     end
+
+    return empty_chart_data('line') if sorted_data.all? { |_, value| value.to_f.zero? }
     
     formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
     
