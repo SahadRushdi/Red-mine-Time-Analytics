@@ -1447,6 +1447,12 @@
     if (el) el.classList.add('hidden');
   }
 
+  function tepReloadWithStateRestore() {
+    tepMarkStateForRestore();
+    tepPersistOpenState();
+    location.reload();
+  }
+
   async function submitTepInlineLog(event, idx) {
     event.preventDefault();
     hideTepInlineError(idx);
@@ -1478,7 +1484,7 @@
       });
       var data = await resp.json();
       if (data.success) {
-        location.reload();
+        tepReloadWithStateRestore();
       } else {
         showTepInlineError(idx, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
       }
@@ -1635,7 +1641,7 @@
       });
       var data = await resp.json();
       if (data.success) {
-        location.reload();
+        tepReloadWithStateRestore();
       } else {
         showIssueInlineError(issueId, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
       }
