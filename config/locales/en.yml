@@ -81,6 +81,7 @@ en:
   
   # Messages
   label_no_data: "No data available for the selected period"
+  label_no_chart_data_for_range: "No data available for %{range}. Try adjusting filters or selecting a different date range."
   text_coming_soon: "This feature is coming soon."
   text_team_dashboard_description: "Team Dashboard will provide insights into team productivity, workload distribution, and collaborative metrics."
   text_custom_dashboard_description: "Custom Dashboard will allow you to create personalized analytics views with configurable widgets and metrics."

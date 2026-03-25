@@ -10,6 +10,11 @@ RedmineApp::Application.routes.draw do
   patch 'time_entry_panel/entry/:id', to: 'time_entry_panel#update_entry', as: :tep_entry_update
   delete 'time_entry_panel/entry/:id', to: 'time_entry_panel#destroy_entry', as: :tep_entry_destroy
   
+  resources :custom_holidays do
+    collection do
+      post :import_csv
+    end
+  end
   # Team Analytics routes (separate controller)
   get 'team/analytics', to: 'team_analytics#index', as: :team_analytics
   post 'team/analytics/export_csv', to: 'team_analytics#export_csv', as: :team_analytics_export_csv

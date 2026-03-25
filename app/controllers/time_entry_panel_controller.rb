@@ -133,7 +133,14 @@ class TimeEntryPanelController < ApplicationController
       periods = []
       current = from_date.beginning_of_week(:monday)
       while current <= to_date
-        periods << current
+        week_start = current
+        week_end = [current + 6.days, to_date].min
+        intersection_start = [week_start, from_date].max
+        has_entries = raw_groups.key?(week_start)
+        has_working_days = (intersection_start..week_end).any? do |date|
+          RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date)
+        end
+        periods << current if has_entries || has_working_days
         current += 1.week
       end
       periods
@@ -207,8 +214,8 @@ class TimeEntryPanelController < ApplicationController
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
     when 'custom'
-      @from = params[:from].present? ? Date.parse(params[:from]) : (Date.current - 6.days)
-      @to = params[:to].present? ? Date.parse(params[:to]) : Date.current
+      @from = parse_custom_date(params[:from]) || (Date.current - 6.days)
+      @to = parse_custom_date(params[:to]) || Date.current
     else
       # Default to last 7 days
       @filter = 'last_7_days'
@@ -230,6 +237,14 @@ class TimeEntryPanelController < ApplicationController
     else
       str.to_f
     end
+  end
+
+  def parse_custom_date(value)
+    return nil if value.blank?
+
+    Date.strptime(value, '%m/%d/%Y')
+  rescue ArgumentError
+    Date.parse(value)
   end
 
 end

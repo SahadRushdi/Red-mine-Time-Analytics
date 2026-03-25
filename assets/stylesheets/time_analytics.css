@@ -250,6 +250,18 @@
   white-space: nowrap;
 }
 
+.ts-per-page-select {
+  min-width: 5.25rem;
+  height: 2.5rem;
+  line-height: 1.2;
+  text-align-last: center;
+  -moz-text-align-last: center;
+  box-sizing: border-box;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  padding-right: 1.75rem;
+}
+
 /* === Messages === */
 .nodata {
   text-align: center;
@@ -472,6 +484,9 @@ button[onclick*="switchChartType"]:active {
   box-shadow: 0 10px 25px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06) !important;
   outline: none !important;
 }
+.tep-activity-dropdown {
+  overflow-x: hidden !important;
+}
 .tep-issue-option:hover,
 .tep-issue-option:focus,
 .tep-activity-option:hover,
@@ -509,6 +524,9 @@ button[onclick*="switchChartType"]:active {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 .tep-activity-option:hover,
 .tep-activity-option:focus,
@@ -712,15 +730,18 @@ tbody tr:last-child {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
+  min-width: 24px;
   height: 20px;
-  padding: 0 6px;
+  padding: 0 8px;
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
   border-radius: 9999px;
   background-color: #e5e7eb;
   color: #374151;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 .ts-tab.ts-tab-active .ts-tab-badge {
   background-color: #dbeafe;
@@ -865,7 +886,7 @@ tbody tr:last-child {
   }
 }
 
-@media (max-width: 670px) {
+@media (max-width: 699px) {
   .ta-filter-form {
     width: 100%;
     align-items: stretch;
@@ -891,6 +912,14 @@ tbody tr:last-child {
     width: 100%;
   }
 
+  .ta-custom-range,
+  #my-time-date-range-picker,
+  #tep-date-range-picker {
+    flex-wrap: wrap !important;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
   .ta-custom-range .ta-custom-range-label {
     width: 100%;
     margin-top: 2px;
@@ -900,6 +929,232 @@ tbody tr:last-child {
     width: 100%;
     min-width: 0;
   }
+
+  .ta-custom-range .ta-date-input:focus {
+    border-color: #9ca3af !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+}
+
+.ta-custom-range .ta-date-input:focus {
+  border-color: #9ca3af !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ta-custom-range .ta-date-input {
+  border-radius: 0.75rem !important;
+}
+
+.ta-custom-range .datepicker,
+.ta-custom-range .datepicker-picker,
+.ta-custom-range .datepicker-view,
+.ta-custom-range .datepicker-header,
+.ta-custom-range .datepicker-main,
+.ta-custom-range .datepicker-footer {
+  background-color: #fff !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}
+
+.ta-custom-range .datepicker-title,
+.ta-custom-range .datepicker-controls {
+  background-color: #fff !important;
+}
+
+.ta-custom-range .datepicker-controls .prev-btn,
+.ta-custom-range .datepicker-controls .view-switch,
+.ta-custom-range .datepicker-controls .next-btn {
+  background-color: #fff !important;
+  border: 1px solid #d1d5db !important;
+  color: #1f2937 !important;
+  box-shadow: none !important;
+}
+
+.ta-custom-range .datepicker-controls .prev-btn:hover,
+.ta-custom-range .datepicker-controls .view-switch:hover,
+.ta-custom-range .datepicker-controls .next-btn:hover {
+  background-color: #f9fafb !important;
+  border-color: #cbd5e1 !important;
+  color: #111827 !important;
+}
+
+.ta-custom-range .datepicker-controls .prev-btn:focus,
+.ta-custom-range .datepicker-controls .view-switch:focus,
+.ta-custom-range .datepicker-controls .next-btn:focus,
+.ta-custom-range .datepicker-controls .prev-btn:focus-visible,
+.ta-custom-range .datepicker-controls .view-switch:focus-visible,
+.ta-custom-range .datepicker-controls .next-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #d1d5db !important;
+}
+
+.ta-custom-range .datepicker-cell.today {
+  background-color: #dbeafe !important;
+  border: 1px solid #93c5fd !important;
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+
+.ta-custom-range .datepicker-cell.today:hover {
+  background-color: #bfdbfe !important;
+}
+
+.ta-custom-range .datepicker-cell:hover:not(.disabled):not(.today) {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+/* Flowbite datepicker popup overrides */
+body .datepicker,
+body .datepicker-picker,
+body .datepicker-view,
+body .datepicker-header,
+body .datepicker-main,
+body .datepicker-footer {
+  background-color: #fff !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}
+
+body .datepicker-picker {
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12) !important;
+  border-radius: 0.75rem !important;
+  max-width: min(20rem, calc(100vw - 1rem)) !important;
+}
+
+body .datepicker-header,
+body .datepicker-title,
+body .datepicker-controls {
+  background-color: #fff !important;
+}
+
+body .datepicker-controls .prev-btn,
+body .datepicker-controls .view-switch,
+body .datepicker-controls .next-btn {
+  background-color: #fff !important;
+  border: 1px solid #d1d5db !important;
+  color: #1f2937 !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  border-radius: 0.5rem !important;
+}
+
+body .datepicker-controls .prev-btn:hover,
+body .datepicker-controls .view-switch:hover,
+body .datepicker-controls .next-btn:hover,
+body .datepicker-controls .prev-btn:focus,
+body .datepicker-controls .view-switch:focus,
+body .datepicker-controls .next-btn:focus,
+body .datepicker-controls .prev-btn:focus-visible,
+body .datepicker-controls .view-switch:focus-visible,
+body .datepicker-controls .next-btn:focus-visible {
+  background-color: #f9fafb !important;
+  border-color: #cbd5e1 !important;
+  color: #111827 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+body .datepicker-cell {
+  color: #111827 !important;
+  border-radius: 0.5rem !important;
+}
+
+body .datepicker-cell.today {
+  background-color: #ffffff !important;
+  border: 1px solid #93c5fd !important;
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.45) !important;
+}
+
+body .datepicker-cell.today:hover,
+body .datepicker-cell.today.focused {
+  background-color: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+body .datepicker-cell.today.selected,
+body .datepicker-cell.today.range-start,
+body .datepicker-cell.today.range-end {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+body .datepicker-cell.selected,
+body .datepicker-cell.range-start,
+body .datepicker-cell.range-end {
+  background-color: #3b82f6 !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+}
+
+body .datepicker-cell.range {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-radius: 0 !important;
+}
+
+body .datepicker-cell.range:hover,
+body .datepicker-cell.range.focused {
+  background-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+/* Period highlighting for weekly/monthly inline pickers */
+.datepicker-cell.day.tep-period-range,
+body .datepicker-cell.day.tep-period-range,
+body .datepicker-picker .datepicker-cell.day.tep-period-range {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-radius: 0 !important;
+}
+
+.datepicker-cell.day.tep-period-start,
+.datepicker-cell.day.tep-period-end,
+body .datepicker-cell.day.tep-period-start,
+body .datepicker-cell.day.tep-period-end,
+body .datepicker-picker .datepicker-cell.day.tep-period-start,
+body .datepicker-picker .datepicker-cell.day.tep-period-end {
+  background-color: #3b82f6 !important;
+  border-color: #2563eb !important;
+  color: #fff !important;
+  border-radius: 9999px !important;
+}
+
+.datepicker-cell.day.today.tep-period-start,
+.datepicker-cell.day.today.tep-period-end,
+body .datepicker-cell.day.today.tep-period-start,
+body .datepicker-cell.day.today.tep-period-end,
+body .datepicker-picker .datepicker-cell.day.today.tep-period-start,
+body .datepicker-picker .datepicker-cell.day.today.tep-period-end {
+  background-color: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+
+body .datepicker-cell.selected:hover,
+body .datepicker-cell.range-start:hover,
+body .datepicker-cell.range-end:hover,
+body .datepicker-cell.selected.focused,
+body .datepicker-cell.range-start.focused,
+body .datepicker-cell.range-end.focused {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
+
+body .datepicker-cell.focused {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.35) !important;
+}
+
+body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range-start):not(.range-end) {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 
 @media (max-width: 768px) {
@@ -936,6 +1191,14 @@ tbody tr:last-child {
 
   #chart-container {
     height: auto !important;
+  }
+
+  body .datepicker-picker {
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 1rem) !important;
   }
 }
 /* === Entry Sub-Table (Time Logs expand rows) === */
@@ -1036,6 +1299,18 @@ tbody tr:last-child {
   color: inherit !important;
 }
 
+/* Windows-safe typography for selected edit-activity text (prevents descender clipping) */
+.tep-entry-edit-form .tep-entry-act-trigger {
+  height: 36px !important;
+  line-height: 1.35 !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+.tep-entry-edit-form .tep-entry-act-trigger span[id^="tep-edit-act-text-"] {
+  line-height: 1.35 !important;
+  padding-bottom: 1px !important;
+}
+
 /* Activity option buttons in dropdown — no Redmine borders between items */
 .tep-entry-act-option,
 .tep-entry-act-option:hover,
@@ -1051,6 +1326,11 @@ tbody tr:last-child {
 .tep-entry-act-option:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+}
+.tep-entry-act-option {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* === Status and Tracker Badges === */

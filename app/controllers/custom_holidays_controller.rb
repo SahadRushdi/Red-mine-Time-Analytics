@@ -9,8 +9,12 @@ class CustomHolidaysController < ApplicationController
   before_action :find_holiday, only: [:edit, :update, :destroy]
 
   def index
-    # Fetch all holidays grouped by year (no pagination needed)
+    # Fetch all holidays for year grouping
     @holidays = CustomHoliday.order(start_date: :desc)
+    @holiday_count = @holidays.count
+    
+    # Keep pagination info for display
+    @holiday_pages = Paginator.new @holiday_count, 25, params['page']
   end
 
   def new

@@ -74,11 +74,13 @@
     </div>
 
     <%# Custom date range %>
-    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-wrap items-center gap-2">
-      <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-      <%= date_field_tag :from, params[:from] || @from, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
-      <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-      <%= date_field_tag :to, params[:to] || @to, class: 'ta-date-input px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500', onchange: 'this.form.submit()' %>
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
+      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
+        <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+      </div>
     </div>
   <% end %>
 </div>
@@ -197,12 +199,18 @@
             week_end   = [period_key + 6.days, @to].min
             period_display = "Week of #{period_key.strftime('%b %-d')} - #{week_end.strftime('%b %-d, %Y')}"
             is_today_group = (Date.current >= period_key && Date.current <= period_key + 6.days)
+            period_start = period_key
+            period_end   = week_end
           when 'monthly'
             period_display = period_key.strftime('%B %Y')
             is_today_group = (Date.current.beginning_of_month == period_key)
+            period_start = period_key
+            period_end   = [period_key.end_of_month, @to].min
           else # daily
             period_display = period_key.strftime('%A, %b %-d, %Y')
             is_today_group = (period_key == Date.current)
+            period_start = period_key
+            period_end   = period_key
           end
 
           has_entries    = group[:entry_count] > 0
@@ -212,6 +220,9 @@
         <%# Group header row %>
         <div id="tep-group-row-<%= idx %>"
              class="tep-group-row flex items-center justify-between px-5 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+             data-period-key="<%= date_str %>"
+             data-expand-id="tep-expand-<%= idx %>"
+             data-chevron-id="tep-chevron-<%= idx %>"
              onclick="toggleTepGroup(<%= idx %>)">
           <div class="flex items-center gap-3">
             <svg id="tep-chevron-<%= idx %>"
@@ -257,7 +268,7 @@
         </div>
 
         <%# Expandable content %>
-        <div id="tep-expand-<%= idx %>" class="<%= auto_expand ? '' : 'hidden' %> border-b border-gray-100">
+        <div id="tep-expand-<%= idx %>" class="<%= auto_expand ? '' : 'hidden' %> border-b border-gray-100" data-period-key="<%= date_str %>">
 
           <%# ── Inline log form — single horizontal strip ──────────────── %>
           <div id="tep-inline-form-<%= idx %>" class="hidden tep-inline-form">
@@ -270,6 +281,7 @@
                 </svg>
                 <span class="text-sm font-bold text-blue-700 whitespace-nowrap"><%= period_display %></span>
               </div>
+
               <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
               <%# Issue — custom searchable dropdown %>
@@ -302,22 +314,26 @@
 
               <%# Date – weekly/monthly only %>
               <% if @grouping != 'daily' %>
-                <input type="date" id="tep-date-<%= idx %>"
-                       value="<%= date_str %>"
-                       min="<%= period_key.strftime('%Y-%m-%d') %>"
-                       max="<%= [@to, (@grouping == 'weekly' ? period_key + 6.days : period_key.end_of_month)].min.strftime('%Y-%m-%d') %>"
+                <input type="text" id="tep-date-<%= idx %>"
+                       value="<%= (is_today_group ? Date.current : period_key).strftime('%m/%d/%Y') %>"
+                       data-grouping="<%= @grouping %>"
+                       data-period-start="<%= period_start.strftime('%Y-%m-%d') %>"
+                       data-period-end="<%= period_end.strftime('%Y-%m-%d') %>"
+                       datepicker
+                       datepicker-format="mm/dd/yyyy"
+                       datepicker-autohide
                        title="Date"
-                       class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                       class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
               <% else %>
                 <input type="hidden" id="tep-date-<%= idx %>" value="<%= date_str %>">
               <% end %>
 
               <%# Hours %>
               <input type="text" id="tep-hours-<%= idx %>"
-                     placeholder="H:MM  *"
+                     placeholder="Hours *"
                      autocomplete="off"
                      oninput="formatHoursInput(this)"
-                     title="Hours (e.g. 1:30)"
+                     title="Hours (e.g. 1, 1:30, 10)"
                      class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
 
               <%# Activity — custom Flowbite-style dropdown %>
@@ -325,6 +341,7 @@
                 <button type="button"
                         id="tep-activity-btn-<%= idx %>"
                         onclick="toggleTepActivityDropdown(<%= idx %>)"
+                        onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-activity-list-<%= idx %>')"
                         class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                   <span id="tep-activity-text-<%= idx %>" class="text-gray-400 truncate flex-1">Activity *</span>
                   <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,13 +399,18 @@
                 </colgroup>
                 <tbody>
                   <% issue_rows.each_with_index do |row, row_idx| %>
-                    <% issue     = row[:issue] %>
-                    <% logged    = row[:logged_hours] %>
-                    <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
-                    <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
-                    <% entry_uid = "#{idx}-#{row_idx}" %>
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                        onclick="tepToggleIssueEntries('<%= entry_uid %>')">
+              <% issue     = row[:issue] %>
+              <% logged    = row[:logged_hours] %>
+              <% pct       = [[(issue.done_ratio || 0), 0].max, 100].min %>
+              <% dates_str = row[:spent_on_dates].sort.map { |d| d.strftime('%b %-d') }.join(', ') %>
+              <% entry_uid = "#{idx}-#{row_idx}" %>
+              <tr class="tep-issue-row border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
+                  data-period-key="<%= date_str %>"
+                  data-issue-id="<%= issue.id %>"
+                  data-expand-id="tep-issue-expand-<%= entry_uid %>"
+                  data-chevron-id="tep-issue-chevron-<%= entry_uid %>"
+                  onclick="tepToggleIssueEntries('<%= entry_uid %>')">
                       <% if @grouping != 'daily' %>
                         <td class="px-4 py-3 text-gray-400 text-sm whitespace-nowrap"><%= dates_str %></td>
                       <% end %>
@@ -437,7 +459,7 @@
                       </td>
                     </tr>
                     <%# ── Expanded entries sub-table ────────────────────────── %>
-                    <tr id="tep-issue-expand-<%= entry_uid %>" class="hidden">
+                    <tr id="tep-issue-expand-<%= entry_uid %>" class="tep-issue-expand-row hidden" data-period-key="<%= date_str %>" data-issue-id="<%= issue.id %>">
                       <td colspan="<%= @grouping != 'daily' ? 9 : 8 %>" class="px-0 py-0 bg-slate-50 border-b border-gray-200">
                         <div class="pl-10 pr-4 py-3 border-l-4 border-blue-300">
                           <% if row[:entries].any? %>
@@ -472,9 +494,9 @@
                                   <%# Edit form row (hidden by default) %>
                                   <tr id="tep-entry-edit-<%= entry.id %>" class="hidden bg-blue-50 border-b border-blue-100">
                                     <td colspan="5" class="px-3 py-3">
-                                      <%= form_tag tep_entry_update_path(entry.id), method: :patch,
-                                            class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
-                                            onsubmit: 'event.stopPropagation()' do %>
+                                       <%= form_tag tep_entry_update_path(entry.id), method: :patch,
+                                             class: 'tep-entry-edit-form flex items-end gap-3 flex-wrap',
+                                             onsubmit: 'tepMarkStateForRestore(); tepPersistOpenState(); event.stopPropagation()' do %>
                                         <div>
                                           <p class="text-sm font-medium text-gray-500 mb-1">Date</p>
                                           <span class="text-sm font-medium text-gray-700"><%= entry.spent_on.strftime('%b %-d, %Y') %></span>
@@ -483,7 +505,9 @@
                                         <div class="relative flex-shrink-0" id="tep-edit-act-wrapper-<%= entry.id %>">
                                           <label class="block text-sm font-medium text-gray-500 mb-1">Activity</label>
                                           <button type="button"
+                                                  id="tep-edit-act-btn-<%= entry.id %>"
                                                   onclick="event.stopPropagation(); tepToggleEditActivityDropdown(<%= entry.id %>)"
+                                                  onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-edit-act-list-<%= entry.id %>')"
                                                   class="tep-field tep-entry-act-trigger flex items-center justify-between gap-2 text-sm px-3 py-2 !border !border-gray-300 !rounded-lg !bg-white w-64 text-left !outline-none !shadow-none !ring-0">
                                             <span id="tep-edit-act-text-<%= entry.id %>" class="text-gray-700 truncate flex-1"><%= entry.activity.name %></span>
                                             <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,12 +516,13 @@
                                           </button>
                                           <input type="hidden" name="activity_id" id="tep-edit-act-val-<%= entry.id %>" value="<%= entry.activity_id %>">
                                           <div id="tep-edit-act-list-<%= entry.id %>"
-                                               class="hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                                               style="min-width:200px; max-height:220px; top:calc(100% + 2px);">
+                                               class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                                               style="min-width:200px; max-height:min(320px, calc(100vh - 240px)); top:calc(100% + 2px); bottom:auto;">
                                             <% entry.project.activities.active.sorted.each do |act| %>
                                               <button type="button"
                                                       onclick="event.stopPropagation(); tepSetEditActivity(<%= entry.id %>, <%= act.id %>, '<%= j(act.name) %>')"
-                                                      class="tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
+                                                      onkeydown="tepHandleActivityDropdownOptionKey(event, 'tep-edit-act-list-<%= entry.id %>')"
+                                                      class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 <%= act.id == entry.activity_id ? '!font-semibold !bg-blue-50' : '' %>">
                                                 <%= act.name %>
                                               </button>
                                             <% end %>
@@ -511,8 +536,8 @@
                                         <div>
                                           <label class="block text-sm font-medium text-gray-500 mb-1">Hours</label>
                                           <input type="text" name="hours" value="<%= format_hours(entry.hours) %>"
-                                                 class="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white"
-                                                 placeholder="H:MM" />
+                                                  class="w-24 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-300 focus:outline-none bg-white"
+                                                  placeholder="Hours" title="Hours (e.g. 1, 1:30, 10)" />
                                         </div>
                                         <div class="flex items-end gap-2">
                                           <button type="submit"
@@ -606,70 +631,66 @@
               <%# Inline log form for this issue %>
               <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
                 <td colspan="5" class="px-0 py-0">
-                  <div class="tep-inline-form bg-blue-50 border-l-4 border-blue-400 px-5 py-3">
-                    <div class="flex items-center gap-2 mb-3 text-sm font-medium text-blue-800">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Log time for #<%= issue.id %> – <%= issue.subject %>
-                    </div>
-                    <div class="flex items-end gap-3 flex-wrap">
-                      <%# Date %>
-                      <div class="w-36">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Date <span class="text-red-500">*</span></label>
-                        <input type="date" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%Y-%m-%d') %>"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                  <div id="issue-inline-form-<%= issue.id %>" class="tep-inline-form">
+                    <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 flex-wrap">
+                      <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="text-sm font-bold text-blue-700 whitespace-nowrap">#<%= issue.id %> – <%= issue.subject %></span>
                       </div>
+                      <div class="w-px h-5 bg-blue-200 flex-shrink-0"></div>
 
-                      <%# Hours %>
-                      <div class="w-24">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Hours <span class="text-red-500">*</span></label>
-                        <input type="text" id="issue-hours-<%= issue.id %>" placeholder="H:MM"
-                               oninput="formatHoursInput(this)"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      </div>
+                      <input type="text" id="issue-date-<%= issue.id %>" value="<%= Date.current.strftime('%m/%d/%Y') %>"
+                             datepicker
+                             datepicker-format="mm/dd/yyyy"
+                             datepicker-autohide
+                             class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
 
-                      <%# Activity %>
-                      <div class="w-44">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Activity <span class="text-red-500">*</span></label>
-                        <div class="relative">
-                          <select id="issue-activity-<%= issue.id %>"
-                                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-8">
-                            <option value="">Loading...</option>
-                          </select>
-                          <div class="pointer-events-none absolute inset-y-0 right-2 flex items-center">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                          </div>
+                      <input type="text" id="issue-hours-<%= issue.id %>" placeholder="Hours *"
+                              autocomplete="off"
+                              oninput="formatHoursInput(this)"
+                              title="Hours (e.g. 1, 1:30, 10)"
+                              class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-24">
+
+                      <div class="relative flex-shrink-0" id="issue-activity-wrapper-<%= issue.id %>">
+                        <button type="button"
+                                id="issue-activity-btn-<%= issue.id %>"
+                                onclick="toggleIssueActivityDropdown(<%= issue.id %>)"
+                                onkeydown="tepHandleActivityDropdownTriggerKey(event, 'issue-activity-list-<%= issue.id %>')"
+                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                          <span id="issue-activity-text-<%= issue.id %>" class="text-gray-400 truncate flex-1">Activity *</span>
+                          <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                          </svg>
+                        </button>
+                        <input type="hidden" id="issue-activity-<%= issue.id %>">
+                        <div id="issue-activity-list-<%= issue.id %>"
+                             class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                             style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                          <div class="px-3 py-2 text-sm text-gray-400 italic">Loading...</div>
                         </div>
                       </div>
 
-                      <%# Comment %>
-                      <div class="flex-1 min-w-[200px]">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Comment</label>
-                        <input type="text" id="issue-comment-<%= issue.id %>" placeholder="What did you work on?"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                      </div>
+                      <input type="text" id="issue-comment-<%= issue.id %>" placeholder="Comment (optional)"
+                             autocomplete="off"
+                             class="tep-field text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-1 min-w-[200px]">
 
-                      <%# Buttons %>
-                      <div class="flex items-end gap-2 pb-0.5">
-                        <button type="button" onclick="hideIssueInlineForm(<%= issue.id %>)"
-                                class="px-3 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 transition-colors">
-                          Cancel
-                        </button>
-                        <button type="button" onclick="submitIssueInlineLog(event, <%= issue.id %>)"
-                                class="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium !text-white rounded-lg transition-colors"
-                                style="background-color: #2563eb !important;">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          Save
-                        </button>
-                      </div>
+                      <button type="button" onclick="hideIssueInlineForm(<%= issue.id %>)"
+                              class="tep-action-btn flex-shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                              style="background-color: #dc2626 !important;">
+                        ✕ Cancel
+                      </button>
+                      <button type="button" onclick="submitIssueInlineLog(event, <%= issue.id %>)"
+                              class="tep-action-btn flex-shrink-0 inline-flex items-center gap-1 px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0"
+                              style="background-color: #2563eb !important;">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Save
+                      </button>
                     </div>
-
-                    <div id="issue-inline-error-<%= issue.id %>" class="hidden mt-2 px-3 py-2 text-xs text-red-800 bg-red-50 rounded-lg" role="alert"></div>
+                    <div id="issue-inline-error-<%= issue.id %>" class="hidden px-4 py-2 text-sm text-red-800 bg-red-50 border-b border-red-100 border-l-4 border-l-red-400" role="alert"></div>
                   </div>
                 </td>
               </tr>
@@ -747,6 +768,12 @@
     var query = document.getElementById('ts-search-input').value.toLowerCase().trim();
     var activePanel = document.querySelector('[id^="panel-"]:not(.hidden)');
     if (!activePanel) return;
+
+    if (activePanel.id === 'panel-time-logs') {
+      filterLoggedRows(query);
+      return;
+    }
+
     activePanel.querySelectorAll('.ts-issue-row').forEach(function(row) {
       var text = row.getAttribute('data-search-text') || '';
       var expandRow = row.nextElementSibling;
@@ -756,6 +783,67 @@
         row.style.display = 'none';
         if (expandRow && expandRow.id && expandRow.id.startsWith('issue-inline-row-')) {
           expandRow.classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  function resetLoggedRows() {
+    document.querySelectorAll('#panel-time-logs .tep-group-row[data-period-key]').forEach(function(row) {
+      row.style.display = '';
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.add('hidden');
+      if (chevron) chevron.classList.remove('tep-chevron-open');
+    });
+
+    document.querySelectorAll('#panel-time-logs .tep-issue-row[data-period-key][data-issue-id]').forEach(function(row) {
+      row.style.display = '';
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.add('hidden');
+      if (chevron) chevron.style.transform = '';
+    });
+  }
+
+  function filterLoggedRows(query) {
+    if (!query) {
+      resetLoggedRows();
+      tepRestoreOpenState();
+      return;
+    }
+
+    var matchedPeriods = {};
+
+    document.querySelectorAll('#panel-time-logs .tep-issue-row[data-search-text]').forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      var matches = text.includes(query);
+      var periodKey = row.getAttribute('data-period-key');
+      var expandRow = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+
+      if (matches && periodKey) {
+        matchedPeriods[periodKey] = true;
+      }
+
+      row.style.display = matches ? '' : 'none';
+      if (expandRow) expandRow.classList.add('hidden');
+      if (chevron) chevron.style.transform = '';
+    });
+
+    document.querySelectorAll('#panel-time-logs .tep-group-row[data-period-key]').forEach(function(row) {
+      var periodKey = row.getAttribute('data-period-key');
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      var shouldShow = !!matchedPeriods[periodKey];
+
+      row.style.display = shouldShow ? '' : 'none';
+      if (expand) expand.classList.toggle('hidden', !shouldShow);
+      if (chevron) {
+        if (shouldShow) {
+          chevron.classList.add('tep-chevron-open');
+        } else {
+          chevron.classList.remove('tep-chevron-open');
         }
       }
     });
@@ -771,11 +859,113 @@
   function toggleCustomDateRange() {
     var customRange  = document.getElementById('custom-date-range');
     var filterHidden = document.getElementById('filter_hidden');
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
       filterHidden.value = 'custom';
     } else {
       customRange.classList.add('hidden');
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
+  }
+
+  function submitTepCustomDateRangeIfComplete() {
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
+    var filterHidden = document.getElementById('filter_hidden');
+    var form = document.getElementById('time-entry-panel-form');
+
+    if (filterHidden) {
+      filterHidden.value = 'custom';
+    }
+
+    if (!(startInput && endInput)) return;
+    if (!startInput.value || !endInput.value) return;
+    if (!form || form.dataset.submitting === '1') return;
+    form.dataset.submitting = '1';
+    form.submit();
+  }
+
+  function bindTepCustomDateRangeEvents() {
+    var startInput = document.getElementById('tep-date-range-start');
+    var endInput = document.getElementById('tep-date-range-end');
+    var picker = document.getElementById('tep-date-range-picker');
+    var datepickerInstances = [startInput && startInput.datepicker, endInput && endInput.datepicker].filter(Boolean);
+
+    function handleDateRangeChange() {
+      submitTepCustomDateRangeIfComplete();
+    }
+
+    [startInput, endInput, picker].forEach(function(element) {
+      if (element) {
+        element.addEventListener('changeDate', handleDateRangeChange);
+      }
+    });
+
+    datepickerInstances.forEach(function(datepicker) {
+      if (datepicker && datepicker.setOptions) {
+        datepicker.setOptions({ todayHighlight: true, showOnFocus: false, showOnClick: false, autohide: true });
+      }
+    });
+
+    function hideTepRangePickers() {
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
+
+    function bindManualToggle(input, otherInput) {
+      if (!input || input.dataset.manualToggleBound === '1') return;
+      input.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!input.datepicker) return;
+        if (otherInput && otherInput.datepicker && otherInput.datepicker.active) {
+          otherInput.datepicker.hide();
+        }
+        if (input.datepicker.active) {
+          input.datepicker.hide();
+        } else {
+          input.datepicker.show();
+        }
+      });
+      input.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && input.datepicker && input.datepicker.hide) {
+          input.datepicker.hide();
+          input.blur();
+        }
+      });
+      input.dataset.manualToggleBound = '1';
+    }
+
+    bindManualToggle(startInput, endInput);
+    bindManualToggle(endInput, startInput);
+
+    function suppressAutoOpen() {
+      [startInput, endInput].forEach(function(input) {
+        if (!input) return;
+        if (document.activeElement === input) input.blur();
+      });
+      hideTepRangePickers();
+    }
+
+    setTimeout(suppressAutoOpen, 0);
+    setTimeout(suppressAutoOpen, 120);
+
+    if (!window.__tepRangeOutsideCloseBound) {
+      document.addEventListener('mousedown', function(event) {
+        var target = event.target;
+        var isInsideRangeUi = (picker && picker.contains(target)) ||
+          (startInput && target === startInput) ||
+          (endInput && target === endInput) ||
+          !!target.closest('.datepicker');
+        if (isInsideRangeUi) return;
+        hideTepRangePickers();
+      });
+      window.__tepRangeOutsideCloseBound = true;
     }
   }
 
@@ -801,10 +991,17 @@
       if (!list.classList.contains('hidden')) {
         var eid = list.id.replace('tep-edit-act-list-', '');
         var wrapper = document.getElementById('tep-edit-act-wrapper-' + eid);
-        if (wrapper && !wrapper.contains(e.target)) list.classList.add('hidden');
+        var clickedInsideList = !!list.contains(e.target);
+        if (wrapper && !wrapper.contains(e.target) && !clickedInsideList) tepCloseFloatingDropdown(list);
       }
     });
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindTepCustomDateRangeEvents);
+  } else {
+    bindTepCustomDateRangeEvents();
+  }
 
   // ── Group expand / collapse ──────────────────────────────────────────────
   function toggleTepGroup(idx) {
@@ -817,10 +1014,13 @@
     } else {
       expand.classList.add('hidden');
       if (chevron) chevron.classList.remove('tep-chevron-open');
+      closeTepIssueDropdown(idx);
+      closeTepActivityDropdown(idx);
       // Hide inline form when collapsing
       var form = document.getElementById('tep-inline-form-' + idx);
       if (form) form.classList.add('hidden');
     }
+    tepPersistOpenState();
   }
 
   // ── Inline form (Time Logs tab) ──────────────────────────────────────────
@@ -838,7 +1038,7 @@
 
     if (form.classList.contains('hidden')) {
       // Close any other open inline forms
-      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.querySelectorAll('[id^="tep-inline-form-"]').forEach(function(f) { f.classList.add('hidden'); });
       form.classList.remove('hidden');
       // Reset fields
       var issueSelect = document.getElementById('tep-issue-' + idx);
@@ -850,6 +1050,7 @@
       resetTepActivityDropdown(idx);
       resetTepIssueDropdown(idx);
       hideTepInlineError(idx);
+      initTepInlinePeriodDatepicker(idx);
       // Scroll form into view
       form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
@@ -857,9 +1058,192 @@
     }
   }
 
+  function normalizeTepDateForSubmit(value) {
+    if (!value) return value;
+    var yyyymmdd = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (yyyymmdd) return value;
+
+    var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mmddyyyy) {
+      var month = mmddyyyy[1].padStart(2, '0');
+      var day = mmddyyyy[2].padStart(2, '0');
+      return mmddyyyy[3] + '-' + month + '-' + day;
+    }
+    return value;
+  }
+
+  function initTepInlinePeriodDatepicker(idx) {
+    var input = document.getElementById('tep-date-' + idx);
+    if (!input || input.type === 'hidden') return;
+
+    var periodStartRaw = input.getAttribute('data-period-start');
+    var periodEndRaw = input.getAttribute('data-period-end');
+    if (!periodStartRaw || !periodEndRaw) return;
+
+    var periodStart = new Date(periodStartRaw + 'T00:00:00');
+    var periodEnd = new Date(periodEndRaw + 'T00:00:00');
+    var startMs = new Date(periodStart.getFullYear(), periodStart.getMonth(), periodStart.getDate()).getTime();
+    var endMs = new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()).getTime();
+
+    function applyHighlight() {
+      var pickers = document.querySelectorAll('.datepicker-picker');
+      pickers.forEach(function(picker) {
+        if (picker.offsetParent === null) return; // Skip hidden pickers
+        var cells = picker.querySelectorAll('.datepicker-cell.day[data-date]');
+        cells.forEach(function(cell) {
+          var rawDate = Number(cell.getAttribute('data-date'));
+          if (!rawDate) return;
+          // Remove old classes first
+          cell.classList.remove('tep-period-start', 'tep-period-end', 'tep-period-range');
+          // Add appropriate class
+          if (rawDate === startMs) {
+            cell.classList.add('tep-period-start');
+          } else if (rawDate === endMs) {
+            cell.classList.add('tep-period-end');
+          } else if (rawDate > startMs && rawDate < endMs) {
+            cell.classList.add('tep-period-range');
+          }
+        });
+      });
+    }
+
+    function scheduleHighlight() {
+      setTimeout(applyHighlight, 50);
+      setTimeout(applyHighlight, 200);
+    }
+
+    // Clean up previous listeners
+    if (input._tepClickHandler) {
+      input.removeEventListener('click', input._tepClickHandler);
+    }
+
+    input._tepClickHandler = scheduleHighlight;
+    input.addEventListener('click', input._tepClickHandler);
+  }
+
+  function initIssueInlineDatepicker(issueId) {
+    var input = document.getElementById('issue-date-' + issueId);
+    if (!input) return;
+
+    if (input.datepicker && input.datepicker.setOptions) {
+      input.datepicker.setOptions({
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        showOnFocus: false
+      });
+      if (input.value && input.datepicker.setDate) {
+        input.datepicker.setDate(input.value, { render: true, autohide: false });
+      }
+      return;
+    }
+
+    if (window.Datepicker) {
+      new window.Datepicker(input, {
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        showOnFocus: false
+      });
+    }
+  }
+
   function hideTepInlineForm(idx) {
     var form = document.getElementById('tep-inline-form-' + idx);
     if (form) form.classList.add('hidden');
+    closeTepIssueDropdown(idx);
+    closeTepActivityDropdown(idx);
+  }
+
+  // ── Floating dropdown helpers (portal to body) ───────────────────────────
+  var tepFloatingDropdownState = {};
+
+  function tepEnsureDropdownPortalState(list) {
+    if (!list || !list.id) return null;
+    if (!tepFloatingDropdownState[list.id]) {
+      tepFloatingDropdownState[list.id] = {
+        parent: list.parentNode,
+        nextSibling: list.nextSibling,
+        anchorId: null
+      };
+    }
+    return tepFloatingDropdownState[list.id];
+  }
+
+  function tepPositionFloatingDropdown(list, anchor) {
+    if (!list || !anchor) return;
+
+    var rect = anchor.getBoundingClientRect();
+    var minWidth = parseFloat(list.style.minWidth || '0') || 0;
+    var targetWidth = Math.max(Math.round(rect.width), Math.round(minWidth));
+    var viewportPadding = 8;
+    var preferredHeight = Math.min(list.scrollHeight || 220, 320);
+    var spaceBelow = Math.max(0, window.innerHeight - rect.bottom - viewportPadding);
+    var spaceAbove = Math.max(0, rect.top - viewportPadding);
+    var openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    var maxHeight = Math.max(120, openUp ? spaceAbove : spaceBelow);
+
+    list.style.position = 'fixed';
+    var left = Math.max(viewportPadding, rect.left);
+    if (left + targetWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - targetWidth);
+    }
+    list.style.left = left + 'px';
+    list.style.width = targetWidth + 'px';
+    list.style.maxHeight = Math.min(preferredHeight, maxHeight) + 'px';
+    list.style.top = openUp ? 'auto' : (rect.bottom + 2) + 'px';
+    list.style.bottom = openUp ? (window.innerHeight - rect.top + 2) + 'px' : 'auto';
+    list.style.zIndex = '10050';
+  }
+
+  function tepOpenFloatingDropdown(list, anchor) {
+    if (!list || !anchor || !list.id || !anchor.id) return;
+    var state = tepEnsureDropdownPortalState(list);
+    if (!state) return;
+
+    state.anchorId = anchor.id;
+    if (list.parentNode !== document.body) {
+      document.body.appendChild(list);
+    }
+    list.classList.remove('hidden');
+    tepPositionFloatingDropdown(list, anchor);
+  }
+
+  function tepCloseFloatingDropdown(list) {
+    if (!list || !list.id) return;
+    var state = tepFloatingDropdownState[list.id];
+    list.classList.add('hidden');
+
+    if (!state || !state.parent) return;
+    if (list.parentNode !== state.parent) {
+      state.parent.insertBefore(list, state.nextSibling);
+    }
+    state.anchorId = null;
+    list.style.position = '';
+    list.style.left = '';
+    list.style.top = '';
+    list.style.bottom = '';
+    list.style.width = '';
+    list.style.maxHeight = '';
+    list.style.zIndex = '';
+  }
+
+  function tepSyncFloatingDropdownPositions() {
+    Object.keys(tepFloatingDropdownState).forEach(function(listId) {
+      var list = document.getElementById(listId);
+      var state = tepFloatingDropdownState[listId];
+      if (!list || !state || list.classList.contains('hidden') || !state.anchorId) return;
+      var anchor = document.getElementById(state.anchorId);
+      if (!anchor) {
+        tepCloseFloatingDropdown(list);
+        return;
+      }
+      tepPositionFloatingDropdown(list, anchor);
+    });
+  }
+
+  if (!window.__tepFloatingDropdownListenersBound) {
+    window.addEventListener('resize', tepSyncFloatingDropdownPositions);
+    document.addEventListener('scroll', tepSyncFloatingDropdownPositions, true);
+    window.__tepFloatingDropdownListenersBound = true;
   }
 
   function resetTepActivityDropdown(idx) {
@@ -875,17 +1259,18 @@
   // ── Custom activity dropdown ─────────────────────────────────────────────
   function toggleTepActivityDropdown(idx) {
     var list = document.getElementById('tep-activity-list-' + idx);
+    var anchor = document.getElementById('tep-activity-btn-' + idx);
     if (!list) return;
     if (list.classList.contains('hidden')) {
-      list.classList.remove('hidden');
+      tepOpenFloatingDropdown(list, anchor);
     } else {
-      list.classList.add('hidden');
+      tepCloseFloatingDropdown(list);
     }
   }
 
   function closeTepActivityDropdown(idx) {
     var list = document.getElementById('tep-activity-list-' + idx);
-    if (list) list.classList.add('hidden');
+    if (list) tepCloseFloatingDropdown(list);
   }
 
   function selectTepActivity(idx, activityId, activityName) {
@@ -899,8 +1284,11 @@
   // Close activity dropdown when clicking outside
   document.addEventListener('click', function(e) {
     document.querySelectorAll('[id^="tep-activity-wrapper-"]').forEach(function(wrapper) {
+      var idx = wrapper.id.replace('tep-activity-wrapper-', '');
+      var list = document.getElementById('tep-activity-list-' + idx);
+      var clickedInsideList = !!(list && list.contains(e.target));
       if (!wrapper.contains(e.target)) {
-        var idx = wrapper.id.replace('tep-activity-wrapper-', '');
+        if (clickedInsideList) return;
         closeTepActivityDropdown(idx);
       }
     });
@@ -927,6 +1315,7 @@
         btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
         btn.textContent = a.name;
         btn.setAttribute('data-id', a.id);
+        btn.setAttribute('onkeydown', "tepHandleActivityDropdownOptionKey(event, 'tep-activity-list-" + idx + "')");
         btn.onclick = function() { selectTepActivity(idx, a.id, a.name); };
         list.appendChild(btn);
       });
@@ -947,15 +1336,16 @@
   // ── Custom issue searchable dropdown ────────────────────────────────────
   function openTepIssueDropdown(idx) {
     var list = document.getElementById('tep-issue-list-' + idx);
+    var anchor = document.getElementById('tep-issue-search-' + idx);
     if (!list) return;
     // Show all options first
     list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
-    list.classList.remove('hidden');
+    tepOpenFloatingDropdown(list, anchor);
   }
 
   function closeTepIssueDropdown(idx) {
     var list = document.getElementById('tep-issue-list-' + idx);
-    if (list) list.classList.add('hidden');
+    if (list) tepCloseFloatingDropdown(list);
   }
 
   function filterTepIssues(idx) {
@@ -963,7 +1353,7 @@
     var list   = document.getElementById('tep-issue-list-' + idx);
     if (!search || !list) return;
     var query = search.value.toLowerCase().replace('#', '');
-    list.classList.remove('hidden');
+    tepOpenFloatingDropdown(list, search);
     var opts = list.querySelectorAll('.tep-issue-option');
     var anyVisible = false;
     opts.forEach(function(opt) {
@@ -1036,8 +1426,11 @@
   // Close issue dropdown when clicking outside
   document.addEventListener('click', function(e) {
     document.querySelectorAll('[id^="tep-issue-wrapper-"]').forEach(function(wrapper) {
+      var idx = wrapper.id.replace('tep-issue-wrapper-', '');
+      var list = document.getElementById('tep-issue-list-' + idx);
+      var clickedInsideList = !!(list && list.contains(e.target));
       if (!wrapper.contains(e.target)) {
-        var idx = wrapper.id.replace('tep-issue-wrapper-', '');
+        if (clickedInsideList) return;
         closeTepIssueDropdown(idx);
       }
     });
@@ -1054,6 +1447,12 @@
     if (el) el.classList.add('hidden');
   }
 
+  function tepReloadWithStateRestore() {
+    tepMarkStateForRestore();
+    tepPersistOpenState();
+    location.reload();
+  }
+
   async function submitTepInlineLog(event, idx) {
     event.preventDefault();
     hideTepInlineError(idx);
@@ -1064,9 +1463,11 @@
     var activityId = (document.getElementById('tep-activity-' + idx) || {}).value;
     var comment    = (document.getElementById('tep-comment-'  + idx) || {}).value;
 
+    dateStr = normalizeTepDateForSubmit(dateStr);
+
     if (!issueId)    { showTepInlineError(idx, 'Please select an issue.');   return; }
     var hours = parseHoursMinutes(hoursRaw);
-    if (!hours)      { showTepInlineError(idx, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (hours === null) { showTepInlineError(idx, 'Enter a valid number of hours.'); return; }
     if (!activityId) { showTepInlineError(idx, 'Please select an activity.'); return; }
 
     var saveBtn = event.target;
@@ -1083,7 +1484,7 @@
       });
       var data = await resp.json();
       if (data.success) {
-        location.reload();
+        tepReloadWithStateRestore();
       } else {
         showTepInlineError(idx, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
       }
@@ -1103,10 +1504,12 @@
 
     if (row.classList.contains('hidden')) {
       // Close any other open inline forms
-      document.querySelectorAll('.tep-inline-form').forEach(function(f) { f.classList.add('hidden'); });
+      document.querySelectorAll('[id^="tep-inline-form-"]').forEach(function(f) { f.classList.add('hidden'); });
       document.querySelectorAll('[id^="issue-inline-row-"]').forEach(function(r) { r.classList.add('hidden'); });
 
       row.classList.remove('hidden');
+      var inlineForm = document.getElementById('issue-inline-form-' + issueId);
+      if (inlineForm) inlineForm.classList.remove('hidden');
       // Load activities if not yet loaded
       if (!issueActivitiesLoaded[issueId]) {
         await loadIssueActivities(issueId);
@@ -1114,11 +1517,13 @@
       }
       // Reset fields
       var dateEl = document.getElementById('issue-date-' + issueId);
-      if (dateEl) dateEl.value = '<%= Date.current.strftime('%Y-%m-%d') %>';
+      if (dateEl) dateEl.value = '<%= Date.current.strftime('%m/%d/%Y') %>';
       var hoursEl = document.getElementById('issue-hours-' + issueId);
       if (hoursEl) hoursEl.value = '';
       var commentEl = document.getElementById('issue-comment-' + issueId);
       if (commentEl) commentEl.value = '';
+      initIssueInlineDatepicker(issueId);
+      resetIssueActivityDropdown(issueId);
       hideIssueInlineError(issueId);
       row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } else {
@@ -1129,23 +1534,70 @@
   function hideIssueInlineForm(issueId) {
     var row = document.getElementById('issue-inline-row-' + issueId);
     if (row) row.classList.add('hidden');
+    closeIssueActivityDropdown(issueId);
+  }
+
+  function toggleIssueActivityDropdown(issueId) {
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    var anchor = document.getElementById('issue-activity-btn-' + issueId);
+    if (!list) return;
+    if (list.classList.contains('hidden')) {
+      tepOpenFloatingDropdown(list, anchor);
+    } else {
+      tepCloseFloatingDropdown(list);
+    }
+  }
+
+  function closeIssueActivityDropdown(issueId) {
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    if (list) tepCloseFloatingDropdown(list);
+  }
+
+  function resetIssueActivityDropdown(issueId) {
+    var hidden = document.getElementById('issue-activity-' + issueId);
+    var text = document.getElementById('issue-activity-text-' + issueId);
+    if (hidden) hidden.value = '';
+    if (text) {
+      text.textContent = 'Activity *';
+      text.classList.add('text-gray-400');
+      text.classList.remove('text-gray-900');
+    }
+    closeIssueActivityDropdown(issueId);
+  }
+
+  function selectIssueActivity(issueId, activityId, activityName) {
+    var hidden = document.getElementById('issue-activity-' + issueId);
+    var text = document.getElementById('issue-activity-text-' + issueId);
+    if (hidden) hidden.value = activityId;
+    if (text) {
+      text.textContent = activityName;
+      text.classList.remove('text-gray-400');
+      text.classList.add('text-gray-900');
+    }
+    closeIssueActivityDropdown(issueId);
   }
 
   async function loadIssueActivities(issueId) {
-    var select = document.getElementById('issue-activity-' + issueId);
-    if (!select) return;
+    var list = document.getElementById('issue-activity-list-' + issueId);
+    if (!list) return;
     try {
       var resp = await fetch('<%= time_entry_panel_activities_path(':issue_id') %>'.replace(':issue_id', issueId));
       var data = await resp.json();
-      select.innerHTML = '<option value="">Select activity</option>';
+      list.innerHTML = '';
       (data.activities || []).forEach(function(a) {
-        var opt = document.createElement('option');
-        opt.value = a.id;
-        opt.textContent = a.name;
-        select.appendChild(opt);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tep-activity-option w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700';
+        btn.style.cssText = 'background:transparent;outline:none;box-shadow:none;border:none;';
+        btn.textContent = a.name;
+        btn.setAttribute('data-id', a.id);
+        btn.setAttribute('onkeydown', "tepHandleActivityDropdownOptionKey(event, 'issue-activity-list-" + issueId + "')");
+        btn.onclick = function() { selectIssueActivity(issueId, a.id, a.name); };
+        list.appendChild(btn);
       });
+      resetIssueActivityDropdown(issueId);
     } catch(e) {
-      select.innerHTML = '<option value="">Failed to load</option>';
+      list.innerHTML = '<div class="px-3 py-2 text-sm text-red-400">Failed to load</div>';
     }
   }
 
@@ -1168,12 +1620,14 @@
     var activityId = (document.getElementById('issue-activity-' + issueId) || {}).value;
     var comment    = (document.getElementById('issue-comment-'  + issueId) || {}).value;
 
+    date = normalizeTepDateForSubmit(date);
+
     if (!date)       { showIssueInlineError(issueId, 'Please select a date.');    return; }
     var hours = parseHoursMinutes(hoursRaw);
-    if (!hours)      { showIssueInlineError(issueId, 'Enter hours as H:MM (e.g. 1:30, 0:15).'); return; }
+    if (hours === null) { showIssueInlineError(issueId, 'Enter a valid number of hours.'); return; }
     if (!activityId) { showIssueInlineError(issueId, 'Please select an activity.'); return; }
 
-    var saveBtn = event.target;
+    var saveBtn = event.currentTarget || event.target;
     saveBtn.disabled = true;
 
     try {
@@ -1187,7 +1641,7 @@
       });
       var data = await resp.json();
       if (data.success) {
-        location.reload();
+        tepReloadWithStateRestore();
       } else {
         showIssueInlineError(issueId, data.errors ? data.errors.join(', ') : (data.error || 'Failed to save.'));
       }
@@ -1198,29 +1652,151 @@
     }
   }
 
+  // Close unlogged activity dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('[id^="issue-activity-wrapper-"]').forEach(function(wrapper) {
+      var issueId = wrapper.id.replace('issue-activity-wrapper-', '');
+      var list = document.getElementById('issue-activity-list-' + issueId);
+      var clickedInsideList = !!(list && list.contains(e.target));
+      if (!wrapper.contains(e.target)) {
+        if (clickedInsideList) return;
+        closeIssueActivityDropdown(issueId);
+      }
+    });
+  });
+
   // ── Shared utilities ─────────────────────────────────────────────────────
   function formatHoursInput(input) {
-    input.value = input.value.replace(/[^\d:]/g, '');
+    input.value = input.value.replace(/[^\d:.]/g, '');
   }
 
   function parseHoursMinutes(value) {
     if (!value || !value.trim()) return null;
-    var parts = value.split(':');
-    if (parts.length !== 2) return null;
-    var h = parseInt(parts[0], 10);
-    var m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
-    if (h === 0 && m === 0) return null;
-    return h + (m / 60.0);
+    var trimmed = value.trim();
+
+    if (trimmed.includes(':')) {
+      var parts = trimmed.split(':');
+      if (parts.length !== 2) return null;
+      var h = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10);
+      if (isNaN(h) || isNaN(m) || m < 0 || m > 59 || h < 0) return null;
+      if (h === 0 && m === 0) return null;
+      return h + (m / 60.0);
+    }
+
+    var hours = parseFloat(trimmed);
+    if (isNaN(hours) || hours < 0) return null;
+    return hours;
+  }
+
+  function tepIsPrintableActivityKey(key) {
+    return !!key && key.length === 1 && /^[a-z0-9]$/i.test(key);
+  }
+
+  function tepGetActivityDropdownButtons(list) {
+    return Array.from(list.querySelectorAll('button')).filter(function(button) {
+      return button.offsetParent !== null && !button.disabled;
+    });
+  }
+
+  function tepFindActivityDropdownMatch(list, key) {
+    var normalizedKey = key.toLowerCase();
+    return tepGetActivityDropdownButtons(list).find(function(button) {
+      var text = (button.textContent || '').trim().toLowerCase();
+      return text.indexOf(normalizedKey) === 0;
+    }) || null;
+  }
+
+  function tepFocusActivityDropdownButton(buttons, index) {
+    if (index < 0 || index >= buttons.length) return;
+    buttons[index].focus();
+  }
+
+  function tepHandleActivityDropdownTriggerKey(event, listId) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+
+    var key = event.key;
+    if (key !== 'ArrowDown' && key !== 'ArrowUp' && !tepIsPrintableActivityKey(key)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    var trigger = event.currentTarget;
+    var wasHidden = list.classList.contains('hidden');
+    if (wasHidden && trigger && typeof trigger.click === 'function') {
+      trigger.click();
+    }
+
+    setTimeout(function() {
+      var buttons = tepGetActivityDropdownButtons(list);
+      if (!buttons.length) return;
+
+      if (tepIsPrintableActivityKey(key)) {
+        var match = tepFindActivityDropdownMatch(list, key);
+        if (match) {
+          match.focus();
+          return;
+        }
+      }
+
+      if (key === 'ArrowUp') {
+        tepFocusActivityDropdownButton(buttons, buttons.length - 1);
+      } else {
+        tepFocusActivityDropdownButton(buttons, 0);
+      }
+    }, 0);
+  }
+
+  function tepHandleActivityDropdownOptionKey(event, listId) {
+    var list = document.getElementById(listId);
+    if (!list) return;
+
+    var buttons = tepGetActivityDropdownButtons(list);
+    var current = event.currentTarget;
+    var currentIndex = buttons.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (current && typeof current.click === 'function') current.click();
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      tepFocusActivityDropdownButton(buttons, currentIndex + 1 < buttons.length ? currentIndex + 1 : 0);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      tepFocusActivityDropdownButton(buttons, currentIndex > 0 ? currentIndex - 1 : buttons.length - 1);
+      return;
+    }
+
+    if (tepIsPrintableActivityKey(event.key)) {
+      event.preventDefault();
+      var match = tepFindActivityDropdownMatch(list, event.key);
+      if (match) {
+        match.focus();
+      }
+    }
   }
 
   // ── Edit-form activity dropdown ──────────────────────────────────────────────
   function tepToggleEditActivityDropdown(entryId) {
     document.querySelectorAll('[id^="tep-edit-act-list-"]').forEach(function(l) {
-      if (l.id !== 'tep-edit-act-list-' + entryId) l.classList.add('hidden');
+      if (l.id !== 'tep-edit-act-list-' + entryId) tepCloseFloatingDropdown(l);
     });
     var list = document.getElementById('tep-edit-act-list-' + entryId);
-    if (list) list.classList.toggle('hidden');
+    var anchor = document.getElementById('tep-edit-act-btn-' + entryId);
+    if (!list) return;
+    if (list.classList.contains('hidden')) {
+      tepOpenFloatingDropdown(list, anchor);
+    } else {
+      tepCloseFloatingDropdown(list);
+    }
   }
 
   function tepSetEditActivity(entryId, activityId, activityName) {
@@ -1229,7 +1805,7 @@
     if (hidden) hidden.value = activityId;
     if (text)   text.textContent = activityName;
     var list = document.getElementById('tep-edit-act-list-' + entryId);
-    if (list) list.classList.add('hidden');
+    if (list) tepCloseFloatingDropdown(list);
   }
 
   // ── Issue entries: expand / collapse ────────────────────────────────────────
@@ -1239,6 +1815,7 @@
     var isHidden = expand.classList.contains('hidden');
     expand.classList.toggle('hidden');
     if (chevron) chevron.style.transform = isHidden ? 'rotate(90deg)' : '';
+    tepPersistOpenState();
   }
 
   // ── Entry inline edit toggle ─────────────────────────────────────────────────
@@ -1248,6 +1825,10 @@
     if (!display || !edit) return;
     display.classList.toggle('hidden');
     edit.classList.toggle('hidden');
+    if (edit.classList.contains('hidden')) {
+      var list = document.getElementById('tep-edit-act-list-' + entryId);
+      if (list) tepCloseFloatingDropdown(list);
+    }
     if (!edit.classList.contains('hidden')) {
       edit.querySelector('input[name="hours"]').focus();
     }
@@ -1291,6 +1872,8 @@
     if (!tepPendingDelete) return;
     var url = tepPendingDelete.url;
     var token = tepPendingDelete.token;
+    tepMarkStateForRestore();
+    tepPersistOpenState();
     tepCloseDeleteModal();
 
     var form = document.createElement('form');
@@ -1303,5 +1886,132 @@
     });
     document.body.appendChild(form);
     form.submit();
+  }
+
+  // ── Persist/restore Logged tab expanded state ────────────────────────────
+  var tepLoggedStateKey = 'tep-logged-state:' + window.location.pathname + '?' + window.location.search;
+  var tepRestoreFlagKey = 'tep-logged-state-restore:' + window.location.pathname;
+
+  function tepMarkStateForRestore() {
+    try {
+      sessionStorage.setItem(tepRestoreFlagKey, '1');
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepConsumeStateRestoreFlag() {
+    try {
+      var shouldRestore = sessionStorage.getItem(tepRestoreFlagKey) === '1';
+      sessionStorage.removeItem(tepRestoreFlagKey);
+      return shouldRestore;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function tepGetLoggedState() {
+    try {
+      var raw = localStorage.getItem(tepLoggedStateKey);
+      return raw ? JSON.parse(raw) : { openGroups: [], openIssues: [] };
+    } catch (e) {
+      return { openGroups: [], openIssues: [] };
+    }
+  }
+
+  function tepSetLoggedState(state) {
+    try {
+      localStorage.setItem(tepLoggedStateKey, JSON.stringify(state));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepPersistOpenState() {
+    var openGroups = [];
+    var openIssues = [];
+
+    document.querySelectorAll('.tep-group-row[data-period-key]').forEach(function(row) {
+      var expandId = row.getAttribute('data-expand-id');
+      var expand = expandId ? document.getElementById(expandId) : null;
+      if (expand && !expand.classList.contains('hidden')) {
+        openGroups.push(row.getAttribute('data-period-key'));
+      }
+    });
+
+    document.querySelectorAll('.tep-issue-row[data-period-key][data-issue-id]').forEach(function(row) {
+      var expandId = row.getAttribute('data-expand-id');
+      var expand = expandId ? document.getElementById(expandId) : null;
+      if (expand && !expand.classList.contains('hidden')) {
+        openIssues.push(row.getAttribute('data-period-key') + '::' + row.getAttribute('data-issue-id'));
+      }
+    });
+
+    tepSetLoggedState({
+      openGroups: Array.from(new Set(openGroups)),
+      openIssues: Array.from(new Set(openIssues))
+    });
+  }
+
+  function tepFindGroupRow(periodKey) {
+    return Array.from(document.querySelectorAll('.tep-group-row[data-period-key]')).find(function(row) {
+      return row.getAttribute('data-period-key') === periodKey;
+    });
+  }
+
+  function tepFindIssueRow(periodKey, issueId) {
+    return Array.from(document.querySelectorAll('.tep-issue-row[data-period-key][data-issue-id]')).find(function(row) {
+      return row.getAttribute('data-period-key') === periodKey && row.getAttribute('data-issue-id') === issueId;
+    });
+  }
+
+  function tepRestoreOpenState() {
+    var state = tepGetLoggedState();
+    if (!state) return;
+
+    (state.openGroups || []).forEach(function(periodKey) {
+      var row = tepFindGroupRow(periodKey);
+      if (!row) return;
+      var expand = document.getElementById(row.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(row.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.remove('hidden');
+      if (chevron) chevron.classList.add('tep-chevron-open');
+    });
+
+    (state.openIssues || []).forEach(function(token) {
+      var parts = token.split('::');
+      if (parts.length !== 2) return;
+      var periodKey = parts[0];
+      var issueId = parts[1];
+
+      var issueRow = tepFindIssueRow(periodKey, issueId);
+      if (!issueRow) return;
+
+      var groupRow = tepFindGroupRow(periodKey);
+      if (groupRow) {
+        var groupExpand = document.getElementById(groupRow.getAttribute('data-expand-id'));
+        var groupChevron = document.getElementById(groupRow.getAttribute('data-chevron-id'));
+        if (groupExpand) groupExpand.classList.remove('hidden');
+        if (groupChevron) groupChevron.classList.add('tep-chevron-open');
+      }
+
+      var expand = document.getElementById(issueRow.getAttribute('data-expand-id'));
+      var chevron = document.getElementById(issueRow.getAttribute('data-chevron-id'));
+      if (expand) expand.classList.remove('hidden');
+      if (chevron) chevron.style.transform = 'rotate(90deg)';
+    });
+  }
+
+  function tepInitLoggedStatePersistence() {
+    if (tepConsumeStateRestoreFlag()) {
+      tepRestoreOpenState();
+    }
+    tepPersistOpenState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tepInitLoggedStatePersistence);
+  } else {
+    tepInitLoggedStatePersistence();
   }
 </script>
