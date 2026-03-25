@@ -484,6 +484,9 @@ button[onclick*="switchChartType"]:active {
   box-shadow: 0 10px 25px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06) !important;
   outline: none !important;
 }
+.tep-activity-dropdown {
+  overflow-x: hidden !important;
+}
 .tep-issue-option:hover,
 .tep-issue-option:focus,
 .tep-activity-option:hover,
@@ -521,6 +524,9 @@ button[onclick*="switchChartType"]:active {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 .tep-activity-option:hover,
 .tep-activity-option:focus,
@@ -1308,6 +1314,11 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 .tep-entry-act-option:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+}
+.tep-entry-act-option {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* === Status and Tracker Badges === */
