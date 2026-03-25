@@ -1299,6 +1299,18 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   color: inherit !important;
 }
 
+/* Windows-safe typography for selected edit-activity text (prevents descender clipping) */
+.tep-entry-edit-form .tep-entry-act-trigger {
+  height: 36px !important;
+  line-height: 1.35 !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+.tep-entry-edit-form .tep-entry-act-trigger span[id^="tep-edit-act-text-"] {
+  line-height: 1.35 !important;
+  padding-bottom: 1px !important;
+}
+
 /* Activity option buttons in dropdown — no Redmine borders between items */
 .tep-entry-act-option,
 .tep-entry-act-option:hover,
