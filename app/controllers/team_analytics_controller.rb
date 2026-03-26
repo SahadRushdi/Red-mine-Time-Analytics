@@ -459,8 +459,11 @@ class TeamAnalyticsController < ApplicationController
       # Convert period key to appropriate format for the helper
       period_for_display = case grouping
                            when 'monthly'
-                             # Convert [year, month] array to first day of month
-                             Date.new(period[0], period[1], 1)
+                             if period.is_a?(Array)
+                               Date.new(period[0], period[1], 1)
+                             else
+                               period.to_date
+                             end
                            else
                              period
                            end
