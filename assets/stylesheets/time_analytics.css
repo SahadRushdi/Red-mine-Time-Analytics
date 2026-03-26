@@ -339,6 +339,7 @@ button:active,
 
 /* Remove borders from dashboard tab controls */
 a.ta-view-tab,
+a.ta-view-tab:hover,
 a.ta-view-tab:focus,
 a.ta-view-tab:focus-visible,
 a.ta-view-tab:active,
@@ -349,6 +350,7 @@ button.ta-view-tab:active {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
+  text-decoration: none !important;
 }
 
 a.ta-view-tab:focus,

@@ -781,7 +781,7 @@
               <div class="flex items-center justify-between mb-2 gap-3">
                 <h3 class="text-base font-medium text-gray-900">
                   <% if member %>
-                    <%= link_to member_name, my_time_path(user_id: member[:id]), target: "_blank", class: "text-blue-600 hover:underline" %>
+                    <%= link_to member_name, my_time_path(user_id: member[:id]), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
                   <% else %>
                     <%= member_name %>
                   <% end %>
@@ -846,6 +846,13 @@
     // Initialize chart
     initChart();
     initTeamDonutChart();
+
+    // Persist scroll intent for Team tab navigation, matching My Time behavior.
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('a[data-team-tab-nav="true"]')) {
+        sessionStorage.setItem('scrollToTeamTable', 'true');
+      }
+    });
     
     // Restore activity view state
     restoreActivityViewState();
@@ -855,6 +862,14 @@
     
     // Restore member view state
     restoreMemberViewState();
+
+    if (sessionStorage.getItem('scrollToTeamTable') === 'true') {
+      sessionStorage.removeItem('scrollToTeamTable');
+      var tableElement = document.querySelector('.ta-analysis-table');
+      if (tableElement) {
+        tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+    }
   });
 
   var teamDonutChart = null;
@@ -1094,6 +1109,7 @@
       localStorage.setItem(config.storageKey, 'detailed');
     }
     if (!(options && options.reload === false)) {
+      sessionStorage.setItem('scrollToTeamTable', 'true');
       config.regenerate('detailed');
     }
   }
@@ -1118,6 +1134,7 @@
       localStorage.setItem(config.storageKey, 'summary');
     }
     if (!(options && options.reload === false)) {
+      sessionStorage.setItem('scrollToTeamTable', 'true');
       config.regenerate('summary');
     }
   }
