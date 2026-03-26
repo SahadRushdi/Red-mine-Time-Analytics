@@ -1004,17 +1004,49 @@
       config.options.responsive = true;
       config.options.maintainAspectRatio = false;
 
-      // Add custom tooltip callback for weekly grouping (bar and line charts)
-      if ((config.type === 'bar' || config.type === 'line') && config.data.datasets[0].tooltipLabels) {
-        if (!config.options.plugins) config.options.plugins = {};
-        if (!config.options.plugins.tooltip) config.options.plugins.tooltip = {};
-        if (!config.options.plugins.tooltip.callbacks) config.options.plugins.tooltip.callbacks = {};
-        
-        config.options.plugins.tooltip.callbacks.title = function(context) {
-          var index = context[0].dataIndex;
-          var tooltipLabels = context[0].dataset.tooltipLabels;
-          return tooltipLabels ? tooltipLabels[index] : context[0].label;
-        };
+      // Match My Time chart tooltip behavior (Chart.js v2)
+      if (!config.options.tooltips) config.options.tooltips = {};
+      if (!config.options.tooltips.callbacks) config.options.tooltips.callbacks = {};
+
+      config.options.tooltips.filter = function(tooltipItem, data) {
+        if (!tooltipItem || !data || !data.datasets) return false;
+        var dataset = data.datasets[tooltipItem.datasetIndex];
+        if (!dataset || !dataset.data) return false;
+        var value = dataset.data[tooltipItem.index];
+        return value !== 0 && value !== '0.00';
+      };
+
+      config.options.tooltips.callbacks.title = function(tooltipItems, data) {
+        if (!tooltipItems || tooltipItems.length === 0 || !tooltipItems[0]) return '';
+        var index = tooltipItems[0].index;
+        if (index === undefined || index === null) return '';
+
+        var dataset = data && data.datasets ? data.datasets[0] : null;
+        if (dataset && dataset.tooltipLabels && dataset.tooltipLabels[index]) {
+          return dataset.tooltipLabels[index];
+        }
+
+        if (data && data.labels && data.labels[index] !== undefined) {
+          return data.labels[index];
+        }
+        return '';
+      };
+
+      config.options.tooltips.callbacks.label = function(tooltipItem, data) {
+        if (!tooltipItem || !data || !data.datasets) return '';
+        var dataset = data.datasets[tooltipItem.datasetIndex];
+        if (!dataset) return '';
+
+        var label = dataset.label || '';
+        if (dataset.formattedHours && dataset.formattedHours[tooltipItem.index]) {
+          return label + ': ' + dataset.formattedHours[tooltipItem.index];
+        }
+
+        var value = tooltipItem.yLabel !== undefined ? tooltipItem.yLabel : (dataset.data && dataset.data[tooltipItem.index]);
+        if (value !== undefined && typeof value === 'number') {
+          return label + ': ' + formatTeamHours(value);
+        }
+        return label;
       }
 
       console.log('Creating chart with config:', config);

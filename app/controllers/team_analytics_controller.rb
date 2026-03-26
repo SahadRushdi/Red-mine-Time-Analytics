@@ -475,6 +475,10 @@ class TeamAnalyticsController < ApplicationController
 
   # Generate chart data for team view
   def generate_team_chart_data(entries, grouping, chart_type)
+    if chart_type == 'bar'
+      return generate_time_entries_stacked_chart_data(entries, grouping)
+    end
+
     grouped_data = {}
     
     entries.each do |entry|
@@ -506,120 +510,31 @@ class TeamAnalyticsController < ApplicationController
     labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
     values = sorted_data.map { |_, hours| hours.round(2) }
     
-    # For weekly grouping, prepare tooltip labels with date ranges
-    tooltip_labels = if grouping == 'weekly'
-                      sorted_data.map do |period, _|
-                        week_start = period
-                        week_end = period + 6.days
-                        # Clip to user's selected date range
-                        display_start = [week_start, @from].max
-                        display_end = [week_end, @to].min
-                        "#{display_start.strftime('%m/%d/%Y')} to #{display_end.strftime('%m/%d/%Y')}"
-                      end
-                    else
-                      nil
-                    end
-    
-    primary_color = tableau10_colors(1).first
-    bar_colors = tableau10_colors(values.length)
-
-    # Build complete Chart.js config (matching Individual Dashboard structure)
-    chart_data = {
-      labels: labels,
-      datasets: [{
-        label: 'Hours',
-        data: values,
-        tooltipLabels: tooltip_labels,  # Add tooltip labels for weekly view
-        backgroundColor: chart_type == 'bar' ? bar_colors : color_with_alpha(primary_color, 0.15),
-        borderColor: chart_type == 'bar' ? bar_colors : primary_color,
-        borderWidth: chart_type == 'bar' ? 1 : 2,
-        fill: true,
-        tension: chart_type == 'line' ? 0.2 : 0,
-        pointRadius: chart_type == 'line' ? 3 : 0,
-        pointHoverRadius: chart_type == 'line' ? 5 : 0
-      }]
-    }
-    
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false,
-          position: 'right'
-        },
-        tooltip: {
-          enabled: true,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
-          borderColor: 'rgba(0,0,0,0.8)',
-          borderWidth: 1
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Hours',
-            font: {
-              size: 12,
-              weight: 'bold'
-            }
-          },
-          grid: {
-            display: true,
-            color: 'rgba(0, 0, 0, 0.1)',
-            drawBorder: true,
-            drawOnChartArea: true,
-            drawTicks: true
-          },
-          ticks: {
-            font: {
-              size: 11
-            }
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: grouping.capitalize,
-            font: {
-              size: 12,
-              weight: 'bold'
-            }
-          },
-          grid: {
-            display: true,
-            color: 'rgba(0, 0, 0, 0.05)',
-            drawBorder: true,
-            drawOnChartArea: true,
-            drawTicks: true
-          },
-          ticks: {
-            font: {
-              size: 10
-            },
-            maxRotation: 45,
-            minRotation: 45,
-            autoSkip: true,
-            autoSkipPadding: 10
-          }
-        }
-      }
-    }
-    
-    # Return full Chart.js configuration
-    {
-      type: chart_type,
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
+    raw_keys = sorted_data.map(&:first)
+    generate_line_chart_from_data(labels, values, raw_keys, grouping)
   end
 
-  def generate_colors(count)
-    tableau10_colors(count)
+  def generate_time_entries_stacked_chart_data(entries, grouping)
+    return empty_chart_data('bar') if entries.blank?
+
+    category_breakdown = {}
+
+    entries.includes(:activity).each do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      activity_name = entry.activity&.name || 'No Activity'
+
+      category_breakdown[period_key] ||= {}
+      category_breakdown[period_key][activity_name] ||= 0
+      category_breakdown[period_key][activity_name] += entry.hours
+    end
+
+    activity_totals = Hash.new(0)
+    category_breakdown.each_value do |activities|
+      activities.each { |activity, hours| activity_totals[activity] += hours }
+    end
+    activities = activity_totals.sort_by { |_, total| -total }.map(&:first)
+
+    generate_stacked_bar_chart_from_matrix(category_breakdown.keys, activities, category_breakdown, grouping)
   end
 
   # Export team time entries to CSV
@@ -661,7 +576,7 @@ class TeamAnalyticsController < ApplicationController
     
     # Get unique periods and activities
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    activities = entries_with_details.map { |e| e[:activity_name] }.uniq.sort
+    activities = entries_with_details.map { |e| e[:activity_name] }.uniq
     
     # Initialize matrix with zeros
     matrix_data = {}
@@ -688,6 +603,9 @@ class TeamAnalyticsController < ApplicationController
     activities.each do |activity|
       activity_totals[activity] = periods.sum { |period| matrix_data[period][activity] || 0 }
     end
+
+    # Keep activity order consistent across stacked chart and donut chart colors
+    activities = activities.sort_by { |activity| -(activity_totals[activity] || 0) }
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
@@ -725,7 +643,12 @@ class TeamAnalyticsController < ApplicationController
       # Reuse the same logic as Time Entries section for consistency
       helpers.format_period_for_table(period_key, grouping, @from, @to)
     when 'monthly'
-      period_key.strftime('%B %Y') # "October 2025"
+      month_date = if period_key.is_a?(Array)
+        Date.new(period_key[0], period_key[1], 1)
+      else
+        period_key.to_date
+      end
+      month_date.strftime('%B %Y') # "October 2025"
     else
       # Default to weekly
       helpers.format_period_for_table(period_key, grouping, @from, @to)
@@ -734,34 +657,13 @@ class TeamAnalyticsController < ApplicationController
 
   # Generate chart data for activity pivot table
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if activity_view_state == 'summary'
-      # Summary view: group by activity, sorted by hours (descending)
-      sorted_activities = pivot_data[:activities].sort_by { |activity| -(pivot_data[:activity_totals][activity] || 0) }
-      labels = sorted_activities
-      data_values = sorted_activities.map { |activity| pivot_data[:activity_totals][activity] || 0 }
-      raw_keys = nil  # No raw keys for activity names
-    else
-      # Detailed view: group by time period, sorted by hours (descending)
-      combined = pivot_data[:raw_periods].map do |period|
-        {
-          raw_key: period,
-          label: pivot_data[:periods][pivot_data[:raw_periods].index(period)],
-          value: pivot_data[:period_totals][period] || 0
-        }
-      end
-      sorted_combined = combined.sort_by { |item| -item[:value] }
-      
-      labels = sorted_combined.map { |item| item[:label] }
-      data_values = sorted_combined.map { |item| item[:value] }
-      raw_keys = sorted_combined.map { |item| item[:raw_key] }
-    end
-    
     case chart_type
     when 'bar'
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:activities], pivot_data[:matrix], @grouping)
     else
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
     end
   end
 
@@ -779,44 +681,56 @@ class TeamAnalyticsController < ApplicationController
       datasets: [{
         label: 'Hours',
         data: data_values,
-        backgroundColor: generate_colors(labels.size),
+        backgroundColor: '#36a2eb',
+        borderColor: '#ffffff',
         borderWidth: 1,
-        tooltipLabels: tooltip_labels
+        tooltipLabels: tooltip_labels,
+        formattedHours: data_values.map { |hours| helpers.format_hours(hours) }
       }]
     }
 
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: grouping ? helpers.grouping_label(grouping) : ''
+            labelString: grouping ? helpers.grouping_label(grouping) : '',
+            fontSize: 12,
+            fontStyle: 'bold'
           },
           ticks: {
             maxRotation: 45,
-            minRotation: 45
+            minRotation: 45,
+            fontSize: 11
           }
-        }
+        }]
       }
     }
 
@@ -836,7 +750,7 @@ class TeamAnalyticsController < ApplicationController
       labels
     end
     
-    primary_color = tableau10_colors(1).first
+    primary_color = '#36a2eb'
 
     chart_data = {
       labels: labels,
@@ -850,42 +764,53 @@ class TeamAnalyticsController < ApplicationController
         borderWidth: 2,
         pointRadius: 3,
         pointHoverRadius: 5,
-        tooltipLabels: tooltip_labels
+        tooltipLabels: tooltip_labels,
+        formattedHours: data_values.map { |hours| helpers.format_hours(hours) }
       }]
     }
 
     chart_options = {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          title: {
+        yAxes: [{
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
             display: true,
-            text: 'Hours'
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
           }
-        },
-        x: {
-          title: {
+        }],
+        xAxes: [{
+          scaleLabel: {
             display: true,
-            text: grouping ? helpers.grouping_label(grouping) : ''
+            labelString: grouping ? helpers.grouping_label(grouping) : '',
+            fontSize: 12,
+            fontStyle: 'bold'
           },
           ticks: {
             maxRotation: 45,
-            minRotation: 45
+            minRotation: 45,
+            fontSize: 11
           }
-        }
+        }]
       }
     }
 
@@ -968,24 +893,13 @@ class TeamAnalyticsController < ApplicationController
 
   # Generate chart data for project pivot table
   def generate_project_pivot_chart_data(pivot_data, chart_type, project_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if project_view_state == 'summary'
-      # Summary view: group by project
-      labels = pivot_data[:projects]
-      data_values = pivot_data[:projects].map { |project| pivot_data[:project_totals][project] || 0 }
-      raw_keys = nil  # No raw keys for project names
-    else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
-    end
-    
     case chart_type
     when 'bar'
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:projects], pivot_data[:matrix], @grouping)
     else
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
     end
   end
 
@@ -1054,25 +968,135 @@ class TeamAnalyticsController < ApplicationController
 
   # Generate chart data for member pivot table
   def generate_member_pivot_chart_data(pivot_data, chart_type, member_view_state = 'detailed')
-    # Determine what data to use based on view state
-    if member_view_state == 'summary'
-      # Summary view: group by member (members are now hashes with id and name)
-      labels = pivot_data[:members].map { |m| m[:name] }
-      data_values = pivot_data[:members].map { |m| pivot_data[:member_totals][m[:name]] || 0 }
-      raw_keys = nil  # No raw keys for member names
-    else
-      # Detailed view: group by time period
-      labels = pivot_data[:periods]
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      raw_keys = pivot_data[:raw_periods]  # Pass raw period keys for tooltip formatting
-    end
-    
     case chart_type
     when 'bar'
-      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+      member_names = pivot_data[:members].map { |member| member[:name] }
+      generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], member_names, pivot_data[:matrix], @grouping)
     else
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
     end
+  end
+
+  def generate_stacked_bar_chart_from_matrix(period_keys, categories, matrix_data, grouping)
+    return empty_chart_data('bar') if period_keys.blank? || categories.blank?
+
+    sorted_periods = period_keys.uniq.sort
+    sorted_periods = if grouping == 'weekly'
+      fill_missing_weeks_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
+    else
+      fill_missing_months_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
+    end
+
+    formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+    tooltip_labels = if grouping == 'weekly'
+      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    else
+      formatted_labels
+    end
+
+    datasets = categories.each_with_index.map do |category, index|
+      data = sorted_periods.map { |period_key| matrix_data[period_key]&.[](category) || 0 }
+      {
+        label: category,
+        data: data,
+        backgroundColor: TABLEAU10_COLORS[index % TABLEAU10_COLORS.length],
+        borderColor: '#ffffff',
+        borderWidth: 1,
+        hoverBorderColor: '#ffffff',
+        maxBarThickness: 197,
+        stack: 'stack0',
+        tooltipLabels: tooltip_labels,
+        formattedHours: data.map { |hours| helpers.format_hours(hours) }
+      }
+    end
+
+    {
+      type: 'bar',
+      data: {
+        labels: formatted_labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            fontSize: 12
+          }
+        },
+        tooltips: {
+          mode: 'index',
+          intersect: false,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFontSize: 14,
+          titleFontStyle: 'bold',
+          bodyFontSize: 13,
+          cornerRadius: 8
+        },
+        scales: {
+          xAxes: [{
+            stacked: true,
+            scaleLabel: {
+              display: true,
+              labelString: helpers.grouping_label(grouping),
+              fontSize: 12,
+              fontStyle: 'bold'
+            },
+            ticks: {
+              maxRotation: 45,
+              minRotation: 45,
+              fontSize: 11
+            }
+          }],
+          yAxes: [{
+            stacked: true,
+            ticks: {
+              beginAtZero: true,
+              fontSize: 11
+            },
+            scaleLabel: {
+              display: true,
+              labelString: 'Hours',
+              fontSize: 12,
+              fontStyle: 'bold'
+            }
+          }]
+        },
+        plugins: {
+          colorschemes: {
+            scheme: 'tableau.Tableau10'
+          }
+        }
+      }
+    }.to_json.html_safe
+  end
+
+  def empty_chart_data(chart_type)
+    {
+      empty: true,
+      type: chart_type,
+      data: {
+        labels: [],
+        datasets: []
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: {
+          display: false
+        },
+        tooltips: {
+          enabled: false
+        }
+      }
+    }.to_json.html_safe
   end
 
   def normalize_team_chart_type(chart_type, fallback = 'line')
@@ -1121,9 +1145,10 @@ class TeamAnalyticsController < ApplicationController
   def fill_missing_months_team(grouped_data, from_date, to_date)
     result = {}
     current = from_date.beginning_of_month
+    sample_key = grouped_data.keys.first
     
     while current <= to_date
-      month_key = [current.year, current.month]
+      month_key = sample_key.is_a?(Array) ? [current.year, current.month] : current
       result[month_key] = grouped_data[month_key] || 0
       current = current.next_month
     end
