@@ -3,19 +3,34 @@
     <li class="me-2">
       <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'activity', chart_type: 'line')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'activity' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
-        Activity
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm0 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6Zm0 13a8.949 8.949 0 0 1-4.951-1.488A3.987 3.987 0 0 1 9 13h2a3.987 3.987 0 0 1 3.951 3.512A8.949 8.949 0 0 1 10 18Z"/>
+          </svg>
+          Activity
+        </div>
       <% end %>
     </li>
     <li class="me-2">
       <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'project', chart_type: 'line')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'project' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
-        Project
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 20">
+            <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z"/>
+          </svg>
+          Project
+        </div>
       <% end %>
     </li>
     <li class="me-2">
       <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'members', chart_type: 'line')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'members' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
-        Members
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 10a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm-7 8a7 7 0 0 1 14 0H3Zm14.5-9.5a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm-1.795 3.704A6.96 6.96 0 0 1 20 18h-2a4.96 4.96 0 0 0-2.295-4.296Z"/>
+          </svg>
+          Members
+        </div>
       <% end %>
     </li>
   </ul>

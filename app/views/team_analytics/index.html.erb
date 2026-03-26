@@ -439,8 +439,8 @@
 <% if @view_mode == 'activity' %>
   <%# Activity Analysis Tables - Show pivot table for Activity × Time Period %>
   <% if @activities&.any? %>
-    <div class="ta-analysis-layout flex gap-6 items-start mb-6">
-      <div class="box ta-analysis-table flex-1 min-w-0">
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -450,17 +450,20 @@
                         onclick="showDetailedView('activity');"
                         style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
                 <button type="button" id="show-summary-btn-activity"
                         onclick="showSummaryView('activity');"
                         style="<%= @activity_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
               <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
             <%= hidden_field_tag :filter, params[:filter] %>
             <%= hidden_field_tag :from, params[:from] %>
@@ -480,86 +483,55 @@
         </div>
 
       <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
-      <div id="team-activity-detailed-view" class="pivot-table-wrapper">
-        <table class="list pivot-table">
-          <thead>
+      <div id="team-activity-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
-              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @activities.each do |activity| %>
-                <th class="activity-header"><%= activity %></th>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
               <% end %>
-              <th class="total-header">Grand Total</th>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
             </tr>
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
               <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-              <tr>
-                <td class="period-cell"><%= period_display %></td>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
                 <% @activities.each do |activity| %>
-                  <td class="hours-cell">
+                  <td class="px-6 py-4 text-center text-gray-900">
                     <% hours = @matrix_data[period_key][activity] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '' %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
                   </td>
                 <% end %>
-                <td class="total-cell">
-                  <%= format_hours(@period_totals[period_key] || 0) %>
-                </td>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
               </tr>
             <% end %>
           </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Activity Total' : 'Grand Total' %></strong></td>
-              <% @activities.each do |activity| %>
-                <td class="total-cell">
-                  <strong><%= format_hours(@activity_totals[activity] || 0) %></strong>
-                </td>
-              <% end %>
-              <td class="grand-total-cell">
-                <strong><%= format_hours(@grand_total || 0) %></strong>
-              </td>
-            </tr>
-          </tfoot>
         </table>
       </div>
       
       <%# Summary View: Simple Activity Table (Hidden by default) %>
-      <div id="team-activity-summary-view" style="display: none;">
-        <table class="list time-entries-grouped-table summary-with-bars">
-          <thead>
-            <tr>
-              <th>Activity</th>
-              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-activity-summary-view')" title="Click to sort">
-                Total Hours <span class="sort-indicator">⇅</span>
-              </th>
-              <th class="bar-column">Distribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <tr>
-                <td><%= activity %></td>
-                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                <td class="bar-column">
-                  <div class="bar-container">
-                    <div class="bar-fill" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong><%= l(:label_total) %></strong></td>
-              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-              <td class="bar-column"></td>
-            </tr>
-          </tfoot>
-        </table>
+      <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
 
       <%# Pagination for Activity view %>
@@ -595,8 +567,8 @@
 <% elsif @view_mode == 'project' %>
   <%# Project Analysis Tables - Show pivot table for Project × Time Period %>
   <% if @projects&.any? %>
-    <div class="ta-analysis-layout flex gap-6 items-start mb-6">
-      <div class="box ta-analysis-table flex-1 min-w-0">
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -606,17 +578,20 @@
                         onclick="showDetailedView('project');"
                         style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
                 <button type="button" id="show-summary-btn-project"
                         onclick="showSummaryView('project');"
                         style="<%= @project_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
               <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
             <%= hidden_field_tag :filter, params[:filter] %>
             <%= hidden_field_tag :from, params[:from] %>
@@ -636,86 +611,55 @@
         </div>
 
       <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
-      <div id="team-project-detailed-view" class="pivot-table-wrapper">
-        <table class="list pivot-table">
-          <thead>
+      <div id="team-project-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
-              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @projects.each do |project| %>
-                <th class="project-header"><%= project %></th>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
               <% end %>
-              <th class="total-header">Grand Total</th>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
             </tr>
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
               <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
-              <tr>
-                <td class="period-cell"><%= period_display %></td>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
                 <% @projects.each do |project| %>
-                  <td class="hours-cell">
+                  <td class="px-6 py-4 text-center text-gray-900">
                     <% hours = @matrix_data[period_key][project] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '' %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
                   </td>
                 <% end %>
-                <td class="total-cell">
-                  <%= format_hours(@period_totals[period_key] || 0) %>
-                </td>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
               </tr>
             <% end %>
           </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Project Total' : 'Grand Total' %></strong></td>
-              <% @projects.each do |project| %>
-                <td class="total-cell">
-                  <strong><%= format_hours(@project_totals[project] || 0) %></strong>
-                </td>
-              <% end %>
-              <td class="grand-total-cell">
-                <strong><%= format_hours(@grand_total || 0) %></strong>
-              </td>
-            </tr>
-          </tfoot>
         </table>
       </div>
       
       <%# Summary View: Simple Project Table (Hidden by default) %>
-      <div id="team-project-summary-view" style="display: none;">
-        <table class="list time-entries-grouped-table summary-with-bars">
-          <thead>
-            <tr>
-              <th>Project</th>
-              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-project-summary-view')" title="Click to sort">
-                Total Hours <span class="sort-indicator">⇅</span>
-              </th>
-              <th class="bar-column">Distribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <tr>
-                <td><%= project %></td>
-                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                <td class="bar-column">
-                  <div class="bar-container">
-                    <div class="bar-fill" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong><%= l(:label_total) %></strong></td>
-              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-              <td class="bar-column"></td>
-            </tr>
-          </tfoot>
-        </table>
+      <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
 
       <%# Pagination for Project view %>
@@ -751,28 +695,31 @@
 <% elsif @view_mode == 'members' %>
   <%# Member Analysis Tables - Show pivot table for Member × Time Period %>
   <% if @members&.any? %>
-    <div class="ta-analysis-layout flex gap-6 items-start mb-6">
-      <div class="box ta-analysis-table flex-1 min-w-0">
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
         <div class="px-6 py-4 border-b border-gray-200">
           <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Time by Member</h3>
+              <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Time by Members</h3>
               <div class="inline-flex rounded-md shadow-sm" role="group">
                 <button type="button" id="show-detailed-btn-member"
                         onclick="showDetailedView('member');"
                         style="<%= (@member_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@member_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
                 <button type="button" id="show-summary-btn-member"
                         onclick="showSummaryView('member');"
                         style="<%= @member_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                         class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @member_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
               <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
             <%= hidden_field_tag :filter, params[:filter] %>
             <%= hidden_field_tag :from, params[:from] %>
@@ -792,95 +739,64 @@
         </div>
 
       <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
-      <div id="team-member-detailed-view" class="pivot-table-wrapper">
-        <table class="list pivot-table">
-          <thead>
+      <div id="team-member-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
-              <th class="period-header"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @members.each do |member| %>
-                <th class="member-header">
-                  <%= link_to member[:name], my_time_path(user_id: member[:id]), target: "_blank", style: "color: #169; text-decoration: underline;" %>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
+                  <%= link_to member[:name], my_time_path(user_id: member[:id]), target: "_blank", class: "text-blue-600 hover:underline" %>
                 </th>
               <% end %>
-              <th class="total-header">Grand Total</th>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
             </tr>
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
               <% period_key = @member_pivot_data[:raw_periods][(@offset + index)] %>
-              <tr>
-                <td class="period-cell"><%= period_display %></td>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
                 <% @members.each do |member| %>
-                  <td class="hours-cell">
+                  <td class="px-6 py-4 text-center text-gray-900">
                     <% hours = @matrix_data[period_key][member[:name]] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '' %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
                   </td>
                 <% end %>
-                <td class="total-cell">
-                  <%= format_hours(@period_totals[period_key] || 0) %>
-                </td>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
               </tr>
             <% end %>
           </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td class="period-cell"><strong><%= @grouping == 'daily' ? 'Member Total' : 'Grand Total' %></strong></td>
-              <% @members.each do |member| %>
-                <td class="total-cell">
-                  <strong><%= format_hours(@member_totals[member[:name]] || 0) %></strong>
-                </td>
-              <% end %>
-              <td class="grand-total-cell">
-                <strong><%= format_hours(@grand_total || 0) %></strong>
-              </td>
-            </tr>
-          </tfoot>
         </table>
       </div>
       
       <%# Summary View: Simple Member Table (Hidden by default) %>
-      <div id="team-member-summary-view" style="display: none;">
-        <table class="list time-entries-grouped-table summary-with-bars">
-          <thead>
-            <tr>
-              <th>Member</th>
-              <th class="hours-column sortable" onclick="sortTable(this, 1, 'team-member-summary-view')" title="Click to sort">
-                Total Hours <span class="sort-indicator">⇅</span>
-              </th>
-              <th class="bar-column">Distribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <% member = @members.find { |m| m[:name] == member_name } %>
-              <tr>
-                <td>
+      <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <% member = @members.find { |m| m[:name] == member_name } %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900">
                   <% if member %>
-                    <%= link_to member_name, my_time_path(user_id: member[:id]), target: "_blank", style: "color: #169; text-decoration: underline;" %>
+                    <%= link_to member_name, my_time_path(user_id: member[:id]), target: "_blank", class: "text-blue-600 hover:underline" %>
                   <% else %>
                     <%= member_name %>
                   <% end %>
-                </td>
-                <td class="hours-column" data-value="<%= hours %>"><%= format_hours(hours) %></td>
-                <td class="bar-column">
-                  <div class="bar-container">
-                    <div class="bar-fill" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                    <span class="bar-label"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-          <tfoot>
-            <tr class="total-row">
-              <td><strong><%= l(:label_total) %></strong></td>
-              <td class="hours-column"><strong><%= format_hours(@grand_total || 0) %></strong></td>
-              <td class="bar-column"></td>
-            </tr>
-          </tfoot>
-        </table>
+                </h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
 
       <%# Pagination for Member view %>
@@ -1288,66 +1204,4 @@
     }
   }
 
-  // Table sorting function for summary views
-  function sortTable(header, columnIndex, tableContainerId) {
-    var container = document.getElementById(tableContainerId);
-    var table = container.querySelector('table');
-    var tbody = table.querySelector('tbody');
-    var rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    // Determine current sort direction
-    var currentSort = header.getAttribute('data-sort') || 'none';
-    var newSort = currentSort === 'asc' ? 'desc' : 'asc';
-    
-    // Remove sort indicators from all headers
-    var allHeaders = table.querySelectorAll('th.sortable');
-    allHeaders.forEach(function(th) {
-      th.setAttribute('data-sort', 'none');
-      var indicator = th.querySelector('.sort-indicator');
-      if (indicator) indicator.textContent = '⇅';
-    });
-    
-    // Sort rows
-    rows.sort(function(a, b) {
-      var aCell = a.cells[columnIndex];
-      var bCell = b.cells[columnIndex];
-      
-      // Get numeric value from data-value attribute
-      var aVal = parseFloat(aCell.getAttribute('data-value') || aCell.textContent);
-      var bVal = parseFloat(bCell.getAttribute('data-value') || bCell.textContent);
-      
-      if (newSort === 'asc') {
-        return aVal - bVal;
-      } else {
-        return bVal - aVal;
-      }
-    });
-    
-    // Reappend sorted rows
-    rows.forEach(function(row) {
-      tbody.appendChild(row);
-    });
-    
-    // Update sort indicator
-    header.setAttribute('data-sort', newSort);
-    var indicator = header.querySelector('.sort-indicator');
-    if (indicator) {
-      indicator.textContent = newSort === 'asc' ? '▲' : '▼';
-    }
-  }
 </script>
-
-<style>
-  .sortable {
-    cursor: pointer;
-    user-select: none;
-  }
-  .sortable:hover {
-    background-color: #e8e8e8;
-  }
-  .sort-indicator {
-    font-size: 0.8em;
-    margin-left: 5px;
-    color: #999;
-  }
-</style>
