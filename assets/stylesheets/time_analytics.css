@@ -207,7 +207,7 @@
   padding-top: 15px;
   padding-bottom: 0;
   border-top: 1px solid #eee;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -245,8 +245,61 @@
 
 .pagination-info,
 .pagination-form label {
-  font-size: 11px;
+  font-size: 12px;
   color: #666;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.pagination-info {
+  flex: 0 1 auto;
+  text-align: right;
+  min-width: 0;
+}
+
+.summary-with-bars {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.summary-with-bars thead th {
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.summary-with-bars .hours-column {
+  width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summary-with-bars .bar-column {
+  width: 42%;
+  min-width: 240px;
+}
+
+.summary-with-bars .bar-container {
+  position: relative;
+  height: 0.8rem;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  overflow: hidden;
+}
+
+.summary-with-bars .bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.summary-with-bars .bar-label {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
@@ -284,7 +337,11 @@ button:active,
   box-shadow: none !important;
 }
 
-/* Remove borders from dashboard tab buttons */
+/* Remove borders from dashboard tab controls */
+a.ta-view-tab,
+a.ta-view-tab:focus,
+a.ta-view-tab:focus-visible,
+a.ta-view-tab:active,
 button.ta-view-tab,
 button.ta-view-tab:focus,
 button.ta-view-tab:focus-visible,
@@ -294,6 +351,9 @@ button.ta-view-tab:active {
   box-shadow: none !important;
 }
 
+a.ta-view-tab:focus,
+a.ta-view-tab:focus-visible,
+a.ta-view-tab:active,
 button.ta-view-tab:focus,
 button.ta-view-tab:focus-visible,
 button.ta-view-tab:active {
@@ -302,6 +362,11 @@ button.ta-view-tab:active {
 }
 
 /* Visible selected state for Issue/Activity/Project tabs */
+a.ta-view-tab.ta-view-tab-active,
+a.ta-view-tab.ta-view-tab-active:hover,
+a.ta-view-tab.ta-view-tab-active:focus,
+a.ta-view-tab.ta-view-tab-active:focus-visible,
+a.ta-view-tab.ta-view-tab-active:active,
 button.ta-view-tab.ta-view-tab-active,
 button.ta-view-tab.ta-view-tab-active:hover,
 button.ta-view-tab.ta-view-tab-active:focus,
@@ -1183,6 +1248,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
     flex-direction: column;
     gap: 10px;
     text-align: center;
+  }
+
+  .pagination-info {
+    text-align: center;
+  }
+
+  .summary-with-bars .bar-column {
+    min-width: 180px;
   }
 
   .chart-wrapper {

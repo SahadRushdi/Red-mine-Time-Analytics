@@ -5,6 +5,11 @@ class TeamAnalyticsController < ApplicationController
   helper :time_analytics
   helper :ta_teams
 
+  TABLEAU10_COLORS = [
+    '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
+    '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
+  ].freeze
+
   def index
     # Get teams where current user is a lead
     @teams = User.current.led_teams
@@ -66,15 +71,6 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Auto-discovered projects from member time logs"
     
-    # Apply search filter if present
-    if params[:search].present?
-      search_term = "%#{params[:search]}%"
-      @time_entries = @time_entries.where(
-        "LOWER(projects.name) LIKE LOWER(?) OR LOWER(issues.subject) LIKE LOWER(?) OR LOWER(time_entries.comments) LIKE LOWER(?) OR LOWER(users.firstname) LIKE LOWER(?) OR LOWER(users.lastname) LIKE LOWER(?)",
-        search_term, search_term, search_term, search_term, search_term
-      )
-    end
-    
     # Calculate team statistics
     @total_hours = @time_entries.sum(:hours)
     @entry_count = @time_entries.count
@@ -109,7 +105,7 @@ class TeamAnalyticsController < ApplicationController
       @paginated_entries = @time_overview_data.slice(@offset, @limit)
       
       # Generate chart data
-      chart_type = params[:chart_type] || 'line'
+      chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_team_chart_data(@time_entries, @grouping, chart_type)
       
       Rails.logger.info "Team Analytics: Chart data generated, length: #{@chart_data&.length}, type: #{chart_type}"
@@ -132,7 +128,7 @@ class TeamAnalyticsController < ApplicationController
       @activity_view_state = params[:activity_view_state] || 'detailed'
       
       # Generate chart data
-      chart_type = params[:chart_type] || 'pie'
+      chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
       
       Rails.logger.info "Team Analytics: Activity pivot data generated, activities: #{@activities.count}, periods: #{@time_periods.count}"
@@ -155,7 +151,7 @@ class TeamAnalyticsController < ApplicationController
       @project_view_state = params[:project_view_state] || 'detailed'
       
       # Generate chart data
-      chart_type = params[:chart_type] || 'pie'
+      chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
       
       Rails.logger.info "Team Analytics: Project pivot data generated, projects: #{@projects.count}, periods: #{@time_periods.count}"
@@ -178,7 +174,7 @@ class TeamAnalyticsController < ApplicationController
       @member_view_state = params[:member_view_state] || 'detailed'
       
       # Generate chart data
-      chart_type = params[:chart_type] || 'pie'
+      chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_member_pivot_chart_data(@member_pivot_data, chart_type, @member_view_state)
       
       Rails.logger.info "Team Analytics: Member pivot data generated, members: #{@members.count}, periods: #{@time_periods.count}"
@@ -194,8 +190,8 @@ class TeamAnalyticsController < ApplicationController
         render json: { 
           chart_data: chart_data_hash, 
           total_hours: @total_hours,
-          chart_type: params[:chart_type] || 'line'
-        } 
+           chart_type: normalize_team_chart_type(params[:chart_type], 'line')
+         } 
       }
     end
   end
@@ -244,15 +240,6 @@ class TeamAnalyticsController < ApplicationController
     
     # If no members or conditions, return empty relation
     @time_entries ||= TimeEntry.none
-
-    # Apply search filter if present
-    if params[:search].present?
-      search_term = "%#{params[:search]}%"
-      @time_entries = @time_entries.where(
-        "LOWER(projects.name) LIKE LOWER(?) OR LOWER(issues.subject) LIKE LOWER(?) OR LOWER(time_entries.comments) LIKE LOWER(?) OR LOWER(users.firstname) LIKE LOWER(?) OR LOWER(users.lastname) LIKE LOWER(?)",
-        search_term, search_term, search_term, search_term, search_term
-      )
-    end
 
     # Generate CSV based on view mode
     csv_data = export_team_time_entries_to_csv(@time_entries, @selected_team)
@@ -525,24 +512,20 @@ class TeamAnalyticsController < ApplicationController
                       nil
                     end
     
+    primary_color = tableau10_colors(1).first
+    bar_colors = tableau10_colors(values.length)
+
     # Build complete Chart.js config (matching Individual Dashboard structure)
     chart_data = {
       labels: labels,
       datasets: [{
-        label: chart_type == 'pie' ? 'Team Hours' : 'Hours',
+        label: 'Hours',
         data: values,
         tooltipLabels: tooltip_labels,  # Add tooltip labels for weekly view
-        backgroundColor: case chart_type
-                         when 'pie'
-                           generate_colors(values.length)
-                         when 'bar'
-                           generate_colors(values.length)
-                         else # line
-                           'rgba(54, 162, 235, 0.1)'
-                         end,
-        borderColor: chart_type == 'pie' ? '#fff' : '#36a2eb',
-        borderWidth: chart_type == 'pie' ? 1 : (chart_type == 'bar' ? 1 : 2),
-        fill: chart_type == 'line' ? true : (chart_type == 'pie' ? false : true),
+        backgroundColor: chart_type == 'bar' ? bar_colors : color_with_alpha(primary_color, 0.15),
+        borderColor: chart_type == 'bar' ? bar_colors : primary_color,
+        borderWidth: chart_type == 'bar' ? 1 : 2,
+        fill: true,
         tension: chart_type == 'line' ? 0.2 : 0,
         pointRadius: chart_type == 'line' ? 3 : 0,
         pointHoverRadius: chart_type == 'line' ? 5 : 0
@@ -554,7 +537,7 @@ class TeamAnalyticsController < ApplicationController
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: chart_type == 'pie',
+          display: false,
           position: 'right'
         },
         tooltip: {
@@ -566,7 +549,7 @@ class TeamAnalyticsController < ApplicationController
           borderWidth: 1
         }
       },
-      scales: chart_type == 'pie' ? {} : {
+      scales: {
         y: {
           beginAtZero: true,
           title: {
@@ -628,21 +611,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def generate_colors(count)
-    colors = [
-      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-      '#FF9F40', '#8AC249', '#EA5F89', '#00D1B2', '#958AF7'
-    ]
-    
-    if count <= colors.size
-      colors.take(count)
-    else
-      result = colors.dup
-      (count - colors.size).times do |i|
-        hue = (i * 137.5) % 360
-        result << "hsl(#{hue}, 70%, 60%)"
-      end
-      result
-    end
+    tableau10_colors(count)
   end
 
   # Export team time entries to CSV
@@ -781,12 +750,10 @@ class TeamAnalyticsController < ApplicationController
     end
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
-    when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
-    else
+    when 'bar'
       generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
   end
 
@@ -861,13 +828,15 @@ class TeamAnalyticsController < ApplicationController
       labels
     end
     
+    primary_color = tableau10_colors(1).first
+
     chart_data = {
       labels: labels,
       datasets: [{
         label: 'Hours',
         data: data_values,
-        borderColor: '#36a2eb',
-        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        borderColor: primary_color,
+        backgroundColor: color_with_alpha(primary_color, 0.15),
         fill: true,
         tension: 0.2,
         borderWidth: 2,
@@ -914,65 +883,6 @@ class TeamAnalyticsController < ApplicationController
 
     {
       type: 'line',
-      data: chart_data,
-      options: chart_options
-    }.to_json.html_safe
-  end
-
-  # Generate pie chart from data arrays
-  def generate_pie_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Calculate total for percentage calculation
-    total_hours = data_values.sum
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if raw_keys && grouping == 'weekly'
-      raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
-    else
-      labels
-    end
-    
-    # Format labels with percentages and hours for pie chart
-    labels_with_percentages = labels.each_with_index.map do |label, index|
-      hours = data_values[index]
-      percentage = total_hours > 0 ? ((hours / total_hours) * 100).round(1) : 0
-      "#{label} (#{percentage}%, #{hours.round(1)}h)"
-    end
-    
-    chart_data = {
-      labels: labels_with_percentages,
-      datasets: [{
-        data: data_values,
-        backgroundColor: generate_colors(labels.size),
-        borderWidth: 1,
-        borderColor: '#fff',
-        tooltipLabels: tooltip_labels
-      }]
-    }
-
-    chart_options = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'right',
-          labels: {
-            padding: 15,
-            boxWidth: 12
-          }
-        },
-        tooltip: {
-          callbacks: {
-            title: (grouping == 'weekly' && raw_keys) ? 
-              "function(context) { return context[0].dataset.tooltipLabels[context[0].dataIndex]; }" : nil
-          }.compact
-        }
-      },
-      # Add total hours for percentage calculation in JavaScript
-      total_hours: total_hours
-    }
-
-    {
-      type: 'pie',
       data: chart_data,
       options: chart_options
     }.to_json.html_safe
@@ -1064,12 +974,10 @@ class TeamAnalyticsController < ApplicationController
     end
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
-    when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
-    else
+    when 'bar'
       generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
   end
 
@@ -1152,13 +1060,31 @@ class TeamAnalyticsController < ApplicationController
     end
     
     case chart_type
-    when 'pie'
-      generate_pie_chart_from_data(labels, data_values, raw_keys, @grouping)
-    when 'line'
-      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
-    else
+    when 'bar'
       generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
+  end
+
+  def normalize_team_chart_type(chart_type, fallback = 'line')
+    %w[line bar].include?(chart_type) ? chart_type : fallback
+  end
+
+  def tableau10_colors(count)
+    return [] if count.to_i <= 0
+
+    Array.new(count) { |i| TABLEAU10_COLORS[i % TABLEAU10_COLORS.length] }
+  end
+
+  def color_with_alpha(hex_color, alpha)
+    hex = hex_color.to_s.delete('#')
+    return hex_color if hex.length != 6
+
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
+    "rgba(#{r}, #{g}, #{b}, #{alpha})"
   end
 
   # Fill missing weeks for team dashboard (includes weeks overlapping with date range)
