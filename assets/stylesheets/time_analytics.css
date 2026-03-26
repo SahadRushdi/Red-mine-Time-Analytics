@@ -44,7 +44,7 @@
   display: flex;
   flex-direction: column;
   align-self: stretch;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .analytics-section .time-overview-box .pagination-wrapper {
@@ -52,10 +52,18 @@
   margin-top: 4px;
   margin-bottom: 0;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 .analytics-section .time-overview-box tbody {
   display: table-row-group;
+}
+
+.analytics-section .time-overview-box .team-overview-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: hidden;
+  overflow-x: auto;
 }
 
 .analytics-section .visualization-section,
@@ -404,6 +412,17 @@ button[onclick*="showSummaryView"]:active {
 #grouping-dropdown button:focus,
 #grouping-dropdown button:active,
 button[onclick*="setGroupingAndSubmit"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Team dropdown - match grouping dropdown border override behavior */
+#team-dropdown button,
+#team-dropdown button:hover,
+#team-dropdown button:focus,
+#team-dropdown button:active,
+button[onclick*="setTeamAndSubmit"] {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
