@@ -28,7 +28,7 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Selected team: #{@selected_team&.name}, Date range: #{@from} to #{@to}"
     
-    @view_mode = params[:view_mode] || 'time_entries'
+    @view_mode = params[:view_mode] || 'activity'
     
     # Get excluded user IDs from settings
     excluded_ids = TaTeamSetting.excluded_user_ids

@@ -1,4 +1,7 @@
 <%= render 'time_analytics/includes' %>
+<% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
+<% no_table_data_message = "No data available for the selected period" %>
+<% no_chart_data_message = "No data available for #{date_range_label}. Try adjusting filters or selecting a different date range." %>
 
 <!-- jsTree CSS and JS from CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
@@ -388,36 +391,12 @@
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
       </div>
-    <% elsif @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
-      <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-          <p style="margin: 0; font-size: 1.1em; font-weight: 500;">No Data Available</p>
-          <p style="margin: 10px 0 0 0; font-size: 0.9em;">
-            <% if @team_size == 0 %>
-              No active team members found for this period
-            <% elsif @time_entries.empty? %>
-              No time entries found for the selected period and team
-            <% else %>
-              Adjust filters to view chart
-            <% end %>
-          </p>
-        </div>
-      </div>
     <% else %>
-      <div class="chart-container" style="display: flex; align-items: center; justify-content: center; min-height: 300px; background: #f9f9f9; border: 1px dashed #ccc; border-radius: 5px;">
-        <div style="text-align: center; padding: 40px; color: #666;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 15px; opacity: 0.5;">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-          <p style="margin: 0; font-size: 1.1em; font-weight: 500;">Chart Visualization</p>
-          <p style="margin: 10px 0 0 0; font-size: 0.9em;">Chart will be available for this view soon</p>
+      <div id="chart-container" style="display: block;">
+        <div class="chart-wrapper">
+          <div class="h-80 flex items-center justify-center">
+            <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+          </div>
         </div>
       </div>
     <% end %>
@@ -552,8 +531,17 @@
       </div>
     </div>
   <% else %>
-    <div class="box" style="margin-top: 20px;">
-      <p class="nodata"><%= l(:label_no_data) %></p>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
     </div>
   <% end %>
 <% elsif @view_mode == 'project' %>
@@ -680,8 +668,17 @@
       </div>
     </div>
   <% else %>
-    <div class="box" style="margin-top: 20px;">
-      <p class="nodata"><%= l(:label_no_data) %></p>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
     </div>
   <% end %>
 <% elsif @view_mode == 'members' %>
@@ -817,8 +814,17 @@
       </div>
     </div>
   <% else %>
-    <div class="box" style="margin-top: 20px;">
-      <p class="nodata"><%= l(:label_no_data) %></p>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
     </div>
   <% end %>
 <% end %>
@@ -866,6 +872,12 @@
 
   var teamDonutChart = null;
   var TEAM_TABLEAU10 = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+  var noChartDataMessage = '<%= j no_chart_data_message %>';
+
+  function renderTeamEmptyState(container, message) {
+    if (!container) return;
+    container.innerHTML = '<div class="h-80 flex items-center justify-center"><p class="text-center text-gray-500 text-sm px-4">' + message + '</p></div>';
+  }
 
   function formatTeamHours(hours) {
     var value = parseFloat(hours || 0);
@@ -988,6 +1000,21 @@
       }
 
       var config = JSON.parse(chartData);
+
+      var hasDatasets = config && config.data && Array.isArray(config.data.datasets) && config.data.datasets.length > 0;
+      var hasLabels = config && config.data && Array.isArray(config.data.labels) && config.data.labels.length > 0;
+      var allValuesZero = hasDatasets && config.data.datasets.every(function(dataset) {
+        if (!dataset || !Array.isArray(dataset.data) || dataset.data.length === 0) return true;
+        return dataset.data.every(function(value) {
+          var numeric = parseFloat(value || 0);
+          return isNaN(numeric) || numeric === 0;
+        });
+      });
+
+      if (config.empty || !hasDatasets || !hasLabels || allValuesZero) {
+        renderTeamEmptyState(chartElement.parentElement, noChartDataMessage);
+        return;
+      }
       
       // Ensure responsive configuration
       if (!config.options) {
