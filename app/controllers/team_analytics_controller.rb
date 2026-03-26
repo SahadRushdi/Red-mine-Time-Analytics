@@ -260,8 +260,8 @@ class TeamAnalyticsController < ApplicationController
     excluded_ids = TaTeamSetting.excluded_user_ids
     
     # Date range from params or use defaults
-    from_date = params[:from] ? Date.parse(params[:from]) : Date.today - 7.days
-    to_date = params[:to] ? Date.parse(params[:to]) : Date.today
+    from_date = parse_custom_date(params[:from]) || (Date.today - 7.days)
+    to_date = parse_custom_date(params[:to]) || Date.today
     
     # Build hierarchical tree structure
     tree_nodes = []
@@ -337,6 +337,14 @@ class TeamAnalyticsController < ApplicationController
 
   private
 
+  def parse_custom_date(value)
+    return nil if value.blank?
+
+    Date.strptime(value, '%m/%d/%Y')
+  rescue ArgumentError
+    Date.parse(value)
+  end
+
   def set_date_range
     case params[:filter]
     when 'this_month'
@@ -351,8 +359,8 @@ class TeamAnalyticsController < ApplicationController
       @from = (Date.current - 3.months).beginning_of_month
       @to = (Date.current - 1.month).end_of_month
     when 'custom'
-      @from = params[:from].present? ? Date.parse(params[:from]) : Date.current.beginning_of_month
-      @to = params[:to].present? ? Date.parse(params[:to]) : Date.current.end_of_month
+      @from = parse_custom_date(params[:from]) || Date.current.beginning_of_month
+      @to = parse_custom_date(params[:to]) || Date.current.end_of_month
     else
       # Default to this month
       params[:filter] = 'this_month'

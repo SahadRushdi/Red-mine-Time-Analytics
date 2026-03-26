@@ -31,11 +31,13 @@
     <% end %>
   </div>
 
-  <div id="custom-date-range" class="ta-custom-range <%= selected_filter == 'custom' ? 'flex' : 'hidden' %> flex-nowrap items-center gap-2">
-    <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_from) %>:</span>
-    <%= date_field_tag :from, params[:from] || @from, class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm' %>
-    <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_to) %>:</span>
-    <%= date_field_tag :to, params[:to] || @to, class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm' %>
+  <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless selected_filter == 'custom' %> flex flex-nowrap items-center gap-2">
+    <div id="team-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
+      <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_from) %>:</span>
+      <%= text_field_tag :from, (selected_filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'team-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+      <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_to) %>:</span>
+      <%= text_field_tag :to, (selected_filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'team-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+    </div>
   </div>
 
   <% if @teams.count > 1 %>
@@ -96,8 +98,10 @@
   }
 
   function toggleCustomDateRange() {
-    const customRange = document.getElementById('custom-date-range');
-    const filterHidden = document.getElementById('filter_hidden');
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
+    var startInput = document.getElementById('team-date-range-start');
+    var endInput = document.getElementById('team-date-range-end');
     if (!customRange || !filterHidden) return;
 
     if (customRange.classList.contains('hidden')) {
@@ -107,7 +111,9 @@
     } else {
       customRange.classList.add('hidden');
       customRange.classList.remove('flex');
-      filterHidden.value = 'this_month';
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
     }
   }
 
@@ -147,22 +153,121 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('team-analytics-form');
-    const fromInput = form ? form.querySelector('input[name="from"]') : null;
-    const toInput = form ? form.querySelector('input[name="to"]') : null;
-    const filterHidden = document.getElementById('filter_hidden');
+  function submitTeamCustomDateRangeIfComplete() {
+    var startInput = document.getElementById('team-date-range-start');
+    var endInput = document.getElementById('team-date-range-end');
+    var filterHidden = document.getElementById('filter_hidden');
+    var form = document.getElementById('team-analytics-form');
 
+    if (filterHidden) {
+      filterHidden.value = 'custom';
+    }
+
+    if (!(startInput && endInput)) return;
+    if (!startInput.value || !endInput.value) return;
+    if (!form || form.dataset.submitting === '1') return;
+    form.dataset.submitting = '1';
+    form.submit();
+  }
+
+  function bindTeamCustomDateRangeEvents() {
+    var startInput = document.getElementById('team-date-range-start');
+    var endInput = document.getElementById('team-date-range-end');
+    var picker = document.getElementById('team-date-range-picker');
+    var datepickerInstances = [startInput && startInput.datepicker, endInput && endInput.datepicker].filter(Boolean);
+
+    function handleDateRangeChange() {
+      submitTeamCustomDateRangeIfComplete();
+    }
+
+    [startInput, endInput, picker].forEach(function(element) {
+      if (element) element.addEventListener('changeDate', handleDateRangeChange);
+    });
+
+    datepickerInstances.forEach(function(datepicker) {
+      if (datepicker && datepicker.setOptions) {
+        datepicker.setOptions({ todayHighlight: true, showOnFocus: false, showOnClick: false, autohide: true });
+      }
+    });
+
+    function hideTeamRangePickers() {
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
+
+    function bindManualToggle(input, otherInput) {
+      if (!input || input.dataset.manualToggleBound === '1') return;
+      input.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!input.datepicker) return;
+        if (otherInput && otherInput.datepicker && otherInput.datepicker.active) {
+          otherInput.datepicker.hide();
+        }
+        if (input.datepicker.active) {
+          input.datepicker.hide();
+        } else {
+          input.datepicker.show();
+        }
+      });
+      input.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && input.datepicker && input.datepicker.hide) {
+          input.datepicker.hide();
+          input.blur();
+        }
+      });
+      input.dataset.manualToggleBound = '1';
+    }
+
+    bindManualToggle(startInput, endInput);
+    bindManualToggle(endInput, startInput);
+
+    function suppressAutoOpen() {
+      [startInput, endInput].forEach(function(input) {
+        if (!input) return;
+        if (document.activeElement === input) input.blur();
+      });
+      hideTeamRangePickers();
+    }
+
+    setTimeout(suppressAutoOpen, 0);
+    setTimeout(suppressAutoOpen, 120);
+
+    if (!window.__teamRangeOutsideCloseBound) {
+      document.addEventListener('mousedown', function(event) {
+        var target = event.target;
+        var isInsideRangeUi = (picker && picker.contains(target)) ||
+          (startInput && target === startInput) ||
+          (endInput && target === endInput) ||
+          !!target.closest('.datepicker');
+        if (isInsideRangeUi) return;
+        hideTeamRangePickers();
+      });
+      window.__teamRangeOutsideCloseBound = true;
+    }
+  }
+
+  function initTeamCustomDateRangeVisibility() {
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
+    if (!customRange || !filterHidden) return;
+
+    if (filterHidden.value === 'custom') {
+      customRange.classList.remove('hidden');
+      customRange.classList.add('flex');
+    } else {
+      customRange.classList.add('hidden');
+      customRange.classList.remove('flex');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('team-analytics-form');
     if (!form) return;
 
-    const submitCustomRangeIfReady = function() {
-      if (filterHidden && filterHidden.value === 'custom' && fromInput && toInput && fromInput.value && toInput.value) {
-        form.submit();
-      }
-    };
-
-    if (fromInput) fromInput.addEventListener('change', submitCustomRangeIfReady);
-    if (toInput) toInput.addEventListener('change', submitCustomRangeIfReady);
+    initTeamCustomDateRangeVisibility();
+    bindTeamCustomDateRangeEvents();
 
     document.addEventListener('click', function(event) {
       const teamDropdown = document.getElementById('team-dropdown');

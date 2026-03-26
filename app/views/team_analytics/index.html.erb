@@ -1031,22 +1031,19 @@
       prefix: 'team-activity',
       storageKey: 'team_activity_view_mode',
       hiddenFieldId: 'activity_view_state_field',
-      paginationInfoId: 'team-activity-pagination-info',
-      regenerate: regenerateChartForViewState
+      paginationInfoId: 'team-activity-pagination-info'
     },
     project: {
       prefix: 'team-project',
       storageKey: 'team_project_view_mode',
       hiddenFieldId: 'project_view_state_field',
-      paginationInfoId: 'team-project-pagination-info',
-      regenerate: regenerateChartForProjectViewState
+      paginationInfoId: 'team-project-pagination-info'
     },
     member: {
       prefix: 'team-member',
       storageKey: 'team_member_view_mode',
       hiddenFieldId: 'member_view_state_field',
-      paginationInfoId: 'team-member-pagination-info',
-      regenerate: regenerateChartForMemberViewState
+      paginationInfoId: 'team-member-pagination-info'
     }
   };
 
@@ -1108,10 +1105,6 @@
     if (!(options && options.persist === false)) {
       localStorage.setItem(config.storageKey, 'detailed');
     }
-    if (!(options && options.reload === false)) {
-      sessionStorage.setItem('scrollToTeamTable', 'true');
-      config.regenerate('detailed');
-    }
   }
 
   function showSummaryView(viewType, options) {
@@ -1133,26 +1126,6 @@
     if (!(options && options.persist === false)) {
       localStorage.setItem(config.storageKey, 'summary');
     }
-    if (!(options && options.reload === false)) {
-      sessionStorage.setItem('scrollToTeamTable', 'true');
-      config.regenerate('summary');
-    }
-  }
-
-  // Regenerate chart based on activity view state (summary vs detailed)
-  function regenerateChartForViewState(viewState) {
-    // Get current URL parameters
-    var urlParams = new URLSearchParams(window.location.search);
-    
-    // Add/update activity_view_state parameter
-    urlParams.set('activity_view_state', viewState);
-    
-    // Build new URL
-    var baseUrl = window.location.pathname;
-    var newUrl = baseUrl + '?' + urlParams.toString();
-    
-    // Reload page with new view state parameter
-    window.location.href = newUrl;
   }
 
   // Restore activity view preference
@@ -1160,41 +1133,9 @@
     restoreTeamViewState('activity');
   }
 
-  // Regenerate chart based on project view state (summary vs detailed)
-  function regenerateChartForProjectViewState(viewState) {
-    // Get current URL parameters
-    var urlParams = new URLSearchParams(window.location.search);
-    
-    // Add/update project_view_state parameter
-    urlParams.set('project_view_state', viewState);
-    
-    // Build new URL
-    var baseUrl = window.location.pathname;
-    var newUrl = baseUrl + '?' + urlParams.toString();
-    
-    // Reload page with new view state parameter
-    window.location.href = newUrl;
-  }
-
   // Restore project view preference
   function restoreProjectViewState() {
     restoreTeamViewState('project');
-  }
-
-  // Regenerate chart when member view state changes
-  function regenerateChartForMemberViewState(viewState) {
-    // Get current URL parameters
-    var urlParams = new URLSearchParams(window.location.search);
-    
-    // Add/update member_view_state parameter
-    urlParams.set('member_view_state', viewState);
-    
-    // Build new URL
-    var baseUrl = window.location.pathname;
-    var newUrl = baseUrl + '?' + urlParams.toString();
-    
-    // Reload page with new view state parameter
-    window.location.href = newUrl;
   }
 
   // Restore member view preference
@@ -1212,7 +1153,7 @@
     var hiddenField = document.getElementById(config.hiddenFieldId);
     var serverMode = hiddenField ? hiddenField.value : null;
     var savedMode = localStorage.getItem(config.storageKey);
-    var currentMode = serverMode || savedMode || 'detailed';
+    var currentMode = savedMode || serverMode || 'detailed';
 
     if (currentMode === 'summary') {
       showSummaryView(viewType, { reload: false, persist: false });
