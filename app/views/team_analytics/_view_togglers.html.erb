@@ -1,7 +1,7 @@
 <div class="mb-0" style="margin-bottom: -1px;">
   <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200">
     <li class="me-2">
-      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'activity', chart_type: 'line')),
+      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :overview_page, :team_id, :chart_type, :activity_view_state, :project_view_state, :member_view_state).merge(view_mode: 'activity')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'activity' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}",
           onclick: "sessionStorage.setItem('scrollToTeamTable','true');",
           data: { team_tab_nav: true } do %>
@@ -14,7 +14,7 @@
       <% end %>
     </li>
     <li class="me-2">
-      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'project', chart_type: 'line')),
+      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :overview_page, :team_id, :chart_type, :activity_view_state, :project_view_state, :member_view_state).merge(view_mode: 'project')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'project' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}",
           onclick: "sessionStorage.setItem('scrollToTeamTable','true');",
           data: { team_tab_nav: true } do %>
@@ -27,7 +27,7 @@
       <% end %>
     </li>
     <li class="me-2">
-      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :team_id).merge(view_mode: 'members', chart_type: 'line')),
+      <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :overview_page, :team_id, :chart_type, :activity_view_state, :project_view_state, :member_view_state).merge(view_mode: 'members')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'members' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}",
           onclick: "sessionStorage.setItem('scrollToTeamTable','true');",
           data: { team_tab_nav: true } do %>

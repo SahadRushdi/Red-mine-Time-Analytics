@@ -93,9 +93,15 @@ class TeamAnalyticsController < ApplicationController
     
     @limit = params[:per_page].present? ? params[:per_page].to_i : 25
     @offset = params[:page].present? ? (params[:page].to_i - 1) * @limit : 0
+
+    # Time Overview pagination (separate from detailed tables)
+    @overview_limit = 6
+    @overview_page = params[:overview_page].to_i > 0 ? params[:overview_page].to_i : 1
+    @overview_offset = (@overview_page - 1) * @overview_limit
     
     # Generate Time Overview data with team member count
     @time_overview_data = generate_team_time_overview_data(@time_entries, @grouping)
+    @overview_total_pages = (@time_overview_data.count.to_f / @overview_limit).ceil
     
     # Handle view-specific data preparation
     if @view_mode == 'time_entries'

@@ -333,7 +333,7 @@
             </tr>
           </thead>
           <tbody>
-            <% @time_overview_data.slice(@offset, @limit).each do |entry| %>
+            <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
               <tr class="bg-white border-b hover:bg-gray-50">
                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
                 <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
@@ -341,24 +341,16 @@
               </tr>
             <% end %>
           </tbody>
-          <tfoot>
-            <tr class="bg-gray-50 border-t-2 border-gray-200">
-              <td class="px-6 py-3 font-semibold text-gray-900"><%= l(:label_total) %></td>
-              <td class="px-6 py-3"></td>
-              <td class="px-6 py-3 text-right font-semibold text-gray-900"><%= format_hours(@total_hours) %></td>
-            </tr>
-          </tfoot>
         </table>
       </div>
       
       <%# Pagination %>
       <div class="pagination-wrapper">
-        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id) %>
-        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state) %>
+        <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
-          (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
+          (<%= @overview_offset + 1 %>-<%= [@overview_offset + @overview_limit, @time_overview_data.count].min %>/<%= @time_overview_data.count %>)
         </div>
       </div>
     </div>
