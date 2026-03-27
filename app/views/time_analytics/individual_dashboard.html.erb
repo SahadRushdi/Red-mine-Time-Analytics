@@ -4,7 +4,9 @@
 <%# Modern Dashboard Header with Tailwind %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900"><%= l(:label_individual_dashboard) %></h1>
+    <h1 class="text-2xl font-bold text-gray-900">
+      <%= @user && @user != User.current ? "#{h(@user.name)} #{l(:label_individual_dashboard)}" : l(:label_individual_dashboard) %>
+    </h1>
     <p class="text-sm text-gray-500">
       <%= date_range_label %>
     </p>
@@ -12,6 +14,7 @@
   
   <%# Modern Filter Controls - Horizontal Layout %>
   <%= form_tag my_time_path, method: :get, local: true, id: 'time-analytics-form', class: 'ta-filter-form flex items-center gap-3 flex-wrap' do %>
+    <%= hidden_field_tag :user_id, @user.id if @user && @user != User.current %>
     <%= hidden_field_tag :chart_type, params[:chart_type] || default_chart_type(@view_mode), id: 'chart_type_hidden' %>
     <%= hidden_field_tag :view_mode, @view_mode %>
     <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
@@ -106,7 +109,7 @@
     <% end %>
     
     <%# Export CSV Button %>
-    <%= link_to time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode)), 
+    <%= link_to time_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :user_id)), 
         method: :post, 
         style: "background-color: #3b82f6 !important; color: white !important;",
         class: 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors' do %>
@@ -409,7 +412,7 @@
       
       <!-- Pagination -->
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state, :user_id) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -584,6 +587,7 @@ function switchChartType(chartType) {
             <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
             <%= form_tag my_time_path, method: :get, local: true, 
                 class: 'flex items-center gap-2' do %>
+              <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
               <%= hidden_field_tag :filter, params[:filter] %>
               <%= hidden_field_tag :from, params[:from] %>
               <%= hidden_field_tag :to, params[:to] %>
@@ -972,7 +976,7 @@ function switchChartType(chartType) {
         </div>
         <nav class="flex gap-1 max-w-full overflow-x-auto">
           <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode) %>
+          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :user_id) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </nav>
       </div>

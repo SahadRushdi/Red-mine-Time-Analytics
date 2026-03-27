@@ -216,7 +216,11 @@ module TimeAnalyticsHelper
   def time_analytics_page_title
     case params[:action]
     when 'individual_dashboard'
-      l(:label_individual_dashboard)
+      if defined?(@user) && @user.present? && @user != User.current
+        "#{@user.name} #{l(:label_individual_dashboard)}"
+      else
+        l(:label_individual_dashboard)
+      end
     when 'custom_dashboard'
       l(:label_custom_dashboard)
     else
