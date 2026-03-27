@@ -208,7 +208,7 @@
     $('#team-tree-container').on('select_node.jstree', function (e, data) {
       if (data.node.data && data.node.data.user_id) {
         var userId = data.node.data.user_id;
-        var url = '<%= my_time_path %>' + '?user_id=' + userId;
+        var url = '<%= my_time_path %>' + '?user_id=' + userId + '&<%= @member_dashboard_query %>';
         window.open(url, '_blank');
       }
     });
@@ -735,7 +735,7 @@
               <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
               <% @members.each do |member| %>
                 <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                  <%= link_to member[:name], my_time_path(user_id: member[:id]), target: "_blank", class: "text-blue-600 hover:underline" %>
+                  <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
                 </th>
               <% end %>
               <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
@@ -770,7 +770,7 @@
               <div class="flex items-center justify-between mb-2 gap-3">
                 <h3 class="text-base font-medium text-gray-900">
                   <% if member %>
-                    <%= link_to member_name, my_time_path(user_id: member[:id]), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
+                    <%= link_to member_name, my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
                   <% else %>
                     <%= member_name %>
                   <% end %>

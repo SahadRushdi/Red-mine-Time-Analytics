@@ -29,6 +29,8 @@ class TeamAnalyticsController < ApplicationController
     Rails.logger.info "Team Analytics: Selected team: #{@selected_team&.name}, Date range: #{@from} to #{@to}"
     
     @view_mode = params[:view_mode] || 'activity'
+    @member_dashboard_params = build_member_dashboard_params
+    @member_dashboard_query = @member_dashboard_params.to_query
     
     # Get excluded user IDs from settings
     excluded_ids = TaTeamSetting.excluded_user_ids
@@ -352,7 +354,9 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def set_date_range
-    case params[:filter]
+    @filter = params[:filter].presence || 'this_month'
+
+    case @filter
     when 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
@@ -369,12 +373,13 @@ class TeamAnalyticsController < ApplicationController
       @to = parse_custom_date(params[:to]) || Date.current.end_of_month
     else
       # Default to this month
-      params[:filter] = 'this_month'
+      @filter = 'this_month'
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
     end
   rescue ArgumentError
     # Handle invalid date format
+    @filter = 'this_month'
     @from = Date.current.beginning_of_month
     @to = Date.current.end_of_month
   end
@@ -383,6 +388,22 @@ class TeamAnalyticsController < ApplicationController
     # Default to weekly grouping for team dashboard
     @grouping = params[:grouping].presence || 'weekly'
     @grouping = 'weekly' unless %w[weekly monthly].include?(@grouping)
+  end
+
+  def build_member_dashboard_params
+    base_params = { grouping: @grouping }
+
+    # Individual dashboard does not support last_month/last_3_months directly.
+    # Keep date boundaries identical by mapping those to custom with explicit dates.
+    if @filter == 'this_month'
+      base_params.merge(filter: 'this_month')
+    else
+      base_params.merge(
+        filter: 'custom',
+        from: @from.strftime('%Y-%m-%d'),
+        to: @to.strftime('%Y-%m-%d')
+      )
+    end
   end
 
   # Weekly grouping calculations
