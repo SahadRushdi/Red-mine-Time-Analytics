@@ -33,6 +33,33 @@ Modernized the **Administration → Team Management** panel using Flowbite/Tailw
   - Updated **Add Hiring Need** form dropdowns (`Team`, `Priority`) to the same custom dropdown style to avoid cutoff/clipping issues.
   - Updated organizational hierarchy row layout so actions appear on the right side and visually align with the Figma direction.
   - Added hiring badges per team row (`N hiring`) using open hiring-need counts.
+- UI refinement pass for dropdown stability + sidebar tabs:
+  - Applied shared custom dropdown CSS pattern for Team Management controls to mirror the stabilized My Time dropdown behavior and avoid Redmine theme collisions.
+  - Updated unallocated member cards so assignment controls stay in one horizontal row:
+    - `Select team` dropdown
+    - `Team Member/Lead` dropdown
+    - `Add to Team` button
+  - Converted right sidebar to tabbed layout with My Time tab styling:
+    - `Members` tab (default)
+    - `Vacancy List` tab (second tab)
+  - Expanded member tab content area to use the full sidebar panel, with vacancy list moved behind the second tab panel.
+- Final UI polish pass from latest screenshots:
+  - Replaced temporary emoji-style hierarchy action icons with inline SVG action icons matching the target style direction.
+  - Made the **Members** tab content scroll from the top of the panel (single scrollable container) so unallocated + allocated lists stay within fixed sidebar height.
+  - Stabilized tab active-state rendering on first click and initialization so blue active styling remains consistent against Redmine CSS overrides.
+  - Kept Team Management dropdowns aligned with the resilient My Time dropdown approach (custom button/menu classes and explicit state handling).
+  - Increased Add Hiring Need dropdown control height for better alignment.
+  - Removed visible `Role` field from Add Hiring Need form; backend now defaults role to `Team Member` when absent.
+- My Time parity fix for tab/dropdown override issues:
+  - Included `time_analytics.css` in Team Management page header so existing `ta-view-tab` and `ta-view-tab-active` override rules are reused exactly.
+  - Replaced Team Management custom dropdown button/menu classes with the same utility-class pattern used by My Time grouping dropdown:
+    - button: `!text-*`, `!bg-*`, hover/focus ring classes
+    - menu/options: `hidden absolute ...` + `hover:!bg-*` option rows
+  - Removed duplicated local tab/dropdown CSS rules that were conflicting with shared My Time tab behavior.
+  - Increased `Position Title` input height to align with dropdown control heights in Add Hiring Need panel.
+- Final dropdown artifact + layout pass:
+  - Added targeted CSS overrides for Team Management dropdown option buttons (team/role/hiring dropdown menus) to remove blue per-option borders/outlines/shadows, matching the My Time grouping dropdown fix behavior.
+  - Reworked Add Hiring Need inline panel layout to a balanced 3-column row (`Position Title`, `Team`, `Priority`) with aligned control heights and a right-aligned action button.
 
 ## Verification Notes
 - Ran `npm run build` successfully.
@@ -43,6 +70,16 @@ Modernized the **Administration → Team Management** panel using Flowbite/Tailw
   - `app/models/ta_hiring_need.rb`
   - `db/migrate/20260330071000_create_ta_hiring_needs.rb`
 - Re-ran after UI refinement:
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after dropdown/tab refactor:
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after final polish:
+  - Ruby syntax checks passed for `app/helpers/ta_teams_helper.rb` and `app/controllers/admin_ta_teams_controller.rb`
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after My Time parity fix:
   - `npm run build` successful
   - `ruby test/test_working_days.rb` successful
 

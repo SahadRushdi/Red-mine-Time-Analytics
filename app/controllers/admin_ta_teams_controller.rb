@@ -140,7 +140,9 @@ class AdminTaTeamsController < ApplicationController
   end
 
   def create_hiring_need
-    hiring_need = TaHiringNeed.new(hiring_need_params.merge(status: 'open'))
+    safe_params = hiring_need_params
+    safe_params[:role] = 'Team Member' if safe_params[:role].blank?
+    hiring_need = TaHiringNeed.new(safe_params.merge(status: 'open'))
 
     if hiring_need.save
       flash[:notice] = l(:notice_successful_create)
