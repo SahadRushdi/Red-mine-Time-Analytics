@@ -9,8 +9,11 @@ class AdminTaTeamsController < ApplicationController
   helper :ta_teams
 
   def index
-    @root_teams = TaTeam.root_teams.ordered_by_name
     @all_teams = TaTeam.ordered_by_name.to_a
+    @team_children_map = @all_teams.group_by(&:parent_team_id)
+    @root_teams = @team_children_map[nil] || []
+    @team_active_member_counts = TaTeamMembership.active.group(:team_id).count
+    @team_open_hiring_counts = TaHiringNeed.open.group(:team_id).count
     @active_memberships = TaTeamMembership.active.includes(:user, :team).references(:user)
                                         .order('users.firstname ASC, users.lastname ASC')
     @allocated_user_ids = @active_memberships.map(&:user_id).uniq

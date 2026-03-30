@@ -60,6 +60,21 @@ Modernized the **Administration → Team Management** panel using Flowbite/Tailw
 - Final dropdown artifact + layout pass:
   - Added targeted CSS overrides for Team Management dropdown option buttons (team/role/hiring dropdown menus) to remove blue per-option borders/outlines/shadows, matching the My Time grouping dropdown fix behavior.
   - Reworked Add Hiring Need inline panel layout to a balanced 3-column row (`Position Title`, `Team`, `Priority`) with aligned control heights and a right-aligned action button.
+- Performance + CLS optimization pass:
+  - Removed N+1 hierarchy rendering queries by precomputing and passing:
+    - team children map
+    - active member counts by team
+    - open hiring need counts by team
+  - Updated `ta_team_tree` helper to render from precomputed in-memory maps instead of querying per node.
+  - Added layout-stability CSS (`min-height`, reduced wrapping in hierarchy action row) to reduce layout shift in hierarchy cards.
+  - Added stronger dropdown selected/focus visual overrides for team-member dropdown options to prevent undesired blue selected styling.
+- Team dropdown UX polish:
+  - Further hardened dropdown option state overrides (`focus`, `active:hover`, `:focus:hover`, and Firefox inner-focus handling) to prevent blue hover/selection artifacts after selecting an option.
+  - Widened unallocated-member **Select Team** control (`flex-[2]`, `min-w-[240px]`) and constrained dropdown to vertical scrolling only (`overflow-x-hidden`) to reduce horizontal clipping/scroll needs for long team names.
+- Overflow + input sizing fix:
+  - Updated unallocated-member assignment row to a stable 3-column grid (`team`, `role`, `button`) so the **Add to Team** button remains inside each card without horizontal scrolling.
+  - Added truncation handling on selected team label inside the button for long names.
+  - Increased Add Hiring Need `Position Title` field height to match dropdown control height (`48px`) and aligned both dropdown trigger heights to the same value.
 
 ## Verification Notes
 - Ran `npm run build` successfully.

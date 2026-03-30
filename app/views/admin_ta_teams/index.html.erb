@@ -29,7 +29,7 @@
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
-            <%= ta_team_tree(@root_teams) %>
+            <%= ta_team_tree(@root_teams, 0, @team_children_map, @team_active_member_counts, @team_open_hiring_counts) %>
           <% end %>
         </div>
       </div>
@@ -128,15 +128,15 @@
                 <div class="rounded-lg border border-amber-300 bg-amber-50/30 p-3">
                   <p class="text-sm font-semibold text-gray-900"><%= h(user.name) %></p>
                   <p class="mb-2 text-xs text-gray-500"><%= h(user.mail) %></p>
-                  <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form flex items-end gap-2' do %>
+                  <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2' do %>
                     <%= hidden_field_tag :user_id, user.id %>
-                    <div class="relative flex-1 min-w-0">
+                    <div class="relative min-w-0">
                       <button type="button" id="assign-team-button-<%= idx %>" data-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
-                        <span class="assign-team-label" data-default-text="Select team">Select team</span>
+                        <span class="assign-team-label truncate" data-default-text="Select team">Select team</span>
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                       </button>
                       <div id="assign-team-dropdown-<%= idx %>" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-                        <ul class="max-h-40 overflow-auto py-1 text-sm text-gray-700">
+                        <ul class="max-h-48 overflow-y-auto overflow-x-hidden py-1 text-sm text-gray-700">
                           <% @all_teams.each do |team| %>
                             <li>
                               <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="<%= team.id %>" data-dropdown-label="<%= h(team.name) %>" data-dropdown-target="assign_team_<%= idx %>" data-dropdown-label-target="assign-team-button-<%= idx %>">
@@ -149,7 +149,7 @@
                       <%= hidden_field_tag :team_id, '', id: "assign_team_#{idx}", required: true %>
                     </div>
 
-                    <div class="relative w-40 shrink-0">
+                    <div class="relative w-full">
                       <button type="button" id="assign-role-button-<%= idx %>" data-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
                         <span class="assign-role-label" data-default-text="Team Member">Team Member</span>
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -163,7 +163,7 @@
                       <%= hidden_field_tag :role, 'member', id: "assign_role_#{idx}" %>
                     </div>
 
-                    <%= submit_tag 'Add to Team', class: 'h-10 shrink-0 rounded-lg bg-blue-500 px-3 text-sm font-medium text-white hover:bg-blue-600' %>
+                    <%= submit_tag 'Add to Team', class: 'h-10 rounded-lg bg-blue-500 px-3 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap' %>
                   <% end %>
                 </div>
               <% end %>
@@ -204,12 +204,12 @@
     <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-4 md:grid-cols-3' } do |f| %>
       <div>
         <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <%= f.text_field :position_title, required: true, class: 'block w-full h-[44px] rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900' %>
+        <%= f.text_field :position_title, required: true, class: 'block w-full h-[48px] rounded-lg border border-gray-300 px-3 text-sm text-gray-900' %>
       </div>
       <div>
         <%= f.label :team_id, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-team-button" data-dropdown-toggle="hiring-team-dropdown" class="inline-flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <button type="button" id="hiring-team-button" data-dropdown-toggle="hiring-team-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-team-label" data-default-text="Select Team">Select Team</span>
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
@@ -231,7 +231,7 @@
       <div>
         <%= f.label :priority, 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-priority-button" data-dropdown-toggle="hiring-priority-dropdown" class="inline-flex items-center justify-between w-full px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <button type="button" id="hiring-priority-button" data-dropdown-toggle="hiring-priority-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
@@ -259,11 +259,13 @@
     border-radius: 0.75rem;
     background: #ffffff;
     padding: 0.75rem;
+    min-height: 56px;
+    contain: layout paint;
   }
 
-  .ta-team-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .ta-team-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 40px; }
   .ta-team-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-  .ta-team-right { display: flex; align-items: center; gap: 1rem; white-space: nowrap; flex-wrap: wrap; justify-content: flex-end; }
+  .ta-team-right { display: flex; align-items: center; gap: 1rem; white-space: nowrap; flex-wrap: nowrap; justify-content: flex-end; min-width: 420px; }
 
   .ta-team-item.level-1 { margin-left: 1rem; }
   .ta-team-item.level-2 { margin-left: 2rem; }
@@ -328,16 +330,41 @@
 
   [id^="assign-team-dropdown-"] button:hover,
   [id^="assign-role-dropdown-"] button:hover,
+  [id^="assign-team-dropdown-"] button:active:hover,
+  [id^="assign-role-dropdown-"] button:active:hover,
+  [id^="assign-team-dropdown-"] button:hover:active,
+  [id^="assign-role-dropdown-"] button:hover:active,
+  [id^="assign-team-dropdown-"] button:focus:hover,
+  [id^="assign-role-dropdown-"] button:focus:hover,
+  [id^="assign-team-dropdown-"] button[aria-selected="true"],
+  [id^="assign-role-dropdown-"] button[aria-selected="true"],
+  [id^="assign-team-dropdown-"] button:focus-visible,
+  [id^="assign-role-dropdown-"] button:focus-visible,
+  [id^="assign-team-dropdown-"] button:focus,
+  [id^="assign-role-dropdown-"] button:focus,
   #hiring-team-dropdown button:hover,
-  #hiring-priority-dropdown button:hover {
+  #hiring-priority-dropdown button:hover,
+  #hiring-team-dropdown button:focus-visible,
+  #hiring-priority-dropdown button:focus-visible,
+  #hiring-team-dropdown button:focus,
+  #hiring-priority-dropdown button:focus {
     border-color: transparent !important;
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+  }
+
+  [id^="assign-team-dropdown-"] button::-moz-focus-inner,
+  [id^="assign-role-dropdown-"] button::-moz-focus-inner,
+  #hiring-team-dropdown button::-moz-focus-inner,
+  #hiring-priority-dropdown button::-moz-focus-inner {
+    border: 0 !important;
   }
 
   @media (max-width: 1024px) {
     .ta-team-row { align-items: flex-start; flex-direction: column; }
-    .ta-team-right { justify-content: flex-start; gap: 0.75rem; }
+    .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
     .ta-inline-assignment-form {
-      flex-wrap: wrap;
+      grid-template-columns: 1fr;
     }
   }
 </style>

@@ -1,13 +1,18 @@
 module TaTeamsHelper
-  def ta_team_tree(teams, level = 0)
+  def ta_team_tree(teams, level = 0, children_map = nil, active_member_counts = nil, open_hiring_counts = nil)
+    children_map ||= {}
+    active_member_counts ||= {}
+    open_hiring_counts ||= {}
+
     html = ''.html_safe
     teams.each do |team|
       html << content_tag(:div, class: "ta-team-item level-#{level}") do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
-        left_content << content_tag(:span, "#{team.current_members.count}", class: 'ta-team-count-badge')
+        member_count = active_member_counts[team.id].to_i
+        left_content << content_tag(:span, member_count.to_s, class: 'ta-team-count-badge')
 
-        open_hires = team.ta_hiring_needs.open.count
+        open_hires = open_hiring_counts[team.id].to_i
         if open_hires.positive?
           left_content << content_tag(:span, "#{open_hires} hiring", class: 'ta-team-hiring-badge')
         end
@@ -47,9 +52,9 @@ module TaTeamsHelper
           left + right
         end
       end
-      # Recursively render child teams
-      if team.child_teams.any?
-        html << ta_team_tree(team.child_teams.ordered_by_name, level + 1)
+      child_teams = children_map[team.id] || []
+      if child_teams.any?
+        html << ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts)
       end
     end
     html
