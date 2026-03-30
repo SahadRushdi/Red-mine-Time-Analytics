@@ -75,6 +75,17 @@ Modernized the **Administration → Team Management** panel using Flowbite/Tailw
   - Updated unallocated-member assignment row to a stable 3-column grid (`team`, `role`, `button`) so the **Add to Team** button remains inside each card without horizontal scrolling.
   - Added truncation handling on selected team label inside the button for long names.
   - Increased Add Hiring Need `Position Title` field height to match dropdown control height (`48px`) and aligned both dropdown trigger heights to the same value.
+- Additional Team Management performance/CLS pass:
+  - Reduced JS listener overhead by replacing multiple per-element dropdown/form listeners with delegated document-level handlers.
+  - Added stable scroll behavior (`overflow-y-scroll` + `scrollbar-gutter: stable`) for hierarchy and sidebar scroll containers to avoid late scrollbar-induced layout shifts.
+  - Kept hierarchy card sizing stable with existing min-height containment and reduced dynamic width shifts.
+- Accessibility + CLS follow-up:
+  - Fixed label association warnings by wiring Add Hiring Need custom dropdown labels with explicit `label_tag` targets:
+    - `for="hiring-team-button"`
+    - `for="hiring-priority-button"`
+  - Added critical early inline styles for hierarchy cards/rows to stabilize first paint and reduce layout jumps before the full stylesheet cascade.
+  - Reduced post-load layout mutation by keeping initial tab state from server render (removed forced JS re-init switch call).
+  - Added title truncation safeguards for team names in hierarchy rows to avoid width-based reflow.
 
 ## Verification Notes
 - Ran `npm run build` successfully.

@@ -7,6 +7,79 @@
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
 
+<style>
+  /* Critical first-paint styles to reduce hierarchy CLS before full style block is parsed */
+  .ta-team-item {
+    margin-bottom: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 0.75rem;
+    min-height: 56px;
+    contain: layout paint;
+  }
+  .ta-team-item.level-1 { margin-left: 1rem; }
+  .ta-team-item.level-2 { margin-left: 2rem; }
+  .ta-team-item.level-3 { margin-left: 3rem; }
+  .ta-team-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 40px;
+  }
+  .ta-team-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    flex: 1;
+  }
+  .ta-team-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    min-width: 420px;
+  }
+  .ta-team-name {
+    margin-right: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ta-team-count-badge {
+    border-radius: 9999px;
+    background: #e5e7eb;
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+  }
+  .ta-team-hiring-badge {
+    border-radius: 9999px;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+  }
+  .ta-team-action-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
+</style>
+
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
@@ -25,7 +98,7 @@
         <div class="border-b border-gray-200 px-4 py-3">
           <h3 class="font-semibold text-gray-900">Organizational Hierarchy</h3>
         </div>
-        <div class="max-h-[520px] overflow-auto p-4">
+        <div class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll">
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
@@ -114,7 +187,7 @@
         </div>
 
         <div id="team-sidebar-members-panel" class="p-4">
-          <div class="max-h-[680px] space-y-3 overflow-auto pr-1">
+          <div class="max-h-[680px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll">
             <% if @unallocated_users.any? %>
               <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <div class="mb-2 flex items-center justify-between">
@@ -207,7 +280,7 @@
         <%= f.text_field :position_title, required: true, class: 'block w-full h-[48px] rounded-lg border border-gray-300 px-3 text-sm text-gray-900' %>
       </div>
       <div>
-        <%= f.label :team_id, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <%= label_tag 'hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
           <button type="button" id="hiring-team-button" data-dropdown-toggle="hiring-team-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-team-label" data-default-text="Select Team">Select Team</span>
@@ -229,7 +302,7 @@
       </div>
       <%= f.hidden_field :role, value: 'Team Member' %>
       <div>
-        <%= f.label :priority, 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <%= label_tag 'hiring-priority-button', 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
           <button type="button" id="hiring-priority-button" data-dropdown-toggle="hiring-priority-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
@@ -263,6 +336,10 @@
     contain: layout paint;
   }
 
+  .ta-stable-scroll {
+    scrollbar-gutter: stable;
+  }
+
   .ta-team-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 40px; }
   .ta-team-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
   .ta-team-right { display: flex; align-items: center; gap: 1rem; white-space: nowrap; flex-wrap: nowrap; justify-content: flex-end; min-width: 420px; }
@@ -276,6 +353,9 @@
     font-size: 0.95rem;
     font-weight: 600;
     color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .ta-team-count-badge {
@@ -377,26 +457,27 @@
       });
     }
 
-    document.querySelectorAll('[data-dropdown-toggle]').forEach(function(button) {
-      button.addEventListener('click', function(event) {
+    document.addEventListener('click', function(event) {
+      var toggleButton = event.target.closest('[data-dropdown-toggle]');
+      if (toggleButton) {
         event.preventDefault();
         event.stopPropagation();
-        var dropdownId = button.getAttribute('data-dropdown-toggle');
+        var dropdownId = toggleButton.getAttribute('data-dropdown-toggle');
         var dropdown = document.getElementById(dropdownId);
         if (!dropdown) return;
         var isHidden = dropdown.classList.contains('hidden');
         closeAllDropdowns();
         if (isHidden) dropdown.classList.remove('hidden');
-      });
-    });
+        return;
+      }
 
-    document.querySelectorAll('[data-dropdown-target]').forEach(function(option) {
-      option.addEventListener('click', function(event) {
+      var optionButton = event.target.closest('[data-dropdown-target]');
+      if (optionButton) {
         event.preventDefault();
-        var value = option.getAttribute('data-dropdown-value');
-        var label = option.getAttribute('data-dropdown-label');
-        var targetId = option.getAttribute('data-dropdown-target');
-        var buttonId = option.getAttribute('data-dropdown-label-target');
+        var value = optionButton.getAttribute('data-dropdown-value');
+        var label = optionButton.getAttribute('data-dropdown-label');
+        var targetId = optionButton.getAttribute('data-dropdown-target');
+        var buttonId = optionButton.getAttribute('data-dropdown-label-target');
         var hiddenInput = document.getElementById(targetId);
         var button = document.getElementById(buttonId);
         if (hiddenInput) hiddenInput.value = value;
@@ -405,22 +486,20 @@
           if (labelEl) labelEl.textContent = label;
         }
         closeAllDropdowns();
-      });
-    });
+        return;
+      }
 
-    document.addEventListener('click', function() {
       closeAllDropdowns();
     });
 
-    document.querySelectorAll('.ta-inline-assignment-form').forEach(function(form) {
-      form.addEventListener('submit', function(event) {
-        var teamField = form.querySelector('input[name="team_id"]');
-        if (!teamField || !teamField.value) {
-          event.preventDefault();
-          alert('Please select a team.');
-        }
-      });
-    });
+    document.addEventListener('submit', function(event) {
+      if (!event.target.classList.contains('ta-inline-assignment-form')) return;
+      var teamField = event.target.querySelector('input[name="team_id"]');
+      if (!teamField || !teamField.value) {
+        event.preventDefault();
+        alert('Please select a team.');
+      }
+    }, true);
 
     function switchTeamSidebarTab(targetPanelId) {
       var tabs = [
@@ -447,6 +526,6 @@
       });
     });
 
-    switchTeamSidebarTab('team-sidebar-members-panel');
+    // Keep initial server-rendered tab state to avoid first-paint layout mutation
   });
 </script>
