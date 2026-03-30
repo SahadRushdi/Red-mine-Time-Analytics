@@ -18,6 +18,7 @@ Thumbs.db
 
 #Summary Files
 TASK_SUMMARY*
+Screenshot *
 
 # Note: We commit the following for deployment simplicity:
 # - package-lock.json (dependency locking)

@@ -11,6 +11,13 @@ class AdminTaTeamsController < ApplicationController
   def index
     @root_teams = TaTeam.root_teams.ordered_by_name
     @all_teams = TaTeam.ordered_by_name.to_a
+    @active_memberships = TaTeamMembership.active.includes(:user, :team).references(:user)
+                                        .order('users.firstname ASC, users.lastname ASC')
+    @allocated_user_ids = @active_memberships.map(&:user_id).uniq
+    @unallocated_users = User.active.sorted.where.not(id: @allocated_user_ids)
+    @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_priority
+    @hiring_need_history = TaHiringNeed.includes(:team).ordered_by_recent
+    @new_hiring_need = TaHiringNeed.new(priority: 'medium')
   end
 
   def show
@@ -109,11 +116,50 @@ class AdminTaTeamsController < ApplicationController
     render json: { valid: true, project_name: project.name, identifier: identifier }
   end
 
+  def assign_member
+    user = User.active.find(params[:user_id])
+    team = TaTeam.find(params[:team_id])
+    role = params[:role].presence
+    role = TaTeamMembership::ROLES.include?(role) ? role : 'member'
+
+    membership = team.ta_team_memberships.build(
+      user: user,
+      role: role,
+      start_date: Date.today
+    )
+
+    if membership.save
+      flash[:notice] = l(:notice_successful_create)
+    else
+      flash[:error] = membership.errors.full_messages.join(', ')
+    end
+  rescue ActiveRecord::RecordNotFound
+    flash[:error] = l(:label_no_data)
+  ensure
+    redirect_to admin_ta_teams_path
+  end
+
+  def create_hiring_need
+    hiring_need = TaHiringNeed.new(hiring_need_params.merge(status: 'open'))
+
+    if hiring_need.save
+      flash[:notice] = l(:notice_successful_create)
+    else
+      flash[:error] = hiring_need.errors.full_messages.join(', ')
+    end
+
+    redirect_to admin_ta_teams_path
+  end
+
   private
 
   def find_team
     @team = TaTeam.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render_404
+  end
+
+  def hiring_need_params
+    params.require(:ta_hiring_need).permit(:position_title, :team_id, :role, :priority)
   end
 end

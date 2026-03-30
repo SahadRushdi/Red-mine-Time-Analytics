@@ -1,68 +1,376 @@
-<% html_title "Team Management" %>
+<% html_title 'Team Management' %>
 
-<div class="contextual">
-  <%= link_to 'New Team', new_admin_ta_team_path, class: 'icon icon-add' %>
-  <%= link_to 'Settings', admin_ta_team_settings_path, class: 'icon icon-settings' %>
-</div>
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
 
-<h2>Team Management</h2>
-
-<% if @all_teams.empty? %>
-  <p class="nodata"><%= l(:label_no_data) %></p>
-  <p>
-    Create your first team to start managing your organization.<br/>
-    <%= link_to 'Create Team', new_admin_ta_team_path, class: 'icon icon-add' %>
-  </p>
-<% else %>
-  <div class="autoscroll">
-    <h3>Organizational Hierarchy</h3>
-    <div class="team-hierarchy">
-      <%= ta_team_tree(@root_teams) %>
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Management</h2>
+      <p class="text-sm text-gray-500">Manage teams, members, vacancies, and hiring needs from one panel.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'New Team', new_admin_ta_team_path, class: 'inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600' %>
+      <%= link_to 'Settings', admin_ta_team_settings_path, class: 'inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50' %>
     </div>
   </div>
 
-  <div class="box">
-    <p><strong>Total Teams:</strong> <%= @all_teams.count %></p>
-    <p><strong>Root Teams:</strong> <%= @root_teams.count %></p>
-    <p><strong>Total Active Members:</strong> <%= TaTeamMembership.active.distinct.count(:user_id) %></p>
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 px-4 py-3">
+          <h3 class="font-semibold text-gray-900">Organizational Hierarchy</h3>
+        </div>
+        <div class="max-h-[520px] overflow-auto p-4">
+          <% if @all_teams.empty? %>
+            <p class="text-sm text-gray-500">No teams found.</p>
+          <% else %>
+            <%= ta_team_tree(@root_teams) %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 px-4 py-3">
+          <h3 class="font-semibold text-gray-900">Hiring Need History</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+              <tr>
+                <th class="px-4 py-3">Position</th>
+                <th class="px-4 py-3">Team</th>
+                <th class="px-4 py-3">Role</th>
+                <th class="px-4 py-3">Priority</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Created</th>
+                <th class="px-4 py-3">Filled</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if @hiring_need_history.any? %>
+                <% @hiring_need_history.each do |need| %>
+                  <tr class="border-t border-gray-100">
+                    <td class="px-4 py-3 font-medium text-gray-900"><%= h(need.position_title) %></td>
+                    <td class="px-4 py-3"><%= h(need.team.name) %></td>
+                    <td class="px-4 py-3"><%= h(need.role) %></td>
+                    <td class="px-4 py-3">
+                      <% priority_classes = need.priority == 'high' ? 'bg-red-100 text-red-800' : (need.priority == 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800') %>
+                      <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold <%= priority_classes %>"><%= need.priority.titleize %></span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <% if need.open? %>
+                        <div class="flex items-center gap-2">
+                          <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">Open</span>
+                          <%= button_to 'Mark Filled', mark_filled_admin_ta_hiring_need_path(need), method: :patch, class: 'rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50', form_class: 'inline' %>
+                        </div>
+                      <% else %>
+                        <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Filled</span>
+                      <% end %>
+                    </td>
+                    <td class="px-4 py-3"><%= format_date(need.created_at.to_date) %></td>
+                    <td class="px-4 py-3"><%= need.filled_on ? format_date(need.filled_on) : '-' %></td>
+                  </tr>
+                <% end %>
+              <% else %>
+                <tr>
+                  <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No hiring needs yet.</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <aside class="space-y-6">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">Global Member List</h3>
+            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+              <%= @active_memberships.size %> allocated
+            </span>
+          </div>
+        </div>
+        <div class="max-h-[460px] space-y-3 overflow-auto p-4">
+          <% if @unallocated_users.any? %>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <div class="mb-2 flex items-center justify-between">
+                <p class="text-sm font-semibold text-amber-900">Unallocated Members</p>
+                <span class="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"><%= @unallocated_users.size %></span>
+              </div>
+              <p class="text-xs text-amber-700">Click “Add to Team” to assign members.</p>
+            </div>
+
+            <% @unallocated_users.each_with_index do |user, idx| %>
+              <div class="rounded-lg border border-amber-300 bg-amber-50/30 p-3">
+                <p class="text-sm font-semibold text-gray-900"><%= h(user.name) %></p>
+                <p class="mb-2 text-xs text-gray-500"><%= h(user.mail) %></p>
+                <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'space-y-2 ta-inline-assignment-form' do %>
+                  <%= hidden_field_tag :user_id, user.id %>
+                  <div class="grid grid-cols-1 gap-2">
+                    <div class="relative">
+                      <button type="button" id="assign-team-button-<%= idx %>" data-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <span class="assign-team-label" data-default-text="Select team">Select team</span>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </button>
+                      <div id="assign-team-dropdown-<%= idx %>" class="z-20 hidden w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+                        <ul class="max-h-40 overflow-auto py-1 text-sm text-gray-700">
+                          <% @all_teams.each do |team| %>
+                            <li>
+                              <button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="<%= team.id %>" data-dropdown-label="<%= h(team.name) %>" data-dropdown-target="assign_team_<%= idx %>" data-dropdown-label-target="assign-team-button-<%= idx %>">
+                                <%= h(team.name) %>
+                              </button>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                      <%= hidden_field_tag :team_id, '', id: "assign_team_#{idx}", required: true %>
+                    </div>
+
+                    <div class="relative">
+                      <button type="button" id="assign-role-button-<%= idx %>" data-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <span class="assign-role-label" data-default-text="Team Member">Team Member</span>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </button>
+                      <div id="assign-role-dropdown-<%= idx %>" class="z-20 hidden w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+                        <ul class="py-1 text-sm text-gray-700">
+                          <li><button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="member" data-dropdown-label="Team Member" data-dropdown-target="assign_role_<%= idx %>" data-dropdown-label-target="assign-role-button-<%= idx %>">Team Member</button></li>
+                          <li><button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="lead" data-dropdown-label="Team Lead" data-dropdown-target="assign_role_<%= idx %>" data-dropdown-label-target="assign-role-button-<%= idx %>">Team Lead</button></li>
+                        </ul>
+                      </div>
+                      <%= hidden_field_tag :role, 'member', id: "assign_role_#{idx}" %>
+                    </div>
+                  </div>
+                  <%= submit_tag 'Add to Team', class: 'rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600' %>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+
+          <% if @active_memberships.any? %>
+            <% @active_memberships.each do |membership| %>
+              <div class="rounded-lg border border-gray-200 p-3">
+                <p class="text-sm font-semibold text-gray-900"><%= h(membership.user.name) %></p>
+                <p class="text-xs text-gray-500"><%= h(membership.team.name) %> · <%= membership.role.titleize %></p>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500">No allocated members.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-200 px-4 py-3">
+          <h3 class="font-semibold text-gray-900">Vacancy List</h3>
+        </div>
+        <div class="max-h-[260px] space-y-2 overflow-auto p-4">
+          <% if @open_hiring_needs.any? %>
+            <% @open_hiring_needs.each do |need| %>
+              <div class="rounded-lg border border-gray-200 p-3">
+                <p class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></p>
+                <p class="text-xs text-gray-500"><%= h(need.team.name) %> · <%= h(need.role) %></p>
+                <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
+              </div>
+            <% end %>
+          <% else %>
+            <p class="text-sm text-gray-500">No open vacancies.</p>
+          <% end %>
+        </div>
+      </div>
+    </aside>
   </div>
-<% end %>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <h3 class="mb-4 font-semibold text-gray-900">Add Hiring Need</h3>
+    <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-3 lg:grid-cols-4' } do |f| %>
+      <div>
+        <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <%= f.text_field :position_title, required: true, class: 'block w-full rounded-lg border border-gray-300 p-2.5 text-sm text-gray-900' %>
+      </div>
+      <div>
+        <%= f.label :team_id, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <div class="relative">
+          <button type="button" id="hiring-team-button" data-dropdown-toggle="hiring-team-dropdown" class="inline-flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <span class="hiring-team-label" data-default-text="Select Team">Select Team</span>
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="hiring-team-dropdown" class="z-20 hidden w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+            <ul class="max-h-40 overflow-auto py-1 text-sm text-gray-700">
+              <% @all_teams.each do |team| %>
+                <li>
+                  <button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="<%= team.id %>" data-dropdown-label="<%= h(team.name) %>" data-dropdown-target="ta_hiring_need_team_id" data-dropdown-label-target="hiring-team-button">
+                    <%= h(team.name) %>
+                  </button>
+                </li>
+              <% end %>
+            </ul>
+          </div>
+          <%= f.hidden_field :team_id, required: true %>
+        </div>
+      </div>
+      <div>
+        <%= f.label :role, 'Role', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <%= f.text_field :role, required: true, class: 'block w-full rounded-lg border border-gray-300 p-2.5 text-sm text-gray-900' %>
+      </div>
+      <div>
+        <%= f.label :priority, 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <div class="relative">
+          <button type="button" id="hiring-priority-button" data-dropdown-toggle="hiring-priority-dropdown" class="inline-flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+          <div id="hiring-priority-dropdown" class="z-20 hidden w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+            <ul class="py-1 text-sm text-gray-700">
+              <li><button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="high" data-dropdown-label="High" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">High</button></li>
+              <li><button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="medium" data-dropdown-label="Medium" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">Medium</button></li>
+              <li><button type="button" class="w-full px-3 py-2 text-left hover:bg-gray-100" data-dropdown-value="low" data-dropdown-label="Low" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">Low</button></li>
+            </ul>
+          </div>
+          <%= f.hidden_field :priority, required: true %>
+        </div>
+      </div>
+      <div class="lg:col-span-4">
+        <%= f.submit 'Add Hiring Need', class: 'inline-flex items-center rounded-lg bg-blue-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-600' %>
+      </div>
+    <% end %>
+  </div>
+</div>
 
 <style>
-  .team-hierarchy {
-    margin-top: 15px;
-  }
   .ta-team-item {
-    padding: 10px;
-    margin: 2px 0;
-    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 0.75rem;
   }
-  .ta-team-item.level-0 {
-    font-weight: bold;
-    background-color: #f5f5f5;
-    padding-left: 15px;
-    margin-left: 0;
-  }
-  .ta-team-item.level-1 {
-    padding-left: 40px;
-    background-color: #fafafa;
-  }
-  .ta-team-item.level-2 {
-    padding-left: 65px;
-  }
-  .ta-team-item.level-3 {
-    padding-left: 90px;
-  }
+
+  .ta-team-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+  .ta-team-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+  .ta-team-right { display: flex; align-items: center; gap: 1rem; white-space: nowrap; flex-wrap: wrap; justify-content: flex-end; }
+
+  .ta-team-item.level-1 { margin-left: 1rem; }
+  .ta-team-item.level-2 { margin-left: 2rem; }
+  .ta-team-item.level-3 { margin-left: 3rem; }
+
   .ta-team-name {
-    font-size: 14px;
-    margin-right: 8px;
+    margin-right: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
   }
-  .ta-team-member-count {
-    color: #666;
-    font-size: 12px;
-    margin-right: 15px;
+
+  .ta-team-count-badge {
+    border-radius: 9999px;
+    background: #e5e7eb;
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
   }
-  .ta-team-item a {
-    margin-right: 8px;
+
+  .ta-team-hiring-badge {
+    border-radius: 9999px;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .ta-team-action {
+    position: relative;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding-left: 1.05rem;
+    color: #2563eb;
+    text-decoration: none;
+  }
+
+  .ta-team-action:hover { text-decoration: underline; }
+  .ta-team-action-delete { color: #dc2626; }
+
+  .ta-team-action::before {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
+  .ta-team-action-view::before { content: "\1F441"; }
+  .ta-team-action-edit::before { content: "\270E"; }
+  .ta-team-action-delete::before { content: "\1F5D1"; }
+  .ta-team-action-members::before { content: "\1F465"; }
+  .ta-team-action-projects::before { content: "\1F4BC"; }
+
+  @media (max-width: 1024px) {
+    .ta-team-row { align-items: flex-start; flex-direction: column; }
+    .ta-team-right { justify-content: flex-start; gap: 0.75rem; }
   }
 </style>
+
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    function closeAllDropdowns() {
+      document.querySelectorAll('[id$="-dropdown"]').forEach(function(dropdown) {
+        dropdown.classList.add('hidden');
+      });
+    }
+
+    document.querySelectorAll('[data-dropdown-toggle]').forEach(function(button) {
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var dropdownId = button.getAttribute('data-dropdown-toggle');
+        var dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        var isHidden = dropdown.classList.contains('hidden');
+        closeAllDropdowns();
+        if (isHidden) dropdown.classList.remove('hidden');
+      });
+    });
+
+    document.querySelectorAll('[data-dropdown-target]').forEach(function(option) {
+      option.addEventListener('click', function(event) {
+        event.preventDefault();
+        var value = option.getAttribute('data-dropdown-value');
+        var label = option.getAttribute('data-dropdown-label');
+        var targetId = option.getAttribute('data-dropdown-target');
+        var buttonId = option.getAttribute('data-dropdown-label-target');
+        var hiddenInput = document.getElementById(targetId);
+        var button = document.getElementById(buttonId);
+        if (hiddenInput) hiddenInput.value = value;
+        if (button) {
+          var labelEl = button.querySelector('span');
+          if (labelEl) labelEl.textContent = label;
+        }
+        closeAllDropdowns();
+      });
+    });
+
+    document.addEventListener('click', function() {
+      closeAllDropdowns();
+    });
+
+    document.querySelectorAll('.ta-inline-assignment-form').forEach(function(form) {
+      form.addEventListener('submit', function(event) {
+        var teamField = form.querySelector('input[name="team_id"]');
+        if (!teamField || !teamField.value) {
+          event.preventDefault();
+          alert('Please select a team.');
+        }
+      });
+    });
+  });
+</script>

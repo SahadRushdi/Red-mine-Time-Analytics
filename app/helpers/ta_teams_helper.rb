@@ -3,16 +3,28 @@ module TaTeamsHelper
     html = ''.html_safe
     teams.each do |team|
       html << content_tag(:div, class: "ta-team-item level-#{level}") do
-        content = ''.html_safe
-        content << content_tag(:span, team.name, class: 'ta-team-name')
-        content << content_tag(:span, "(#{team.current_members.count} members)", class: 'ta-team-member-count')
-        content << link_to('View', admin_ta_team_path(team), class: 'icon icon-zoom-in')
-        content << link_to('Edit', edit_admin_ta_team_path(team), class: 'icon icon-edit')
-        content << link_to('Delete', admin_ta_team_path(team), method: :delete, 
-                          data: { confirm: 'Are you sure?' }, class: 'icon icon-del')
-        content << link_to('Members', admin_ta_team_memberships_path(team), class: 'icon icon-user')
-        content << link_to('Projects', admin_ta_team_team_projects_path(team), class: 'icon icon-projects')
-        content
+        left_content = ''.html_safe
+        left_content << content_tag(:span, team.name, class: 'ta-team-name')
+        left_content << content_tag(:span, "#{team.current_members.count}", class: 'ta-team-count-badge')
+
+        open_hires = team.ta_hiring_needs.open.count
+        if open_hires.positive?
+          left_content << content_tag(:span, "#{open_hires} hiring", class: 'ta-team-hiring-badge')
+        end
+
+        right_links = ''.html_safe
+        right_links << link_to('View', admin_ta_team_path(team), class: 'ta-team-action ta-team-action-view')
+        right_links << link_to('Edit', edit_admin_ta_team_path(team), class: 'ta-team-action ta-team-action-edit')
+        right_links << link_to('Delete', admin_ta_team_path(team), method: :delete,
+                               data: { confirm: 'Are you sure?' }, class: 'ta-team-action ta-team-action-delete')
+        right_links << link_to('Members', admin_ta_team_memberships_path(team), class: 'ta-team-action ta-team-action-members')
+        right_links << link_to('Projects', admin_ta_team_team_projects_path(team), class: 'ta-team-action ta-team-action-projects')
+
+        content_tag(:div, class: 'ta-team-row') do
+          left = content_tag(:div, left_content, class: 'ta-team-left')
+          right = content_tag(:div, right_links, class: 'ta-team-right')
+          left + right
+        end
       end
       # Recursively render child teams
       if team.child_teams.any?
