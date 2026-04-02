@@ -3,7 +3,7 @@
 <%# ── Header ──────────────────────────────────────────────────────────────── %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div class="flex items-center gap-4">
-    <%= link_to my_time_path(filter: @filter, from: @from, to: @to),
+    <%= link_to my_time_path(filter: @filter, from: @from, to: @to, grouping: @grouping),
         class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-blue-300 transition-colors' do %>
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -55,7 +55,7 @@
     </div>
 
     <%# Custom date range %>
-    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2" style="<%= 'visibility: hidden; pointer-events: none;' if @filter == 'custom' %>">
       <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
         <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
         <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
@@ -861,7 +861,14 @@
   // ── Period filter ────────────────────────────────────────────────────────
   function setFilterAndSubmit(filterValue) {
     document.getElementById('filter_hidden').value = filterValue;
-    if (filterValue !== 'custom') { document.getElementById('custom-date-range').classList.add('hidden'); }
+    if (filterValue !== 'custom') {
+      var customRange = document.getElementById('custom-date-range');
+      if (customRange) {
+        customRange.classList.add('hidden');
+        customRange.style.visibility = 'hidden';
+        customRange.style.pointerEvents = 'none';
+      }
+    }
     document.getElementById('time-entry-panel-form').submit();
   }
 
@@ -872,9 +879,13 @@
     var endInput = document.getElementById('tep-date-range-end');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
+      customRange.style.visibility = 'visible';
+      customRange.style.pointerEvents = '';
       filterHidden.value = 'custom';
     } else {
       customRange.classList.add('hidden');
+      customRange.style.visibility = 'hidden';
+      customRange.style.pointerEvents = 'none';
       [startInput, endInput].forEach(function(input) {
         if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
       });
@@ -902,11 +913,22 @@
     var startInput = document.getElementById('tep-date-range-start');
     var endInput = document.getElementById('tep-date-range-end');
     var picker = document.getElementById('tep-date-range-picker');
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
     var datepickerInstances = [startInput && startInput.datepicker, endInput && endInput.datepicker].filter(Boolean);
+
+    function hideTepRangePickers() {
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
 
     function handleDateRangeChange() {
       submitTepCustomDateRangeIfComplete();
     }
+
+    // Close any picker that may have been restored open before the user sees it.
+    hideTepRangePickers();
 
     [startInput, endInput, picker].forEach(function(element) {
       if (element) {
@@ -919,12 +941,6 @@
         datepicker.setOptions({ todayHighlight: true, showOnFocus: false, showOnClick: false, autohide: true });
       }
     });
-
-    function hideTepRangePickers() {
-      [startInput, endInput].forEach(function(input) {
-        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
-      });
-    }
 
     function bindManualToggle(input, otherInput) {
       if (!input || input.dataset.manualToggleBound === '1') return;
@@ -962,7 +978,13 @@
     }
 
     setTimeout(suppressAutoOpen, 0);
-    setTimeout(suppressAutoOpen, 120);
+    setTimeout(function() {
+      suppressAutoOpen();
+      if (customRange && filterHidden && filterHidden.value === 'custom') {
+        customRange.style.visibility = 'visible';
+        customRange.style.pointerEvents = '';
+      }
+    }, 120);
 
     if (!window.__tepRangeOutsideCloseBound) {
       document.addEventListener('mousedown', function(event) {
