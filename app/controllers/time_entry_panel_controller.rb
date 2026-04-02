@@ -64,8 +64,7 @@ class TimeEntryPanelController < ApplicationController
     end
     @issues.reverse!
 
-    active_issue_ids = @issues.map(&:id)
-    @issues_without_logs = assigned_issues.reject { |issue| active_issue_ids.include?(issue.id) }
+    @issues_without_logs = assigned_issues.reject { |issue| period_te_dates.key?(issue.id) }
     @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
     @issues_without_logs.reverse!
 
