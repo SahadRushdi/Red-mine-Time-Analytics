@@ -161,12 +161,12 @@
     </div>
 
     <aside>
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[590px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 py-3">
           <div class="flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Global Member List</h3>
             <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
-              <%= @active_memberships.size %> allocated
+              <%= @unallocated_users.size %> unallocated
             </span>
           </div>
         </div>
@@ -186,8 +186,8 @@
           </ul>
         </div>
 
-        <div id="team-sidebar-members-panel" class="p-4">
-          <div class="max-h-[680px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll">
+        <div id="team-sidebar-members-panel" class="p-4 xl:flex-1 xl:min-h-0">
+          <div class="max-h-[680px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:h-full xl:max-h-none">
             <% if @unallocated_users.any? %>
               <div class="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <div class="mb-2 flex items-center justify-between">
@@ -240,33 +240,26 @@
                   <% end %>
                 </div>
               <% end %>
-            <% end %>
-
-            <% if @active_memberships.any? %>
-              <% @active_memberships.each do |membership| %>
-                <div class="rounded-lg border border-gray-200 p-3">
-                  <p class="text-sm font-semibold text-gray-900"><%= h(membership.user.name) %></p>
-                  <p class="text-xs text-gray-500"><%= h(membership.team.name) %> · <%= membership.role.titleize %></p>
-                </div>
-              <% end %>
             <% else %>
-              <p class="text-sm text-gray-500">No allocated members.</p>
+              <p class="text-sm text-gray-500">No unallocated members.</p>
             <% end %>
           </div>
         </div>
 
-        <div id="team-sidebar-vacancies-panel" class="hidden space-y-2 p-4">
-          <% if @open_hiring_needs.any? %>
-            <% @open_hiring_needs.each do |need| %>
-              <div class="rounded-lg border border-gray-200 p-3">
-                <p class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></p>
-                <p class="text-xs text-gray-500"><%= h(need.team.name) %> · <%= h(need.role) %></p>
-                <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
-              </div>
+        <div id="team-sidebar-vacancies-panel" class="hidden p-4 xl:flex-1 xl:min-h-0">
+          <div class="space-y-2 xl:h-full xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 ta-stable-scroll">
+            <% if @open_hiring_needs.any? %>
+              <% @open_hiring_needs.each do |need| %>
+                <div class="rounded-lg border border-gray-200 p-3">
+                  <p class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></p>
+                  <p class="text-xs text-gray-500"><%= h(need.team.name) %> · <%= h(need.role) %></p>
+                  <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="text-sm text-gray-500">No open vacancies.</p>
             <% end %>
-          <% else %>
-            <p class="text-sm text-gray-500">No open vacancies.</p>
-          <% end %>
+          </div>
         </div>
       </div>
     </aside>
