@@ -3,7 +3,7 @@
 <%# ── Header ──────────────────────────────────────────────────────────────── %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div class="flex items-center gap-4">
-    <%= link_to my_time_path(filter: @filter, from: @from, to: @to),
+    <%= link_to my_time_path(filter: @filter, from: @from, to: @to, grouping: @grouping),
         class: 'inline-flex items-center gap-2 px-4 py-2 text-sm font-medium !text-gray-700 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-blue-300 transition-colors' do %>
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -54,32 +54,32 @@
       <% end %>
     </div>
 
+    <%# Custom date range %>
+    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2" style="<%= 'visibility: hidden; pointer-events: none;' if @filter == 'custom' %>">
+      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
+        <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+      </div>
+    </div>
+
     <%# Grouping dropdown %>
     <div class="relative tep-grouping-wrapper">
       <button type="button" id="tep-grouping-btn" onclick="toggleTepGroupingDropdown()"
-              class="inline-flex items-center justify-between gap-2 px-4 py-2.5 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors min-w-[110px]">
+              class="inline-flex items-center justify-between w-32 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
         <span id="tep-grouping-text"><%= @grouping.capitalize %></span>
-        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
       </button>
-      <div id="tep-grouping-dropdown" class="hidden absolute right-0 z-20 mt-1 w-36 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+      <div id="tep-grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
         <% [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']].each do |val, label| %>
           <button type="button" onclick="setTepGroupingAndSubmit('<%= val %>')"
                   class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == val ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
             <%= label %>
           </button>
         <% end %>
-      </div>
-    </div>
-
-    <%# Custom date range %>
-    <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
-      <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
-        <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
-        <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
       </div>
     </div>
   <% end %>
@@ -589,10 +589,27 @@
     <% if @issues_without_logs.any? %>
       <div class="overflow-x-auto">
         <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Issue</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort(); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort(); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Last Updated</span>
+                  <span id="tep-unlogged-sort-icon" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-center">Action</th>
+            </tr>
+          </thead>
           <tbody>
             <% @issues_without_logs.each do |issue| %>
-              <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
+                <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
+                    data-last-updated="<%= (@issue_last_activity[issue.id] || issue.updated_on).to_i %>">
                 <td class="px-4 py-3">
                   <div class="flex items-start gap-1.5">
                     <% if issue.priority.try(:position).to_i >= 3 %>
@@ -852,7 +869,14 @@
   // ── Period filter ────────────────────────────────────────────────────────
   function setFilterAndSubmit(filterValue) {
     document.getElementById('filter_hidden').value = filterValue;
-    if (filterValue !== 'custom') { document.getElementById('custom-date-range').classList.add('hidden'); }
+    if (filterValue !== 'custom') {
+      var customRange = document.getElementById('custom-date-range');
+      if (customRange) {
+        customRange.classList.add('hidden');
+        customRange.style.visibility = 'hidden';
+        customRange.style.pointerEvents = 'none';
+      }
+    }
     document.getElementById('time-entry-panel-form').submit();
   }
 
@@ -863,9 +887,13 @@
     var endInput = document.getElementById('tep-date-range-end');
     if (customRange.classList.contains('hidden')) {
       customRange.classList.remove('hidden');
+      customRange.style.visibility = 'visible';
+      customRange.style.pointerEvents = '';
       filterHidden.value = 'custom';
     } else {
       customRange.classList.add('hidden');
+      customRange.style.visibility = 'hidden';
+      customRange.style.pointerEvents = 'none';
       [startInput, endInput].forEach(function(input) {
         if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
       });
@@ -893,11 +921,22 @@
     var startInput = document.getElementById('tep-date-range-start');
     var endInput = document.getElementById('tep-date-range-end');
     var picker = document.getElementById('tep-date-range-picker');
+    var customRange = document.getElementById('custom-date-range');
+    var filterHidden = document.getElementById('filter_hidden');
     var datepickerInstances = [startInput && startInput.datepicker, endInput && endInput.datepicker].filter(Boolean);
+
+    function hideTepRangePickers() {
+      [startInput, endInput].forEach(function(input) {
+        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
+      });
+    }
 
     function handleDateRangeChange() {
       submitTepCustomDateRangeIfComplete();
     }
+
+    // Close any picker that may have been restored open before the user sees it.
+    hideTepRangePickers();
 
     [startInput, endInput, picker].forEach(function(element) {
       if (element) {
@@ -910,12 +949,6 @@
         datepicker.setOptions({ todayHighlight: true, showOnFocus: false, showOnClick: false, autohide: true });
       }
     });
-
-    function hideTepRangePickers() {
-      [startInput, endInput].forEach(function(input) {
-        if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
-      });
-    }
 
     function bindManualToggle(input, otherInput) {
       if (!input || input.dataset.manualToggleBound === '1') return;
@@ -953,7 +986,13 @@
     }
 
     setTimeout(suppressAutoOpen, 0);
-    setTimeout(suppressAutoOpen, 120);
+    setTimeout(function() {
+      suppressAutoOpen();
+      if (customRange && filterHidden && filterHidden.value === 'custom') {
+        customRange.style.visibility = 'visible';
+        customRange.style.pointerEvents = '';
+      }
+    }, 120);
 
     if (!window.__tepRangeOutsideCloseBound) {
       document.addEventListener('mousedown', function(event) {
@@ -979,6 +1018,35 @@
     document.getElementById('tep-grouping-dropdown').classList.add('hidden');
     document.getElementById('time-entry-panel-form').submit();
   }
+
+  function toggleTepUnloggedSort() {
+    var panel = document.getElementById('panel-recent-work');
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = Array.from(tbody.querySelectorAll('tr.ts-issue-row'));
+    var sortIcon = document.getElementById('tep-unlogged-sort-icon');
+    var currentOrder = sortIcon && sortIcon.dataset.order ? sortIcon.dataset.order : 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+
+    rows.sort(function(a, b) {
+      var aValue = parseInt(a.getAttribute('data-last-updated') || '0', 10);
+      var bValue = parseInt(b.getAttribute('data-last-updated') || '0', 10);
+      return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    if (sortIcon) {
+      sortIcon.dataset.order = nextOrder;
+      sortIcon.className = nextOrder === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var icon = document.getElementById('tep-unlogged-sort-icon');
+    if (icon) icon.dataset.order = 'desc';
+  });
 
   document.addEventListener('click', function(e) {
     var dropdown = document.getElementById('tep-grouping-dropdown');

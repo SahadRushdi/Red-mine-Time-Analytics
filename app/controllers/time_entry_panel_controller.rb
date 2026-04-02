@@ -8,11 +8,11 @@ class TimeEntryPanelController < ApplicationController
     @user = User.current
     
     # Get issues assigned to the logged-in user
-    @issues = Issue.joins(:project)
-                   .where(assigned_to_id: @user.id)
-                   .where(projects: { status: Project::STATUS_ACTIVE })
-                   .includes(:project, :tracker, :status, :priority)
-                   .to_a
+    assigned_issues = Issue.joins(:project)
+                           .where(assigned_to_id: @user.id)
+                           .where(projects: { status: Project::STATUS_ACTIVE })
+                           .includes(:project, :tracker, :status, :priority)
+                           .to_a
     
     # Get time entries for the selected date range
     @time_entries = TimeEntry.joins(:project, :issue)
@@ -35,27 +35,44 @@ class TimeEntryPanelController < ApplicationController
     # Build grouped entries for the Time Logs tab
     @grouped_entries = build_grouped_entries(@time_entries.to_a, @grouping, @from, @to)
 
-    # Build a map of the latest activity timestamp per issue
-    last_te_dates = TimeEntry.where(issue_id: @issues.map(&:id), user_id: @user.id)
+    # Build activity maps per issue
+    issue_ids = assigned_issues.map(&:id)
+    last_te_dates = TimeEntry.where(issue_id: issue_ids, user_id: @user.id)
                               .group(:issue_id)
                               .maximum(:created_on)
+    period_te_dates = TimeEntry.where(issue_id: issue_ids, user_id: @user.id, spent_on: @from..@to)
+                               .group(:issue_id)
+                               .maximum(:created_on)
+
     @issue_last_activity = {}
-    @issues.each do |issue|
+    assigned_issues.each do |issue|
       te_date = last_te_dates[issue.id]
       @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
     end
 
-    # Sort issues by most recent activity descending
-    @issues = @issues.sort_by { |issue| @issue_last_activity[issue.id] }.reverse
+    period_window = @from.beginning_of_day..@to.end_of_day
 
-    # Issues without time entries in this period (for "Issues Worked On" tab)
-    issues_with_log_ids = @time_entries.map(&:issue_id).uniq
-    @issues_without_logs = @issues.reject { |issue| issues_with_log_ids.include?(issue.id) }
-    
+    # Logged-tab issue dropdown: include issues active in this period.
+    # Active means issue.updated_on is in range OR user logged time in range.
+    @issues = assigned_issues.select do |issue|
+      issue.updated_on.in?(period_window) || period_te_dates.key?(issue.id)
+    end
+
+    @issues.sort_by! do |issue|
+      period_issue_update = issue.updated_on.in?(period_window) ? issue.updated_on : nil
+      [period_issue_update, period_te_dates[issue.id]].compact.max || Time.at(0)
+    end
+    @issues.reverse!
+
+    @issues_without_logs = assigned_issues.reject { |issue| period_te_dates.key?(issue.id) }
+    @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
+    @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
+    @issues_without_logs.reverse! if @unlogged_sort == 'desc'
+
     # Summary card data
-    @issues_worked_count = issues_with_log_ids.count
+    @issues_worked_count = @time_entries.map(&:issue_id).uniq.count
     @unique_projects_count = @time_entries.map(&:project_id).uniq.count
-    @all_issues_count = @issues.count
+    @all_issues_count = assigned_issues.count
   end
 
   def get_activities
