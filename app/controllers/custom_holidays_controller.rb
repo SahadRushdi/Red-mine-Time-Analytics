@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class CustomHolidaysController < ApplicationController
+  include SortHelper
+
+  helper :sort
   layout 'admin'
   self.main_menu = false
   menu_item :custom_holidays
@@ -9,12 +12,14 @@ class CustomHolidaysController < ApplicationController
   before_action :find_holiday, only: [:edit, :update, :destroy]
 
   def index
-    # Fetch all holidays for year grouping
-    @holidays = CustomHoliday.order(start_date: :desc)
-    @holiday_count = @holidays.count
-    
-    # Keep pagination info for display
+    sort_init 'start_date', 'desc'
+    sort_update 'name' => 'custom_holidays.name',
+                'start_date' => 'custom_holidays.start_date'
+
+    holidays_scope = CustomHoliday.order(sort_clause)
+    @holiday_count = holidays_scope.count
     @holiday_pages = Paginator.new @holiday_count, 25, params['page']
+    @holidays = holidays_scope.offset(@holiday_pages.offset).limit(@holiday_pages.per_page).to_a
   end
 
   def new
