@@ -65,8 +65,9 @@ class TimeEntryPanelController < ApplicationController
     @issues.reverse!
 
     @issues_without_logs = assigned_issues.reject { |issue| period_te_dates.key?(issue.id) }
+    @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
     @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
-    @issues_without_logs.reverse!
+    @issues_without_logs.reverse! if @unlogged_sort == 'desc'
 
     # Summary card data
     @issues_worked_count = @time_entries.map(&:issue_id).uniq.count

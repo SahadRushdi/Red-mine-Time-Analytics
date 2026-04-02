@@ -594,14 +594,22 @@
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Issue</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Last Updated</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort(); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort(); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Last Updated</span>
+                  <span id="tep-unlogged-sort-icon" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-center">Action</th>
             </tr>
           </thead>
           <tbody>
             <% @issues_without_logs.each do |issue| %>
-              <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>">
+                <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
+                    data-last-updated="<%= (@issue_last_activity[issue.id] || issue.updated_on).to_i %>">
                 <td class="px-4 py-3">
                   <div class="flex items-start gap-1.5">
                     <% if issue.priority.try(:position).to_i >= 3 %>
@@ -1010,6 +1018,35 @@
     document.getElementById('tep-grouping-dropdown').classList.add('hidden');
     document.getElementById('time-entry-panel-form').submit();
   }
+
+  function toggleTepUnloggedSort() {
+    var panel = document.getElementById('panel-recent-work');
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = Array.from(tbody.querySelectorAll('tr.ts-issue-row'));
+    var sortIcon = document.getElementById('tep-unlogged-sort-icon');
+    var currentOrder = sortIcon && sortIcon.dataset.order ? sortIcon.dataset.order : 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+
+    rows.sort(function(a, b) {
+      var aValue = parseInt(a.getAttribute('data-last-updated') || '0', 10);
+      var bValue = parseInt(b.getAttribute('data-last-updated') || '0', 10);
+      return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    if (sortIcon) {
+      sortIcon.dataset.order = nextOrder;
+      sortIcon.className = nextOrder === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var icon = document.getElementById('tep-unlogged-sort-icon');
+    if (icon) icon.dataset.order = 'desc';
+  });
 
   document.addEventListener('click', function(e) {
     var dropdown = document.getElementById('tep-grouping-dropdown');
