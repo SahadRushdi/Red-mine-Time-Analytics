@@ -20,6 +20,7 @@ class AdminTaTeamsController < ApplicationController
     @unallocated_users = User.active.sorted.where.not(id: @allocated_user_ids)
     @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_priority
     @hiring_need_history = TaHiringNeed.includes(:team).ordered_by_recent
+    @member_history_groups = build_member_history_groups
     @new_hiring_need = TaHiringNeed.new(priority: 'medium')
   end
 
@@ -166,5 +167,22 @@ class AdminTaTeamsController < ApplicationController
 
   def hiring_need_params
     params.require(:ta_hiring_need).permit(:position_title, :team_id, :priority)
+  end
+
+  def build_member_history_groups
+    memberships = TaTeamMembership.includes(:user, :team).references(:user)
+                                  .order('users.firstname ASC, users.lastname ASC, ta_team_memberships.start_date DESC, ta_team_memberships.created_at DESC')
+
+    memberships.group_by(&:user).map do |user, user_memberships|
+      active_memberships = user_memberships.select(&:active?)
+
+      {
+        user: user,
+        memberships: user_memberships,
+        active_team_count: active_memberships.count,
+        has_active_lead_role: active_memberships.any?(&:lead?),
+        last_updated_on: user_memberships.map { |membership| membership.updated_at || membership.created_at }.compact.max
+      }
+    end
   end
 end

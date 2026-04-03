@@ -422,8 +422,118 @@
       </div>
     </div>
 
-    <div id="team-history-panel-member" class="hidden px-6 py-8 text-sm text-gray-500">
-      Member History will be added next.
+    <div id="team-history-panel-member" class="hidden">
+      <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
+        <span><%= @member_history_groups.size %> members with team assignments</span>
+      </div>
+
+      <div class="px-6 py-3 border-b border-gray-100">
+        <div class="relative max-w-md">
+          <input type="text" id="ta-member-history-search" placeholder="Search member, email, team, or role..."
+                 class="ts-search-input block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                 oninput="filterMemberHistoryRows()">
+        </div>
+      </div>
+
+      <% if @member_history_groups.any? %>
+        <div class="overflow-x-auto">
+          <table class="ts-table w-full text-sm text-left">
+            <thead class="bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-2.5 w-8"></th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Member</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Current Role</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Active Teams</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Last Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @member_history_groups.each_with_index do |group, idx| %>
+                <% user = group[:user] %>
+                <% latest_active_membership = group[:memberships].select(&:active?).max_by(&:start_date) %>
+                <% latest_any_membership = group[:memberships].max_by(&:start_date) %>
+                <% current_role = latest_active_membership&.role || latest_any_membership&.role %>
+                <% search_text = [
+                  user.name,
+                  user.mail,
+                  group[:memberships].map { |m| m.team&.name }.join(' '),
+                  group[:memberships].map(&:role).join(' ')
+                ].join(' ').downcase %>
+                <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                    data-search-text="<%= h(search_text) %>"
+                    data-expand-id="ta-member-history-expand-<%= idx %>"
+                    data-chevron-id="ta-member-history-chevron-<%= idx %>"
+                    onclick="toggleMemberHistoryRows('<%= idx %>')">
+                  <td class="px-4 py-3 text-center">
+                    <svg id="ta-member-history-chevron-<%= idx %>" class="w-4 h-4 text-gray-400 inline-block transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+                      <span class="text-xs text-gray-500"><%= h(user.mail) %></span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <% if current_role == 'lead' %>
+                      <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                    <% end %>
+                  </td>
+                  <td class="px-4 py-3 text-gray-700"><%= group[:active_team_count] %></td>
+                  <td class="px-4 py-3 text-gray-500 text-sm"><%= group[:last_updated_on] ? "#{time_ago_in_words(group[:last_updated_on])} ago" : '—' %></td>
+                </tr>
+                <tr id="ta-member-history-expand-<%= idx %>" class="ta-member-history-expand-row hidden">
+                  <td colspan="5" class="px-0 py-0 bg-slate-50 border-b border-gray-200">
+                    <div class="pl-10 pr-4 py-3 border-l-4 border-blue-300">
+                      <table class="w-full text-sm">
+                        <thead>
+                          <tr class="border-b border-gray-200">
+                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Team</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Role</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Start Date</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">End Date</th>
+                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% group[:memberships].each do |membership| %>
+                            <tr class="border-b border-gray-100 last:border-0">
+                              <td class="px-3 py-2.5 text-gray-800"><%= h(membership.team&.name.to_s) %></td>
+                              <td class="px-3 py-2.5">
+                                <% if membership.lead? %>
+                                  <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                                <% else %>
+                                  <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                                <% end %>
+                              </td>
+                              <td class="px-3 py-2.5 text-gray-600"><%= membership.start_date ? format_date(membership.start_date) : '—' %></td>
+                              <td class="px-3 py-2.5 text-gray-600"><%= membership.end_date ? format_date(membership.end_date) : '—' %></td>
+                              <td class="px-3 py-2.5">
+                                <% if membership.active? %>
+                                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                                <% else %>
+                                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                                <% end %>
+                              </td>
+                            </tr>
+                          <% end %>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="px-6 py-10 text-center text-sm text-gray-500">
+          No member assignment history available.
+        </div>
+      <% end %>
     </div>
   </div>
 </div>
@@ -604,6 +714,45 @@
     delete sortIcon.dataset.order;
     sortIcon.dataset.order = nextOrder;
     resetVacancyHistorySortIcons(column);
+  }
+
+  function toggleMemberHistoryRows(rowId) {
+    var expandRow = document.getElementById('ta-member-history-expand-' + rowId);
+    var chevron = document.getElementById('ta-member-history-chevron-' + rowId);
+    if (!expandRow || !chevron) return;
+
+    var willOpen = expandRow.classList.contains('hidden');
+    expandRow.classList.toggle('hidden');
+    chevron.style.transform = willOpen ? 'rotate(90deg)' : '';
+  }
+
+  function filterMemberHistoryRows() {
+    var input = document.getElementById('ta-member-history-search');
+    var query = input ? input.value.toLowerCase().trim() : '';
+    var groupRows = document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row');
+
+    groupRows.forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      var matches = !query || text.indexOf(query) !== -1;
+      var expandId = row.getAttribute('data-expand-id');
+      var expandRow = expandId ? document.getElementById(expandId) : null;
+      var chevronId = row.getAttribute('data-chevron-id');
+      var chevron = chevronId ? document.getElementById(chevronId) : null;
+
+      row.style.display = matches ? '' : 'none';
+      if (!matches && expandRow) {
+        expandRow.classList.add('hidden');
+        if (chevron) chevron.style.transform = '';
+      }
+      if (matches && expandRow && query) {
+        expandRow.classList.remove('hidden');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+      }
+      if (matches && expandRow && !query) {
+        expandRow.classList.add('hidden');
+        if (chevron) chevron.style.transform = '';
+      }
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function() {
