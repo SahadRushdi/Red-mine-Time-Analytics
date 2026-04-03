@@ -143,11 +143,15 @@
                   <p class="text-sm font-semibold text-amber-900">Unallocated Members</p>
                   <span class="rounded-full bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800"><%= @unallocated_users.size %></span>
                 </div>
-                <p class="text-xs text-amber-700">Click “Add to Team” to assign members.</p>
+                <p class="text-xs text-amber-700">Drag a member to a team in Organizational Hierarchy or use “Add to Team”.</p>
               </div>
 
               <% @unallocated_users.each_with_index do |user, idx| %>
-                <div class="rounded-lg border border-amber-300 bg-amber-50/30 p-3">
+                <div class="ta-unallocated-member-card rounded-lg border border-amber-300 bg-amber-50/30 p-3"
+                     draggable="true"
+                     data-user-id="<%= user.id %>"
+                     data-user-name="<%= h(user.name) %>"
+                     data-default-role="member">
                   <p class="text-sm font-semibold text-gray-900"><%= h(user.name) %></p>
                   <p class="mb-2 text-xs text-gray-500"><%= h(user.mail) %></p>
                   <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2' do %>
@@ -657,6 +661,24 @@
     border-radius: 0.5rem !important;
   }
 
+  .ta-unallocated-member-card {
+    cursor: grab;
+  }
+
+  .ta-unallocated-member-card:active {
+    cursor: grabbing;
+  }
+
+  .ta-unallocated-member-card.ta-dragging {
+    opacity: 0.6;
+  }
+
+  .ta-team-dropzone.ta-dropzone-hover {
+    border-color: #3b82f6 !important;
+    box-shadow: inset 0 0 0 1px #3b82f6;
+    background-color: #eff6ff;
+  }
+
   @media (max-width: 1024px) {
     .ta-team-row { align-items: flex-start; flex-direction: column; }
     .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
@@ -752,6 +774,102 @@
         expandRow.classList.add('hidden');
         if (chevron) chevron.style.transform = '';
       }
+    });
+  }
+
+  function setupTeamDragAndDrop() {
+    var memberCards = document.querySelectorAll('.ta-unallocated-member-card[data-user-id]');
+    var teamDropzones = document.querySelectorAll('.ta-team-dropzone[data-team-id]');
+
+    memberCards.forEach(function(card) {
+      card.addEventListener('dragstart', function(event) {
+        card.classList.add('ta-dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', JSON.stringify({
+          userId: card.getAttribute('data-user-id'),
+          userName: card.getAttribute('data-user-name') || '',
+          role: card.getAttribute('data-default-role') || 'member'
+        }));
+      });
+
+      card.addEventListener('dragend', function() {
+        card.classList.remove('ta-dragging');
+        document.querySelectorAll('.ta-team-dropzone.ta-dropzone-hover').forEach(function(zone) {
+          zone.classList.remove('ta-dropzone-hover');
+        });
+      });
+    });
+
+    teamDropzones.forEach(function(zone) {
+      zone.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        zone.classList.add('ta-dropzone-hover');
+      });
+
+      zone.addEventListener('dragenter', function(event) {
+        event.preventDefault();
+        zone.classList.add('ta-dropzone-hover');
+      });
+
+      zone.addEventListener('dragleave', function(event) {
+        var related = event.relatedTarget;
+        if (!related || !zone.contains(related)) {
+          zone.classList.remove('ta-dropzone-hover');
+        }
+      });
+
+      zone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        zone.classList.remove('ta-dropzone-hover');
+
+        var payloadRaw = event.dataTransfer.getData('text/plain');
+        if (!payloadRaw) return;
+
+        var payload;
+        try {
+          payload = JSON.parse(payloadRaw);
+        } catch (_error) {
+          return;
+        }
+
+        var userId = payload.userId;
+        var teamId = zone.getAttribute('data-team-id');
+        var role = payload.role || 'member';
+        if (!userId || !teamId) return;
+
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = '<%= assign_member_admin_ta_teams_path %>';
+        form.style.display = 'none';
+
+        var tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'authenticity_token';
+        tokenInput.value = '<%= form_authenticity_token %>';
+        form.appendChild(tokenInput);
+
+        var userInput = document.createElement('input');
+        userInput.type = 'hidden';
+        userInput.name = 'user_id';
+        userInput.value = userId;
+        form.appendChild(userInput);
+
+        var teamInput = document.createElement('input');
+        teamInput.type = 'hidden';
+        teamInput.name = 'team_id';
+        teamInput.value = teamId;
+        form.appendChild(teamInput);
+
+        var roleInput = document.createElement('input');
+        roleInput.type = 'hidden';
+        roleInput.name = 'role';
+        roleInput.value = role;
+        form.appendChild(roleInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      });
     });
   }
 
@@ -857,6 +975,7 @@
     });
 
     resetVacancyHistorySortIcons('position');
+    setupTeamDragAndDrop();
 
     // Keep initial server-rendered tab state to avoid first-paint layout mutation
   });

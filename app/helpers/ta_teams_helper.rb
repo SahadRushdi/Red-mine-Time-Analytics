@@ -6,7 +6,7 @@ module TaTeamsHelper
 
     html = ''.html_safe
     teams.each do |team|
-      html << content_tag(:div, class: "ta-team-item level-#{level}") do
+      html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", data: { team_id: team.id }) do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
         member_count = active_member_counts[team.id].to_i
