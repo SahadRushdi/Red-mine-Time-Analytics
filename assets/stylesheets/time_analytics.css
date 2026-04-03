@@ -434,6 +434,27 @@ button:hover {
   border-color: currentColor !important;
 }
 
+/* Vacancy action button — keep Flowbite emerald styling and remove Redmine border */
+button.ta-vacancy-action-button,
+button.ta-vacancy-action-button:hover,
+button.ta-vacancy-action-button:focus,
+button.ta-vacancy-action-button:focus-visible,
+button.ta-vacancy-action-button:active {
+  border: 1px solid #047857 !important;
+  border-color: #047857 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button.ta-vacancy-action-button:hover,
+button.ta-vacancy-action-button:focus,
+button.ta-vacancy-action-button:focus-visible,
+button.ta-vacancy-action-button:active {
+  background-color: #065f46 !important;
+  border-color: #065f46 !important;
+  color: #ffffff !important;
+}
+
 /* Specific fix for inactive time period buttons - keep gray border on hover */
 button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover,
 button[onclick*="toggleCustomDateRange"]:not([style*="background-color: #3b82f6"]):hover {
