@@ -229,7 +229,7 @@
     <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-4 md:grid-cols-3' } do |f| %>
       <div>
         <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <%= f.text_field :position_title, required: true, class: 'ts-search-input block w-full h-[48px] rounded-lg border border-gray-300 px-3 text-sm text-gray-900', placeholder: 'Enter position title' %>
+        <%= f.text_field :position_title, required: true, class: 'ta-hiring-position-input ts-search-input !block !w-full !h-[48px] !rounded-lg !border !border-gray-300 !px-3 !text-base !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]', placeholder: 'Enter position title' %>
       </div>
       <div>
         <%= label_tag 'hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -270,7 +270,7 @@
         </div>
       </div>
       <div class="md:col-span-3 flex justify-end pt-1">
-        <%= f.submit 'Add Hiring Need', class: 'inline-flex h-[44px] items-center rounded-lg bg-blue-500 px-5 text-sm font-medium text-white hover:bg-blue-600' %>
+        <%= f.submit 'Add Hiring Need', class: 'ta-hiring-submit-btn inline-flex h-[44px] items-center !rounded-lg bg-blue-500 px-5 text-sm font-medium text-white hover:bg-blue-600' %>
       </div>
     <% end %>
   </div>
@@ -312,20 +312,77 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Position</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Team</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Priority</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Opened</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Filled</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Duration</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('position'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('position'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Position</span>
+                  <span id="ta-vacancy-sort-icon-position" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('team'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('team'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Team</span>
+                  <span id="ta-vacancy-sort-icon-team" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('priority'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('priority'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Priority</span>
+                  <span id="ta-vacancy-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('status'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('status'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Status</span>
+                  <span id="ta-vacancy-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('opened'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('opened'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Opened</span>
+                  <span id="ta-vacancy-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('filled'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('filled'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Filled</span>
+                  <span id="ta-vacancy-sort-icon-filled" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('duration'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('duration'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Duration</span>
+                  <span id="ta-vacancy-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             <% if @hiring_need_history.any? %>
               <% @hiring_need_history.each do |need| %>
                 <% duration_days = [(need.filled_on || Date.current) - need.created_at.to_date, 0].max.to_i %>
-                <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <% priority_sort_value = need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>
+                <tr class="ts-issue-row ta-vacancy-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-sort-position="<%= need.position_title.to_s.downcase %>"
+                    data-sort-team="<%= need.team.name.to_s.downcase %>"
+                    data-sort-priority="<%= priority_sort_value %>"
+                    data-sort-status="<%= need.open? ? 2 : 1 %>"
+                    data-sort-opened="<%= need.created_at.to_i %>"
+                    data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
+                    data-sort-duration="<%= duration_days %>">
                   <td class="px-4 py-3 font-semibold text-gray-900"><%= h(need.position_title) %></td>
                   <td class="px-4 py-3 text-gray-600"><%= h(need.team.name) %></td>
                   <td class="px-4 py-3">
@@ -486,6 +543,10 @@
     border: 0 !important;
   }
 
+  .ta-hiring-submit-btn {
+    border-radius: 0.5rem !important;
+  }
+
   @media (max-width: 1024px) {
     .ta-team-row { align-items: flex-start; flex-direction: column; }
     .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
@@ -496,6 +557,55 @@
 </style>
 
 <script type="text/javascript">
+  function resetVacancyHistorySortIcons(activeColumn) {
+    var columns = ['position', 'team', 'priority', 'status', 'opened', 'filled', 'duration'];
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-vacancy-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleVacancyHistorySort(column) {
+    var panel = document.getElementById('team-history-panel-vacancy');
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = Array.from(tbody.querySelectorAll('tr.ta-vacancy-row'));
+    var sortIcon = document.getElementById('ta-vacancy-sort-icon-' + column);
+    if (!sortIcon) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numericColumns = ['priority', 'status', 'opened', 'filled', 'duration'];
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numericColumns.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetVacancyHistorySortIcons(column);
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     function closeAllDropdowns() {
       document.querySelectorAll('[data-ta-dropdown-menu="true"]').forEach(function(dropdown) {
@@ -596,6 +706,8 @@
         switchTeamHistoryTab(tabButton.getAttribute('data-team-history-tab-target'));
       });
     });
+
+    resetVacancyHistorySortIcons('position');
 
     // Keep initial server-rendered tab state to avoid first-paint layout mutation
   });
