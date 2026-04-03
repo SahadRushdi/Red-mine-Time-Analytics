@@ -10,7 +10,6 @@ class TaHiringNeed < ActiveRecord::Base
 
   validates :position_title, presence: true, length: { maximum: 255 }
   validates :team_id, presence: true
-  validates :role, presence: true, length: { maximum: 100 }
   validates :priority, presence: true, inclusion: { in: PRIORITIES }
   validates :status, presence: true, inclusion: { in: STATUSES }
 

@@ -144,7 +144,6 @@ class AdminTaTeamsController < ApplicationController
 
   def create_hiring_need
     safe_params = hiring_need_params
-    safe_params[:role] = 'Team Member' if safe_params[:role].blank?
     hiring_need = TaHiringNeed.new(safe_params.merge(status: 'open'))
 
     if hiring_need.save
@@ -165,6 +164,6 @@ class AdminTaTeamsController < ApplicationController
   end
 
   def hiring_need_params
-    params.require(:ta_hiring_need).permit(:position_title, :team_id, :role, :priority)
+    params.require(:ta_hiring_need).permit(:position_title, :team_id, :priority)
   end
 end
