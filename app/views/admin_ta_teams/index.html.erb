@@ -94,11 +94,11 @@
 
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[590px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 py-3">
           <h3 class="font-semibold text-gray-900">Organizational Hierarchy</h3>
         </div>
-        <div class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll">
+        <div class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
@@ -204,15 +204,15 @@
                   <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2' do %>
                     <%= hidden_field_tag :user_id, user.id %>
                     <div class="relative min-w-0">
-                      <button type="button" id="assign-team-button-<%= idx %>" data-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+                      <button type="button" id="assign-team-button-<%= idx %>" data-ta-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
                         <span class="assign-team-label truncate" data-default-text="Select team">Select team</span>
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                       </button>
-                      <div id="assign-team-dropdown-<%= idx %>" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                      <div id="assign-team-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
                         <ul class="max-h-48 overflow-y-auto overflow-x-hidden py-1 text-sm text-gray-700">
                           <% @all_teams.each do |team| %>
                             <li>
-                              <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="<%= team.id %>" data-dropdown-label="<%= h(team.name) %>" data-dropdown-target="assign_team_<%= idx %>" data-dropdown-label-target="assign-team-button-<%= idx %>">
+                              <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="assign_team_<%= idx %>" data-ta-dropdown-label-target="assign-team-button-<%= idx %>">
                                 <%= h(team.name) %>
                               </button>
                             </li>
@@ -223,14 +223,14 @@
                     </div>
 
                     <div class="relative w-full">
-                      <button type="button" id="assign-role-button-<%= idx %>" data-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+                      <button type="button" id="assign-role-button-<%= idx %>" data-ta-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
                         <span class="assign-role-label" data-default-text="Team Member">Team Member</span>
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                       </button>
-                      <div id="assign-role-dropdown-<%= idx %>" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                      <div id="assign-role-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
                         <ul class="py-1 text-sm text-gray-700">
-                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="member" data-dropdown-label="Team Member" data-dropdown-target="assign_role_<%= idx %>" data-dropdown-label-target="assign-role-button-<%= idx %>">Team Member</button></li>
-                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="lead" data-dropdown-label="Team Lead" data-dropdown-target="assign_role_<%= idx %>" data-dropdown-label-target="assign-role-button-<%= idx %>">Team Lead</button></li>
+                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="member" data-ta-dropdown-label="Team Member" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Member</button></li>
+                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="lead" data-ta-dropdown-label="Team Lead" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Lead</button></li>
                         </ul>
                       </div>
                       <%= hidden_field_tag :role, 'member', id: "assign_role_#{idx}" %>
@@ -285,15 +285,15 @@
       <div>
         <%= label_tag 'hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-team-button" data-dropdown-toggle="hiring-team-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <button type="button" id="hiring-team-button" data-ta-dropdown-toggle="hiring-team-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-team-label" data-default-text="Select Team">Select Team</span>
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <div id="hiring-team-dropdown" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+          <div id="hiring-team-dropdown" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
             <ul class="max-h-40 overflow-auto py-1 text-sm text-gray-700">
               <% @all_teams.each do |team| %>
                 <li>
-                  <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="<%= team.id %>" data-dropdown-label="<%= h(team.name) %>" data-dropdown-target="ta_hiring_need_team_id" data-dropdown-label-target="hiring-team-button">
+                  <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="ta_hiring_need_team_id" data-ta-dropdown-label-target="hiring-team-button">
                     <%= h(team.name) %>
                   </button>
                 </li>
@@ -307,15 +307,15 @@
       <div>
         <%= label_tag 'hiring-priority-button', 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-priority-button" data-dropdown-toggle="hiring-priority-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <button type="button" id="hiring-priority-button" data-ta-dropdown-toggle="hiring-priority-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
             <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-          <div id="hiring-priority-dropdown" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+          <div id="hiring-priority-dropdown" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
             <ul class="py-1 text-sm text-gray-700">
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="high" data-dropdown-label="High" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">High</button></li>
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="medium" data-dropdown-label="Medium" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">Medium</button></li>
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-dropdown-value="low" data-dropdown-label="Low" data-dropdown-target="ta_hiring_need_priority" data-dropdown-label-target="hiring-priority-button">Low</button></li>
+              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="high" data-ta-dropdown-label="High" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">High</button></li>
+              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="medium" data-ta-dropdown-label="Medium" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Medium</button></li>
+              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="low" data-ta-dropdown-label="Low" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Low</button></li>
             </ul>
           </div>
           <%= f.hidden_field :priority, required: true %>
@@ -455,17 +455,17 @@
 <script type="text/javascript">
   document.addEventListener('DOMContentLoaded', function() {
     function closeAllDropdowns() {
-      document.querySelectorAll('[id$="-dropdown"]').forEach(function(dropdown) {
+      document.querySelectorAll('[data-ta-dropdown-menu="true"]').forEach(function(dropdown) {
         dropdown.classList.add('hidden');
       });
     }
 
     document.addEventListener('click', function(event) {
-      var toggleButton = event.target.closest('[data-dropdown-toggle]');
+      var toggleButton = event.target.closest('[data-ta-dropdown-toggle]');
       if (toggleButton) {
         event.preventDefault();
         event.stopPropagation();
-        var dropdownId = toggleButton.getAttribute('data-dropdown-toggle');
+        var dropdownId = toggleButton.getAttribute('data-ta-dropdown-toggle');
         var dropdown = document.getElementById(dropdownId);
         if (!dropdown) return;
         var isHidden = dropdown.classList.contains('hidden');
@@ -474,13 +474,13 @@
         return;
       }
 
-      var optionButton = event.target.closest('[data-dropdown-target]');
+      var optionButton = event.target.closest('[data-ta-dropdown-target]');
       if (optionButton) {
         event.preventDefault();
-        var value = optionButton.getAttribute('data-dropdown-value');
-        var label = optionButton.getAttribute('data-dropdown-label');
-        var targetId = optionButton.getAttribute('data-dropdown-target');
-        var buttonId = optionButton.getAttribute('data-dropdown-label-target');
+        var value = optionButton.getAttribute('data-ta-dropdown-value');
+        var label = optionButton.getAttribute('data-ta-dropdown-label');
+        var targetId = optionButton.getAttribute('data-ta-dropdown-target');
+        var buttonId = optionButton.getAttribute('data-ta-dropdown-label-target');
         var hiddenInput = document.getElementById(targetId);
         var button = document.getElementById(buttonId);
         if (hiddenInput) hiddenInput.value = value;
