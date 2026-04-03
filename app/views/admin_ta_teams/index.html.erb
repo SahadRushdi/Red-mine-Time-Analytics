@@ -152,8 +152,18 @@
                      data-user-id="<%= user.id %>"
                      data-user-name="<%= h(user.name) %>"
                      data-default-role="member">
-                  <p class="text-sm font-semibold text-gray-900"><%= h(user.name) %></p>
-                  <p class="mb-2 text-xs text-gray-500"><%= h(user.mail) %></p>
+                  <button type="button"
+                          class="ta-member-card-toggle w-full flex items-center justify-between gap-2 text-left"
+                          onclick="event.stopPropagation(); toggleMemberAssignCard('<%= idx %>')">
+                    <span class="min-w-0">
+                      <span class="block text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+                      <span class="block text-xs text-gray-500"><%= h(user.mail) %></span>
+                    </span>
+                    <svg id="ta-member-assign-chevron-<%= idx %>" class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </button>
+                  <div id="ta-member-assign-expand-<%= idx %>" class="hidden mt-2">
                   <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2' do %>
                     <%= hidden_field_tag :user_id, user.id %>
                     <div class="relative min-w-0">
@@ -191,6 +201,7 @@
 
                     <%= submit_tag 'Add to Team', class: 'h-10 rounded-lg bg-blue-500 px-3 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap' %>
                   <% end %>
+                  </div>
                 </div>
               <% end %>
             <% else %>
@@ -429,12 +440,9 @@
     <div id="team-history-panel-member" class="hidden">
       <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
         <span><%= @member_history_groups.size %> members with team assignments</span>
-      </div>
-
-      <div class="px-6 py-3 border-b border-gray-100">
-        <div class="relative max-w-md">
+        <div class="relative w-full max-w-md">
           <input type="text" id="ta-member-history-search" placeholder="Search member, email, team, or role..."
-                 class="ts-search-input block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                 class="ts-search-input !block !w-full !h-[48px] !rounded-lg !border !border-gray-300 !px-3 !text-base !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
                  oninput="filterMemberHistoryRows()">
         </div>
       </div>
@@ -673,6 +681,24 @@
     opacity: 0.6;
   }
 
+  .ta-member-card-toggle,
+  .ta-member-card-toggle:hover,
+  .ta-member-card-toggle:active,
+  .ta-member-card-toggle:focus,
+  .ta-member-card-toggle:focus-visible {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-image: none !important;
+    color: inherit !important;
+    text-shadow: none !important;
+  }
+
+  .ta-member-card-toggle::-moz-focus-inner {
+    border: 0 !important;
+  }
+
   .ta-team-dropzone.ta-dropzone-hover {
     border-color: #3b82f6 !important;
     box-shadow: inset 0 0 0 1px #3b82f6;
@@ -775,6 +801,16 @@
         if (chevron) chevron.style.transform = '';
       }
     });
+  }
+
+  function toggleMemberAssignCard(cardId) {
+    var expand = document.getElementById('ta-member-assign-expand-' + cardId);
+    var chevron = document.getElementById('ta-member-assign-chevron-' + cardId);
+    if (!expand || !chevron) return;
+
+    var willOpen = expand.classList.contains('hidden');
+    expand.classList.toggle('hidden');
+    chevron.style.transform = willOpen ? 'rotate(90deg)' : '';
   }
 
   function setupTeamDragAndDrop() {
