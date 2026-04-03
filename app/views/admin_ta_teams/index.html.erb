@@ -229,7 +229,7 @@
     <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-4 md:grid-cols-3' } do |f| %>
       <div>
         <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <%= f.text_field :position_title, required: true, class: 'block w-full h-[48px] rounded-lg border border-gray-300 px-3 text-sm text-gray-900' %>
+        <%= f.text_field :position_title, required: true, class: 'ts-search-input block w-full h-[48px] rounded-lg border border-gray-300 px-3 text-sm text-gray-900', placeholder: 'Enter position title' %>
       </div>
       <div>
         <%= label_tag 'hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -342,12 +342,16 @@
                   <td class="px-4 py-3 text-gray-600"><%= format_date(need.created_at.to_date) %></td>
                   <td class="px-4 py-3 text-gray-600"><%= need.filled_on ? format_date(need.filled_on) : '—' %></td>
                   <td class="px-4 py-3 text-gray-700">
-                    <span class="inline-flex items-center gap-1">
-                      <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"></path>
-                      </svg>
-                      <%= duration_days %>d
-                    </span>
+                    <% if need.open? %>
+                      <span class="inline-flex items-center gap-1">
+                        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"></path>
+                        </svg>
+                        <%= duration_days %>d
+                      </span>
+                    <% else %>
+                      —
+                    <% end %>
                   </td>
                 </tr>
               <% end %>
