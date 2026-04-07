@@ -1,169 +1,154 @@
 <%= error_messages_for 'ta_team' %>
 
-<div class="box tabular">
-  <p>
-    <%= f.label :name, 'Team Name', class: 'required' %>
-    <%= f.text_field :name, required: true, size: 60 %>
-  </p>
+<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+  <div>
+    <%= f.label :name, 'Team Name', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <%= f.text_field :name, required: true, class: 'ta-team-field' %>
+  </div>
 
-  <p>
-    <%= f.label :parent_team_id, 'Parent Team' %>
-    <%= f.select :parent_team_id, 
+  <div>
+    <%= f.label :parent_team_id, 'Parent Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <%= f.select :parent_team_id,
                  ta_team_select_options(@team.parent_team_id, [@team.id]),
                  { include_blank: '(None - Root Team)' },
-                 { class: 'select2' } %>
-    <em class="info">Select parent team to create a hierarchical structure</em>
-  </p>
+                 { class: 'ta-team-select' } %>
+    <p class="mt-1 text-xs text-gray-500">Select parent team to create a hierarchical structure.</p>
+  </div>
 
-  <p>
-    <%= f.label :description, 'Description' %>
-    <%= f.text_area :description, rows: 4, cols: 60 %>
-    <em class="info">Optional description of the team</em>
-  </p>
+  <div class="md:col-span-2">
+    <%= f.label :description, 'Description', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <%= f.text_area :description, rows: 4, class: 'ta-team-textarea' %>
+    <p class="mt-1 text-xs text-gray-500">Optional description of the team.</p>
+  </div>
 
-  <p>
-    <%= f.label :personal_project_urls, 'Personal Projects URLs' %>
-    <span id="personal-project-urls-container">
+  <div class="md:col-span-2">
+    <%= f.label :personal_project_urls, 'Personal Projects URLs', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <div id="personal-project-urls-container" class="space-y-2">
       <% urls = @team.parse_personal_project_urls %>
-      <% if urls.empty? %>
-        <span class="url-input-row" data-index="0" style="display: block; margin-bottom: 5px;">
-          <input type="text" name="ta_team[personal_project_urls][]" 
-                 class="url-input" size="60" 
+      <% values = urls.empty? ? [''] : urls %>
+      <% values.each_with_index do |url, index| %>
+        <div class="ta-url-input-row flex flex-col gap-2 sm:flex-row sm:items-center" data-index="<%= index %>">
+          <input type="text"
+                 name="ta_team[personal_project_urls][]"
+                 value="<%= h(url) %>"
+                 class="ta-url-input flex-1"
                  placeholder="http://0.0.0.0:3000/projects/iot-team" />
-          <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
-          <button type="button" class="remove-url-btn button" style="margin-left: 5px; display: none;">Remove</button>
-          <span class="url-validation-result" style="margin-left: 10px;"></span>
-        </span>
-      <% else %>
-        <% urls.each_with_index do |url, index| %>
-          <span class="url-input-row" data-index="<%= index %>" style="display: block; margin-bottom: 5px;">
-            <input type="text" name="ta_team[personal_project_urls][]" 
-                   value="<%= url %>" 
-                   class="url-input" size="60" 
-                   placeholder="http://0.0.0.0:3000/projects/iot-team" />
-            <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
-            <button type="button" class="remove-url-btn button" style="margin-left: 5px; <%= 'display: none;' if urls.length == 1 %>">Remove</button>
-            <span class="url-validation-result" style="margin-left: 10px;"></span>
-          </span>
-        <% end %>
+          <button type="button" class="ta-url-validate-btn ta-btn-success inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Validate</button>
+          <button type="button" class="ta-url-remove-btn ta-btn-danger inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Remove</button>
+          <span class="ta-url-validation-result text-xs text-gray-500"></span>
+        </div>
       <% end %>
-    </span>
-    <button type="button" id="add-url-btn" class="button" style="margin-top: 10px; display: block;">Add Another URL</button>
-    <em class="info" style="display: block;">
-      Enter URLs of parent projects whose sub-projects should be grouped as "Personal Projects" in the team dashboard.
-      <br>All sub-projects (including nested ones) under these projects will be automatically grouped.
-      <br><strong>Hierarchical Inheritance:</strong> Personal project URLs added to parent teams automatically apply to all child teams.
-    </em>
-  </p>
+    </div>
+
+    <button type="button" id="add-url-btn" class="mt-3 ta-btn-secondary inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium">
+      Add Another URL
+    </button>
+    <p class="mt-2 text-xs text-gray-500">
+      Enter parent project URLs whose sub-projects should be grouped as Personal Projects in team dashboard analytics.
+      Parent-team URLs are inherited by child teams.
+    </p>
+  </div>
 </div>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    const container = document.getElementById('personal-project-urls-container');
-    const addBtn = document.getElementById('add-url-btn');
-    let urlIndex = container.querySelectorAll('.url-input-row').length;
-    
-    // Function to update Remove button visibility
+    var container = document.getElementById('personal-project-urls-container');
+    var addBtn = document.getElementById('add-url-btn');
+    if (!container || !addBtn) return;
+
+    var urlIndex = container.querySelectorAll('.ta-url-input-row').length;
+
+    function setValidationMessage(resultSpan, kind, message) {
+      if (!resultSpan) return;
+      var klass = 'text-xs ';
+      if (kind === 'ok') klass += 'text-emerald-600';
+      else if (kind === 'error') klass += 'text-red-600';
+      else klass += 'text-gray-500';
+      resultSpan.className = 'ta-url-validation-result ' + klass;
+      resultSpan.textContent = message;
+    }
+
     function updateRemoveButtons() {
-      const rows = container.querySelectorAll('.url-input-row');
-      rows.forEach(row => {
-        const removeBtn = row.querySelector('.remove-url-btn');
-        if (rows.length > 1) {
-          removeBtn.style.display = 'inline-block';
-        } else {
-          removeBtn.style.display = 'none';
-        }
+      var rows = container.querySelectorAll('.ta-url-input-row');
+      rows.forEach(function(row) {
+        var removeBtn = row.querySelector('.ta-url-remove-btn');
+        if (!removeBtn) return;
+        removeBtn.classList.toggle('hidden', rows.length <= 1);
       });
     }
-    
-    // Add URL button
-    if (addBtn) {
-      addBtn.addEventListener('click', function() {
-        const newRow = document.createElement('span');
-        newRow.className = 'url-input-row';
-        newRow.dataset.index = urlIndex++;
-        newRow.style.display = 'block';
-        newRow.style.marginBottom = '5px';
-        
-        newRow.innerHTML = `
-          <input type="text" name="ta_team[personal_project_urls][]" 
-                 class="url-input" size="60" 
-                 placeholder="http://0.0.0.0:3000/projects/iot-team" />
-          <button type="button" class="validate-url-btn button" style="margin-left: 10px;">Validate</button>
-          <button type="button" class="remove-url-btn button" style="margin-left: 5px;">Remove</button>
-          <span class="url-validation-result" style="margin-left: 10px;"></span>
-        `;
-        
-        container.appendChild(newRow);
-        updateRemoveButtons();
-        attachValidateHandler(newRow);
-        attachRemoveHandler(newRow);
-      });
-    }
-    
-    // Validate URL handler
+
     function attachValidateHandler(row) {
-      const validateBtn = row.querySelector('.validate-url-btn');
-      const urlInput = row.querySelector('.url-input');
-      const resultSpan = row.querySelector('.url-validation-result');
-      
-      if (validateBtn && urlInput && resultSpan) {
-        validateBtn.addEventListener('click', function() {
-          const url = urlInput.value.trim();
-          
-          if (!url) {
-            resultSpan.innerHTML = '<span style="color: #999;">No URL provided</span>';
-            return;
-          }
-          
-          // Show loading state
-          resultSpan.innerHTML = '<span style="color: #999;">Validating...</span>';
-          validateBtn.disabled = true;
-          
-          // Send AJAX request
-          fetch('<%= validate_url_admin_ta_teams_path %>', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: JSON.stringify({ url: url })
-          })
-          .then(response => response.json())
-          .then(data => {
+      var validateBtn = row.querySelector('.ta-url-validate-btn');
+      var urlInput = row.querySelector('.ta-url-input');
+      var resultSpan = row.querySelector('.ta-url-validation-result');
+      if (!(validateBtn && urlInput && resultSpan)) return;
+
+      validateBtn.addEventListener('click', function() {
+        var url = urlInput.value.trim();
+        if (!url) {
+          setValidationMessage(resultSpan, 'neutral', 'No URL provided');
+          return;
+        }
+
+        setValidationMessage(resultSpan, 'neutral', 'Validating...');
+        validateBtn.disabled = true;
+
+        fetch('<%= validate_url_admin_ta_teams_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+          },
+          body: JSON.stringify({ url: url })
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
             validateBtn.disabled = false;
             if (data.valid) {
-              resultSpan.innerHTML = '<span style="color: #28a745;">✓ Valid - Project: ' + data.project_name + '</span>';
+              setValidationMessage(resultSpan, 'ok', 'Valid - Project: ' + data.project_name);
             } else {
-              resultSpan.innerHTML = '<span style="color: #dc3545;">✗ ' + data.error + '</span>';
+              setValidationMessage(resultSpan, 'error', data.error || 'Validation failed');
             }
           })
-          .catch(error => {
+          .catch(function() {
             validateBtn.disabled = false;
-            resultSpan.innerHTML = '<span style="color: #dc3545;">✗ Validation failed</span>';
-            console.error('Validation error:', error);
+            setValidationMessage(resultSpan, 'error', 'Validation failed');
           });
-        });
-      }
+      });
     }
-    
-    // Remove URL handler
+
     function attachRemoveHandler(row) {
-      const removeBtn = row.querySelector('.remove-url-btn');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', function() {
-          row.remove();
-          updateRemoveButtons();
-        });
-      }
+      var removeBtn = row.querySelector('.ta-url-remove-btn');
+      if (!removeBtn) return;
+
+      removeBtn.addEventListener('click', function() {
+        row.remove();
+        updateRemoveButtons();
+      });
     }
-    
-    // Attach handlers to existing rows
-    container.querySelectorAll('.url-input-row').forEach(row => {
+
+    addBtn.addEventListener('click', function() {
+      var row = document.createElement('div');
+      row.className = 'ta-url-input-row flex flex-col gap-2 sm:flex-row sm:items-center';
+      row.dataset.index = urlIndex++;
+      row.innerHTML = [
+        '<input type="text" name="ta_team[personal_project_urls][]" class="ta-url-input flex-1" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
+        '<button type="button" class="ta-url-validate-btn ta-btn-success inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Validate</button>',
+        '<button type="button" class="ta-url-remove-btn ta-btn-danger inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Remove</button>',
+        '<span class="ta-url-validation-result text-xs text-gray-500"></span>'
+      ].join('');
+
+      container.appendChild(row);
+      attachValidateHandler(row);
+      attachRemoveHandler(row);
+      updateRemoveButtons();
+    });
+
+    container.querySelectorAll('.ta-url-input-row').forEach(function(row) {
       attachValidateHandler(row);
       attachRemoveHandler(row);
     });
-    
+
     updateRemoveButtons();
   });
 </script>

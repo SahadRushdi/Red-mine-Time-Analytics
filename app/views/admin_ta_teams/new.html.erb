@@ -1,9 +1,31 @@
 <% html_title "New Team" %>
 
-<h2>New Team</h2>
-
-<%= form_for @team, url: admin_ta_teams_path, html: { class: 'tabular' } do |f| %>
-  <%= render partial: 'form', locals: { f: f } %>
-  <%= submit_tag l(:button_create) %>
-  <%= link_to l(:button_cancel), admin_ta_teams_path %>
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Create New Team</h2>
+      <p class="text-sm text-gray-500">Create a team and configure its hierarchy and personal project grouping.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-6">
+    <%= form_for @team, url: admin_ta_teams_path, html: { class: 'space-y-6', id: 'ta-team-form' } do |f| %>
+      <%= render partial: 'form', locals: { f: f } %>
+      <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+        <%= link_to l(:button_cancel), admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+        <%= f.submit l(:button_create), class: 'ta-btn-primary inline-flex items-center rounded-lg px-5 py-2 text-sm font-medium' %>
+      </div>
+    <% end %>
+  </div>
+</div>

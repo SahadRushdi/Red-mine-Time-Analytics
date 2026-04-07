@@ -1,100 +1,339 @@
 <% html_title "Team Details" %>
 
-<div class="contextual">
-  <%= link_to 'Edit', edit_admin_ta_team_path(@team), class: 'icon icon-edit' %>
-  <%= link_to 'Delete', admin_ta_team_path(@team), method: :delete, 
-              data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
-  <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'icon icon-cancel' %>
-</div>
-
-<h2><%= @team.name %></h2>
-
-<div class="box">
-  <p><strong>Full Path:</strong> <%= @team.full_path %></p>
-  <% if @team.description.present? %>
-    <p><strong>Description:</strong> <%= @team.description %></p>
-  <% end %>
-  <% if @team.parent_team %>
-    <p><strong>Parent Team:</strong> <%= link_to @team.parent_team.name, admin_ta_team_path(@team.parent_team) %></p>
-  <% end %>
-</div>
-
-<h3>Team Members (<%= @memberships.count %>)</h3>
-<div class="contextual">
-  <%= link_to 'Manage Members', admin_ta_team_memberships_path(@team), class: 'icon icon-user' %>
-</div>
-
-<% if @memberships.any? %>
-  <table class="list">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Role</th>
-        <th>Start Date</th>
-        <th>End Date</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @memberships.limit(10).each do |membership| %>
-        <tr>
-          <td><%= link_to membership.user.name, user_path(membership.user) %></td>
-          <td><%= membership.role.titleize %></td>
-          <td><%= format_date(membership.start_date) %></td>
-          <td><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></td>
-          <td>
-            <% if membership.active? %>
-              <span class="badge badge-success">Active</span>
-            <% else %>
-              <span class="badge">Inactive</span>
-            <% end %>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-  <% if @memberships.count > 10 %>
-    <p><%= link_to "View all #{@memberships.count} members", admin_ta_team_memberships_path(@team) %></p>
-  <% end %>
-<% else %>
-  <p class="nodata">No team members</p>
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
 
-<h3>Assigned Projects (<%= @projects.count %>)</h3>
-<div class="contextual">
-  <%= link_to 'Manage Projects', admin_ta_team_team_projects_path(@team), class: 'icon icon-projects' %>
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= h(@team.name) %></h2>
+      <p class="text-sm text-gray-500">Team details, recent memberships, and assigned projects.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'Edit Team', edit_admin_ta_team_path(@team), class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <%= link_to 'Delete Team', admin_ta_team_path(@team), method: :delete, data: { confirm: 'Are you sure?' }, class: 'ta-btn-danger inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Full Path</p>
+        <p class="mt-1 text-sm font-medium text-gray-900"><%= h(@team.full_path) %></p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Parent Team</p>
+        <p class="mt-1 text-sm font-medium text-gray-900">
+          <% if @team.parent_team %>
+            <%= link_to @team.parent_team.name, admin_ta_team_path(@team.parent_team), class: 'text-blue-600 hover:text-blue-700 hover:underline' %>
+          <% else %>
+            Root Team
+          <% end %>
+        </p>
+      </div>
+      <% if @team.description.present? %>
+        <div class="md:col-span-2">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Description</p>
+          <p class="mt-1 text-sm text-gray-700"><%= h(@team.description) %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h3 class="font-semibold text-gray-900">Team Members (<%= @memberships.count %>)</h3>
+        <p class="text-xs text-gray-500">Showing latest 10 memberships</p>
+      </div>
+      <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <input type="text" id="ta-team-members-search" placeholder="Search name, email, role, or status..."
+               class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+               oninput="filterTeamMembersRows()">
+      </div>
+    </div>
+
+    <% if @memberships.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Name</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Role</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @memberships.limit(10).each do |membership| %>
+              <% role_label = membership.lead? ? 'Team Lead' : 'Team Member' %>
+              <% status_label = membership.active? ? 'Active' : 'Inactive' %>
+              <% search_text = [membership.user.name, membership.user.mail, role_label, status_label].join(' ').downcase %>
+              <tr class="ta-team-members-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= h(search_text) %>"
+                  data-membership-id="<%= membership.id %>">
+                <td class="px-4 py-3">
+                  <%= link_to membership.user.name, user_path(membership.user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= h(membership.user.mail) %></td>
+                <td class="px-4 py-3">
+                  <% if membership.lead? %>
+                    <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                  <% else %>
+                    <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= membership.start_date ? format_date(membership.start_date) : '—' %></td>
+                <td class="px-4 py-3 text-gray-600"><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></td>
+                <td class="px-4 py-3">
+                  <% if membership.active? %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                  <% else %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="inline-flex items-center justify-end gap-1">
+                    <button type="button"
+                            onclick="event.stopPropagation(); toggleTeamMemberInlineEdit(<%= membership.id %>)"
+                            class="ta-inline-icon-btn p-1 text-blue-500 hover:text-blue-700"
+                            title="Edit">
+                      <span class="material-icons ta-inline-material-icon">edit</span>
+                    </button>
+                    <button type="button"
+                            onclick="event.stopPropagation(); teamMembersDelete(<%= membership.id %>, '<%= admin_ta_team_membership_path(@team, membership) %>', '<%= form_authenticity_token %>')"
+                            class="ta-inline-icon-btn p-1 text-red-400 hover:text-red-600"
+                            title="Delete">
+                      <span class="material-icons ta-inline-material-icon">delete</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr id="ta-team-member-edit-<%= membership.id %>" class="hidden bg-blue-50 border-b border-blue-100">
+                <td colspan="7" class="px-4 py-3">
+                  <%= form_tag admin_ta_team_membership_path(@team, membership), method: :patch, class: 'flex flex-wrap items-end gap-3', onsubmit: 'event.stopPropagation()' do %>
+                    <input type="hidden" name="ta_team_membership[user_id]" value="<%= membership.user_id %>" />
+                    <div>
+                      <label class="mb-1 block text-sm font-medium text-gray-500">Role</label>
+                      <select name="ta_team_membership[role]" class="ta-team-select !w-44">
+                        <option value="member" <%= 'selected' if membership.role == 'member' %>>Team Member</option>
+                        <option value="lead" <%= 'selected' if membership.role == 'lead' %>>Team Lead</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-sm font-medium text-gray-500">Start Date</label>
+                      <input type="date" name="ta_team_membership[start_date]" value="<%= membership.start_date %>" class="ta-team-field !w-44" />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-sm font-medium text-gray-500">End Date</label>
+                      <input type="date" name="ta_team_membership[end_date]" value="<%= membership.end_date %>" class="ta-team-field !w-44" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button type="submit" class="ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Save</button>
+                      <button type="button"
+                              onclick="event.stopPropagation(); toggleTeamMemberInlineEdit(<%= membership.id %>)"
+                              class="ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Cancel</button>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if @memberships.count > 10 %>
+        <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
+          Showing 10 of <%= @memberships.count %> memberships.
+          <%= link_to "View all #{@memberships.count} members", admin_ta_team_memberships_path(@team), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-10 text-center text-sm text-gray-500">No team members found.</div>
+    <% end %>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h3 class="font-semibold text-gray-900">Assigned Projects (<%= @projects.count %>)</h3>
+        <p class="text-xs text-gray-500">Showing latest 10 project assignments</p>
+      </div>
+      <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <input type="text" id="ta-team-projects-search" placeholder="Search project or status..."
+               class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+               oninput="filterTeamProjectsRows()">
+        <%= link_to 'Manage Projects', admin_ta_team_team_projects_path(@team), class: 'ta-btn-secondary inline-flex h-[44px] items-center justify-center rounded-lg px-4 text-sm font-medium' %>
+      </div>
+    </div>
+
+    <% if @projects.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @projects.limit(10).each do |team_project| %>
+              <% status_label = team_project.active? ? 'Active' : 'Inactive' %>
+              <% search_text = [team_project.project.name, status_label].join(' ').downcase %>
+              <tr class="ta-team-projects-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= h(search_text) %>">
+                <td class="px-4 py-3">
+                  <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
+                <td class="px-4 py-3">
+                  <% if team_project.active? %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                  <% else %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if @projects.count > 10 %>
+        <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
+          Showing 10 of <%= @projects.count %> project assignments.
+          <%= link_to "View all #{@projects.count} projects", admin_ta_team_team_projects_path(@team), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-10 text-center text-sm text-gray-500">No assigned projects found.</div>
+    <% end %>
+  </div>
 </div>
 
-<% if @projects.any? %>
-  <table class="list">
-    <thead>
-      <tr>
-        <th>Project</th>
-        <th>Start Date</th>
-        <th>End Date</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @projects.limit(10).each do |team_project| %>
-        <tr>
-          <td><%= link_to team_project.project.name, project_path(team_project.project) %></td>
-          <td><%= format_date(team_project.start_date) %></td>
-          <td><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
-          <td>
-            <% if team_project.active? %>
-              <span class="badge badge-success">Active</span>
-            <% else %>
-              <span class="badge">Inactive</span>
-            <% end %>
-          </td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-  <% if @projects.count > 10 %>
-    <p><%= link_to "View all #{@projects.count} projects", admin_ta_team_team_projects_path(@team) %></p>
-  <% end %>
-<% else %>
-  <p class="nodata">No assigned projects</p>
-<% end %>
+<button id="taTeamMembersDeleteButton" data-modal-target="taTeamMembersDeleteModal" data-modal-toggle="taTeamMembersDeleteModal" type="button" class="hidden"></button>
+<div id="taTeamMembersDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              data-modal-hide="taTeamMembersDeleteModal"
+              onclick="teamMembersCloseDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500">Are you sure you want to delete this member assignment?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="teamMembersConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+          Delete
+        </button>
+        <button data-modal-hide="taTeamMembersDeleteModal"
+                type="button"
+                onclick="teamMembersCloseDeleteModal()"
+                class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleTeamMemberInlineEdit(membershipId) {
+    var row = document.getElementById('ta-team-member-edit-' + membershipId);
+    if (!row) return;
+    var shouldOpen = row.classList.contains('hidden');
+    document.querySelectorAll('[id^="ta-team-member-edit-"]').forEach(function(editRow) {
+      editRow.classList.add('hidden');
+    });
+    if (shouldOpen) row.classList.remove('hidden');
+  }
+
+  var teamMembersPendingDelete = null;
+
+  function teamMembersOpenDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamMembersCloseDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamMembersDelete(membershipId, url, token) {
+    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token };
+    var trigger = document.getElementById('taTeamMembersDeleteButton');
+    if (trigger) {
+      trigger.click();
+      setTimeout(function() {
+        var modal = document.getElementById('taTeamMembersDeleteModal');
+        if (modal && modal.classList.contains('hidden')) teamMembersOpenDeleteModal();
+      }, 0);
+    } else {
+      teamMembersOpenDeleteModal();
+    }
+  }
+
+  function teamMembersConfirmDelete() {
+    if (!teamMembersPendingDelete) return;
+    teamMembersCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = teamMembersPendingDelete.url;
+    [['authenticity_token', teamMembersPendingDelete.token], ['_method', 'DELETE']].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function filterRowsByInput(inputId, rowSelector) {
+    var input = document.getElementById(inputId);
+    var query = input ? input.value.toLowerCase().trim() : '';
+    document.querySelectorAll(rowSelector).forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      row.style.display = !query || text.indexOf(query) !== -1 ? '' : 'none';
+      if (row.classList.contains('ta-team-members-row') && row.style.display === 'none') {
+        var membershipId = row.getAttribute('data-membership-id');
+        var editRow = membershipId ? document.getElementById('ta-team-member-edit-' + membershipId) : null;
+        if (editRow) editRow.classList.add('hidden');
+      }
+    });
+  }
+
+  function filterTeamMembersRows() {
+    filterRowsByInput('ta-team-members-search', '.ta-team-members-row');
+  }
+
+  function filterTeamProjectsRows() {
+    filterRowsByInput('ta-team-projects-search', '.ta-team-projects-row');
+  }
+</script>
