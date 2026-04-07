@@ -16,6 +16,7 @@ class AdminTaTeamsController < ApplicationController
     @team_open_hiring_counts = TaHiringNeed.open.group(:team_id).count
     @active_memberships = TaTeamMembership.active.includes(:user, :team).references(:user)
                                         .order('users.firstname ASC, users.lastname ASC')
+    @team_active_memberships_map = @active_memberships.group_by(&:team_id)
     @allocated_user_ids = @active_memberships.map(&:user_id).uniq
     @unallocated_users = User.active.sorted.where.not(id: @allocated_user_ids)
     @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_priority

@@ -4,81 +4,9 @@
   <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
   <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
-
-<style>
-  /* Critical first-paint styles to reduce hierarchy CLS before full style block is parsed */
-  .ta-team-item {
-    margin-bottom: 0.5rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    background: #ffffff;
-    padding: 0.75rem;
-    min-height: 56px;
-    contain: layout paint;
-  }
-  .ta-team-item.level-1 { margin-left: 1rem; }
-  .ta-team-item.level-2 { margin-left: 2rem; }
-  .ta-team-item.level-3 { margin-left: 3rem; }
-  .ta-team-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    min-height: 40px;
-  }
-  .ta-team-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 0;
-    flex: 1;
-  }
-  .ta-team-right {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1rem;
-    flex-wrap: nowrap;
-    white-space: nowrap;
-    min-width: 420px;
-  }
-  .ta-team-name {
-    margin-right: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #1f2937;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ta-team-count-badge {
-    border-radius: 9999px;
-    background: #e5e7eb;
-    color: #374151;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
-  }
-  .ta-team-hiring-badge {
-    border-radius: 9999px;
-    background: #fee2e2;
-    border: 1px solid #fca5a5;
-    color: #dc2626;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
-  }
-  .ta-team-action-content {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-  .ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
-</style>
 
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -102,7 +30,7 @@
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
-            <%= ta_team_tree(@root_teams, 0, @team_children_map, @team_active_member_counts, @team_open_hiring_counts) %>
+            <%= ta_team_tree(@root_teams, 0, @team_children_map, @team_active_member_counts, @team_open_hiring_counts, @team_active_memberships_map) %>
           <% end %>
         </div>
       </div>
@@ -291,7 +219,7 @@
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-    <div class="flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3" style="margin-bottom: -1px;">
+    <div class="ta-team-history-tabs-header flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3">
       <ul class="ts-tab-group flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
         <li class="me-2">
           <button type="button" id="team-history-tab-vacancy" data-team-history-tab-target="team-history-panel-vacancy"
@@ -550,169 +478,6 @@
   </div>
 </div>
 
-<style>
-  .ta-team-item {
-    margin-bottom: 0.5rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    background: #ffffff;
-    padding: 0.75rem;
-    min-height: 56px;
-    contain: layout paint;
-  }
-
-  .ta-stable-scroll {
-    scrollbar-gutter: stable;
-  }
-
-  .ta-team-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-height: 40px; }
-  .ta-team-left { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-  .ta-team-right { display: flex; align-items: center; gap: 1rem; white-space: nowrap; flex-wrap: nowrap; justify-content: flex-end; min-width: 420px; }
-
-  .ta-team-item.level-1 { margin-left: 1rem; }
-  .ta-team-item.level-2 { margin-left: 2rem; }
-  .ta-team-item.level-3 { margin-left: 3rem; }
-
-  .ta-team-name {
-    margin-right: 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #1f2937;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ta-team-count-badge {
-    border-radius: 9999px;
-    background: #e5e7eb;
-    color: #374151;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .ta-team-hiring-badge {
-    border-radius: 9999px;
-    background: #fee2e2;
-    border: 1px solid #fca5a5;
-    color: #dc2626;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    padding: 0.25rem 0.5rem;
-  }
-
-  .ta-team-action { font-size: 0.9rem; font-weight: 500; color: #2563eb; text-decoration: none; }
-  .ta-team-action-content { display: inline-flex; align-items: center; gap: 0.25rem; }
-  .ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
-
-  .ta-team-action:hover { text-decoration: underline; }
-  .ta-team-action-delete { color: #dc2626; }
-
-  /* Match My Time dropdown fix: remove blue borders on dropdown option buttons */
-  [id^="assign-team-dropdown-"] button,
-  [id^="assign-team-dropdown-"] button:hover,
-  [id^="assign-team-dropdown-"] button:focus,
-  [id^="assign-team-dropdown-"] button:active,
-  [id^="assign-role-dropdown-"] button,
-  [id^="assign-role-dropdown-"] button:hover,
-  [id^="assign-role-dropdown-"] button:focus,
-  [id^="assign-role-dropdown-"] button:active,
-  #hiring-team-dropdown button,
-  #hiring-team-dropdown button:hover,
-  #hiring-team-dropdown button:focus,
-  #hiring-team-dropdown button:active,
-  #hiring-priority-dropdown button,
-  #hiring-priority-dropdown button:hover,
-  #hiring-priority-dropdown button:focus,
-  #hiring-priority-dropdown button:active {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  [id^="assign-team-dropdown-"] button:hover,
-  [id^="assign-role-dropdown-"] button:hover,
-  [id^="assign-team-dropdown-"] button:active:hover,
-  [id^="assign-role-dropdown-"] button:active:hover,
-  [id^="assign-team-dropdown-"] button:hover:active,
-  [id^="assign-role-dropdown-"] button:hover:active,
-  [id^="assign-team-dropdown-"] button:focus:hover,
-  [id^="assign-role-dropdown-"] button:focus:hover,
-  [id^="assign-team-dropdown-"] button[aria-selected="true"],
-  [id^="assign-role-dropdown-"] button[aria-selected="true"],
-  [id^="assign-team-dropdown-"] button:focus-visible,
-  [id^="assign-role-dropdown-"] button:focus-visible,
-  [id^="assign-team-dropdown-"] button:focus,
-  [id^="assign-role-dropdown-"] button:focus,
-  #hiring-team-dropdown button:hover,
-  #hiring-priority-dropdown button:hover,
-  #hiring-team-dropdown button:focus-visible,
-  #hiring-priority-dropdown button:focus-visible,
-  #hiring-team-dropdown button:focus,
-  #hiring-priority-dropdown button:focus {
-    border-color: transparent !important;
-    background-color: #f3f4f6 !important;
-    color: #111827 !important;
-  }
-
-  [id^="assign-team-dropdown-"] button::-moz-focus-inner,
-  [id^="assign-role-dropdown-"] button::-moz-focus-inner,
-  #hiring-team-dropdown button::-moz-focus-inner,
-  #hiring-priority-dropdown button::-moz-focus-inner {
-    border: 0 !important;
-  }
-
-  .ta-hiring-submit-btn {
-    border-radius: 0.5rem !important;
-  }
-
-  .ta-unallocated-member-card {
-    cursor: grab;
-  }
-
-  .ta-unallocated-member-card:active {
-    cursor: grabbing;
-  }
-
-  .ta-unallocated-member-card.ta-dragging {
-    opacity: 0.6;
-  }
-
-  .ta-member-card-toggle,
-  .ta-member-card-toggle:hover,
-  .ta-member-card-toggle:active,
-  .ta-member-card-toggle:focus,
-  .ta-member-card-toggle:focus-visible {
-    border: 0 !important;
-    outline: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    background-image: none !important;
-    color: inherit !important;
-    text-shadow: none !important;
-  }
-
-  .ta-member-card-toggle::-moz-focus-inner {
-    border: 0 !important;
-  }
-
-  .ta-team-dropzone.ta-dropzone-hover {
-    border-color: #3b82f6 !important;
-    box-shadow: inset 0 0 0 1px #3b82f6;
-    background-color: #eff6ff;
-  }
-
-  @media (max-width: 1024px) {
-    .ta-team-row { align-items: flex-start; flex-direction: column; }
-    .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
-    .ta-inline-assignment-form {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
 
 <script type="text/javascript">
   function resetVacancyHistorySortIcons(activeColumn) {
@@ -909,6 +674,29 @@
     });
   }
 
+  function setupTeamMemberToggles() {
+    document.querySelectorAll('[data-ta-member-toggle="true"]').forEach(function(button) {
+      var targetId = button.getAttribute('data-collapse-toggle');
+      if (!targetId) return;
+
+      var target = document.getElementById(targetId);
+      var icon = button.querySelector('[data-ta-member-toggle-icon="true"]');
+      if (!target || !icon) return;
+
+      function syncState() {
+        var expanded = !target.classList.contains('hidden');
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        icon.style.transform = expanded ? 'rotate(90deg)' : '';
+      }
+
+      button.addEventListener('click', function() {
+        setTimeout(syncState, 0);
+      });
+
+      syncState();
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     function closeAllDropdowns() {
       document.querySelectorAll('[data-ta-dropdown-menu="true"]').forEach(function(dropdown) {
@@ -1012,6 +800,7 @@
 
     resetVacancyHistorySortIcons('position');
     setupTeamDragAndDrop();
+    setupTeamMemberToggles();
 
     // Keep initial server-rendered tab state to avoid first-paint layout mutation
   });

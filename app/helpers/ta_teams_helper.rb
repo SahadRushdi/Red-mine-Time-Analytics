@@ -1,11 +1,15 @@
 module TaTeamsHelper
-  def ta_team_tree(teams, level = 0, children_map = nil, active_member_counts = nil, open_hiring_counts = nil)
+  def ta_team_tree(teams, level = 0, children_map = nil, active_member_counts = nil, open_hiring_counts = nil, team_memberships_map = nil)
     children_map ||= {}
     active_member_counts ||= {}
     open_hiring_counts ||= {}
+    team_memberships_map ||= {}
 
     html = ''.html_safe
     teams.each do |team|
+      team_memberships = Array(team_memberships_map[team.id]).select { |membership| membership.user.present? }
+      members_panel_id = "ta-team-members-#{team.id}"
+
       html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", data: { team_id: team.id }) do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
@@ -15,6 +19,18 @@ module TaTeamsHelper
         open_hires = open_hiring_counts[team.id].to_i
         if open_hires.positive?
           left_content << content_tag(:span, "#{open_hires} hiring", class: 'ta-team-hiring-badge')
+        end
+
+        if team_memberships.any?
+          left_content << content_tag(
+            :button,
+            content_tag(:span, 'Toggle members', class: 'sr-only') +
+            '<svg class="w-4 h-4 text-gray-400 inline-block transition-transform duration-200 ta-team-member-toggle-icon" data-ta-member-toggle-icon="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>'.html_safe,
+            type: 'button',
+            class: 'ta-team-member-toggle',
+            data: { collapse_toggle: members_panel_id, ta_member_toggle: 'true' },
+            aria: { expanded: 'false', controls: members_panel_id }
+          )
         end
 
         right_links = ''.html_safe
@@ -46,18 +62,58 @@ module TaTeamsHelper
           class: 'ta-team-action ta-team-action-projects'
         )
 
-        content_tag(:div, class: 'ta-team-row') do
+        team_row = content_tag(:div, class: 'ta-team-row') do
           left = content_tag(:div, left_content, class: 'ta-team-left')
           right = content_tag(:div, right_links, class: 'ta-team-right')
           left + right
         end
+
+        next team_row if team_memberships.empty?
+
+        member_chips = team_memberships.map { |membership| ta_team_member_chip(team, membership) }
+        members_panel = content_tag(:div, class: 'ta-team-members-panel hidden', id: members_panel_id) do
+          content_tag(:div, safe_join(member_chips), class: 'ta-team-members-list')
+        end
+
+        team_row + members_panel
       end
       child_teams = children_map[team.id] || []
       if child_teams.any?
-        html << ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts)
+        html << ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts, team_memberships_map)
       end
     end
     html
+  end
+
+  def ta_team_member_chip(team, membership)
+    user = membership.user
+    return ''.html_safe unless user
+
+    tooltip_id = "ta-team-member-tooltip-#{team.id}-#{user.id}"
+    display_name = user.firstname.presence || user.name
+    role_label = membership.lead? ? 'Team Lead' : 'Member'
+    chip_classes = 'ta-team-member-chip '
+    chip_classes += membership.lead? ? 'ta-team-member-chip--lead' : 'ta-team-member-chip--member'
+
+    trigger = content_tag(
+      :button,
+      content_tag(:span, ta_user_initials(user), class: 'ta-team-member-initials') +
+      content_tag(:span, h(display_name), class: 'ta-team-member-label') +
+      (membership.lead? ? content_tag(:span, ta_team_lead_icon, class: 'ta-team-member-lead-icon') : ''.html_safe),
+      type: 'button',
+      class: chip_classes,
+      data: { tooltip_target: tooltip_id, tooltip_placement: 'top' }
+    )
+
+    tooltip = content_tag(:div, id: tooltip_id, role: 'tooltip', class: 'ta-team-member-tooltip absolute z-10 invisible opacity-0 tooltip') do
+      content_tag(:div, class: 'ta-team-member-tooltip-content') do
+        content_tag(:div, h(user.name), class: 'ta-team-member-tooltip-name') +
+        content_tag(:div, h(user.mail), class: 'ta-team-member-tooltip-email') +
+        content_tag(:div, role_label, class: 'ta-team-member-tooltip-role')
+      end + content_tag(:div, ''.html_safe, class: 'tooltip-arrow', data: { popper_arrow: true })
+    end
+
+    content_tag(:div, trigger + tooltip, class: 'ta-team-member-chip-wrap')
   end
 
   def ta_team_breadcrumb(team)
@@ -120,5 +176,15 @@ module TaTeamsHelper
     else
       '<svg class="ta-team-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"></path></svg>'.html_safe
     end
+  end
+
+  def ta_team_lead_icon
+    '<svg fill="currentColor" viewBox="0 0 20 20"><path d="M5 3.5a.5.5 0 01.786-.41L10 6l4.214-2.91A.5.5 0 0115 3.5V8a2 2 0 01-2 2h-1.27l.55 3.3a.5.5 0 01-.493.7H8.213a.5.5 0 01-.493-.7L8.27 10H7a2 2 0 01-2-2V3.5zM7 15a1 1 0 100 2h6a1 1 0 100-2H7z"></path></svg>'.html_safe
+  end
+
+  def ta_user_initials(user)
+    parts = user.name.to_s.split(/\s+/).reject(&:blank?)
+    initials = parts.first(2).map { |part| part[0] }.join.upcase
+    initials.presence || user.name.to_s[0].to_s.upcase
   end
 end

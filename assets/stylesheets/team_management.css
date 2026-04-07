@@ -1,0 +1,366 @@
+.ta-team-item {
+  margin-bottom: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  padding: 0.75rem;
+  min-height: 56px;
+  contain: layout;
+}
+
+.ta-stable-scroll {
+  scrollbar-gutter: stable;
+}
+
+.ta-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 40px;
+}
+
+.ta-team-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.ta-team-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  min-width: 420px;
+}
+
+.ta-team-item.level-1 { margin-left: 1rem; }
+.ta-team-item.level-2 { margin-left: 2rem; }
+.ta-team-item.level-3 { margin-left: 3rem; }
+
+.ta-team-name {
+  margin-right: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ta-team-count-badge {
+  border-radius: 9999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+
+.ta-team-hiring-badge {
+  border-radius: 9999px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+
+.ta-team-action {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.ta-team-action-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
+.ta-team-action:hover { text-decoration: underline; }
+.ta-team-action-delete { color: #dc2626; }
+
+.ta-team-member-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #374151;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ta-team-member-toggle,
+.ta-team-member-toggle:hover,
+.ta-team-member-toggle:active,
+.ta-team-member-toggle:focus,
+.ta-team-member-toggle:focus-visible {
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  background-image: none !important;
+  color: #374151 !important;
+  text-shadow: none !important;
+}
+
+.ta-team-member-toggle:hover {
+  background: #f9fafb !important;
+}
+
+.ta-team-member-toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+}
+
+.ta-team-members-panel {
+  margin-top: 0.5rem;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+
+.ta-team-members-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ta-team-member-chip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.ta-team-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ta-team-member-chip,
+.ta-team-member-chip:hover,
+.ta-team-member-chip:active,
+.ta-team-member-chip:focus,
+.ta-team-member-chip:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  text-shadow: none !important;
+}
+
+.ta-team-member-chip--lead {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ta-team-member-chip--lead,
+.ta-team-member-chip--lead:hover,
+.ta-team-member-chip--lead:active,
+.ta-team-member-chip--lead:focus,
+.ta-team-member-chip--lead:focus-visible {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.ta-team-member-chip--member {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.ta-team-member-chip--member,
+.ta-team-member-chip--member:hover,
+.ta-team-member-chip--member:active,
+.ta-team-member-chip--member:focus,
+.ta-team-member-chip--member:focus-visible {
+  border-color: #d1d5db !important;
+  background: #f9fafb !important;
+  color: #374151 !important;
+}
+
+.ta-team-member-initials {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.ta-team-member-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-team-member-lead-icon {
+  display: inline-flex;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #f59e0b;
+}
+
+.ta-team-member-tooltip {
+  max-width: 190px;
+  border-radius: 0.5rem;
+  background: #020617;
+  padding: 0.375rem 0.5rem;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(2, 6, 23, 0.35);
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 80;
+}
+
+.ta-team-member-tooltip-content {
+  line-height: 1.05rem;
+}
+
+.ta-team-member-tooltip-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ta-team-member-tooltip-email {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ta-team-member-tooltip-role {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #93c5fd;
+}
+
+/* Match My Time dropdown fix: remove blue borders on dropdown option buttons */
+[id^="assign-team-dropdown-"] button,
+[id^="assign-team-dropdown-"] button:hover,
+[id^="assign-team-dropdown-"] button:focus,
+[id^="assign-team-dropdown-"] button:active,
+[id^="assign-role-dropdown-"] button,
+[id^="assign-role-dropdown-"] button:hover,
+[id^="assign-role-dropdown-"] button:focus,
+[id^="assign-role-dropdown-"] button:active,
+#hiring-team-dropdown button,
+#hiring-team-dropdown button:hover,
+#hiring-team-dropdown button:focus,
+#hiring-team-dropdown button:active,
+#hiring-priority-dropdown button,
+#hiring-priority-dropdown button:hover,
+#hiring-priority-dropdown button:focus,
+#hiring-priority-dropdown button:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[id^="assign-team-dropdown-"] button:hover,
+[id^="assign-role-dropdown-"] button:hover,
+[id^="assign-team-dropdown-"] button:active:hover,
+[id^="assign-role-dropdown-"] button:active:hover,
+[id^="assign-team-dropdown-"] button:hover:active,
+[id^="assign-role-dropdown-"] button:hover:active,
+[id^="assign-team-dropdown-"] button:focus:hover,
+[id^="assign-role-dropdown-"] button:focus:hover,
+[id^="assign-team-dropdown-"] button[aria-selected="true"],
+[id^="assign-role-dropdown-"] button[aria-selected="true"],
+[id^="assign-team-dropdown-"] button:focus-visible,
+[id^="assign-role-dropdown-"] button:focus-visible,
+[id^="assign-team-dropdown-"] button:focus,
+[id^="assign-role-dropdown-"] button:focus,
+#hiring-team-dropdown button:hover,
+#hiring-priority-dropdown button:hover,
+#hiring-team-dropdown button:focus-visible,
+#hiring-priority-dropdown button:focus-visible,
+#hiring-team-dropdown button:focus,
+#hiring-priority-dropdown button:focus {
+  border-color: transparent !important;
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+[id^="assign-team-dropdown-"] button::-moz-focus-inner,
+[id^="assign-role-dropdown-"] button::-moz-focus-inner,
+#hiring-team-dropdown button::-moz-focus-inner,
+#hiring-priority-dropdown button::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-hiring-submit-btn {
+  border-radius: 0.5rem !important;
+}
+
+.ta-unallocated-member-card {
+  cursor: grab;
+}
+
+.ta-unallocated-member-card:active {
+  cursor: grabbing;
+}
+
+.ta-unallocated-member-card.ta-dragging {
+  opacity: 0.6;
+}
+
+.ta-member-card-toggle,
+.ta-member-card-toggle:hover,
+.ta-member-card-toggle:active,
+.ta-member-card-toggle:focus,
+.ta-member-card-toggle:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+.ta-member-card-toggle::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-team-dropzone.ta-dropzone-hover {
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+  background-color: #eff6ff;
+}
+
+.ta-team-history-tabs-header {
+  margin-bottom: -1px;
+}
+
+@media (max-width: 1024px) {
+  .ta-team-row { align-items: flex-start; flex-direction: column; }
+  .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
+  .ta-inline-assignment-form {
+    grid-template-columns: 1fr;
+  }
+}

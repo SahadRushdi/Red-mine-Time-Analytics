@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     './app/views/**/*.html.erb',
+    './app/helpers/**/*.rb',
     './assets/javascripts/**/*.js',
     './node_modules/flowbite/**/*.js'
   ],
@@ -27,4 +28,3 @@ module.exports = {
     require('flowbite/plugin')
   ]
 }
-
