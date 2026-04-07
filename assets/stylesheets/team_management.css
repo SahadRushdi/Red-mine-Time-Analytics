@@ -500,15 +500,45 @@ button.ta-btn-danger,
 .ta-inline-icon-btn:focus,
 .ta-inline-icon-btn:focus-visible,
 .ta-inline-icon-btn:active {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
   border: 0 !important;
   background: transparent !important;
   outline: none !important;
   box-shadow: none !important;
   text-decoration: none !important;
+  opacity: 1 !important;
+  color: #60a5fa !important;
+}
+
+.ta-inline-icon-btn--danger,
+.ta-inline-icon-btn--danger:hover,
+.ta-inline-icon-btn--danger:focus,
+.ta-inline-icon-btn--danger:focus-visible,
+.ta-inline-icon-btn--danger:active {
+  color: #f87171 !important;
+}
+
+.ta-inline-icon-btn:hover,
+.ta-inline-icon-btn:focus,
+.ta-inline-icon-btn:focus-visible,
+.ta-inline-icon-btn:active {
+  color: #2563eb !important;
+}
+
+.ta-inline-icon-btn--danger:hover,
+.ta-inline-icon-btn--danger:focus,
+.ta-inline-icon-btn--danger:focus-visible,
+.ta-inline-icon-btn--danger:active {
+  color: #dc2626 !important;
 }
 
 .ta-inline-material-icon {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   font-family: 'Material Icons';
   font-weight: normal;
@@ -521,6 +551,26 @@ button.ta-btn-danger,
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+.ta-team-member-view {
+  min-height: 1.75rem;
+}
+
+.ta-team-member-edit {
+  min-height: 1.75rem;
+}
+
+.ta-team-inline-control {
+  min-width: 9rem;
+}
+
+.ta-team-role-button {
+  height: 44px !important;
+}
+
+.ta-team-role-dropdown {
+  min-width: 180px;
 }
 
 #taTeamMembersDeleteModal button,
