@@ -1,0 +1,18 @@
+Hi Team,
+
+This is a gentle reminder to review your time entries for the week <%= I18n.l(@week_start) %> - <%= I18n.l(@week_end) %> and ensure they are up to date.
+If your name is listed below, please take a moment to check your logged time and update any missing entries if needed.
+
+Employees to review their time logs:
+<% @users.each do |user| %>
+<%= "#{user[:firstname]} #{user[:lastname]}".strip %> (<%= format('%.2f', user[:hours]) %>h)
+<% end %>
+
+Kindly complete any updates by <%= I18n.l(@due_date) %> EOD to help maintain accurate reporting.
+If your time entries are already up to date or you were on leave during this period, you can ignore this message.
+
+Thanks for your support in keeping our records accurate.
+Best regards,
+Time Analytics System
+
+(This is an automated email. Please do not reply.)

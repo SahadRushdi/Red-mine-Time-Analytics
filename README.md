@@ -221,6 +221,32 @@ Consistent formatting across tables, charts, and exports ensures clarity and pro
 
 ## Development
 
+### Weekly Time-Log Reminder (Cron + Email)
+
+The plugin includes a rake task that checks the **previous week (Monday-Friday)** and sends a reminder email to users whose logged time is below or equal to:
+
+`(working_days_in_week * 8) / 2`
+
+Working-day checks reuse the plugin’s existing holiday/weekend logic.
+
+#### Rake task
+
+From Redmine root:
+
+```bash
+bundle exec rake redmine_time_analytics:send_weekly_time_log_reminders RAILS_ENV=production
+```
+
+The task only executes on **Monday or Tuesday**. On other days, it exits as skipped.
+
+#### Suggested cron setup
+
+Run every Monday and Tuesday at 08:00:
+
+```cron
+0 8 * * 1,2 cd /path/to/redmine && bundle exec rake redmine_time_analytics:send_weekly_time_log_reminders RAILS_ENV=production >> log/weekly_time_log_reminder.log 2>&1
+```
+
 ### File Structure
 ```
 redmine_time_analytics/

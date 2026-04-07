@@ -20,3 +20,14 @@ Redmine::Plugin.register :redmine_time_analytics do
     permission :view_time_analytics, { time_analytics: [:index, :individual_dashboard] }
   end
 end
+
+Rails.configuration.to_prepare do
+  next unless ENV['RTA_RUN_REMINDER_ON_SERVER_BOOT'] == '1'
+
+  begin
+    RedmineTimeAnalytics::WeeklyTimeLogReminder.run!(force_run: true)
+    Rails.logger.info('[redmine_time_analytics] Weekly reminder executed at server boot (forced).')
+  rescue => e
+    Rails.logger.error("[redmine_time_analytics] Weekly reminder boot execution failed: #{e.class} - #{e.message}")
+  end
+end
