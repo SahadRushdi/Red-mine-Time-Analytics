@@ -12,6 +12,9 @@ class AdminTaTeamMembershipsController < ApplicationController
   def index
     @active_memberships = @team.ta_team_memberships.active.includes(:user).order('start_date DESC')
     @inactive_memberships = @team.ta_team_memberships.inactive.includes(:user).order('end_date DESC')
+    @hierarchical_memberships = @team.current_hierarchical_members
+    @direct_member_ids = @active_memberships.map(&:user_id)
+    @inherited_memberships = @hierarchical_memberships.reject { |membership| @direct_member_ids.include?(membership.user_id) }
   end
 
   def new
