@@ -608,6 +608,7 @@
           <tbody>
             <% @issues_without_logs.each do |issue| %>
                 <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-issue-id="<%= issue.id %>"
                     data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
                     data-last-updated="<%= (@issue_last_activity[issue.id] || issue.updated_on).to_i %>">
                 <td class="px-4 py-3">
@@ -715,6 +716,10 @@
           </tbody>
         </table>
       </div>
+      <nav id="tep-unlogged-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Unlogged issues pagination">
+        <span id="tep-unlogged-pagination-info" class="text-sm text-gray-700"></span>
+        <ul id="tep-unlogged-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
+      </nav>
     <% else %>
       <div class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -790,19 +795,153 @@
       filterLoggedRows(query);
       return;
     }
+    tepApplyUnloggedPagination(false);
+  }
 
-    activePanel.querySelectorAll('.ts-issue-row').forEach(function(row) {
-      var text = row.getAttribute('data-search-text') || '';
-      var expandRow = row.nextElementSibling;
-      if (!query || text.includes(query)) {
-        row.style.display = '';
-      } else {
-        row.style.display = 'none';
-        if (expandRow && expandRow.id && expandRow.id.startsWith('issue-inline-row-')) {
-          expandRow.classList.add('hidden');
-        }
-      }
+  var tepUnloggedPagination = { currentPage: 1, perPage: 10 };
+
+  function tepGetUnloggedRows() {
+    var panel = document.getElementById('panel-recent-work');
+    if (!panel) return [];
+    return Array.from(panel.querySelectorAll('table.ts-table tbody tr.ts-issue-row'));
+  }
+
+  function tepGetUnloggedInlineRow(issueRow) {
+    if (!issueRow) return null;
+    var issueId = issueRow.getAttribute('data-issue-id');
+    if (!issueId) return null;
+    return document.getElementById('issue-inline-row-' + issueId);
+  }
+
+  function tepHideAllUnloggedInlineRows() {
+    document.querySelectorAll('[id^="issue-inline-row-"]').forEach(function(row) {
+      row.classList.add('hidden');
+      row.style.display = 'none';
     });
+  }
+
+  function tepCreateUnloggedPageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
+
+  function tepRenderUnloggedPaginationControls(totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('tep-unlogged-pagination');
+    var links = document.getElementById('tep-unlogged-pagination-links');
+    var info = document.getElementById('tep-unlogged-pagination-info');
+    if (!nav || !links || !info) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + ' issues';
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (tepUnloggedPagination.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(tepCreateUnloggedPageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: tepUnloggedPagination.currentPage === 1,
+      onClick: function() {
+        tepUnloggedPagination.currentPage -= 1;
+        tepApplyUnloggedPagination(true);
+      }
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === tepUnloggedPagination.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(tepCreateUnloggedPageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            tepUnloggedPagination.currentPage = pageNumber;
+            tepApplyUnloggedPagination(true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (tepUnloggedPagination.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(tepCreateUnloggedPageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: tepUnloggedPagination.currentPage === totalPages,
+      onClick: function() {
+        tepUnloggedPagination.currentPage += 1;
+        tepApplyUnloggedPagination(true);
+      }
+    }));
+  }
+
+  function tepApplyUnloggedPagination(preservePage) {
+    var query = (document.getElementById('ts-search-input').value || '').toLowerCase().trim();
+    var rows = tepGetUnloggedRows();
+    var matchedRows = rows.filter(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      return !query || text.includes(query);
+    });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / tepUnloggedPagination.perPage));
+    if (!preservePage) {
+      tepUnloggedPagination.currentPage = 1;
+    } else if (tepUnloggedPagination.currentPage > totalPages) {
+      tepUnloggedPagination.currentPage = totalPages;
+    }
+
+    tepHideAllUnloggedInlineRows();
+
+    var start = (tepUnloggedPagination.currentPage - 1) * tepUnloggedPagination.perPage;
+    var end = start + tepUnloggedPagination.perPage;
+    var currentPageRows = matchedRows.slice(start, end);
+    var visibleRowIds = {};
+    currentPageRows.forEach(function(row) {
+      var issueId = row.getAttribute('data-issue-id');
+      if (issueId) visibleRowIds[issueId] = true;
+    });
+
+    rows.forEach(function(row) {
+      var issueId = row.getAttribute('data-issue-id');
+      var shouldShow = !!(issueId && visibleRowIds[issueId]);
+      row.style.display = shouldShow ? '' : 'none';
+      var inlineRow = tepGetUnloggedInlineRow(row);
+      if (inlineRow && shouldShow) inlineRow.style.display = '';
+    });
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    tepRenderUnloggedPaginationControls(matchedRows.length, totalPages, startIndex, endIndex);
   }
 
   function resetLoggedRows() {
@@ -1035,17 +1174,24 @@
       return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
     });
 
-    rows.forEach(function(row) { tbody.appendChild(row); });
+    rows.forEach(function(row) {
+      var inlineRow = tepGetUnloggedInlineRow(row);
+      tbody.appendChild(row);
+      if (inlineRow) tbody.appendChild(inlineRow);
+    });
 
     if (sortIcon) {
       sortIcon.dataset.order = nextOrder;
       sortIcon.className = nextOrder === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
     }
+
+    tepApplyUnloggedPagination(true);
   }
 
   document.addEventListener('DOMContentLoaded', function() {
     var icon = document.getElementById('tep-unlogged-sort-icon');
     if (icon) icon.dataset.order = 'desc';
+    tepApplyUnloggedPagination(false);
   });
 
   document.addEventListener('click', function(e) {
