@@ -15,8 +15,8 @@
       <p class="text-sm text-gray-500">Update team details and personal project grouping URLs.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <%= link_to 'View Team', admin_ta_team_path(@team), class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
-      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <%= link_to 'View Team', admin_ta_team_path(@team), class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-100' %>
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-100' %>
     </div>
   </div>
 
@@ -24,8 +24,8 @@
     <%= form_for @team, url: admin_ta_team_path(@team), method: :put, html: { class: 'space-y-6', id: 'ta-team-form' } do |f| %>
       <%= render partial: 'form', locals: { f: f } %>
       <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
-        <%= link_to l(:button_cancel), admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
-        <%= f.submit l(:button_save), class: 'ta-btn-primary inline-flex items-center rounded-lg px-5 py-2 text-sm font-medium' %>
+        <%= link_to l(:button_cancel), admin_ta_teams_path, class: 'inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-100' %>
+        <%= f.submit l(:button_save), class: 'inline-flex h-10 items-center justify-center rounded-lg bg-blue-700 px-5 text-sm font-medium text-white hover:bg-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
       </div>
     <% end %>
   </div>

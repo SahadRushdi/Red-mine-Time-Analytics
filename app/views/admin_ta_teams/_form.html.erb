@@ -1,23 +1,58 @@
 <%= error_messages_for 'ta_team' %>
 
+<% parent_team_label = @team.parent_team ? @team.parent_team.name : '(None - Root Team)' %>
+
 <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
   <div>
     <%= f.label :name, 'Team Name', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-    <%= f.text_field :name, required: true, class: 'ta-team-field' %>
+    <%= f.text_field :name, required: true, class: 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500' %>
   </div>
 
   <div>
     <%= f.label :parent_team_id, 'Parent Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-    <%= f.select :parent_team_id,
-                 ta_team_select_options(@team.parent_team_id, [@team.id]),
-                 { include_blank: '(None - Root Team)' },
-                 { class: 'ta-team-select' } %>
+    <div class="relative">
+      <button type="button"
+              id="ta-parent-team-button"
+              data-ta-parent-team-toggle="true"
+              class="inline-flex h-[44px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+        <span id="ta-parent-team-label" class="truncate"><%= parent_team_label %></span>
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+      <div id="ta-parent-team-dropdown"
+           data-ta-parent-team-menu="true"
+           class="tep-activity-dropdown hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+        <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+          <li>
+            <button type="button"
+                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                    data-ta-parent-team-value=""
+                    data-ta-parent-team-label="(None - Root Team)">
+              (None - Root Team)
+            </button>
+          </li>
+          <% TaTeam.ordered_by_name.where.not(id: @team.id).each do |team| %>
+            <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+            <li>
+              <button type="button"
+                      class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                      data-ta-parent-team-value="<%= team.id %>"
+                      data-ta-parent-team-label="<%= h(team.name) %>">
+                <%= indent.html_safe %><%= h(team.name) %>
+              </button>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <%= f.hidden_field :parent_team_id, id: 'ta-team-parent-team-id' %>
+    </div>
     <p class="mt-1 text-xs text-gray-500">Select parent team to create a hierarchical structure.</p>
   </div>
 
   <div class="md:col-span-2">
     <%= f.label :description, 'Description', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-    <%= f.text_area :description, rows: 4, class: 'ta-team-textarea' %>
+    <%= f.text_area :description, rows: 4, class: 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500' %>
     <p class="mt-1 text-xs text-gray-500">Optional description of the team.</p>
   </div>
 
@@ -31,16 +66,16 @@
           <input type="text"
                  name="ta_team[personal_project_urls][]"
                  value="<%= h(url) %>"
-                 class="ta-url-input flex-1"
+                 class="ta-url-input flex-1 rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                  placeholder="http://0.0.0.0:3000/projects/iot-team" />
-          <button type="button" class="ta-url-validate-btn ta-btn-success inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Validate</button>
-          <button type="button" class="ta-url-remove-btn ta-btn-danger inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Remove</button>
+          <button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>
+          <button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>
           <span class="ta-url-validation-result text-xs text-gray-500"></span>
         </div>
       <% end %>
     </div>
 
-    <button type="button" id="add-url-btn" class="mt-3 ta-btn-secondary inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium">
+    <button type="button" id="add-url-btn" class="mt-3 inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-100">
       Add Another URL
     </button>
     <p class="mt-2 text-xs text-gray-500">
@@ -133,8 +168,8 @@
       row.dataset.index = urlIndex++;
       row.innerHTML = [
         '<input type="text" name="ta_team[personal_project_urls][]" class="ta-url-input flex-1" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
-        '<button type="button" class="ta-url-validate-btn ta-btn-success inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Validate</button>',
-        '<button type="button" class="ta-url-remove-btn ta-btn-danger inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium">Remove</button>',
+        '<button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>',
+        '<button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>',
         '<span class="ta-url-validation-result text-xs text-gray-500"></span>'
       ].join('');
 
@@ -150,5 +185,32 @@
     });
 
     updateRemoveButtons();
+
+    var parentTeamButton = document.getElementById('ta-parent-team-button');
+    var parentTeamDropdown = document.getElementById('ta-parent-team-dropdown');
+    var parentTeamLabel = document.getElementById('ta-parent-team-label');
+    var parentTeamInput = document.getElementById('ta-team-parent-team-id');
+
+    if (parentTeamButton && parentTeamDropdown && parentTeamLabel && parentTeamInput) {
+      parentTeamButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        parentTeamDropdown.classList.toggle('hidden');
+      });
+
+      parentTeamDropdown.querySelectorAll('[data-ta-parent-team-value]').forEach(function(option) {
+        option.addEventListener('click', function(event) {
+          event.preventDefault();
+          parentTeamInput.value = option.getAttribute('data-ta-parent-team-value') || '';
+          parentTeamLabel.textContent = option.getAttribute('data-ta-parent-team-label') || '';
+          parentTeamDropdown.classList.add('hidden');
+        });
+      });
+
+      document.addEventListener('click', function(event) {
+        if (!parentTeamButton.contains(event.target) && !parentTeamDropdown.contains(event.target)) {
+          parentTeamDropdown.classList.add('hidden');
+        }
+      });
+    }
   });
 </script>

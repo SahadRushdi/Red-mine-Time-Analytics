@@ -577,6 +577,17 @@ button.ta-btn-danger,
   overflow-y: visible !important;
 }
 
+.ta-url-action-button,
+.ta-url-action-button:hover,
+.ta-url-action-button:focus,
+.ta-url-action-button:focus-visible,
+.ta-url-action-button:active {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
 #taTeamMembersDeleteModal button,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
