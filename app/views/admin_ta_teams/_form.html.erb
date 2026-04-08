@@ -5,7 +5,7 @@
 <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
   <div>
     <%= f.label :name, 'Team Name', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-    <%= f.text_field :name, required: true, class: 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500' %>
+    <%= f.text_field :name, required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
   </div>
 
   <div>
@@ -14,7 +14,7 @@
       <button type="button"
               id="ta-parent-team-button"
               data-ta-parent-team-toggle="true"
-              class="inline-flex h-[44px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+              class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
         <span id="ta-parent-team-label" class="truncate"><%= parent_team_label %></span>
         <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -52,7 +52,7 @@
 
   <div class="md:col-span-2">
     <%= f.label :description, 'Description', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-    <%= f.text_area :description, rows: 4, class: 'block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500' %>
+    <%= f.text_area :description, rows: 4, class: 'ts-search-input !block !w-full !min-h-[110px] !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
     <p class="mt-1 text-xs text-gray-500">Optional description of the team.</p>
   </div>
 
@@ -66,7 +66,7 @@
           <input type="text"
                  name="ta_team[personal_project_urls][]"
                  value="<%= h(url) %>"
-                 class="ta-url-input flex-1 rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                 class="ta-url-input ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6] sm:!flex-1"
                  placeholder="http://0.0.0.0:3000/projects/iot-team" />
           <button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>
           <button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>
@@ -167,7 +167,7 @@
       row.className = 'ta-url-input-row flex flex-col gap-2 sm:flex-row sm:items-center';
       row.dataset.index = urlIndex++;
       row.innerHTML = [
-        '<input type="text" name="ta_team[personal_project_urls][]" class="ta-url-input flex-1" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
+        '<input type="text" name="ta_team[personal_project_urls][]" class="ta-url-input ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6] sm:!flex-1" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
         '<button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>',
         '<button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>',
         '<span class="ta-url-validation-result text-xs text-gray-500"></span>'

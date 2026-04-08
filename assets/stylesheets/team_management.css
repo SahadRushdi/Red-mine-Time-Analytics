@@ -410,6 +410,26 @@
   background: #ffffff;
 }
 
+.ta-url-input.ts-search-input,
+#ta-team-form .ta-url-input.ts-search-input {
+  height: 43px !important;
+  min-height: 43px !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  box-shadow: none !important;
+}
+
+.ta-url-input.ts-search-input:focus,
+.ta-url-input.ts-search-input:focus-visible,
+#ta-team-form .ta-url-input.ts-search-input:focus,
+#ta-team-form .ta-url-input.ts-search-input:focus-visible {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
+}
+
 .ta-team-textarea {
   min-height: 110px !important;
   resize: vertical;
