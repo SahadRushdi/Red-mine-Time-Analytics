@@ -357,10 +357,9 @@
   margin-bottom: -1px;
 }
 
-.ta-team-field,
-.ta-team-select,
-.ta-team-textarea,
-.ta-url-input {
+#ta-team-form .ta-team-form-control,
+#ta-team-form .ta-team-select,
+#ta-team-form .ta-team-textarea {
   display: block;
   width: 100%;
   border: 1px solid #d1d5db !important;
@@ -376,20 +375,26 @@
   outline: none !important;
 }
 
-.ta-team-field:focus,
-.ta-team-select:focus,
-.ta-team-textarea:focus,
-.ta-url-input:focus {
+#ta-team-form .ta-team-form-control:focus,
+#ta-team-form .ta-team-form-control:focus-visible,
+#ta-team-form .ta-team-select:focus,
+#ta-team-form .ta-team-select:focus-visible,
+#ta-team-form .ta-team-textarea:focus,
+#ta-team-form .ta-team-textarea:focus-visible {
   outline: none !important;
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
 }
 
-.ta-team-field:hover,
-.ta-team-select:hover,
-.ta-team-textarea:hover,
-.ta-url-input:hover {
+#ta-team-form .ta-team-form-control:hover,
+#ta-team-form .ta-team-select:hover,
+#ta-team-form .ta-team-textarea:hover {
   border-color: #9ca3af !important;
+}
+
+#ta-team-form .ta-team-form-control {
+  min-height: 43px !important;
+  height: 43px !important;
 }
 
 .ta-team-select {
@@ -408,26 +413,6 @@
 .ta-team-select option {
   color: #111827;
   background: #ffffff;
-}
-
-.ta-url-input.ts-search-input,
-#ta-team-form .ta-url-input.ts-search-input {
-  height: 43px !important;
-  min-height: 43px !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 0.5rem !important;
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  box-shadow: none !important;
-}
-
-.ta-url-input.ts-search-input:focus,
-.ta-url-input.ts-search-input:focus-visible,
-#ta-team-form .ta-url-input.ts-search-input:focus,
-#ta-team-form .ta-url-input.ts-search-input:focus-visible {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
-  outline: none !important;
 }
 
 .ta-team-textarea {
@@ -452,6 +437,32 @@ button.ta-btn-primary,
 }
 
 .ta-btn-primary:hover { background-color: #2563eb !important; border-color: #2563eb !important; }
+
+.ta-btn-save-primary,
+.ta-btn-save-primary[type="submit"],
+input.ta-btn-save-primary,
+button.ta-btn-save-primary,
+.ta-btn-save-primary:hover,
+.ta-btn-save-primary:focus,
+.ta-btn-save-primary:focus-visible,
+.ta-btn-save-primary:active {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border: 1px solid #3b82f6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-save-primary:hover {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.ta-team-footer-btn {
+  min-width: 76px;
+  border-radius: 0.5rem !important;
+}
 
 .ta-btn-secondary,
 .ta-btn-secondary[type="submit"],
@@ -509,6 +520,7 @@ button.ta-btn-danger,
 
 .ta-btn-primary,
 .ta-btn-secondary,
+.ta-btn-save-primary,
 .ta-btn-success,
 .ta-btn-danger {
   cursor: pointer;
