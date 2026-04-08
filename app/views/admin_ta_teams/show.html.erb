@@ -111,9 +111,9 @@
                              id="ta-team-member-role-<%= membership.id %>"
                              value="<%= membership.role %>"
                              form="<%= form_id %>">
-                      <div id="ta-team-member-role-list-<%= membership.id %>"
-                           class="tep-activity-dropdown ta-team-role-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                           style="min-width: 180px; max-height: 180px; top: calc(100% + 2px);">
+                       <div id="ta-team-member-role-list-<%= membership.id %>"
+                            class="tep-activity-dropdown ta-team-role-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl"
+                            style="min-width: 180px; top: calc(100% + 2px);">
                         <button type="button"
                                 class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
                                 onclick="teamMembersSelectRole(<%= membership.id %>, 'member', 'Team Member')">

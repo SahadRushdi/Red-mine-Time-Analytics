@@ -566,11 +566,15 @@ button.ta-btn-danger,
 }
 
 .ta-team-role-button {
-  height: 44px !important;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 0.75rem !important;
 }
 
 .ta-team-role-dropdown {
   min-width: 180px;
+  max-height: none !important;
+  overflow-y: visible !important;
 }
 
 #taTeamMembersDeleteModal button,
