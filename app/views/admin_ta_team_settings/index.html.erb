@@ -1,117 +1,436 @@
 <% html_title "Team Analytics Settings" %>
 
-<div class="contextual">
-  <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'icon icon-cancel' %>
-</div>
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
 
-<h2>Team Analytics Settings</h2>
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Analytics Settings</h2>
+      <p class="text-sm text-gray-500">Configure users excluded from analytics and global super-user access.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+    </div>
+  </div>
 
-<div class="splitcontentleft">
-  <h3>Exclusion List</h3>
-  <p class="subtitle">
-    Users in the exclusion list will not appear in team analytics reports.<br/>
-    Typically used for C-level executives, consultants, or contractors.
-  </p>
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3" style="margin-bottom: -1px;">
+      <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
+        <li class="me-2">
+          <button type="button" id="tab-exclusions" onclick="switchTeamSettingsTab('exclusions')"
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 ta-view-tab-active">
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414-1.414L12 9.172 7.05 4.222 5.636 5.636 10.586 10.586 5.636 15.536l1.414 1.414L12 12l4.95 4.95 1.414-1.414-4.95-4.95z"></path>
+              </svg>
+              Exclusion List
+              <span class="ts-tab-badge"><%= @excluded_users.count %></span>
+            </span>
+          </button>
+        </li>
+        <li class="me-2">
+          <button type="button" id="tab-super-users" onclick="switchTeamSettingsTab('super-users')"
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-4a4 4 0 00-8 0v4m8 0H7m8-13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Super Users
+              <span class="ts-tab-badge"><%= @super_users.count %></span>
+            </span>
+          </button>
+        </li>
+      </ul>
 
-  <% if @excluded_users.any? %>
-    <table class="list">
-      <thead>
-        <tr>
-          <th>User</th>
-          <th>Email</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @excluded_users.each do |user| %>
-          <% setting = TaTeamSetting.exclusions.find_by(user_id: user.id) %>
-          <tr class="<%= cycle('odd', 'even') %>">
-            <td><%= link_to user.name, user_path(user) %></td>
-            <td><%= user.mail %></td>
-            <td class="buttons">
-              <%= link_to 'Remove', admin_ta_team_settings_path(id: setting.id), 
-                          method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
-            </td>
-          </tr>
+      <div class="relative">
+        <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+          <svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+          </svg>
+        </div>
+        <input type="search" id="ta-team-settings-search-input" placeholder="Search users..."
+               class="ta-team-settings-search-input block h-[44px] w-80 rounded-lg border border-gray-300 bg-gray-50 ps-10 pe-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+               oninput="filterTeamSettingsRows()">
+      </div>
+    </div>
+
+    <div id="panel-exclusions">
+      <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
+        <span>Users in this list are excluded from team analytics reports.</span>
+      </div>
+
+      <div class="px-6 py-4 border-b border-gray-100">
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
+          <%= hidden_field_tag :setting_type, 'exclusion' %>
+          <div>
+            <%= label_tag 'ta-team-settings-user-search-exclusion', 'Add user to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-exclusion">
+              <input type="text"
+                     id="ta-team-settings-user-search-exclusion"
+                     placeholder="🔍 Search member... *"
+                     autocomplete="off"
+                     onfocus="openTeamSettingsMemberDropdown('exclusion')"
+                     oninput="filterTeamSettingsMembers('exclusion')"
+                     onkeydown="handleTeamSettingsMemberKey(event, 'exclusion')"
+                     class="ta-team-settings-member-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+              <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
+              <div id="ta-team-settings-user-list-exclusion"
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                   style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                <% @available_users.each do |user| %>
+                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                       tabindex="0"
+                       data-id="<%= user.id %>"
+                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
+                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                       onclick="selectTeamSettingsMember('exclusion', '<%= user.id %>', this.getAttribute('data-text'))"
+                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'exclusion', '<%= user.id %>', this.getAttribute('data-text'))">
+                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <%= submit_tag 'Add to Exclusion List', class: 'inline-flex h-[44px] items-center rounded-lg bg-blue-500 px-4 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
         <% end %>
-      </tbody>
-    </table>
-  <% else %>
-    <p class="nodata">No users in exclusion list</p>
-  <% end %>
+      </div>
 
-  <h4>Add User to Exclusion List</h4>
-  <%= form_tag admin_ta_team_settings_path, method: :post, class: 'tabular' do %>
-    <%= hidden_field_tag :setting_type, 'exclusion' %>
-    <p>
-      <%= label_tag :user_id, 'User' %>
-      <%= select_tag :user_id, 
-                     options_from_collection_for_select(@available_users, :id, :name),
-                     { prompt: 'Select a user', class: 'select2' } %>
-      <%= submit_tag 'Add to Exclusion List', class: 'button-small' %>
-    </p>
-  <% end %>
-</div>
+      <% if @excluded_users.any? %>
+        <div class="overflow-x-auto">
+          <table class="ts-table w-full text-sm text-left">
+            <thead class="bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">User</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @excluded_users.each do |user| %>
+                <% setting_id = @exclusion_settings_by_user_id[user.id] %>
+                <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>">
+                  <td class="px-4 py-3">
+                    <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(user.mail) %></td>
+                  <td class="px-4 py-3 text-right">
+                    <% if setting_id.present? %>
+                      <button type="button"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                              title="Delete"
+                              aria-label="Delete exclusion">
+                        <span class="material-icons" style="font-size:18px;line-height:1;">delete</span>
+                      </button>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="px-6 py-10 text-center text-sm text-gray-500">No users in exclusion list.</div>
+      <% end %>
+    </div>
 
-<div class="splitcontentright">
-  <h3>Super Users</h3>
-  <p class="subtitle">
-    Super users can view analytics for all teams, regardless of their team membership.<br/>
-    Typically used for managers or administrators.
-  </p>
+    <div id="panel-super-users" class="hidden">
+      <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
+        <span>Super users can access analytics across all teams, regardless of membership.</span>
+      </div>
 
-  <% if @super_users.any? %>
-    <table class="list">
-      <thead>
-        <tr>
-          <th>User</th>
-          <th>Email</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @super_users.each do |user| %>
-          <% setting = TaTeamSetting.super_users.find_by(user_id: user.id) %>
-          <tr class="<%= cycle('odd', 'even') %>">
-            <td><%= link_to user.name, user_path(user) %></td>
-            <td><%= user.mail %></td>
-            <td class="buttons">
-              <%= link_to 'Remove', admin_ta_team_settings_path(id: setting.id), 
-                          method: :delete, data: { confirm: 'Are you sure?' }, class: 'icon icon-del' %>
-            </td>
-          </tr>
+      <div class="px-6 py-4 border-b border-gray-100">
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
+          <%= hidden_field_tag :setting_type, 'super_user' %>
+          <div>
+            <%= label_tag 'ta-team-settings-user-search-super-user', 'Add super user', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-super-user">
+              <input type="text"
+                     id="ta-team-settings-user-search-super-user"
+                     placeholder="🔍 Search member... *"
+                     autocomplete="off"
+                     onfocus="openTeamSettingsMemberDropdown('super-user')"
+                     oninput="filterTeamSettingsMembers('super-user')"
+                     onkeydown="handleTeamSettingsMemberKey(event, 'super-user')"
+                     class="ta-team-settings-member-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+              <input type="hidden" name="user_id" id="ta-team-settings-user-id-super-user">
+              <div id="ta-team-settings-user-list-super-user"
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                   style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                <% @available_users.each do |user| %>
+                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                       tabindex="0"
+                       data-id="<%= user.id %>"
+                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
+                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                       onclick="selectTeamSettingsMember('super-user', '<%= user.id %>', this.getAttribute('data-text'))"
+                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'super-user', '<%= user.id %>', this.getAttribute('data-text'))">
+                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <%= submit_tag 'Add as Super User', class: 'inline-flex h-[44px] items-center rounded-lg bg-blue-500 px-4 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
         <% end %>
-      </tbody>
-    </table>
-  <% else %>
-    <p class="nodata">No super users</p>
-  <% end %>
+      </div>
 
-  <h4>Add Super User</h4>
-  <%= form_tag admin_ta_team_settings_path, method: :post, class: 'tabular' do %>
-    <%= hidden_field_tag :setting_type, 'super_user' %>
-    <p>
-      <%= label_tag :user_id, 'User' %>
-      <%= select_tag :user_id, 
-                     options_from_collection_for_select(@available_users, :id, :name),
-                     { prompt: 'Select a user', class: 'select2' } %>
-      <%= submit_tag 'Add as Super User', class: 'button-small' %>
-    </p>
-  <% end %>
+      <% if @super_users.any? %>
+        <div class="overflow-x-auto">
+          <table class="ts-table w-full text-sm text-left">
+            <thead class="bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">User</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @super_users.each do |user| %>
+                <% setting_id = @super_user_settings_by_user_id[user.id] %>
+                <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>">
+                  <td class="px-4 py-3">
+                    <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(user.mail) %></td>
+                  <td class="px-4 py-3 text-right">
+                    <% if setting_id.present? %>
+                      <button type="button"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                              title="Delete"
+                              aria-label="Delete super user">
+                        <span class="material-icons" style="font-size:18px;line-height:1;">delete</span>
+                      </button>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="px-6 py-10 text-center text-sm text-gray-500">No super users configured.</div>
+      <% end %>
+    </div>
+  </div>
 </div>
 
-<style>
-  .splitcontentleft, .splitcontentright {
-    width: 48%;
+<button id="teamSettingsDeleteButton" data-modal-target="taTeamSettingsDeleteModal" data-modal-toggle="taTeamSettingsDeleteModal" type="button" class="hidden"></button>
+
+<div id="taTeamSettingsDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              onclick="teamSettingsCloseDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500">Are you sure you want to remove this setting?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="teamSettingsConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+          Delete
+        </button>
+        <button type="button"
+                onclick="teamSettingsCloseDeleteModal()"
+                class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTeamSettingsTab(tabName) {
+    ['exclusions', 'super-users'].forEach(function(tab) {
+      var panel = document.getElementById('panel-' + tab);
+      var tabButton = document.getElementById('tab-' + tab);
+      if (!panel || !tabButton) return;
+      if (tab === tabName) {
+        panel.classList.remove('hidden');
+        tabButton.classList.add('ta-view-tab-active');
+      } else {
+        panel.classList.add('hidden');
+        tabButton.classList.remove('ta-view-tab-active');
+      }
+    });
+    filterTeamSettingsRows();
   }
-  .splitcontentleft {
-    float: left;
+
+  function filterTeamSettingsRows() {
+    var searchInput = document.getElementById('ta-team-settings-search-input');
+    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var activePanel = document.querySelector('#panel-exclusions:not(.hidden), #panel-super-users:not(.hidden)');
+    if (!activePanel) return;
+    activePanel.querySelectorAll('.ta-team-settings-row').forEach(function(row) {
+      var text = (row.getAttribute('data-search-text') || '').toLowerCase();
+      row.style.display = text.indexOf(query) >= 0 ? '' : 'none';
+    });
   }
-  .splitcontentright {
-    float: right;
+
+  function teamSettingsMemberElements(type) {
+    return {
+      wrapper: document.getElementById('ta-team-settings-user-wrapper-' + type),
+      search: document.getElementById('ta-team-settings-user-search-' + type),
+      hidden: document.getElementById('ta-team-settings-user-id-' + type),
+      list: document.getElementById('ta-team-settings-user-list-' + type)
+    };
   }
-  .button-small {
-    padding: 4px 8px;
-    font-size: 12px;
+
+  function openTeamSettingsMemberDropdown(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
   }
-</style>
+
+  function closeTeamSettingsMemberDropdown(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function filterTeamSettingsMembers(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function selectTeamSettingsMember(type, userId, displayText) {
+    var els = teamSettingsMemberElements(type);
+    if (els.hidden) els.hidden.value = userId;
+    if (els.search) els.search.value = displayText;
+    closeTeamSettingsMemberDropdown(type);
+  }
+
+  function handleTeamSettingsMemberKey(event, type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      closeTeamSettingsMemberDropdown(type);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function handleTeamSettingsMemberOptionKey(event, type, userId, displayText) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectTeamSettingsMember(type, userId, displayText);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      closeTeamSettingsMemberDropdown(type);
+      if (els.search) els.search.focus();
+    }
+  }
+
+  document.addEventListener('click', function(event) {
+    ['exclusion', 'super-user'].forEach(function(type) {
+      var els = teamSettingsMemberElements(type);
+      var clickedInsideList = !!(els.list && els.list.contains(event.target));
+      if (els.wrapper && !els.wrapper.contains(event.target) && !clickedInsideList) {
+        closeTeamSettingsMemberDropdown(type);
+      }
+    });
+  });
+
+  var teamSettingsPendingDelete = null;
+
+  function teamSettingsOpenDeleteModal() {
+    var modal = document.getElementById('taTeamSettingsDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamSettingsCloseDeleteModal() {
+    var modal = document.getElementById('taTeamSettingsDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamSettingsDelete(settingId, url, token) {
+    teamSettingsPendingDelete = { settingId: settingId, url: url, token: token };
+    var trigger = document.getElementById('teamSettingsDeleteButton');
+    if (trigger) {
+      trigger.click();
+      setTimeout(function() {
+        var modal = document.getElementById('taTeamSettingsDeleteModal');
+        if (modal && modal.classList.contains('hidden')) teamSettingsOpenDeleteModal();
+      }, 0);
+    } else {
+      teamSettingsOpenDeleteModal();
+    }
+  }
+
+  function teamSettingsConfirmDelete() {
+    if (!teamSettingsPendingDelete) return;
+    var url = teamSettingsPendingDelete.url;
+    var token = teamSettingsPendingDelete.token;
+    teamSettingsCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    [['_method', 'DELETE'], ['authenticity_token', token]].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>

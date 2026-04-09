@@ -9,6 +9,8 @@ class AdminTaTeamSettingsController < ApplicationController
     @excluded_users = User.where(id: TaTeamSetting.excluded_user_ids).sorted
     @super_users = User.where(id: TaTeamSetting.super_user_ids).sorted
     @available_users = User.active.sorted
+    @exclusion_settings_by_user_id = TaTeamSetting.exclusions.pluck(:user_id, :id).to_h
+    @super_user_settings_by_user_id = TaTeamSetting.super_users.pluck(:user_id, :id).to_h
   end
 
   def create

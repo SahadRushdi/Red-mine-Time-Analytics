@@ -660,6 +660,62 @@ button.ta-btn-danger,
   border: 1px solid #dc2626 !important;
 }
 
+#taTeamSettingsDeleteModal button,
+#taTeamSettingsDeleteModal button:hover,
+#taTeamSettingsDeleteModal button:focus,
+#taTeamSettingsDeleteModal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-close {
+  border: none !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-cancel,
+#taTeamSettingsDeleteModal .tep-delete-cancel:hover,
+#taTeamSettingsDeleteModal .tep-delete-cancel:focus,
+#taTeamSettingsDeleteModal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-confirm,
+#taTeamSettingsDeleteModal .tep-delete-confirm:hover,
+#taTeamSettingsDeleteModal .tep-delete-confirm:focus,
+#taTeamSettingsDeleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
+
+.ta-team-settings-member-input,
+.ta-team-settings-member-input:hover,
+.ta-team-settings-member-input:focus,
+.ta-team-settings-member-input:active,
+.ta-team-settings-search-input,
+.ta-team-settings-search-input:hover,
+.ta-team-settings-search-input:focus,
+.ta-team-settings-search-input:active {
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.ta-team-settings-member-input:focus,
+.ta-team-settings-search-input:focus {
+  border-color: #9ca3af !important;
+}
+
 @media (max-width: 1024px) {
   .ta-team-row { align-items: flex-start; flex-direction: column; }
   .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
