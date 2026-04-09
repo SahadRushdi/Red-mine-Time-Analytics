@@ -375,15 +375,19 @@
   outline: none !important;
 }
 
-#ta-team-form .ta-team-form-control:focus,
-#ta-team-form .ta-team-form-control:focus-visible,
-#ta-team-form .ta-team-select:focus,
-#ta-team-form .ta-team-select:focus-visible,
-#ta-team-form .ta-team-textarea:focus,
-#ta-team-form .ta-team-textarea:focus-visible {
+#ta-team-form input.ta-team-form-control:focus,
+#ta-team-form input.ta-team-form-control:focus-visible,
+#ta-team-form textarea.ta-team-textarea:focus,
+#ta-team-form textarea.ta-team-textarea:focus-visible,
+#ta-team-form select.ta-team-select:focus,
+#ta-team-form select.ta-team-select:focus-visible {
   outline: none !important;
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
   border-color: #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 }
 
 #ta-team-form .ta-team-form-control:hover,
