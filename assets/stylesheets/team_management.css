@@ -706,6 +706,12 @@ button.ta-btn-danger,
   background-image: none !important;
   -webkit-appearance: none !important;
   appearance: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  line-height: 1 !important;
+  border-radius: 0.5rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .ta-team-settings-member-input:focus,

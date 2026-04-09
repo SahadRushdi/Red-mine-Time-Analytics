@@ -76,14 +76,14 @@
                      id="ta-team-settings-user-search-exclusion"
                      placeholder="🔍 Search member... *"
                      autocomplete="off"
-                     onfocus="openTeamSettingsMemberDropdown('exclusion')"
+                     onclick="openTeamSettingsMemberDropdown('exclusion')"
                      oninput="filterTeamSettingsMembers('exclusion')"
                      onkeydown="handleTeamSettingsMemberKey(event, 'exclusion')"
-                     class="ta-team-settings-member-input block h-[48px] w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
               <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
               <div id="ta-team-settings-user-list-exclusion"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
-                   style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                    style="min-width: 420px; max-height: 220px; top: calc(100% + 2px);">
                 <% @available_users.each do |user| %>
                   <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                        tabindex="0"
@@ -98,7 +98,7 @@
               </div>
             </div>
           </div>
-          <%= submit_tag 'Add to Exclusion List', class: 'inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
+          <%= button_tag 'Add to Exclusion List', type: 'submit', class: 'tep-action-btn flex-shrink-0 inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
         <% end %>
       </div>
 
@@ -107,8 +107,22 @@
           <table class="ts-table w-full text-sm text-left">
             <thead class="bg-gray-50">
               <tr class="border-b border-gray-200">
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">User</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'user'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'user'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>User</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-user" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'email'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'email'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>Email</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-email" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
               </tr>
             </thead>
@@ -116,7 +130,9 @@
               <% @excluded_users.each do |user| %>
                 <% setting_id = @exclusion_settings_by_user_id[user.id] %>
                 <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>">
+                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>"
+                    data-user-sort="<%= user.name.to_s.downcase %>"
+                    data-email-sort="<%= user.mail.to_s.downcase %>">
                   <td class="px-4 py-3">
                     <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                   </td>
@@ -161,14 +177,14 @@
                      id="ta-team-settings-user-search-super-user"
                      placeholder="🔍 Search member... *"
                      autocomplete="off"
-                     onfocus="openTeamSettingsMemberDropdown('super-user')"
+                     onclick="openTeamSettingsMemberDropdown('super-user')"
                      oninput="filterTeamSettingsMembers('super-user')"
                      onkeydown="handleTeamSettingsMemberKey(event, 'super-user')"
-                     class="ta-team-settings-member-input block h-[48px] w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
               <input type="hidden" name="user_id" id="ta-team-settings-user-id-super-user">
               <div id="ta-team-settings-user-list-super-user"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
-                   style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                    style="min-width: 420px; max-height: 220px; top: calc(100% + 2px);">
                 <% @available_users.each do |user| %>
                   <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                        tabindex="0"
@@ -192,8 +208,22 @@
           <table class="ts-table w-full text-sm text-left">
             <thead class="bg-gray-50">
               <tr class="border-b border-gray-200">
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">User</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('super-users', 'user'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('super-users', 'user'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>User</span>
+                    <span id="ta-team-settings-sort-icon-super-users-user" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('super-users', 'email'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('super-users', 'email'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>Email</span>
+                    <span id="ta-team-settings-sort-icon-super-users-email" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
               </tr>
             </thead>
@@ -201,7 +231,9 @@
               <% @super_users.each do |user| %>
                 <% setting_id = @super_user_settings_by_user_id[user.id] %>
                 <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>">
+                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>"
+                    data-user-sort="<%= user.name.to_s.downcase %>"
+                    data-email-sort="<%= user.mail.to_s.downcase %>">
                   <td class="px-4 py-3">
                     <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                   </td>
@@ -385,6 +417,45 @@
     }));
   }
 
+  function teamSettingsSortIconId(tabType, column) {
+    return 'ta-team-settings-sort-icon-' + tabType + '-' + column;
+  }
+
+  function setTeamSettingsSortIconState(icon, order) {
+    if (!icon) return;
+    icon.dataset.order = order;
+    icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+  }
+
+  function toggleTeamSettingsSort(tabType, column) {
+    var panel = document.getElementById('panel-' + tabType);
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = getTeamSettingsRows(tabType);
+    var icon = document.getElementById(teamSettingsSortIconId(tabType, column));
+    var currentOrder = icon && icon.dataset.order ? icon.dataset.order : 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+
+    rows.sort(function(a, b) {
+      var attr = 'data-' + column + '-sort';
+      var aValue = (a.getAttribute(attr) || '').toLowerCase();
+      var bValue = (b.getAttribute(attr) || '').toLowerCase();
+      var cmp = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? cmp : -cmp;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    ['user', 'email'].forEach(function(col) {
+      if (col === column) return;
+      setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, col)), 'desc');
+    });
+    setTeamSettingsSortIconState(icon, nextOrder);
+
+    applyTeamSettingsPagination(tabType, true);
+  }
+
   function applyTeamSettingsPagination(tabType, preservePage) {
     var searchInput = document.getElementById('ta-team-settings-search-input');
     var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
@@ -517,6 +588,13 @@
   });
 
   document.addEventListener('DOMContentLoaded', function() {
+    closeTeamSettingsMemberDropdown('exclusion');
+    closeTeamSettingsMemberDropdown('super-user');
+    ['exclusions', 'super-users'].forEach(function(tabType) {
+      ['user', 'email'].forEach(function(column) {
+        setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, column)), 'desc');
+      });
+    });
     applyTeamSettingsPagination('exclusions', false);
     applyTeamSettingsPagination('super-users', false);
   });
