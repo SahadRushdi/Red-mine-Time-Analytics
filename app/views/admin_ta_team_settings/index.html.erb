@@ -56,7 +56,7 @@
           </svg>
         </div>
         <input type="search" id="ta-team-settings-search-input" placeholder="Search users..."
-               class="ta-team-settings-search-input block h-[44px] w-80 rounded-lg border border-gray-300 bg-gray-50 ps-10 pe-3 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500"
+               class="ts-search-input block w-80 text-base border border-gray-300"
                oninput="filterTeamSettingsRows()">
       </div>
     </div>
@@ -79,10 +79,10 @@
                      onfocus="openTeamSettingsMemberDropdown('exclusion')"
                      oninput="filterTeamSettingsMembers('exclusion')"
                      onkeydown="handleTeamSettingsMemberKey(event, 'exclusion')"
-                     class="ta-team-settings-member-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                     class="ta-team-settings-member-input block h-[48px] w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
               <div id="ta-team-settings-user-list-exclusion"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
                    style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
                 <% @available_users.each do |user| %>
                   <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
@@ -98,7 +98,7 @@
               </div>
             </div>
           </div>
-          <%= submit_tag 'Add to Exclusion List', class: 'inline-flex h-[44px] items-center rounded-lg bg-blue-500 px-4 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
+          <%= submit_tag 'Add to Exclusion List', class: 'inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
         <% end %>
       </div>
 
@@ -137,6 +137,10 @@
             </tbody>
           </table>
         </div>
+        <nav id="ta-team-settings-pagination-exclusions" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Exclusion list pagination">
+          <span id="ta-team-settings-pagination-info-exclusions" class="text-sm text-gray-700"></span>
+          <ul id="ta-team-settings-pagination-links-exclusions" class="inline-flex -space-x-px text-sm h-8"></ul>
+        </nav>
       <% else %>
         <div class="px-6 py-10 text-center text-sm text-gray-500">No users in exclusion list.</div>
       <% end %>
@@ -160,10 +164,10 @@
                      onfocus="openTeamSettingsMemberDropdown('super-user')"
                      oninput="filterTeamSettingsMembers('super-user')"
                      onkeydown="handleTeamSettingsMemberKey(event, 'super-user')"
-                     class="ta-team-settings-member-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                     class="ta-team-settings-member-input block h-[48px] w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               <input type="hidden" name="user_id" id="ta-team-settings-user-id-super-user">
               <div id="ta-team-settings-user-list-super-user"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-xl shadow-xl overflow-y-auto"
                    style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
                 <% @available_users.each do |user| %>
                   <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
@@ -179,7 +183,7 @@
               </div>
             </div>
           </div>
-          <%= submit_tag 'Add as Super User', class: 'inline-flex h-[44px] items-center rounded-lg bg-blue-500 px-4 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
+          <%= submit_tag 'Add as Super User', class: 'inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-300' %>
         <% end %>
       </div>
 
@@ -218,6 +222,10 @@
             </tbody>
           </table>
         </div>
+        <nav id="ta-team-settings-pagination-super-users" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Super users pagination">
+          <span id="ta-team-settings-pagination-info-super-users" class="text-sm text-gray-700"></span>
+          <ul id="ta-team-settings-pagination-links-super-users" class="inline-flex -space-x-px text-sm h-8"></ul>
+        </nav>
       <% else %>
         <div class="px-6 py-10 text-center text-sm text-gray-500">No super users configured.</div>
       <% end %>
@@ -274,14 +282,140 @@
   }
 
   function filterTeamSettingsRows() {
-    var searchInput = document.getElementById('ta-team-settings-search-input');
-    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
     var activePanel = document.querySelector('#panel-exclusions:not(.hidden), #panel-super-users:not(.hidden)');
     if (!activePanel) return;
-    activePanel.querySelectorAll('.ta-team-settings-row').forEach(function(row) {
+    var tabType = activePanel.id === 'panel-exclusions' ? 'exclusions' : 'super-users';
+    applyTeamSettingsPagination(tabType, false);
+  }
+
+  var teamSettingsPagination = {
+    'exclusions': { currentPage: 1, perPage: 10 },
+    'super-users': { currentPage: 1, perPage: 10 }
+  };
+
+  function getTeamSettingsRows(tabType) {
+    var panel = document.getElementById('panel-' + tabType);
+    if (!panel) return [];
+    return Array.from(panel.querySelectorAll('table.ts-table tbody tr.ta-team-settings-row'));
+  }
+
+  function createTeamSettingsPageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
+
+  function renderTeamSettingsPaginationControls(tabType, totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('ta-team-settings-pagination-' + tabType);
+    var info = document.getElementById('ta-team-settings-pagination-info-' + tabType);
+    var links = document.getElementById('ta-team-settings-pagination-links-' + tabType);
+    if (!nav || !info || !links) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    var state = teamSettingsPagination[tabType];
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + ' users';
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (state.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamSettingsPageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: state.currentPage === 1,
+      onClick: function() {
+        state.currentPage -= 1;
+        applyTeamSettingsPagination(tabType, true);
+      }
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === state.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(createTeamSettingsPageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            state.currentPage = pageNumber;
+            applyTeamSettingsPagination(tabType, true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (state.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamSettingsPageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: state.currentPage === totalPages,
+      onClick: function() {
+        state.currentPage += 1;
+        applyTeamSettingsPagination(tabType, true);
+      }
+    }));
+  }
+
+  function applyTeamSettingsPagination(tabType, preservePage) {
+    var searchInput = document.getElementById('ta-team-settings-search-input');
+    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var rows = getTeamSettingsRows(tabType);
+    var state = teamSettingsPagination[tabType];
+    if (!state) return;
+
+    var matchedRows = rows.filter(function(row) {
       var text = (row.getAttribute('data-search-text') || '').toLowerCase();
-      row.style.display = text.indexOf(query) >= 0 ? '' : 'none';
+      return !query || text.indexOf(query) >= 0;
     });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / state.perPage));
+    if (!preservePage) {
+      state.currentPage = 1;
+    } else if (state.currentPage > totalPages) {
+      state.currentPage = totalPages;
+    }
+
+    var start = (state.currentPage - 1) * state.perPage;
+    var end = start + state.perPage;
+    var currentRows = matchedRows.slice(start, end);
+    var visibleSet = new Set(currentRows);
+
+    rows.forEach(function(row) {
+      row.style.display = visibleSet.has(row) ? '' : 'none';
+    });
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    renderTeamSettingsPaginationControls(tabType, matchedRows.length, totalPages, startIndex, endIndex);
   }
 
   function teamSettingsMemberElements(type) {
@@ -380,6 +514,11 @@
         closeTeamSettingsMemberDropdown(type);
       }
     });
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    applyTeamSettingsPagination('exclusions', false);
+    applyTeamSettingsPagination('super-users', false);
   });
 
   var teamSettingsPendingDelete = null;

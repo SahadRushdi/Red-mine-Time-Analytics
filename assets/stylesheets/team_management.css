@@ -700,10 +700,7 @@ button.ta-btn-danger,
 .ta-team-settings-member-input:hover,
 .ta-team-settings-member-input:focus,
 .ta-team-settings-member-input:active,
-.ta-team-settings-search-input,
-.ta-team-settings-search-input:hover,
-.ta-team-settings-search-input:focus,
-.ta-team-settings-search-input:active {
+.ta-team-settings-member-input:focus-visible {
   outline: none !important;
   box-shadow: none !important;
   background-image: none !important;
@@ -712,8 +709,15 @@ button.ta-btn-danger,
 }
 
 .ta-team-settings-member-input:focus,
-.ta-team-settings-search-input:focus {
+.ta-team-settings-member-input:focus-visible {
   border-color: #9ca3af !important;
+}
+
+#ta-team-settings-search-input.ts-search-input {
+  min-height: 42px;
+  font-size: 15px !important;
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
 }
 
 @media (max-width: 1024px) {
