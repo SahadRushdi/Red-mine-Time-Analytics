@@ -88,7 +88,6 @@
 
 .ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
 .ta-team-action:hover { text-decoration: underline; }
-.ta-team-action-delete { color: #dc2626; }
 
 .ta-team-member-toggle {
   display: inline-flex;
@@ -628,6 +627,10 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
 #taTeamMembersDeleteModal button:active,
+#taTeamDeleteModal button,
+#taTeamDeleteModal button:hover,
+#taTeamDeleteModal button:focus,
+#taTeamDeleteModal button:active,
 #taTeamProjectsDeleteModal button,
 #taTeamProjectsDeleteModal button:hover,
 #taTeamProjectsDeleteModal button:focus,
@@ -638,11 +641,13 @@ button.ta-btn-danger,
 }
 
 #taTeamMembersDeleteModal .tep-delete-close,
+#taTeamDeleteModal .tep-delete-close,
 #taTeamProjectsDeleteModal .tep-delete-close {
   border: none !important;
 }
 
 #taTeamMembersDeleteModal .tep-delete-close:hover,
+#taTeamDeleteModal .tep-delete-close:hover,
 #taTeamProjectsDeleteModal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
@@ -652,6 +657,10 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal .tep-delete-cancel:hover,
 #taTeamMembersDeleteModal .tep-delete-cancel:focus,
 #taTeamMembersDeleteModal .tep-delete-cancel:active,
+#taTeamDeleteModal .tep-delete-cancel,
+#taTeamDeleteModal .tep-delete-cancel:hover,
+#taTeamDeleteModal .tep-delete-cancel:focus,
+#taTeamDeleteModal .tep-delete-cancel:active,
 #taTeamProjectsDeleteModal .tep-delete-cancel,
 #taTeamProjectsDeleteModal .tep-delete-cancel:hover,
 #taTeamProjectsDeleteModal .tep-delete-cancel:focus,
@@ -665,6 +674,10 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal .tep-delete-confirm:hover,
 #taTeamMembersDeleteModal .tep-delete-confirm:focus,
 #taTeamMembersDeleteModal .tep-delete-confirm:active,
+#taTeamDeleteModal .tep-delete-confirm,
+#taTeamDeleteModal .tep-delete-confirm:hover,
+#taTeamDeleteModal .tep-delete-confirm:focus,
+#taTeamDeleteModal .tep-delete-confirm:active,
 #taTeamProjectsDeleteModal .tep-delete-confirm,
 #taTeamProjectsDeleteModal .tep-delete-confirm:hover,
 #taTeamProjectsDeleteModal .tep-delete-confirm:focus,

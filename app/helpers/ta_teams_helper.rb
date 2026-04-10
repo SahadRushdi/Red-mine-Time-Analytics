@@ -45,13 +45,6 @@ module TaTeamsHelper
           class: 'ta-team-action ta-team-action-edit'
         )
         right_links << link_to(
-          content_tag(:span, ta_team_action_icon('delete') + 'Delete'.html_safe, class: 'ta-team-action-content'),
-          admin_ta_team_path(team),
-          method: :delete,
-          data: { confirm: 'Are you sure?' },
-          class: 'ta-team-action ta-team-action-delete'
-        )
-        right_links << link_to(
           content_tag(:span, ta_team_action_icon('members') + 'Members'.html_safe, class: 'ta-team-action-content'),
           admin_ta_team_memberships_path(team),
           class: 'ta-team-action ta-team-action-members'
@@ -169,8 +162,6 @@ module TaTeamsHelper
       '<svg class="ta-team-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7S3.732 16.057 2.458 12z"></path></svg>'.html_safe
     when 'edit'
       '<svg class="ta-team-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>'.html_safe
-    when 'delete'
-      '<svg class="ta-team-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>'.html_safe
     when 'members'
       '<svg class="ta-team-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-5.356-3.768"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20H4v-2a4 4 0 015.356-3.768"></path><circle cx="12" cy="7" r="4" stroke-width="2"></circle></svg>'.html_safe
     else

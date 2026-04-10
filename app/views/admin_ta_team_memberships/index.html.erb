@@ -571,6 +571,23 @@
     form.submit();
   }
 
+  function teamMembersCloseDeleteModalIfBackdrop(event) {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+      teamMembersCloseDeleteModal();
+    }
+  }
+
+  if (!window.__teamMembersDeleteModalListenersBound) {
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        teamMembersCloseDeleteModal();
+      }
+    });
+    document.addEventListener('click', teamMembersCloseDeleteModalIfBackdrop);
+    window.__teamMembersDeleteModalListenersBound = true;
+  }
+
   function filterDirectMembersRows() {
     var input = document.getElementById('ta-direct-members-search');
     var query = input ? input.value.toLowerCase().trim() : '';
@@ -600,4 +617,5 @@
       }
     });
   });
+
 </script>

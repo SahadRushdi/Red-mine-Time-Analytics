@@ -344,4 +344,21 @@
     document.body.appendChild(form);
     form.submit();
   }
+
+  function teamProjectsCloseDeleteModalIfBackdrop(event) {
+    var modal = document.getElementById('taTeamProjectsDeleteModal');
+    if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+      teamProjectsCloseDeleteModal();
+    }
+  }
+
+  if (!window.__teamProjectsDeleteModalListenersBound) {
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        teamProjectsCloseDeleteModal();
+      }
+    });
+    document.addEventListener('click', teamProjectsCloseDeleteModalIfBackdrop);
+    window.__teamProjectsDeleteModalListenersBound = true;
+  }
 </script>
