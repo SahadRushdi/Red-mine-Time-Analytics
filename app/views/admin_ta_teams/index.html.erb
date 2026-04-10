@@ -802,6 +802,17 @@
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
 
+    // Prevent default first-input autofocus from selecting the hiring title field on initial page load.
+    function clearInitialHiringTitleFocus() {
+      var hiringTitleInput = document.getElementById('ta_hiring_need_position_title');
+      if (!hiringTitleInput) return;
+      if (document.activeElement === hiringTitleInput) {
+        hiringTitleInput.blur();
+      }
+    }
+    setTimeout(clearInitialHiringTitleFocus, 0);
+    setTimeout(clearInitialHiringTitleFocus, 100);
+
     // Keep initial server-rendered tab state to avoid first-paint layout mutation
   });
 </script>
