@@ -134,7 +134,8 @@
 
       <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
         <%= link_to l(:button_cancel), admin_ta_team_memberships_path(@team), class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
-        <%= f.submit l(:button_create), class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium', style: 'background-color: #2563eb !important; border-color: #2563eb !important; color: #ffffff !important;' %>
+        <button type="submit"
+                class="ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Create</button>
       </div>
     <% end %>
   </div>
