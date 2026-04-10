@@ -175,24 +175,35 @@
         <%= f.text_field :position_title, required: true, class: 'ta-hiring-position-input ts-search-input !block !w-full !h-[48px] !rounded-lg !border !border-gray-300 !px-3 !text-base !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]', placeholder: 'Enter position title' %>
       </div>
       <div>
-        <%= label_tag 'hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <%= label_tag 'ta-hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-team-button" data-ta-dropdown-toggle="hiring-team-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
-            <span class="hiring-team-label" data-default-text="Select Team">Select Team</span>
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          <button type="button"
+                  id="ta-hiring-team-button"
+                  data-ta-hiring-team-toggle="true"
+                  class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+            <span id="ta-hiring-team-label" class="truncate">Select Team</span>
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
           </button>
-          <div id="hiring-team-dropdown" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-            <ul class="max-h-40 overflow-auto py-1 text-sm text-gray-700">
+          <div id="ta-hiring-team-dropdown"
+               data-ta-hiring-team-menu="true"
+               class="tep-activity-dropdown hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+            <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
               <% @all_teams.each do |team| %>
+                <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
                 <li>
-                  <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="ta_hiring_need_team_id" data-ta-dropdown-label-target="hiring-team-button">
-                    <%= h(team.name) %>
+                  <button type="button"
+                          class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                          data-ta-hiring-team-value="<%= team.id %>"
+                          data-ta-hiring-team-label="<%= h(team.name) %>">
+                    <%= indent.html_safe %><%= h(team.name) %>
                   </button>
                 </li>
               <% end %>
             </ul>
           </div>
-          <%= f.hidden_field :team_id, required: true %>
+          <%= f.hidden_field :team_id, id: 'ta-hiring-need-team-id', required: true %>
         </div>
       </div>
       <div>
@@ -842,9 +853,37 @@
       document.querySelectorAll('[data-ta-dropdown-menu="true"]').forEach(function(dropdown) {
         dropdown.classList.add('hidden');
       });
+      document.querySelectorAll('[data-ta-hiring-team-menu="true"]').forEach(function(dropdown) {
+        dropdown.classList.add('hidden');
+      });
     }
 
     document.addEventListener('click', function(event) {
+      var hiringToggleButton = event.target.closest('[data-ta-hiring-team-toggle]');
+      if (hiringToggleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var hiringDropdown = document.getElementById('ta-hiring-team-dropdown');
+        if (!hiringDropdown) return;
+        var isHidden = hiringDropdown.classList.contains('hidden');
+        closeAllDropdowns();
+        if (isHidden) hiringDropdown.classList.remove('hidden');
+        return;
+      }
+
+      var hiringOptionButton = event.target.closest('[data-ta-hiring-team-value]');
+      if (hiringOptionButton) {
+        event.preventDefault();
+        var hiringValue = hiringOptionButton.getAttribute('data-ta-hiring-team-value');
+        var hiringLabel = hiringOptionButton.getAttribute('data-ta-hiring-team-label');
+        var hiringHiddenInput = document.getElementById('ta-hiring-need-team-id');
+        var hiringButtonLabel = document.getElementById('ta-hiring-team-label');
+        if (hiringHiddenInput) hiringHiddenInput.value = hiringValue;
+        if (hiringButtonLabel) hiringButtonLabel.textContent = hiringLabel;
+        closeAllDropdowns();
+        return;
+      }
+
       var toggleButton = event.target.closest('[data-ta-dropdown-toggle]');
       if (toggleButton) {
         event.preventDefault();
