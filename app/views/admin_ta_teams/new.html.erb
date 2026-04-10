@@ -29,3 +29,19 @@
     <% end %>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Prevent default first-input autofocus from selecting the Team Name field on initial page load.
+    function clearInitialTeamNameFocus() {
+      var teamNameInput = document.getElementById('ta_team_name');
+      if (!teamNameInput) return;
+      if (document.activeElement === teamNameInput) {
+        teamNameInput.blur();
+      }
+    }
+
+    setTimeout(clearInitialTeamNameFocus, 0);
+    setTimeout(clearInitialTeamNameFocus, 100);
+  });
+</script>

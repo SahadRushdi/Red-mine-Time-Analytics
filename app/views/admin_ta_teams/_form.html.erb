@@ -74,7 +74,7 @@
                  placeholder="http://0.0.0.0:3000/projects/iot-team" />
           <button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>
           <button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>
-          <span class="ta-url-validation-result text-xs text-gray-500"></span>
+          <span class="ta-url-validation-result text-sm text-gray-500"></span>
         </div>
       <% end %>
     </div>
@@ -99,7 +99,7 @@
 
     function setValidationMessage(resultSpan, kind, message) {
       if (!resultSpan) return;
-      var klass = 'text-xs ';
+      var klass = 'text-sm ';
       if (kind === 'ok') klass += 'text-emerald-600';
       else if (kind === 'error') klass += 'text-red-600';
       else klass += 'text-gray-500';
@@ -174,7 +174,7 @@
         '<input type="text" name="ta_team[personal_project_urls][]" data-ta-personal-project-url="true" spellcheck="false" autocapitalize="off" autocomplete="off" class="ts-search-input !block !h-[43px] !w-full sm:!flex-1 !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !leading-[43px] !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
         '<button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>',
         '<button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>',
-        '<span class="ta-url-validation-result text-xs text-gray-500"></span>'
+        '<span class="ta-url-validation-result text-sm text-gray-500"></span>'
       ].join('');
 
       container.appendChild(row);
