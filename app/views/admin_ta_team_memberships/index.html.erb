@@ -39,10 +39,24 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Name</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('direct-members', 'name', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('direct-members', 'name', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Name</span>
+                  <span id="ta-direct-members-sort-icon-name" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Role</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('direct-members', 'start-date', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('direct-members', 'start-date', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-direct-members-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -56,7 +70,9 @@
               <% form_id = "ta-team-member-form-#{membership.id}" %>
               <tr class="ta-team-members-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= h(search_text) %>"
-                  data-membership-id="<%= membership.id %>">
+                  data-membership-id="<%= membership.id %>"
+                  data-sort-name="<%= membership.user.name.to_s.downcase %>"
+                  data-sort-start-date="<%= membership.start_date ? membership.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
                   <%= link_to membership.user.name, user_path(membership.user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                 </td>
@@ -201,18 +217,42 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Name</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('inherited-members', 'name', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('inherited-members', 'name', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Name</span>
+                  <span id="ta-inherited-members-sort-icon-name" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Role</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Source Team</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('inherited-members', 'source-team', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('inherited-members', 'source-team', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Source Team</span>
+                  <span id="ta-inherited-members-sort-icon-source-team" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('inherited-members', 'start-date', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('inherited-members', 'start-date', '.ta-inherited-members-row', ['name', 'source-team', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-inherited-members-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
             </tr>
           </thead>
           <tbody>
             <% @inherited_memberships.sort_by { |membership| [membership.user.name.to_s, membership.team.name.to_s] }.each do |membership| %>
-              <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors bg-gray-50/60">
+              <tr class="ta-inherited-members-row border-b border-gray-100 hover:bg-gray-50 transition-colors bg-gray-50/60"
+                  data-sort-name="<%= membership.user.name.to_s.downcase %>"
+                  data-sort-source-team="<%= membership.team.name.to_s.downcase %>"
+                  data-sort-start-date="<%= membership.start_date ? membership.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
                   <%= link_to membership.user.name, user_path(membership.user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                 </td>
@@ -257,10 +297,24 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Name</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('inactive-members', 'name', '.ta-inactive-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('inactive-members', 'name', '.ta-inactive-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Name</span>
+                  <span id="ta-inactive-members-sort-icon-name" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Role</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamMembersTableSort('inactive-members', 'start-date', '.ta-inactive-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamMembersTableSort('inactive-members', 'start-date', '.ta-inactive-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-inactive-members-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -269,7 +323,10 @@
           <tbody>
             <% @inactive_memberships.each do |membership| %>
               <% search_text = [membership.user.name, membership.user.mail, membership.role.titleize, 'Inactive'].join(' ').downcase %>
-              <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors" data-search-text="<%= h(search_text) %>">
+              <tr class="ta-inactive-members-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= h(search_text) %>"
+                  data-sort-name="<%= membership.user.name.to_s.downcase %>"
+                  data-sort-start-date="<%= membership.start_date ? membership.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
                   <%= link_to membership.user.name, user_path(membership.user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                 </td>
@@ -605,6 +662,53 @@
         teamMembersCloseRoleDropdownByRow(row);
       }
     });
+  }
+
+  function resetTeamMembersTableSortIcons(tableKey, columns, activeColumn) {
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleTeamMembersTableSort(tableKey, column, rowSelector, columns, numericColumns) {
+    var rows = Array.from(document.querySelectorAll(rowSelector));
+    if (!rows.length) return;
+
+    var sortIcon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+    if (!sortIcon) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numeric = numericColumns || [];
+    var tbody = rows[0].parentNode;
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numeric.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetTeamMembersTableSortIcons(tableKey, columns, column);
   }
 
   document.addEventListener('click', function(e) {

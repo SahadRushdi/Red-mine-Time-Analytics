@@ -39,9 +39,23 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Project</span>
+                  <span id="ta-active-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-active-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -54,7 +68,9 @@
               <% search_text = [team_project.project.name, team_project.project.identifier, status_label].join(' ').downcase %>
               <tr class="ta-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= h(search_text) %>"
-                  data-team-project-id="<%= team_project.id %>">
+                  data-team-project-id="<%= team_project.id %>"
+                  data-sort-project="<%= team_project.project.name.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
                   <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                   <%= hidden_field_tag 'ta_team_project[project_id]', team_project.project_id, form: form_id, id: "ta-team-project-project-id-#{team_project.id}" %>
@@ -152,9 +168,23 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Project</span>
+                  <span id="ta-inactive-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-inactive-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -162,7 +192,9 @@
           </thead>
           <tbody>
             <% @inactive_projects.each do |team_project| %>
-              <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr class="ta-inactive-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-sort-project="<%= team_project.project.name.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
                   <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                 </td>
@@ -302,6 +334,53 @@
         });
       }
     });
+  }
+
+  function resetTeamProjectsTableSortIcons(tableKey, columns, activeColumn) {
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleTeamProjectsTableSort(tableKey, column, rowSelector, columns, numericColumns) {
+    var rows = Array.from(document.querySelectorAll(rowSelector));
+    if (!rows.length) return;
+
+    var sortIcon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+    if (!sortIcon) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numeric = numericColumns || [];
+    var tbody = rows[0].parentNode;
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numeric.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetTeamProjectsTableSortIcons(tableKey, columns, column);
   }
 
   var teamProjectsPendingDelete = null;
