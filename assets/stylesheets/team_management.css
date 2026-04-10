@@ -627,17 +627,23 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal button,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
-#taTeamMembersDeleteModal button:active {
+#taTeamMembersDeleteModal button:active,
+#taTeamProjectsDeleteModal button,
+#taTeamProjectsDeleteModal button:hover,
+#taTeamProjectsDeleteModal button:focus,
+#taTeamProjectsDeleteModal button:active {
   outline: none !important;
   box-shadow: none !important;
   text-decoration: none !important;
 }
 
-#taTeamMembersDeleteModal .tep-delete-close {
+#taTeamMembersDeleteModal .tep-delete-close,
+#taTeamProjectsDeleteModal .tep-delete-close {
   border: none !important;
 }
 
-#taTeamMembersDeleteModal .tep-delete-close:hover {
+#taTeamMembersDeleteModal .tep-delete-close:hover,
+#taTeamProjectsDeleteModal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
 }
@@ -645,7 +651,11 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal .tep-delete-cancel,
 #taTeamMembersDeleteModal .tep-delete-cancel:hover,
 #taTeamMembersDeleteModal .tep-delete-cancel:focus,
-#taTeamMembersDeleteModal .tep-delete-cancel:active {
+#taTeamMembersDeleteModal .tep-delete-cancel:active,
+#taTeamProjectsDeleteModal .tep-delete-cancel,
+#taTeamProjectsDeleteModal .tep-delete-cancel:hover,
+#taTeamProjectsDeleteModal .tep-delete-cancel:focus,
+#taTeamProjectsDeleteModal .tep-delete-cancel:active {
   color: #6b7280 !important;
   background-color: #ffffff !important;
   border: 1px solid #e5e7eb !important;
@@ -654,7 +664,11 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal .tep-delete-confirm,
 #taTeamMembersDeleteModal .tep-delete-confirm:hover,
 #taTeamMembersDeleteModal .tep-delete-confirm:focus,
-#taTeamMembersDeleteModal .tep-delete-confirm:active {
+#taTeamMembersDeleteModal .tep-delete-confirm:active,
+#taTeamProjectsDeleteModal .tep-delete-confirm,
+#taTeamProjectsDeleteModal .tep-delete-confirm:hover,
+#taTeamProjectsDeleteModal .tep-delete-confirm:focus,
+#taTeamProjectsDeleteModal .tep-delete-confirm:active {
   color: #ffffff !important;
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;
