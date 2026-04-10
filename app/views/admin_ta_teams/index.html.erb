@@ -363,6 +363,10 @@
           </tbody>
         </table>
       </div>
+      <nav id="team-history-vacancy-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Vacancy history pagination">
+        <span id="team-history-vacancy-pagination-info" class="text-sm text-gray-700"></span>
+        <ul id="team-history-vacancy-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
+      </nav>
     </div>
 
     <div id="team-history-panel-member" class="hidden">
@@ -469,6 +473,10 @@
             </tbody>
           </table>
         </div>
+        <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Member history pagination">
+          <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
+          <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
+        </nav>
       <% else %>
         <div class="px-6 py-10 text-center text-sm text-gray-500">
           No member assignment history available.
@@ -527,6 +535,7 @@
     delete sortIcon.dataset.order;
     sortIcon.dataset.order = nextOrder;
     resetVacancyHistorySortIcons(column);
+    applyTeamHistoryPagination('vacancy', true);
   }
 
   function toggleMemberHistoryRows(rowId) {
@@ -539,33 +548,164 @@
     chevron.style.transform = willOpen ? 'rotate(90deg)' : '';
   }
 
-  function filterMemberHistoryRows() {
-    var input = document.getElementById('ta-member-history-search');
-    var query = input ? input.value.toLowerCase().trim() : '';
-    var groupRows = document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row');
+  var teamHistoryPagination = {
+    vacancy: { currentPage: 1, perPage: 10 },
+    member: { currentPage: 1, perPage: 10 }
+  };
 
-    groupRows.forEach(function(row) {
-      var text = row.getAttribute('data-search-text') || '';
-      var matches = !query || text.indexOf(query) !== -1;
-      var expandId = row.getAttribute('data-expand-id');
-      var expandRow = expandId ? document.getElementById(expandId) : null;
-      var chevronId = row.getAttribute('data-chevron-id');
-      var chevron = chevronId ? document.getElementById(chevronId) : null;
+  function teamHistoryCreatePageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
 
-      row.style.display = matches ? '' : 'none';
-      if (!matches && expandRow) {
-        expandRow.classList.add('hidden');
-        if (chevron) chevron.style.transform = '';
+  function teamHistoryRenderPaginationControls(type, totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('team-history-' + type + '-pagination');
+    var info = document.getElementById('team-history-' + type + '-pagination-info');
+    var links = document.getElementById('team-history-' + type + '-pagination-links');
+    if (!nav || !info || !links) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    var state = teamHistoryPagination[type];
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + (type === 'vacancy' ? ' vacancies' : ' members');
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (state.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(teamHistoryCreatePageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: state.currentPage === 1,
+      onClick: function() {
+        state.currentPage -= 1;
+        applyTeamHistoryPagination(type, true);
       }
-      if (matches && expandRow && query) {
-        expandRow.classList.remove('hidden');
-        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === state.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(teamHistoryCreatePageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            state.currentPage = pageNumber;
+            applyTeamHistoryPagination(type, true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (state.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(teamHistoryCreatePageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: state.currentPage === totalPages,
+      onClick: function() {
+        state.currentPage += 1;
+        applyTeamHistoryPagination(type, true);
       }
-      if (matches && expandRow && !query) {
-        expandRow.classList.add('hidden');
-        if (chevron) chevron.style.transform = '';
-      }
+    }));
+  }
+
+  function teamHistoryGetRows(type) {
+    if (type === 'vacancy') {
+      return Array.from(document.querySelectorAll('#team-history-panel-vacancy .ta-vacancy-row'));
+    }
+    return Array.from(document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row'));
+  }
+
+  function applyTeamHistoryPagination(type, preservePage) {
+    var state = teamHistoryPagination[type];
+    if (!state) return;
+
+    var query = type === 'member'
+      ? (document.getElementById('ta-member-history-search').value || '').toLowerCase().trim()
+      : '';
+    var rows = teamHistoryGetRows(type);
+    var matchedRows = rows.filter(function(row) {
+      var text = (row.getAttribute('data-search-text') || '').toLowerCase();
+      return !query || text.indexOf(query) !== -1;
     });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / state.perPage));
+    if (!preservePage) {
+      state.currentPage = 1;
+    } else if (state.currentPage > totalPages) {
+      state.currentPage = totalPages;
+    }
+
+    if (type === 'member') {
+      document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row').forEach(function(row) {
+        var expandId = row.getAttribute('data-expand-id');
+        var expandRow = expandId ? document.getElementById(expandId) : null;
+        var chevronId = row.getAttribute('data-chevron-id');
+        var chevron = chevronId ? document.getElementById(chevronId) : null;
+        if (expandRow) expandRow.classList.add('hidden');
+        if (chevron) chevron.style.transform = '';
+      });
+    }
+
+    var start = (state.currentPage - 1) * state.perPage;
+    var end = start + state.perPage;
+    var currentRows = matchedRows.slice(start, end);
+    var visibleSet = new Set(currentRows);
+
+    rows.forEach(function(row) {
+      var shouldShow = visibleSet.has(row);
+      row.style.display = shouldShow ? '' : 'none';
+    });
+
+    if (type === 'member') {
+      currentRows.forEach(function(row) {
+        if (!query) return;
+        var expandId = row.getAttribute('data-expand-id');
+        var expandRow = expandId ? document.getElementById(expandId) : null;
+        var chevronId = row.getAttribute('data-chevron-id');
+        var chevron = chevronId ? document.getElementById(chevronId) : null;
+        if (expandRow) expandRow.classList.remove('hidden');
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+      });
+    }
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    teamHistoryRenderPaginationControls(type, matchedRows.length, totalPages, startIndex, endIndex);
+  }
+
+  function filterMemberHistoryRows() {
+    applyTeamHistoryPagination('member', false);
   }
 
   function toggleMemberAssignCard(cardId) {
@@ -801,6 +941,8 @@
     resetVacancyHistorySortIcons('position');
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
+    applyTeamHistoryPagination('vacancy', false);
+    applyTeamHistoryPagination('member', false);
 
     // Prevent default first-input autofocus from selecting the hiring title field on initial page load.
     function clearInitialHiringTitleFocus() {
