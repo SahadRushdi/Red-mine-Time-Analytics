@@ -177,10 +177,10 @@
       <div>
         <%= label_tag 'ta-hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button"
-                  id="ta-hiring-team-button"
-                  data-ta-hiring-team-toggle="true"
-                  class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+              <button type="button"
+                      id="ta-hiring-team-button"
+                      data-ta-hiring-team-toggle="true"
+                      class="ts-search-input !inline-flex !h-[47px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
             <span id="ta-hiring-team-label" class="truncate">Select Team</span>
             <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -209,15 +209,15 @@
       <div>
         <%= label_tag 'hiring-priority-button', 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <div class="relative">
-          <button type="button" id="hiring-priority-button" data-ta-dropdown-toggle="hiring-priority-dropdown" class="inline-flex h-[48px] items-center justify-between w-full px-4 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <button type="button" id="hiring-priority-button" data-ta-dropdown-toggle="hiring-priority-dropdown" class="ts-search-input !inline-flex !h-[47px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
             <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
           <div id="hiring-priority-dropdown" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
             <ul class="py-1 text-sm text-gray-700">
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="high" data-ta-dropdown-label="High" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">High</button></li>
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="medium" data-ta-dropdown-label="Medium" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Medium</button></li>
-              <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="low" data-ta-dropdown-label="Low" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Low</button></li>
+              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="high" data-ta-dropdown-label="High" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">High</button></li>
+              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="medium" data-ta-dropdown-label="Medium" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Medium</button></li>
+              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="low" data-ta-dropdown-label="Low" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Low</button></li>
             </ul>
           </div>
           <%= f.hidden_field :priority, required: true %>
