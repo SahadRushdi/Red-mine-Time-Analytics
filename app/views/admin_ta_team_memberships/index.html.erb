@@ -69,7 +69,7 @@
                       <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
                     <% end %>
                   </div>
-                  <div class="ta-team-member-edit hidden">
+                  <div class="ta-team-member-edit hidden tep-inline-form">
                     <div class="relative inline-flex w-full max-w-[11rem]" id="ta-team-member-role-wrapper-<%= membership.id %>">
                       <button type="button"
                               id="ta-team-member-role-btn-<%= membership.id %>"
@@ -104,34 +104,34 @@
                 </td>
                 <td class="px-4 py-3 text-gray-600">
                   <div class="ta-team-member-view"><%= membership.start_date ? format_date(membership.start_date) : '—' %></div>
-                  <div class="ta-team-member-edit hidden">
+                  <div class="ta-team-member-edit hidden tep-inline-form">
                     <input type="text"
                            id="ta-team-member-start-date-<%= membership.id %>"
-                           name="ta_team_membership[start_date]"
-                           form="<%= form_id %>"
-                           value="<%= membership.start_date ? membership.start_date.strftime('%m/%d/%Y') : '' %>"
-                           autocomplete="off"
-                           placeholder="mm/dd/yyyy"
-                           datepicker
-                           datepicker-format="mm/dd/yyyy"
-                           datepicker-autohide
-                           class="ta-team-field ta-team-inline-control w-36">
+                            name="ta_team_membership[start_date]"
+                            form="<%= form_id %>"
+                            value="<%= membership.start_date ? membership.start_date.strftime('%m/%d/%Y') : '' %>"
+                            autocomplete="off"
+                            placeholder="mm/dd/yyyy"
+                            datepicker
+                            datepicker-format="mm/dd/yyyy"
+                            datepicker-autohide
+                            class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
                   </div>
                 </td>
                 <td class="px-4 py-3 text-gray-600">
                   <div class="ta-team-member-view"><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></div>
-                  <div class="ta-team-member-edit hidden">
+                  <div class="ta-team-member-edit hidden tep-inline-form">
                     <input type="text"
                            id="ta-team-member-end-date-<%= membership.id %>"
                            name="ta_team_membership[end_date]"
-                           form="<%= form_id %>"
-                           value="<%= membership.end_date ? membership.end_date.strftime('%m/%d/%Y') : '' %>"
-                           autocomplete="off"
-                           placeholder="Active"
-                           datepicker
-                           datepicker-format="mm/dd/yyyy"
-                           datepicker-autohide
-                           class="ta-team-field ta-team-inline-control w-36">
+                            form="<%= form_id %>"
+                            value="<%= membership.end_date ? membership.end_date.strftime('%m/%d/%Y') : '' %>"
+                            autocomplete="off"
+                            placeholder="mm/dd/yyyy"
+                            datepicker
+                            datepicker-format="mm/dd/yyyy"
+                            datepicker-autohide
+                            class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
                   </div>
                 </td>
                 <td class="px-4 py-3">
