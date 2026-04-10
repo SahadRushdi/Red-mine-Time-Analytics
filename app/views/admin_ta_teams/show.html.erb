@@ -754,4 +754,15 @@
   function filterTeamProjectsRows() {
     filterRowsByInput('ta-team-projects-search', '.ta-team-projects-row');
   }
+
+  // Prevent default first-input autofocus from selecting the Team Members search field on initial page load.
+  function clearInitialTeamMembersSearchFocus() {
+    var teamMembersSearchInput = document.getElementById('ta-team-members-search');
+    if (!teamMembersSearchInput) return;
+    if (document.activeElement === teamMembersSearchInput) {
+      teamMembersSearchInput.blur();
+    }
+  }
+  setTimeout(clearInitialTeamMembersSearchFocus, 0);
+  setTimeout(clearInitialTeamMembersSearchFocus, 100);
 </script>

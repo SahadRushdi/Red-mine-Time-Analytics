@@ -440,4 +440,15 @@
     document.addEventListener('click', teamProjectsCloseDeleteModalIfBackdrop);
     window.__teamProjectsDeleteModalListenersBound = true;
   }
+
+  // Prevent default first-input autofocus from selecting the Active Projects search field on initial page load.
+  function clearInitialActiveProjectsSearchFocus() {
+    var activeProjectsSearchInput = document.getElementById('ta-active-projects-search');
+    if (!activeProjectsSearchInput) return;
+    if (document.activeElement === activeProjectsSearchInput) {
+      activeProjectsSearchInput.blur();
+    }
+  }
+  setTimeout(clearInitialActiveProjectsSearchFocus, 0);
+  setTimeout(clearInitialActiveProjectsSearchFocus, 100);
 </script>

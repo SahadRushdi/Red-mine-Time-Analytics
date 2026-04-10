@@ -722,4 +722,15 @@
     });
   });
 
+  // Prevent default first-input autofocus from selecting the Direct Members search field on initial page load.
+  function clearInitialDirectMembersSearchFocus() {
+    var directMembersSearchInput = document.getElementById('ta-direct-members-search');
+    if (!directMembersSearchInput) return;
+    if (document.activeElement === directMembersSearchInput) {
+      directMembersSearchInput.blur();
+    }
+  }
+  setTimeout(clearInitialDirectMembersSearchFocus, 0);
+  setTimeout(clearInitialDirectMembersSearchFocus, 100);
+
 </script>
