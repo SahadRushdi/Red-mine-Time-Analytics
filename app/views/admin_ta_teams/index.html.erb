@@ -1,4 +1,4 @@
-<% html_title 'Team Management' %>
+<% html_title 'Team Administration' %>
 
 <% content_for :header_tags do %>
   <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
@@ -11,7 +11,7 @@
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
-      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Management</h2>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Administration</h2>
       <p class="text-sm text-gray-500">Manage teams, members, vacancies, and hiring needs from one panel.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -24,7 +24,7 @@
     <div class="space-y-6 xl:col-span-2">
       <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[590px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 py-3">
-          <h3 class="font-semibold text-gray-900">Organizational Hierarchy</h3>
+          <h3 class="font-semibold text-gray-900">Team Structure</h3>
         </div>
         <div class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
           <% if @all_teams.empty? %>
@@ -41,8 +41,8 @@
       <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[590px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 py-3">
           <div class="flex items-center justify-between">
-            <h3 class="font-semibold text-gray-900">Global Member List</h3>
-            <span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
+            <h3 class="font-semibold text-gray-900">Workforce Overview</h3>
+            <span id="workforce-overview-count-badge" class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">
               <%= @unallocated_users.size %> unallocated
             </span>
           </div>
@@ -52,12 +52,18 @@
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
             <li class="me-2">
               <button type="button" id="team-sidebar-members-tab" data-team-tab-target="team-sidebar-members-panel" class="ta-view-tab inline-block rounded-t-lg p-4 ta-view-tab-active">
-                Members
+                <span class="inline-flex items-center gap-2">
+                  <span>Unallocated Members</span>
+                  <span class="ts-tab-badge"><%= @unallocated_users.size %></span>
+                </span>
               </button>
             </li>
             <li class="me-2">
               <button type="button" id="team-sidebar-vacancies-tab" data-team-tab-target="team-sidebar-vacancies-panel" class="ta-view-tab inline-block rounded-t-lg p-4 text-gray-500 hover:text-gray-600 hover:bg-gray-50">
-                Vacancy List
+                <span class="inline-flex items-center gap-2">
+                  <span>Open Positions</span>
+                  <span class="ts-tab-badge"><%= @open_hiring_needs.size %></span>
+                </span>
               </button>
             </li>
           </ul>
@@ -66,14 +72,6 @@
         <div id="team-sidebar-members-panel" class="p-4 xl:flex-1 xl:min-h-0">
           <div class="max-h-[680px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:h-full xl:max-h-none">
             <% if @unallocated_users.any? %>
-              <div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <div class="mb-2 flex items-center justify-between">
-                  <p class="text-sm font-semibold text-blue-900">Unallocated Members</p>
-                  <span class="rounded-full bg-blue-200 px-2 py-0.5 text-xs font-semibold text-blue-800"><%= @unallocated_users.size %></span>
-                </div>
-                <p class="text-xs text-blue-700">Drag a member to a team in Organizational Hierarchy or use “Add to Team”.</p>
-              </div>
-
               <% @unallocated_users.each_with_index do |user, idx| %>
                 <div class="ta-unallocated-member-card rounded-lg border border-[#3b82f6] bg-blue-50/70 p-3"
                       draggable="true"
@@ -159,7 +157,7 @@
                 </div>
               <% end %>
             <% else %>
-              <p class="text-sm text-gray-500">No open vacancies.</p>
+              <p class="text-sm text-gray-500">No open positions.</p>
             <% end %>
           </div>
         </div>
@@ -168,7 +166,7 @@
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-    <h3 class="mb-4 font-semibold text-gray-900">Add Hiring Need</h3>
+    <h3 class="mb-4 font-semibold text-gray-900">Create Hiring Request</h3>
     <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-4 md:grid-cols-3' } do |f| %>
       <div>
         <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -224,7 +222,7 @@
         </div>
       </div>
       <div class="md:col-span-3 flex justify-end pt-1">
-        <%= f.submit 'Add Hiring Need', class: 'ta-hiring-submit-btn inline-flex h-[44px] items-center !rounded-lg bg-blue-500 px-5 text-sm font-medium text-white hover:bg-blue-600' %>
+        <%= f.submit 'Create', class: 'ta-hiring-submit-btn inline-flex h-[44px] items-center !rounded-lg bg-blue-500 px-5 text-sm font-medium text-white hover:bg-blue-600' %>
       </div>
     <% end %>
   </div>
@@ -237,7 +235,7 @@
                   class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 ta-view-tab-active">
             <span class="inline-flex items-center gap-2">
               <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-              Vacancy History
+              Hiring Requests
               <span class="ts-tab-badge"><%= @hiring_need_history.size %></span>
             </span>
           </button>
@@ -247,7 +245,7 @@
                   class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
             <span class="inline-flex items-center gap-2">
               <span class="h-2 w-2 rounded-full bg-gray-300"></span>
-              Member History
+              All Members
               <span class="ts-tab-badge"><%= @active_memberships.size %></span>
             </span>
           </button>
@@ -259,7 +257,7 @@
       <% open_count = @hiring_need_history.count(&:open?) %>
       <% filled_count = @hiring_need_history.count(&:filled?) %>
       <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
-        <span><%= @hiring_need_history.size %> total vacancies · <span class="text-red-600"><%= open_count %> open</span> · <span class="text-green-600"><%= filled_count %> filled</span></span>
+        <span><%= @hiring_need_history.size %> total hiring requests · <span class="text-red-600"><%= open_count %> open</span> · <span class="text-green-600"><%= filled_count %> filled</span></span>
       </div>
 
       <div class="overflow-x-auto">
@@ -368,13 +366,13 @@
               <% end %>
             <% else %>
               <tr>
-                <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No vacancy history available.</td>
+                <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No hiring requests available.</td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
-      <nav id="team-history-vacancy-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Vacancy history pagination">
+      <nav id="team-history-vacancy-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Hiring requests pagination">
         <span id="team-history-vacancy-pagination-info" class="text-sm text-gray-700"></span>
         <ul id="team-history-vacancy-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
       </nav>
@@ -484,7 +482,7 @@
             </tbody>
           </table>
         </div>
-        <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Member history pagination">
+        <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="All members pagination">
           <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
           <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
         </nav>
@@ -596,7 +594,7 @@
 
     var state = teamHistoryPagination[type];
     nav.classList.remove('hidden');
-    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + (type === 'vacancy' ? ' vacancies' : ' members');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + (type === 'vacancy' ? ' hiring requests' : ' members');
     links.innerHTML = '';
 
     var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
@@ -944,6 +942,17 @@
           item.tab.classList.add('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
         }
       });
+      updateWorkforceOverviewCountBadge(targetPanelId);
+    }
+
+    function updateWorkforceOverviewCountBadge(activePanelId) {
+      var badge = document.getElementById('workforce-overview-count-badge');
+      if (!badge) return;
+      if (activePanelId === 'team-sidebar-vacancies-panel') {
+        badge.textContent = '<%= @open_hiring_needs.size %> open positions';
+      } else {
+        badge.textContent = '<%= @unallocated_users.size %> unallocated';
+      }
     }
 
     document.querySelectorAll('[data-team-tab-target]').forEach(function(tabButton) {
@@ -978,6 +987,7 @@
     });
 
     resetVacancyHistorySortIcons('position');
+    updateWorkforceOverviewCountBadge('team-sidebar-members-panel');
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
     applyTeamHistoryPagination('vacancy', false);
