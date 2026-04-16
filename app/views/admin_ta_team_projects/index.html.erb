@@ -9,6 +9,11 @@
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
 
+<% selected_project = @available_projects.find { |p| p.id == @team_project.project_id.to_i } %>
+<% selected_project_text = selected_project ? "#{selected_project.name} (#{selected_project.identifier})" : '' %>
+<% start_date_value = (@team_project.start_date || Date.current).strftime('%m/%d/%Y') %>
+<% end_date_value = @team_project.end_date ? @team_project.end_date.strftime('%m/%d/%Y') : '' %>
+
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
     <div>
@@ -16,7 +21,11 @@
       <p class="text-sm text-gray-500"><%= ta_team_breadcrumb(@team) %></p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <%= link_to 'Assign Project', new_admin_ta_team_team_project_path(@team), class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <button type="button"
+              onclick="teamProjectsOpenAddModal()"
+              class="ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">
+        Add Project
+      </button>
       <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
     </div>
   </div>
@@ -226,6 +235,106 @@
   </div>
 </div>
 
+<div id="taTeamProjectsAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-3xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      <div class="flex items-start justify-between p-4 border-b rounded-t">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">Add Project: <%= h(@team.name) %></h3>
+          <p class="text-xs text-gray-500 mt-1"><%= ta_team_breadcrumb(@team) %></p>
+        </div>
+        <button type="button"
+                onclick="teamProjectsCloseAddModal()"
+                class="tep-delete-close text-gray-400 bg-transparent rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+          <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+
+      <div class="p-4 md:p-6 overflow-visible">
+        <%= form_for @team_project, url: admin_ta_team_team_projects_path(@team), html: { id: 'ta-team-project-modal-form', class: 'space-y-6', onsubmit: 'return submitTeamProjectAddForm()' } do |f| %>
+          <%= error_messages_for 'ta_team_project' %>
+
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+              <%= label_tag :ta_team_project_search_modal, 'Project', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <div class="relative min-w-0" id="ta-add-team-project-wrapper">
+                <input type="text"
+                       id="ta-add-team-project-search"
+                       value="<%= h(selected_project_text) %>"
+                       placeholder="🔍 Search project... *"
+                       autocomplete="off"
+                       onclick="teamProjectsOpenAddDropdown()"
+                       oninput="teamProjectsFilterAddProjects()"
+                       onkeydown="teamProjectsHandleAddProjectKey(event)"
+                       class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                       required>
+                <%= hidden_field_tag 'ta_team_project[project_id]', @team_project.project_id, id: 'ta-add-team-project-id' %>
+                <div id="ta-add-team-project-list"
+                     class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                     style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                  <% @available_projects.each do |project| %>
+                    <% project_text = "#{project.name} (#{project.identifier})" %>
+                    <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                         tabindex="0"
+                         data-id="<%= project.id %>"
+                         data-text="<%= j(project_text) %>"
+                         data-search="<%= j("#{project.name} #{project.identifier}".downcase) %>"
+                         onclick="teamProjectsSelectAddProject(this.getAttribute('data-id'), this.getAttribute('data-text'))"
+                         onkeydown="teamProjectsHandleAddProjectOptionKey(event, this.getAttribute('data-id'), this.getAttribute('data-text'))">
+                      <span class="text-gray-700 leading-relaxed"><%= h(project.name) %> <span class="text-gray-400">(<%= h(project.identifier) %>)</span></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <%= label_tag :ta_team_project_start_date_modal, 'Start Date', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <%= text_field_tag 'ta_team_project[start_date]',
+                                 start_date_value,
+                                 id: 'ta-add-team-project-start-date',
+                                 autocomplete: 'off',
+                                 placeholder: 'mm/dd/yyyy',
+                                 required: true,
+                                 datepicker: true,
+                                 'datepicker-format': 'mm/dd/yyyy',
+                                 'datepicker-autohide': true,
+                                 class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+            </div>
+
+            <div>
+              <%= label_tag :ta_team_project_end_date_modal, 'End Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= text_field_tag 'ta_team_project[end_date]',
+                                 end_date_value,
+                                 id: 'ta-add-team-project-end-date',
+                                 autocomplete: 'off',
+                                 placeholder: 'mm/dd/yyyy',
+                                 datepicker: true,
+                                 'datepicker-format': 'mm/dd/yyyy',
+                                 'datepicker-autohide': true,
+                                 class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+              <p class="mt-1 text-xs text-gray-500">Leave empty for ongoing projects.</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="button"
+                    onclick="teamProjectsCloseAddModal()"
+                    class="ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">
+              <%= l(:button_cancel) %>
+            </button>
+            <button type="submit"
+                    class="ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Create</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="taTeamProjectsDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
   <div class="relative p-4 w-full max-w-md">
     <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
@@ -290,6 +399,156 @@
     var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (!mmddyyyy) return value;
     return mmddyyyy[3] + '-' + mmddyyyy[1].padStart(2, '0') + '-' + mmddyyyy[2].padStart(2, '0');
+  }
+
+  function teamProjectsAddElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-project-wrapper'),
+      search: document.getElementById('ta-add-team-project-search'),
+      hidden: document.getElementById('ta-add-team-project-id'),
+      list: document.getElementById('ta-add-team-project-list')
+    };
+  }
+
+  function teamProjectsOpenAddDropdown() {
+    var els = teamProjectsAddElements();
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
+  }
+
+  function teamProjectsCloseAddDropdown() {
+    var els = teamProjectsAddElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamProjectsFilterAddProjects() {
+    var els = teamProjectsAddElements();
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function teamProjectsSelectAddProject(projectId, displayText) {
+    var els = teamProjectsAddElements();
+    if (els.hidden) els.hidden.value = projectId;
+    if (els.search) els.search.value = displayText;
+    teamProjectsCloseAddDropdown();
+  }
+
+  function teamProjectsHandleAddProjectKey(event) {
+    var els = teamProjectsAddElements();
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      teamProjectsCloseAddDropdown();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function teamProjectsHandleAddProjectOptionKey(event, projectId, displayText) {
+    var els = teamProjectsAddElements();
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamProjectsSelectAddProject(projectId, displayText);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamProjectsCloseAddDropdown();
+      if (els.search) els.search.focus();
+    }
+  }
+
+  function initTeamProjectAddDatepickers() {
+    ['ta-add-team-project-start-date', 'ta-add-team-project-end-date'].forEach(function(id) {
+      var input = document.getElementById(id);
+      if (!input) return;
+      if (input.datepicker && input.datepicker.setOptions) {
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true });
+      } else if (window.Datepicker) {
+        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true });
+      }
+      if (!input.dataset.datepickerLayerBound) {
+        ['focus', 'click'].forEach(function(eventName) {
+          input.addEventListener(eventName, function() {
+            setTimeout(teamProjectsRaiseDatepickerLayer, 0);
+          });
+        });
+        input.dataset.datepickerLayerBound = '1';
+      }
+    });
+  }
+
+  function teamProjectsRaiseDatepickerLayer() {
+    document.querySelectorAll('.datepicker, .datepicker-picker').forEach(function(el) {
+      el.style.zIndex = '10120';
+    });
+  }
+
+  function teamProjectsOpenAddModal() {
+    var modal = document.getElementById('taTeamProjectsAddModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    initTeamProjectAddDatepickers();
+    teamProjectsRaiseDatepickerLayer();
+    var search = document.getElementById('ta-add-team-project-search');
+    if (search) search.focus();
+  }
+
+  function teamProjectsCloseAddModal() {
+    var modal = document.getElementById('taTeamProjectsAddModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    teamProjectsCloseAddDropdown();
+  }
+
+  function teamProjectsCloseAddModalIfBackdrop(event) {
+    var modal = document.getElementById('taTeamProjectsAddModal');
+    if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+      teamProjectsCloseAddModal();
+    }
+  }
+
+  function submitTeamProjectAddForm() {
+    var startInput = document.getElementById('ta-add-team-project-start-date');
+    var endInput = document.getElementById('ta-add-team-project-end-date');
+    if (startInput) startInput.value = normalizeTeamProjectDate(startInput.value.trim());
+    if (endInput) endInput.value = normalizeTeamProjectDate(endInput.value.trim());
+    return true;
   }
 
   function initTeamProjectInlineDatepickers(teamProjectId) {
@@ -434,12 +693,26 @@
   if (!window.__teamProjectsDeleteModalListenersBound) {
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape') {
+        teamProjectsCloseAddModal();
         teamProjectsCloseDeleteModal();
       }
     });
-    document.addEventListener('click', teamProjectsCloseDeleteModalIfBackdrop);
+    document.addEventListener('click', function(event) {
+      teamProjectsCloseDeleteModalIfBackdrop(event);
+      teamProjectsCloseAddModalIfBackdrop(event);
+    });
     window.__teamProjectsDeleteModalListenersBound = true;
   }
+
+  document.addEventListener('click', function(event) {
+    var addEls = teamProjectsAddElements();
+    if (addEls.wrapper && addEls.list) {
+      var clickedInsideList = !!addEls.list.contains(event.target);
+      if (!addEls.wrapper.contains(event.target) && !clickedInsideList) {
+        teamProjectsCloseAddDropdown();
+      }
+    }
+  });
 
   // Prevent default first-input autofocus from selecting the Active Projects search field on initial page load.
   function clearInitialActiveProjectsSearchFocus() {
@@ -451,4 +724,8 @@
   }
   setTimeout(clearInitialActiveProjectsSearchFocus, 0);
   setTimeout(clearInitialActiveProjectsSearchFocus, 100);
+  initTeamProjectAddDatepickers();
+  <% if @show_add_project_modal %>
+    teamProjectsOpenAddModal();
+  <% end %>
 </script>

@@ -10,15 +10,14 @@ class AdminTaTeamProjectsController < ApplicationController
   helper :ta_teams
 
   def index
-    @active_projects = @team.ta_team_projects.active.includes(:project).order('start_date DESC')
-    @inactive_projects = @team.ta_team_projects.inactive.includes(:project).order('end_date DESC')
+    @team_project = @team.ta_team_projects.build
+    load_available_projects
+    load_projects
+    @show_add_project_modal = params[:open_add_project_modal].present?
   end
 
   def new
-    @team_project = @team.ta_team_projects.build
-    @available_projects = Project.active.sorted.where.not(
-      id: @team.ta_team_projects.active.pluck(:project_id)
-    )
+    redirect_to admin_ta_team_team_projects_path(@team, open_add_project_modal: 1)
   end
 
   def create
@@ -29,10 +28,10 @@ class AdminTaTeamProjectsController < ApplicationController
       flash[:notice] = l(:notice_successful_create)
       redirect_to admin_ta_team_team_projects_path(@team)
     else
-      @available_projects = Project.active.sorted.where.not(
-        id: @team.ta_team_projects.active.pluck(:project_id)
-      )
-      render :new
+      load_available_projects
+      load_projects
+      @show_add_project_modal = true
+      render :index, status: :unprocessable_entity
     end
   end
 
@@ -57,6 +56,17 @@ class AdminTaTeamProjectsController < ApplicationController
   end
 
   private
+
+  def load_projects
+    @active_projects = @team.ta_team_projects.active.includes(:project).order('start_date DESC')
+    @inactive_projects = @team.ta_team_projects.inactive.includes(:project).order('end_date DESC')
+  end
+
+  def load_available_projects
+    @available_projects = Project.active.sorted.where.not(
+      id: @team.ta_team_projects.active.pluck(:project_id)
+    )
+  end
 
   def find_team
     @team = TaTeam.find(params[:admin_ta_team_id])

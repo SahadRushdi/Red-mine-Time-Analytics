@@ -635,6 +635,10 @@ button.ta-btn-danger,
 #taTeamMembersAddModal button:hover,
 #taTeamMembersAddModal button:focus,
 #taTeamMembersAddModal button:active,
+#taTeamProjectsAddModal button,
+#taTeamProjectsAddModal button:hover,
+#taTeamProjectsAddModal button:focus,
+#taTeamProjectsAddModal button:active,
 #taTeamMembersDeleteModal button,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
@@ -653,6 +657,7 @@ button.ta-btn-danger,
 }
 
 #taTeamMembersAddModal .tep-delete-close,
+#taTeamProjectsAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
 #taTeamDeleteModal .tep-delete-close,
 #taTeamProjectsDeleteModal .tep-delete-close {
@@ -660,6 +665,7 @@ button.ta-btn-danger,
 }
 
 #taTeamMembersAddModal .tep-delete-close:hover,
+#taTeamProjectsAddModal .tep-delete-close:hover,
 #taTeamMembersDeleteModal .tep-delete-close:hover,
 #taTeamDeleteModal .tep-delete-close:hover,
 #taTeamProjectsDeleteModal .tep-delete-close:hover {
@@ -668,6 +674,8 @@ button.ta-btn-danger,
 }
 
 #taTeamMembersAddModal .datepicker,
+#taTeamProjectsAddModal .datepicker,
+#taTeamProjectsAddModal .datepicker-picker,
 #taTeamMembersAddModal .datepicker-picker {
   z-index: 10120 !important;
 }
