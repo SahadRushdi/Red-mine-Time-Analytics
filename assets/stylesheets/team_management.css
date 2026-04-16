@@ -773,6 +773,36 @@ button.ta-btn-danger,
   border-color: #9ca3af !important;
 }
 
+#ta-add-team-member-start-date,
+#ta-add-team-member-start-date:hover,
+#ta-add-team-member-start-date:focus,
+#ta-add-team-member-start-date:active,
+#ta-add-team-member-end-date,
+#ta-add-team-member-end-date:hover,
+#ta-add-team-member-end-date:focus,
+#ta-add-team-member-end-date:active,
+#ta-add-team-project-start-date,
+#ta-add-team-project-start-date:hover,
+#ta-add-team-project-start-date:focus,
+#ta-add-team-project-start-date:active,
+#ta-add-team-project-end-date,
+#ta-add-team-project-end-date:hover,
+#ta-add-team-project-end-date:focus,
+#ta-add-team-project-end-date:active {
+  border: 1px solid #d1d5db !important;
+  border-bottom-width: 1px !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background-image: none !important;
+}
+
+#ta-add-team-member-start-date:focus,
+#ta-add-team-member-end-date:focus,
+#ta-add-team-project-start-date:focus,
+#ta-add-team-project-end-date:focus {
+  border-color: #3b82f6 !important;
+}
+
 #ta-team-settings-search-input.ts-search-input {
   min-height: 42px;
   font-size: 15px !important;
