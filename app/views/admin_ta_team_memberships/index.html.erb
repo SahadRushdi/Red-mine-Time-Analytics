@@ -9,6 +9,13 @@
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
 <% end %>
 
+<% selected_user = @available_users.find { |u| u.id == @membership.user_id.to_i } %>
+<% selected_user_text = selected_user ? "#{selected_user.name} (#{selected_user.mail})" : '' %>
+<% selected_role = @membership.role.presence || 'member' %>
+<% selected_role_text = selected_role == 'lead' ? 'Team Lead' : 'Team Member' %>
+<% start_date_value = (@membership.start_date || Date.current).strftime('%m/%d/%Y') %>
+<% end_date_value = @membership.end_date ? @membership.end_date.strftime('%m/%d/%Y') : '' %>
+
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
     <div>
@@ -16,7 +23,11 @@
       <p class="text-sm text-gray-500"><%= ta_team_breadcrumb(@team) %></p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <%= link_to 'Add Member', new_admin_ta_team_membership_path(@team), class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <button type="button"
+              onclick="teamMembersOpenAddModal()"
+              class="ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">
+        Add Member
+      </button>
       <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
     </div>
   </div>
@@ -365,6 +376,145 @@
   </div>
 </div>
 
+<div id="taTeamMembersAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-3xl max-h-full">
+    <div class="relative bg-white rounded-lg shadow">
+      <div class="flex items-start justify-between p-4 border-b rounded-t">
+        <div>
+          <h3 class="text-xl font-semibold text-gray-900">Add Team Member: <%= h(@team.name) %></h3>
+          <p class="text-xs text-gray-500 mt-1"><%= ta_team_breadcrumb(@team) %></p>
+        </div>
+        <button type="button"
+                onclick="teamMembersCloseAddModal()"
+                class="tep-delete-close text-gray-400 bg-transparent rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+          <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+
+      <div class="p-4 md:p-6 overflow-visible">
+        <%= form_for @membership, url: admin_ta_team_memberships_path(@team), html: { id: 'ta-team-member-modal-form', class: 'space-y-6', onsubmit: 'return submitTeamMemberAddForm()' } do |f| %>
+          <%= error_messages_for 'ta_team_membership' %>
+
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+              <%= label_tag :ta_team_membership_user_search_modal, 'User', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <div class="relative min-w-0" id="ta-add-team-member-user-wrapper">
+                <input type="text"
+                       id="ta-add-team-member-user-search"
+                       value="<%= h(selected_user_text) %>"
+                       placeholder="🔍 Search member... *"
+                       autocomplete="off"
+                       onclick="teamMembersOpenAddUserDropdown()"
+                       oninput="teamMembersFilterAddUsers()"
+                       onkeydown="teamMembersHandleAddUserKey(event)"
+                       class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                       required>
+                <%= hidden_field_tag 'ta_team_membership[user_id]', @membership.user_id, id: 'ta-add-team-member-user-id' %>
+                <div id="ta-add-team-member-user-list"
+                     class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                     style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                  <% @available_users.each do |user| %>
+                    <% user_text = "#{user.name} (#{user.mail})" %>
+                    <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                         tabindex="0"
+                         data-id="<%= user.id %>"
+                         data-text="<%= j(user_text) %>"
+                         data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                         onclick="teamMembersSelectAddUser('<%= user.id %>', this.getAttribute('data-text'))"
+                         onkeydown="teamMembersHandleAddUserOptionKey(event, '<%= user.id %>', this.getAttribute('data-text'))">
+                      <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
+              <%= f.label :role, 'Role', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <div class="relative" id="ta-add-team-member-role-wrapper">
+                <button type="button"
+                        id="ta-add-team-member-role-btn"
+                        onclick="teamMembersToggleAddRoleDropdown()"
+                        onkeydown="teamMembersHandleAddRoleTriggerKey(event)"
+                        class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                  <span id="ta-add-team-member-role-text" class="text-gray-700 truncate flex-1 text-left"><%= selected_role_text %></span>
+                  <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <%= hidden_field_tag 'ta_team_membership[role]', selected_role, id: 'ta-add-team-member-role-value' %>
+                <div id="ta-add-team-member-role-list"
+                     class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                  <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+                    <li>
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                              onclick="teamMembersSelectAddRole('member', 'Team Member')"
+                              onkeydown="teamMembersHandleAddRoleOptionKey(event, 'member', 'Team Member')">
+                        Team Member
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                              onclick="teamMembersSelectAddRole('lead', 'Team Lead')"
+                              onkeydown="teamMembersHandleAddRoleOptionKey(event, 'lead', 'Team Lead')">
+                        Team Lead
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Team leads can view team analytics.</p>
+            </div>
+
+            <div>
+              <%= label_tag :ta_team_membership_start_date_modal, 'Start Date', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <%= text_field_tag 'ta_team_membership[start_date]',
+                                 start_date_value,
+                                 id: 'ta-add-team-member-start-date',
+                                 autocomplete: 'off',
+                                 placeholder: 'mm/dd/yyyy',
+                                 required: true,
+                                 datepicker: true,
+                                 'datepicker-format': 'mm/dd/yyyy',
+                                 'datepicker-autohide': true,
+                                 class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+            </div>
+
+            <div>
+              <%= label_tag :ta_team_membership_end_date_modal, 'End Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= text_field_tag 'ta_team_membership[end_date]',
+                                 end_date_value,
+                                 id: 'ta-add-team-member-end-date',
+                                 autocomplete: 'off',
+                                 placeholder: 'mm/dd/yyyy',
+                                 datepicker: true,
+                                 'datepicker-format': 'mm/dd/yyyy',
+                                 'datepicker-autohide': true,
+                                 class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+              <p class="mt-1 text-xs text-gray-500">Leave empty for active members.</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="button"
+                    onclick="teamMembersCloseAddModal()"
+                    class="ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">
+              <%= l(:button_cancel) %>
+            </button>
+            <button type="submit"
+                    class="ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Create</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="taTeamMembersDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
   <div class="relative p-4 w-full max-w-md">
     <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
@@ -430,6 +580,231 @@
     var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (!mmddyyyy) return value;
     return mmddyyyy[3] + '-' + mmddyyyy[1].padStart(2, '0') + '-' + mmddyyyy[2].padStart(2, '0');
+  }
+
+  function teamMembersAddUserElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-member-user-wrapper'),
+      search: document.getElementById('ta-add-team-member-user-search'),
+      hidden: document.getElementById('ta-add-team-member-user-id'),
+      list: document.getElementById('ta-add-team-member-user-list')
+    };
+  }
+
+  function teamMembersOpenAddUserDropdown() {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
+  }
+
+  function teamMembersCloseAddUserDropdown() {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamMembersFilterAddUsers() {
+    var els = teamMembersAddUserElements();
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function teamMembersSelectAddUser(userId, displayText) {
+    var els = teamMembersAddUserElements();
+    if (els.hidden) els.hidden.value = userId;
+    if (els.search) els.search.value = displayText;
+    teamMembersCloseAddUserDropdown();
+  }
+
+  function teamMembersHandleAddUserKey(event) {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      teamMembersCloseAddUserDropdown();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function teamMembersHandleAddUserOptionKey(event, userId, displayText) {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersSelectAddUser(userId, displayText);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddUserDropdown();
+      if (els.search) els.search.focus();
+    }
+  }
+
+  function teamMembersAddRoleElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-member-role-wrapper'),
+      button: document.getElementById('ta-add-team-member-role-btn'),
+      label: document.getElementById('ta-add-team-member-role-text'),
+      hidden: document.getElementById('ta-add-team-member-role-value'),
+      list: document.getElementById('ta-add-team-member-role-list')
+    };
+  }
+
+  function teamMembersCloseAddRoleDropdown() {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamMembersToggleAddRoleDropdown() {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    els.list.classList.toggle('hidden');
+  }
+
+  function teamMembersSelectAddRole(role, label) {
+    var els = teamMembersAddRoleElements();
+    if (els.hidden) els.hidden.value = role;
+    if (els.label) els.label.textContent = label;
+    teamMembersCloseAddRoleDropdown();
+  }
+
+  function teamMembersHandleAddRoleTriggerKey(event) {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersToggleAddRoleDropdown();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (els.list.classList.contains('hidden')) els.list.classList.remove('hidden');
+      var first = els.list.querySelector('.tep-activity-option');
+      if (first) first.focus();
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddRoleDropdown();
+    }
+  }
+
+  function teamMembersHandleAddRoleOptionKey(event, role, label) {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    var options = Array.from(els.list.querySelectorAll('.tep-activity-option'));
+    var current = event.target;
+    var currentIdx = options.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersSelectAddRole(role, label);
+      if (els.button) els.button.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = options[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.button) els.button.focus();
+      } else {
+        var prev = options[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddRoleDropdown();
+      if (els.button) els.button.focus();
+    }
+  }
+
+  function initTeamMemberAddDatepickers() {
+    ['ta-add-team-member-start-date', 'ta-add-team-member-end-date'].forEach(function(id) {
+      var input = document.getElementById(id);
+      if (!input) return;
+      if (input.datepicker && input.datepicker.setOptions) {
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true });
+      } else if (window.Datepicker) {
+        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true });
+      }
+      if (!input.dataset.datepickerLayerBound) {
+        ['focus', 'click'].forEach(function(eventName) {
+          input.addEventListener(eventName, function() {
+            setTimeout(teamMembersRaiseDatepickerLayer, 0);
+          });
+        });
+        input.dataset.datepickerLayerBound = '1';
+      }
+    });
+  }
+
+  function teamMembersRaiseDatepickerLayer() {
+    document.querySelectorAll('.datepicker, .datepicker-picker').forEach(function(el) {
+      el.style.zIndex = '10120';
+    });
+  }
+
+  function teamMembersOpenAddModal() {
+    var modal = document.getElementById('taTeamMembersAddModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    initTeamMemberAddDatepickers();
+    teamMembersRaiseDatepickerLayer();
+    var userSearch = document.getElementById('ta-add-team-member-user-search');
+    if (userSearch) userSearch.focus();
+  }
+
+  function teamMembersCloseAddModal() {
+    var modal = document.getElementById('taTeamMembersAddModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    teamMembersCloseAddUserDropdown();
+    teamMembersCloseAddRoleDropdown();
+  }
+
+  function teamMembersCloseAddModalIfBackdrop(event) {
+    var modal = document.getElementById('taTeamMembersAddModal');
+    if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+      teamMembersCloseAddModal();
+    }
+  }
+
+  function submitTeamMemberAddForm() {
+    var startInput = document.getElementById('ta-add-team-member-start-date');
+    var endInput = document.getElementById('ta-add-team-member-end-date');
+    if (startInput) startInput.value = normalizeTeamMemberDate(startInput.value.trim());
+    if (endInput) endInput.value = normalizeTeamMemberDate(endInput.value.trim());
+    return true;
   }
 
   function initTeamMemberInlineDatepickers(membershipId) {
@@ -638,10 +1013,14 @@
   if (!window.__teamMembersDeleteModalListenersBound) {
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape') {
+        teamMembersCloseAddModal();
         teamMembersCloseDeleteModal();
       }
     });
-    document.addEventListener('click', teamMembersCloseDeleteModalIfBackdrop);
+    document.addEventListener('click', function(event) {
+      teamMembersCloseDeleteModalIfBackdrop(event);
+      teamMembersCloseAddModalIfBackdrop(event);
+    });
     window.__teamMembersDeleteModalListenersBound = true;
   }
 
@@ -712,6 +1091,19 @@
   }
 
   document.addEventListener('click', function(e) {
+    var addUserEls = teamMembersAddUserElements();
+    if (addUserEls.wrapper && addUserEls.list) {
+      var clickedInsideAddUserList = !!addUserEls.list.contains(e.target);
+      if (!addUserEls.wrapper.contains(e.target) && !clickedInsideAddUserList) {
+        teamMembersCloseAddUserDropdown();
+      }
+    }
+
+    var addRoleEls = teamMembersAddRoleElements();
+    if (addRoleEls.wrapper && addRoleEls.list && !addRoleEls.wrapper.contains(e.target) && !addRoleEls.list.contains(e.target)) {
+      teamMembersCloseAddRoleDropdown();
+    }
+
     document.querySelectorAll('[id^="ta-team-member-role-wrapper-"]').forEach(function(wrapper) {
       var membershipId = wrapper.id.replace('ta-team-member-role-wrapper-', '');
       var list = document.getElementById('ta-team-member-role-list-' + membershipId);
@@ -732,5 +1124,10 @@
   }
   setTimeout(clearInitialDirectMembersSearchFocus, 0);
   setTimeout(clearInitialDirectMembersSearchFocus, 100);
+
+  initTeamMemberAddDatepickers();
+  <% if @show_add_member_modal %>
+    teamMembersOpenAddModal();
+  <% end %>
 
 </script>

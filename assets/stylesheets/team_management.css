@@ -631,6 +631,10 @@ button.ta-btn-danger,
   background-image: none !important;
 }
 
+#taTeamMembersAddModal button,
+#taTeamMembersAddModal button:hover,
+#taTeamMembersAddModal button:focus,
+#taTeamMembersAddModal button:active,
 #taTeamMembersDeleteModal button,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
@@ -648,17 +652,24 @@ button.ta-btn-danger,
   text-decoration: none !important;
 }
 
+#taTeamMembersAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
 #taTeamDeleteModal .tep-delete-close,
 #taTeamProjectsDeleteModal .tep-delete-close {
   border: none !important;
 }
 
+#taTeamMembersAddModal .tep-delete-close:hover,
 #taTeamMembersDeleteModal .tep-delete-close:hover,
 #taTeamDeleteModal .tep-delete-close:hover,
 #taTeamProjectsDeleteModal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+}
+
+#taTeamMembersAddModal .datepicker,
+#taTeamMembersAddModal .datepicker-picker {
+  z-index: 10120 !important;
 }
 
 #taTeamMembersDeleteModal .tep-delete-cancel,

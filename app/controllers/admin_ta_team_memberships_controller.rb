@@ -10,18 +10,14 @@ class AdminTaTeamMembershipsController < ApplicationController
   helper :ta_teams
 
   def index
-    @active_memberships = @team.ta_team_memberships.active.includes(:user).order('start_date DESC')
-    @inactive_memberships = @team.ta_team_memberships.inactive.includes(:user).order('end_date DESC')
-    @hierarchical_memberships = @team.current_hierarchical_members
-    @direct_member_ids = @active_memberships.map(&:user_id)
-    @inherited_memberships = @hierarchical_memberships.reject { |membership| @direct_member_ids.include?(membership.user_id) }
+    @membership = @team.ta_team_memberships.build
+    load_available_users
+    load_memberships
+    @show_add_member_modal = params[:open_add_member_modal].present?
   end
 
   def new
-    @membership = @team.ta_team_memberships.build
-    @available_users = User.active.sorted.where.not(
-      id: @team.ta_team_memberships.active.pluck(:user_id)
-    )
+    redirect_to admin_ta_team_memberships_path(@team, open_add_member_modal: 1)
   end
 
   def create
@@ -32,10 +28,10 @@ class AdminTaTeamMembershipsController < ApplicationController
       flash[:notice] = l(:notice_successful_create)
       redirect_to admin_ta_team_memberships_path(@team)
     else
-      @available_users = User.active.sorted.where.not(
-        id: @team.ta_team_memberships.active.pluck(:user_id)
-      )
-      render :new
+      load_available_users
+      load_memberships
+      @show_add_member_modal = true
+      render :index, status: :unprocessable_entity
     end
   end
 
@@ -60,6 +56,20 @@ class AdminTaTeamMembershipsController < ApplicationController
   end
 
   private
+
+  def load_memberships
+    @active_memberships = @team.ta_team_memberships.active.includes(:user).order('start_date DESC')
+    @inactive_memberships = @team.ta_team_memberships.inactive.includes(:user).order('end_date DESC')
+    @hierarchical_memberships = @team.current_hierarchical_members
+    @direct_member_ids = @active_memberships.map(&:user_id)
+    @inherited_memberships = @hierarchical_memberships.reject { |membership| @direct_member_ids.include?(membership.user_id) }
+  end
+
+  def load_available_users
+    @available_users = User.active.sorted.where.not(
+      id: @team.ta_team_memberships.active.pluck(:user_id)
+    )
+  end
 
   def find_team
     @team = TaTeam.find(params[:admin_ta_team_id])
