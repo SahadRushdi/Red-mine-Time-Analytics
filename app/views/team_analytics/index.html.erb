@@ -45,7 +45,7 @@
   .tree-view-header {
     background-color: #614ba6;
     color: #fff;
-    padding: 24px 20px;
+    padding: 19px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -83,8 +83,10 @@
   }
   
   .tree-view-toggle-btn {
-    display: inline-block;
-    margin-left: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
     background: none;
     border: none;
     cursor: pointer;
@@ -241,6 +243,9 @@
 <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
   <div>
     <h1 class="text-2xl font-bold text-gray-900 mb-1">
+      <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
+        <span class="material-symbols-outlined">account_tree</span>
+      </button>
       <%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %>
     </h1>
     <p class="text-sm text-gray-500">
@@ -262,10 +267,6 @@
       </svg>
       <%= l(:label_export_csv) %>
     <% end %>
-
-    <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
-      <span class="material-symbols-outlined">account_tree</span>
-    </button>
   </div>
 </div>
 
