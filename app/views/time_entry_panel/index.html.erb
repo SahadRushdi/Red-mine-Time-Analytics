@@ -342,7 +342,7 @@
                         id="tep-activity-btn-<%= idx %>"
                         onclick="toggleTepActivityDropdown(<%= idx %>)"
                         onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-activity-list-<%= idx %>')"
-                        class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                        class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-52 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                   <span id="tep-activity-text-<%= idx %>" class="text-gray-400 truncate flex-1">Activity *</span>
                   <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -351,7 +351,7 @@
                 <input type="hidden" id="tep-activity-<%= idx %>">
                 <div id="tep-activity-list-<%= idx %>"
                      class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                     style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                     style="min-width: 208px; max-height: 220px; top: calc(100% + 2px);">
                   <div class="px-3 py-2 text-sm text-gray-400 italic">Select an issue first</div>
                 </div>
               </div>
@@ -676,7 +676,7 @@
                                 id="issue-activity-btn-<%= issue.id %>"
                                 onclick="toggleIssueActivityDropdown(<%= issue.id %>)"
                                 onkeydown="tepHandleActivityDropdownTriggerKey(event, 'issue-activity-list-<%= issue.id %>')"
-                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-52 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                           <span id="issue-activity-text-<%= issue.id %>" class="text-gray-400 truncate flex-1">Activity *</span>
                           <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -685,7 +685,7 @@
                         <input type="hidden" id="issue-activity-<%= issue.id %>">
                         <div id="issue-activity-list-<%= issue.id %>"
                              class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                             style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                             style="min-width: 208px; max-height: 220px; top: calc(100% + 2px);">
                           <div class="px-3 py-2 text-sm text-gray-400 italic">Loading...</div>
                         </div>
                       </div>

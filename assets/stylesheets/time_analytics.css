@@ -417,22 +417,44 @@ button[onclick*="switchChartType"]:active {
   box-shadow: none !important;
 }
 
+.ts-search-input,
+.ts-search-input:link,
+.ts-search-input:visited,
 .tep-inline-form .tep-field,
 .tep-inline-form input[type="text"],
 .tep-inline-form input[type="date"],
-.tep-inline-form input[type="search"] {
+.tep-inline-form input[type="search"],
+.tep-entry-edit-form .tep-field,
+.tep-entry-edit-form input[type="text"] {
   border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
   -webkit-appearance: none !important;
   appearance: none !important;
   background-image: none !important;
 }
 
+.ts-search-input:hover,
+.tep-inline-form .tep-field:hover,
+.tep-inline-form input[type="text"]:hover,
+.tep-inline-form input[type="date"]:hover,
+.tep-inline-form input[type="search"]:hover,
+.tep-entry-edit-form .tep-field:hover,
+.tep-entry-edit-form input[type="text"]:hover {
+  border-color: #d1d5db !important;
+}
+
+.ts-search-input:focus,
+.ts-search-input:active,
 .tep-inline-form .tep-field:focus,
 .tep-inline-form input[type="text"]:focus,
-.tep-inline-form input[type="date"]:focus {
-  border-color: #9ca3af !important;
+.tep-inline-form input[type="date"]:focus,
+.tep-inline-form input[type="search"]:focus,
+.tep-entry-edit-form .tep-field:focus,
+.tep-entry-edit-form input[type="text"]:focus {
+  border-color: #3b82f6 !important;
   outline: none !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
 }
 
 /* All tep action buttons — no Redmine hover border */
@@ -455,21 +477,6 @@ button[onclick*="switchChartType"]:active {
 [id^="tep-activity-btn"]:focus-visible {
   background-color: #ffffff !important;
   color: inherit !important;
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: #d1d5db !important;
-}
-
-/* Search issues input — no blue focus ring */
-.ts-search-input,
-.ts-search-input:focus,
-.ts-search-input:hover {
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: #d1d5db !important;
-}
-.ts-search-input:focus {
-  border-color: #9ca3af !important;
 }
 
 /* Group header row chevron rotation — points DOWN when expanded */
@@ -752,22 +759,12 @@ tbody tr:last-child {
 .ts-search-input,
 .ts-search-input:link,
 .ts-search-input:visited {
-  border-color: #d1d5db !important;
-  outline: none !important;
-  box-shadow: none !important;
   -webkit-appearance: none !important;
   padding-left: 2.25rem !important;
   padding-right: 0.75rem !important;
   padding-top: 0.5rem !important;
   padding-bottom: 0.5rem !important;
   border-radius: 0.5rem !important;
-}
-.ts-search-input:focus,
-.ts-search-input:active {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 1px #3b82f6 !important;
-  outline: none !important;
-  -webkit-appearance: none !important;
 }
 
 #ts-search-input.ts-search-input {
