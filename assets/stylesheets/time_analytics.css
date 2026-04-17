@@ -379,9 +379,13 @@ button[onclick*="switchChartType"]:active {
 
 /* Grouping dropdown - remove Redmine borders */
 .tep-grouping-wrapper #tep-grouping-dropdown button,
+.tep-grouping-wrapper #grouping-dropdown button,
 .tep-grouping-wrapper #tep-grouping-dropdown button:hover,
+.tep-grouping-wrapper #grouping-dropdown button:hover,
 .tep-grouping-wrapper #tep-grouping-dropdown button:focus,
-.tep-grouping-wrapper #tep-grouping-dropdown button:active {
+.tep-grouping-wrapper #grouping-dropdown button:focus,
+.tep-grouping-wrapper #tep-grouping-dropdown button:active,
+.tep-grouping-wrapper #grouping-dropdown button:active {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -389,7 +393,9 @@ button[onclick*="switchChartType"]:active {
 
 /* Grouping button hover border fix */
 #tep-grouping-btn:hover,
-#tep-grouping-btn:focus {
+#tep-grouping-btn:focus,
+#grouping-dropdown-button:hover,
+#grouping-dropdown-button:focus {
   border-color: #d1d5db !important;
   outline: none !important;
   box-shadow: none !important;
@@ -926,82 +932,44 @@ tbody tr:last-child {
     width: 100%;
     min-width: 0;
   }
-
-  .ta-custom-range .ta-date-input:focus {
-    border-color: #9ca3af !important;
-    box-shadow: none !important;
-    outline: none !important;
-  }
 }
 
-.ta-custom-range .ta-date-input:focus {
-  border-color: #9ca3af !important;
-  box-shadow: none !important;
+.ta-date-input,
+.ta-date-input:link,
+.ta-date-input:visited {
+  border: 1px solid transparent !important;
+  border-radius: 0.5rem !important;
+  box-sizing: border-box !important;
   outline: none !important;
+  box-shadow: inset 0 0 0 1px #d1d5db !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+  background-color: #fff !important;
 }
 
+.ta-date-input:hover {
+  border-color: transparent !important;
+  box-shadow: inset 0 0 0 1px #d1d5db !important;
+}
+
+.ta-date-input:focus,
+.ta-date-input:active,
+.ta-date-input:focus-visible {
+  border-color: transparent !important;
+  border-width: 1px !important;
+  outline: none !important;
+  box-shadow: inset 0 0 0 1px #3b82f6 !important;
+  position: relative !important;
+  z-index: 31 !important;
+}
+
+/* Custom-range date fields: match grouping control height */
 .ta-custom-range .ta-date-input {
-  border-radius: 0.75rem !important;
-}
-
-.ta-custom-range .datepicker,
-.ta-custom-range .datepicker-picker,
-.ta-custom-range .datepicker-view,
-.ta-custom-range .datepicker-header,
-.ta-custom-range .datepicker-main,
-.ta-custom-range .datepicker-footer {
-  background-color: #fff !important;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
-}
-
-.ta-custom-range .datepicker-title,
-.ta-custom-range .datepicker-controls {
-  background-color: #fff !important;
-}
-
-.ta-custom-range .datepicker-controls .prev-btn,
-.ta-custom-range .datepicker-controls .view-switch,
-.ta-custom-range .datepicker-controls .next-btn {
-  background-color: #fff !important;
-  border: 1px solid #d1d5db !important;
-  color: #1f2937 !important;
-  box-shadow: none !important;
-}
-
-.ta-custom-range .datepicker-controls .prev-btn:hover,
-.ta-custom-range .datepicker-controls .view-switch:hover,
-.ta-custom-range .datepicker-controls .next-btn:hover {
-  background-color: #f9fafb !important;
-  border-color: #cbd5e1 !important;
-  color: #111827 !important;
-}
-
-.ta-custom-range .datepicker-controls .prev-btn:focus,
-.ta-custom-range .datepicker-controls .view-switch:focus,
-.ta-custom-range .datepicker-controls .next-btn:focus,
-.ta-custom-range .datepicker-controls .prev-btn:focus-visible,
-.ta-custom-range .datepicker-controls .view-switch:focus-visible,
-.ta-custom-range .datepicker-controls .next-btn:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  border-color: #d1d5db !important;
-}
-
-.ta-custom-range .datepicker-cell.today {
-  background-color: #dbeafe !important;
-  border: 1px solid #93c5fd !important;
-  color: #1d4ed8 !important;
-  font-weight: 700 !important;
-}
-
-.ta-custom-range .datepicker-cell.today:hover {
-  background-color: #bfdbfe !important;
-}
-
-.ta-custom-range .datepicker-cell:hover:not(.disabled):not(.today) {
-  background-color: #f3f4f6 !important;
-  color: #111827 !important;
+  height: 37px !important;
+  line-height: 35px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* Flowbite datepicker popup overrides */
@@ -1014,6 +982,11 @@ body .datepicker-footer {
   background-color: #fff !important;
   opacity: 1 !important;
   backdrop-filter: none !important;
+}
+
+body .datepicker {
+  margin-top: 4px !important;
+  z-index: 30 !important;
 }
 
 body .datepicker-picker {
@@ -1210,8 +1183,19 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 
 .tep-entry-edit-form input:focus,
 .tep-entry-edit-form select:focus {
-  border-color: #93c5fd !important;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.2) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 0 1px #3b82f6 !important;
+}
+
+.tep-inline-form .ta-date-input:focus,
+.tep-inline-form .ta-date-input:active,
+.tep-inline-form .ta-date-input:focus-visible,
+.tep-entry-edit-form .ta-date-input:focus,
+.tep-entry-edit-form .ta-date-input:active,
+.tep-entry-edit-form .ta-date-input:focus-visible {
+  border-color: #3b82f6 !important;
+  border-width: 1px !important;
+  box-shadow: inset 0 0 0 1px #3b82f6 !important;
 }
 
 /* === Entry sub-table: override Redmine button styles === */
