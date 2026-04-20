@@ -735,7 +735,11 @@ button.ta-btn-danger,
 #taTeamProjectsDeleteModal .tep-delete-cancel,
 #taTeamProjectsDeleteModal .tep-delete-cancel:hover,
 #taTeamProjectsDeleteModal .tep-delete-cancel:focus,
-#taTeamProjectsDeleteModal .tep-delete-cancel:active {
+#taTeamProjectsDeleteModal .tep-delete-cancel:active,
+#taHiringDeleteModal .tep-delete-cancel,
+#taHiringDeleteModal .tep-delete-cancel:hover,
+#taHiringDeleteModal .tep-delete-cancel:focus,
+#taHiringDeleteModal .tep-delete-cancel:active {
   color: #6b7280 !important;
   background-color: #ffffff !important;
   border: 1px solid #e5e7eb !important;
@@ -752,10 +756,55 @@ button.ta-btn-danger,
 #taTeamProjectsDeleteModal .tep-delete-confirm,
 #taTeamProjectsDeleteModal .tep-delete-confirm:hover,
 #taTeamProjectsDeleteModal .tep-delete-confirm:focus,
-#taTeamProjectsDeleteModal .tep-delete-confirm:active {
+#taTeamProjectsDeleteModal .tep-delete-confirm:active,
+#taHiringDeleteModal .tep-delete-confirm,
+#taHiringDeleteModal .tep-delete-confirm:hover,
+#taHiringDeleteModal .tep-delete-confirm:focus,
+#taHiringDeleteModal .tep-delete-confirm:active {
   color: #ffffff !important;
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;
+}
+
+[data-ta-hiring-inline-toggle],
+[data-ta-hiring-inline-toggle]:hover,
+[data-ta-hiring-inline-toggle]:focus,
+[data-ta-hiring-inline-toggle]:focus-visible,
+[data-ta-hiring-inline-toggle]:active {
+  border: 1px solid #d1d5db !important;
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  background-image: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+[data-ta-hiring-inline-toggle]:hover {
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+[data-ta-hiring-inline-menu] button,
+[data-ta-hiring-inline-menu] button:hover,
+[data-ta-hiring-inline-menu] button:focus,
+[data-ta-hiring-inline-menu] button:focus-visible,
+[data-ta-hiring-inline-menu] button:active {
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #374151 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+[data-ta-hiring-inline-menu] button:hover,
+[data-ta-hiring-inline-menu] button:focus,
+[data-ta-hiring-inline-menu] button:focus-visible,
+[data-ta-hiring-inline-menu] button:active {
+  background-color: #f3f4f6 !important;
 }
 
 #taTeamSettingsDeleteModal button,
