@@ -580,6 +580,14 @@ button.ta-btn-danger,
   color: #dc2626 !important;
 }
 
+.ta-inline-icon-btn--success,
+.ta-inline-icon-btn--success:hover,
+.ta-inline-icon-btn--success:focus,
+.ta-inline-icon-btn--success:focus-visible,
+.ta-inline-icon-btn--success:active {
+  color: #16a34a !important;
+}
+
 .ta-inline-material-icon {
   font-size: 16px;
   line-height: 1;
