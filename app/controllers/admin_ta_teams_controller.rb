@@ -20,9 +20,7 @@ class AdminTaTeamsController < ApplicationController
     @allocated_user_ids = @active_memberships.map(&:user_id).uniq
     @unallocated_users = User.active.sorted.where.not(id: @allocated_user_ids)
     @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_priority
-    @hiring_need_history = TaHiringNeed.includes(:team).ordered_by_recent
     @member_history_groups = build_member_history_groups
-    @new_hiring_need = TaHiringNeed.new(priority: 'medium')
   end
 
   def show
@@ -158,30 +156,12 @@ class AdminTaTeamsController < ApplicationController
     redirect_to admin_ta_teams_path
   end
 
-  def create_hiring_need
-    safe_params = hiring_need_params
-    safe_params[:role] = 'Team Member' if TaHiringNeed.column_names.include?('role')
-    hiring_need = TaHiringNeed.new(safe_params.merge(status: 'open'))
-
-    if hiring_need.save
-      flash[:notice] = l(:notice_successful_create)
-    else
-      flash[:error] = hiring_need.errors.full_messages.join(', ')
-    end
-
-    redirect_to admin_ta_teams_path
-  end
-
   private
 
   def find_team
     @team = TaTeam.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render_404
-  end
-
-  def hiring_need_params
-    params.require(:ta_hiring_need).permit(:position_title, :team_id, :priority)
   end
 
   def build_member_history_groups

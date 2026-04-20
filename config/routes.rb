@@ -25,15 +25,15 @@ RedmineApp::Application.routes.draw do
     collection do
       post :validate_url
       post :assign_member
-      post :create_hiring_need
     end
     resources :admin_ta_team_memberships, path: 'memberships', as: 'memberships'
     resources :admin_ta_team_projects, path: 'projects', as: 'team_projects'
   end
 
-  resources :admin_ta_hiring_needs, path: 'admin/ta_hiring_needs', only: [] do
+  resources :admin_ta_hiring_needs, path: 'admin/ta_hiring_needs', only: [:index, :create, :update, :destroy] do
     member do
       patch :mark_filled
+      patch :mark_open
     end
   end
   

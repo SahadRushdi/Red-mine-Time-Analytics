@@ -23,17 +23,174 @@
   <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div class="space-y-6 xl:col-span-2">
       <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[590px] xl:flex-col">
-        <div class="border-b border-gray-200 px-4 py-3">
-          <h3 class="font-semibold text-gray-900">Team Structure</h3>
+        <div class="border-b border-gray-200 px-4 pt-2">
+          <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
+            <li class="me-2">
+              <button type="button"
+                      id="team-main-tab-structure"
+                      data-team-main-tab-target="team-main-panel-structure"
+                      class="ta-view-tab inline-block rounded-t-lg p-4 ta-view-tab-active">
+                Team Structure
+              </button>
+            </li>
+            <li class="me-2">
+              <button type="button"
+                      id="team-main-tab-members"
+                      data-team-main-tab-target="team-main-panel-members"
+                      class="ta-view-tab inline-block rounded-t-lg p-4 text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+                <span class="inline-flex items-center gap-2">
+                  <span>All Members</span>
+                  <span class="ts-tab-badge"><%= @member_history_groups.size %></span>
+                </span>
+              </button>
+            </li>
+          </ul>
         </div>
-        <div class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
+
+        <div id="team-main-panel-structure" class="max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
             <%= ta_team_tree(@root_teams, 0, @team_children_map, @team_active_member_counts, @team_open_hiring_counts, @team_active_memberships_map) %>
           <% end %>
         </div>
+
+        <div id="team-main-panel-members" class="hidden xl:flex-1 xl:min-h-0">
+          <div class="px-4 py-3 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
+            <span><%= @member_history_groups.size %> members with team assignments</span>
+            <div class="relative w-full max-w-md">
+              <input type="text" id="ta-member-history-search" placeholder="Search member, team, or role..."
+                     class="ts-search-input !block !w-full !h-[44px] !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+                     oninput="filterMemberHistoryRows()">
+            </div>
+          </div>
+
+          <% if @member_history_groups.any? %>
+            <div class="overflow-x-auto xl:flex-1 xl:min-h-0">
+              <table class="ts-table w-full text-sm text-left">
+                <thead class="bg-gray-50">
+                  <tr class="border-b border-gray-200">
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Members</th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Last Updated</th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @member_history_groups.each_with_index do |group, idx| %>
+                    <% user = group[:user] %>
+                    <% latest_active_membership = group[:memberships].select(&:active?).max_by(&:start_date) %>
+                    <% latest_any_membership = group[:memberships].max_by(&:start_date) %>
+                    <% current_membership = latest_active_membership || latest_any_membership %>
+                    <% current_role = current_membership&.role %>
+                    <% member_start_date = current_membership&.start_date %>
+                    <% role_label = current_role == 'lead' ? 'Team Lead' : 'Team Member' %>
+                    <% role_classes = current_role == 'lead' ? 'border-indigo-200 bg-indigo-100 text-indigo-700' : 'border-slate-200 bg-slate-100 text-slate-700' %>
+                    <% search_text = [
+                      user.name,
+                      group[:memberships].map { |m| m.team&.name.to_s }.join(' '),
+                      group[:memberships].map(&:role).join(' ')
+                    ].join(' ').downcase %>
+                    <% modal_id = "ta-member-history-modal-#{idx}" %>
+                    <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        data-search-text="<%= h(search_text) %>">
+                      <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+                          <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= role_classes %>"><%= role_label %></span>
+                        </div>
+                      </td>
+                      <td class="px-4 py-3 text-gray-600"><%= member_start_date ? format_date(member_start_date) : '—' %></td>
+                      <td class="px-4 py-3 text-gray-500 text-sm"><%= group[:last_updated_on] ? "#{time_ago_in_words(group[:last_updated_on])} ago" : '—' %></td>
+                      <td class="px-4 py-3 text-right">
+                        <button type="button"
+                                data-modal-target="<%= modal_id %>"
+                                data-modal-toggle="<%= modal_id %>"
+                                class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                title="View history">
+                          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7S3.732 16.057 2.458 12z"></path>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="All members pagination">
+              <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
+              <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
+            </nav>
+          <% else %>
+            <div class="px-6 py-10 text-center text-sm text-gray-500">
+              No member assignment history available.
+            </div>
+          <% end %>
+        </div>
       </div>
+
+      <% if @member_history_groups.any? %>
+        <% @member_history_groups.each_with_index do |group, idx| %>
+          <% user = group[:user] %>
+          <% modal_id = "ta-member-history-modal-#{idx}" %>
+          <div id="<%= modal_id %>" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] flex justify-center items-center w-full h-full bg-gray-900/50">
+            <div class="relative p-4 w-full max-w-3xl max-h-full">
+              <div class="relative bg-white rounded-lg shadow">
+                <div class="flex items-center justify-between p-4 border-b border-gray-200 rounded-t">
+                  <h3 class="text-lg font-semibold text-gray-900"><%= h(user.name) %> · Team Assignment History</h3>
+                  <button type="button"
+                          data-modal-hide="<%= modal_id %>"
+                          class="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 14 14">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 12 12M13 1 1 13"></path>
+                    </svg>
+                    <span class="sr-only">Close modal</span>
+                  </button>
+                </div>
+                <div class="p-4 max-h-[70vh] overflow-y-auto">
+                  <table class="ts-table w-full text-sm text-left">
+                    <thead class="bg-gray-50">
+                      <tr class="border-b border-gray-200">
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Team</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Role</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Start Date</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">End Date</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% group[:memberships].each do |membership| %>
+                        <% history_team_name = membership.team&.name.presence || 'Deleted Team' %>
+                        <tr class="border-b border-gray-100 last:border-0">
+                          <td class="px-3 py-2.5 text-gray-800"><%= h(history_team_name) %></td>
+                          <td class="px-3 py-2.5">
+                            <% if membership.lead? %>
+                              <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                            <% else %>
+                              <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                            <% end %>
+                          </td>
+                          <td class="px-3 py-2.5 text-gray-600"><%= membership.start_date ? format_date(membership.start_date) : '—' %></td>
+                          <td class="px-3 py-2.5 text-gray-600"><%= membership.end_date ? format_date(membership.end_date) : '—' %></td>
+                          <td class="px-3 py-2.5">
+                            <% if membership.active? %>
+                              <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                            <% else %>
+                              <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                            <% end %>
+                          </td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
 
     </div>
 
@@ -166,335 +323,6 @@
     </aside>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-    <h3 class="mb-4 font-semibold text-gray-900">Create Hiring Request</h3>
-    <%= form_for @new_hiring_need, url: create_hiring_need_admin_ta_teams_path, html: { class: 'grid grid-cols-1 gap-4 md:grid-cols-3' } do |f| %>
-      <div>
-        <%= f.label :position_title, 'Position Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <%= f.text_field :position_title, required: true, class: 'ta-hiring-position-input ts-search-input !block !w-full !h-[48px] !rounded-lg !border !border-gray-300 !px-3 !text-base !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]', placeholder: 'Enter position title' %>
-      </div>
-      <div>
-        <%= label_tag 'ta-hiring-team-button', 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <div class="relative">
-              <button type="button"
-                      id="ta-hiring-team-button"
-                      data-ta-hiring-team-toggle="true"
-                      class="ts-search-input !inline-flex !h-[47px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
-            <span id="ta-hiring-team-label" class="truncate">Select Team</span>
-            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <div id="ta-hiring-team-dropdown"
-               data-ta-hiring-team-menu="true"
-               class="tep-activity-dropdown hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-            <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
-              <% @all_teams.each do |team| %>
-                <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
-                <li>
-                  <button type="button"
-                          class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                          data-ta-hiring-team-value="<%= team.id %>"
-                          data-ta-hiring-team-label="<%= h(team.name) %>">
-                    <%= indent.html_safe %><%= h(team.name) %>
-                  </button>
-                </li>
-              <% end %>
-            </ul>
-          </div>
-          <%= f.hidden_field :team_id, id: 'ta-hiring-need-team-id', required: true %>
-        </div>
-      </div>
-      <div>
-        <%= label_tag 'hiring-priority-button', 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <div class="relative">
-          <button type="button" id="hiring-priority-button" data-ta-dropdown-toggle="hiring-priority-dropdown" class="ts-search-input !inline-flex !h-[47px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
-            <span class="hiring-priority-label" data-default-text="<%= @new_hiring_need.priority.titleize %>"><%= @new_hiring_need.priority.titleize %></span>
-            <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </button>
-          <div id="hiring-priority-dropdown" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-            <ul class="py-1 text-sm text-gray-700">
-              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="high" data-ta-dropdown-label="High" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">High</button></li>
-              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="medium" data-ta-dropdown-label="Medium" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Medium</button></li>
-              <li><button type="button" class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900" data-ta-dropdown-value="low" data-ta-dropdown-label="Low" data-ta-dropdown-target="ta_hiring_need_priority" data-ta-dropdown-label-target="hiring-priority-button">Low</button></li>
-            </ul>
-          </div>
-          <%= f.hidden_field :priority, required: true %>
-        </div>
-      </div>
-      <div class="md:col-span-3 flex justify-end pt-1">
-        <%= f.submit 'Create', class: 'ta-hiring-submit-btn inline-flex h-[44px] items-center !rounded-lg bg-blue-500 px-5 text-sm font-medium text-white hover:bg-blue-600' %>
-      </div>
-    <% end %>
-  </div>
-
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-    <div class="ta-team-history-tabs-header flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3">
-      <ul class="ts-tab-group flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
-        <li class="me-2">
-          <button type="button" id="team-history-tab-vacancy" data-team-history-tab-target="team-history-panel-vacancy"
-                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 ta-view-tab-active">
-            <span class="inline-flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-              Hiring Requests
-              <span class="ts-tab-badge"><%= @hiring_need_history.size %></span>
-            </span>
-          </button>
-        </li>
-        <li class="me-2">
-          <button type="button" id="team-history-tab-member" data-team-history-tab-target="team-history-panel-member"
-                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
-            <span class="inline-flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full bg-gray-300"></span>
-              All Members
-              <span class="ts-tab-badge"><%= @active_memberships.size %></span>
-            </span>
-          </button>
-        </li>
-      </ul>
-    </div>
-
-    <div id="team-history-panel-vacancy">
-      <% open_count = @hiring_need_history.count(&:open?) %>
-      <% filled_count = @hiring_need_history.count(&:filled?) %>
-      <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
-        <span><%= @hiring_need_history.size %> total hiring requests · <span class="text-red-600"><%= open_count %> open</span> · <span class="text-green-600"><%= filled_count %> filled</span></span>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="ts-table w-full text-sm text-left">
-          <thead class="bg-gray-50">
-            <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('position'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('position'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Position</span>
-                  <span id="ta-vacancy-sort-icon-position" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('team'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('team'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Team</span>
-                  <span id="ta-vacancy-sort-icon-team" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('priority'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('priority'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Priority</span>
-                  <span id="ta-vacancy-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('status'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('status'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Status</span>
-                  <span id="ta-vacancy-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('opened'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('opened'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Opened</span>
-                  <span id="ta-vacancy-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('filled'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('filled'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Filled</span>
-                  <span id="ta-vacancy-sort-icon-filled" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleVacancyHistorySort('duration'); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleVacancyHistorySort('duration'); }"
-                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <span>Duration</span>
-                  <span id="ta-vacancy-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span>
-                </span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if @hiring_need_history.any? %>
-              <% @hiring_need_history.each do |need| %>
-                <% duration_days = [(need.filled_on || Date.current) - need.created_at.to_date, 0].max.to_i %>
-                <% priority_sort_value = need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>
-                <% team_name = need.team&.name.presence || 'Deleted Team' %>
-                <tr class="ts-issue-row ta-vacancy-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    data-sort-position="<%= need.position_title.to_s.downcase %>"
-                    data-sort-team="<%= team_name.to_s.downcase %>"
-                    data-sort-priority="<%= priority_sort_value %>"
-                    data-sort-status="<%= need.open? ? 2 : 1 %>"
-                    data-sort-opened="<%= need.created_at.to_i %>"
-                    data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
-                    data-sort-duration="<%= duration_days %>">
-                  <td class="px-4 py-3 font-semibold text-gray-900"><%= h(need.position_title) %></td>
-                  <td class="px-4 py-3 text-gray-600"><%= h(team_name) %></td>
-                  <td class="px-4 py-3">
-                    <% priority_classes = need.priority == 'high' ? 'bg-red-100 text-red-700 border-red-200' : (need.priority == 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200') %>
-                    <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= priority_classes %>"><%= need.priority.titleize %></span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <% if need.open? %>
-                      <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600"><span class="h-2 w-2 rounded-full bg-red-400"></span>Open</span>
-                    <% else %>
-                      <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600"><span class="h-2 w-2 rounded-full bg-green-400"></span>Filled</span>
-                    <% end %>
-                  </td>
-                  <td class="px-4 py-3 text-gray-600"><%= format_date(need.created_at.to_date) %></td>
-                  <td class="px-4 py-3 text-gray-600"><%= need.filled_on ? format_date(need.filled_on) : '—' %></td>
-                  <td class="px-4 py-3 text-gray-700">
-                    <% if need.open? %>
-                      <span class="inline-flex items-center gap-1">
-                        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0"></path>
-                        </svg>
-                        <%= duration_days %>d
-                      </span>
-                    <% else %>
-                      —
-                    <% end %>
-                  </td>
-                </tr>
-              <% end %>
-            <% else %>
-              <tr>
-                <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No hiring requests available.</td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-      <nav id="team-history-vacancy-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Hiring requests pagination">
-        <span id="team-history-vacancy-pagination-info" class="text-sm text-gray-700"></span>
-        <ul id="team-history-vacancy-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
-      </nav>
-    </div>
-
-    <div id="team-history-panel-member" class="hidden">
-      <div class="px-6 py-2 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
-        <span><%= @member_history_groups.size %> members with team assignments</span>
-        <div class="relative w-full max-w-md">
-          <input type="text" id="ta-member-history-search" placeholder="Search member, email, team, or role..."
-                 class="ts-search-input !block !w-full !h-[48px] !rounded-lg !border !border-gray-300 !px-3 !text-base !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
-                 oninput="filterMemberHistoryRows()">
-        </div>
-      </div>
-
-      <% if @member_history_groups.any? %>
-        <div class="overflow-x-auto">
-          <table class="ts-table w-full text-sm text-left">
-            <thead class="bg-gray-50">
-              <tr class="border-b border-gray-200">
-                <th class="px-4 py-2.5 w-8"></th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Member</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Current Role</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Active Teams</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Last Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @member_history_groups.each_with_index do |group, idx| %>
-                <% user = group[:user] %>
-                <% latest_active_membership = group[:memberships].select(&:active?).max_by(&:start_date) %>
-                <% latest_any_membership = group[:memberships].max_by(&:start_date) %>
-                <% current_role = latest_active_membership&.role || latest_any_membership&.role %>
-                <% search_text = [
-                  user.name,
-                  user.mail,
-                  group[:memberships].map { |m| m.team&.name }.join(' '),
-                  group[:memberships].map(&:role).join(' ')
-                ].join(' ').downcase %>
-                <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                    data-search-text="<%= h(search_text) %>"
-                    data-expand-id="ta-member-history-expand-<%= idx %>"
-                    data-chevron-id="ta-member-history-chevron-<%= idx %>"
-                    onclick="toggleMemberHistoryRows('<%= idx %>')">
-                  <td class="px-4 py-3 text-center">
-                    <svg id="ta-member-history-chevron-<%= idx %>" class="w-4 h-4 text-gray-400 inline-block transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
-                      <span class="text-xs text-gray-500"><%= h(user.mail) %></span>
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <% if current_role == 'lead' %>
-                      <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
-                    <% else %>
-                      <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
-                    <% end %>
-                  </td>
-                  <td class="px-4 py-3 text-gray-700"><%= group[:active_team_count] %></td>
-                  <td class="px-4 py-3 text-gray-500 text-sm"><%= group[:last_updated_on] ? "#{time_ago_in_words(group[:last_updated_on])} ago" : '—' %></td>
-                </tr>
-                <tr id="ta-member-history-expand-<%= idx %>" class="ta-member-history-expand-row hidden">
-                  <td colspan="5" class="px-0 py-0 bg-slate-50 border-b border-gray-200">
-                    <div class="pl-10 pr-4 py-3 border-l-4 border-blue-300">
-                      <table class="w-full text-sm">
-                        <thead>
-                          <tr class="border-b border-gray-200">
-                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Team</th>
-                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Role</th>
-                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Start Date</th>
-                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">End Date</th>
-                            <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <% group[:memberships].each do |membership| %>
-                            <tr class="border-b border-gray-100 last:border-0">
-                              <td class="px-3 py-2.5 text-gray-800"><%= h(membership.team&.name.to_s) %></td>
-                              <td class="px-3 py-2.5">
-                                <% if membership.lead? %>
-                                  <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
-                                <% else %>
-                                  <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
-                                <% end %>
-                              </td>
-                              <td class="px-3 py-2.5 text-gray-600"><%= membership.start_date ? format_date(membership.start_date) : '—' %></td>
-                              <td class="px-3 py-2.5 text-gray-600"><%= membership.end_date ? format_date(membership.end_date) : '—' %></td>
-                              <td class="px-3 py-2.5">
-                                <% if membership.active? %>
-                                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
-                                <% else %>
-                                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
-                                <% end %>
-                              </td>
-                            </tr>
-                          <% end %>
-                        </tbody>
-                      </table>
-                    </div>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-        <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="All members pagination">
-          <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
-          <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
-        </nav>
-      <% else %>
-        <div class="px-6 py-10 text-center text-sm text-gray-500">
-          No member assignment history available.
-        </div>
-      <% end %>
-    </div>
-  </div>
 </div>
 
 
@@ -547,16 +375,6 @@
     sortIcon.dataset.order = nextOrder;
     resetVacancyHistorySortIcons(column);
     applyTeamHistoryPagination('vacancy', true);
-  }
-
-  function toggleMemberHistoryRows(rowId) {
-    var expandRow = document.getElementById('ta-member-history-expand-' + rowId);
-    var chevron = document.getElementById('ta-member-history-chevron-' + rowId);
-    if (!expandRow || !chevron) return;
-
-    var willOpen = expandRow.classList.contains('hidden');
-    expandRow.classList.toggle('hidden');
-    chevron.style.transform = willOpen ? 'rotate(90deg)' : '';
   }
 
   var teamHistoryPagination = {
@@ -654,15 +472,16 @@
     if (type === 'vacancy') {
       return Array.from(document.querySelectorAll('#team-history-panel-vacancy .ta-vacancy-row'));
     }
-    return Array.from(document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row'));
+    return Array.from(document.querySelectorAll('#team-main-panel-members .ta-member-history-group-row'));
   }
 
   function applyTeamHistoryPagination(type, preservePage) {
     var state = teamHistoryPagination[type];
     if (!state) return;
 
+    var memberHistorySearchInput = document.getElementById('ta-member-history-search');
     var query = type === 'member'
-      ? (document.getElementById('ta-member-history-search').value || '').toLowerCase().trim()
+      ? ((memberHistorySearchInput && memberHistorySearchInput.value) || '').toLowerCase().trim()
       : '';
     var rows = teamHistoryGetRows(type);
     var matchedRows = rows.filter(function(row) {
@@ -677,17 +496,6 @@
       state.currentPage = totalPages;
     }
 
-    if (type === 'member') {
-      document.querySelectorAll('#team-history-panel-member .ta-member-history-group-row').forEach(function(row) {
-        var expandId = row.getAttribute('data-expand-id');
-        var expandRow = expandId ? document.getElementById(expandId) : null;
-        var chevronId = row.getAttribute('data-chevron-id');
-        var chevron = chevronId ? document.getElementById(chevronId) : null;
-        if (expandRow) expandRow.classList.add('hidden');
-        if (chevron) chevron.style.transform = '';
-      });
-    }
-
     var start = (state.currentPage - 1) * state.perPage;
     var end = start + state.perPage;
     var currentRows = matchedRows.slice(start, end);
@@ -697,18 +505,6 @@
       var shouldShow = visibleSet.has(row);
       row.style.display = shouldShow ? '' : 'none';
     });
-
-    if (type === 'member') {
-      currentRows.forEach(function(row) {
-        if (!query) return;
-        var expandId = row.getAttribute('data-expand-id');
-        var expandRow = expandId ? document.getElementById(expandId) : null;
-        var chevronId = row.getAttribute('data-chevron-id');
-        var chevron = chevronId ? document.getElementById(chevronId) : null;
-        if (expandRow) expandRow.classList.remove('hidden');
-        if (chevron) chevron.style.transform = 'rotate(90deg)';
-      });
-    }
 
     var startIndex = matchedRows.length ? (start + 1) : 0;
     var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
@@ -963,10 +759,10 @@
       });
     });
 
-    function switchTeamHistoryTab(targetPanelId) {
+    function switchTeamMainTab(targetPanelId) {
       var tabs = [
-        { tab: document.getElementById('team-history-tab-vacancy'), panel: document.getElementById('team-history-panel-vacancy') },
-        { tab: document.getElementById('team-history-tab-member'), panel: document.getElementById('team-history-panel-member') }
+        { tab: document.getElementById('team-main-tab-structure'), panel: document.getElementById('team-main-panel-structure') },
+        { tab: document.getElementById('team-main-tab-members'), panel: document.getElementById('team-main-panel-members') }
       ];
 
       tabs.forEach(function(item) {
@@ -982,9 +778,9 @@
       });
     }
 
-    document.querySelectorAll('[data-team-history-tab-target]').forEach(function(tabButton) {
+    document.querySelectorAll('[data-team-main-tab-target]').forEach(function(tabButton) {
       tabButton.addEventListener('click', function() {
-        switchTeamHistoryTab(tabButton.getAttribute('data-team-history-tab-target'));
+        switchTeamMainTab(tabButton.getAttribute('data-team-main-tab-target'));
       });
     });
 

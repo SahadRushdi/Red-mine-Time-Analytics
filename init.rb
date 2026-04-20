@@ -23,6 +23,11 @@ Redmine::Plugin.register :redmine_time_analytics do
        html: { class: 'icon', style: 'background-image: url(/images/group.png)' }
 
   # Add to admin menu
+  menu :admin_menu, :positions_hiring, { controller: 'admin_ta_hiring_needs', action: 'index' },
+       caption: 'Positions & Hiring',
+       html: { class: 'icon', style: 'background-image: url(/images/group.png)' }
+
+  # Add to admin menu
   menu :admin_menu, :custom_holidays, { controller: 'custom_holidays', action: 'index' },
        caption: 'Holidays',
        html: { class: 'icon', style: 'background-image: url(/images/calendar.png)' }
