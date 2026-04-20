@@ -604,6 +604,24 @@ button.ta-btn-danger,
   -webkit-font-smoothing: antialiased;
 }
 
+.ta-member-details-btn,
+.ta-member-details-btn:hover,
+.ta-member-details-btn:focus,
+.ta-member-details-btn:focus-visible,
+.ta-member-details-btn:active {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+  color: #4b5563 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.375rem 0.625rem !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
 .ta-team-member-view {
   min-height: 1.75rem;
 }
@@ -658,7 +676,19 @@ button.ta-btn-danger,
 #taTeamProjectsDeleteModal button,
 #taTeamProjectsDeleteModal button:hover,
 #taTeamProjectsDeleteModal button:focus,
-#taTeamProjectsDeleteModal button:active {
+#taTeamProjectsDeleteModal button:active,
+#taHiringCreateModal button,
+#taHiringCreateModal button:hover,
+#taHiringCreateModal button:focus,
+#taHiringCreateModal button:active,
+#taHiringDeleteModal button,
+#taHiringDeleteModal button:hover,
+#taHiringDeleteModal button:focus,
+#taHiringDeleteModal button:active,
+.ta-member-history-modal button,
+.ta-member-history-modal button:hover,
+.ta-member-history-modal button:focus,
+.ta-member-history-modal button:active {
   outline: none !important;
   box-shadow: none !important;
   text-decoration: none !important;
@@ -668,7 +698,10 @@ button.ta-btn-danger,
 #taTeamProjectsAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
 #taTeamDeleteModal .tep-delete-close,
-#taTeamProjectsDeleteModal .tep-delete-close {
+#taTeamProjectsDeleteModal .tep-delete-close,
+#taHiringCreateModal .tep-delete-close,
+#taHiringDeleteModal .tep-delete-close,
+.ta-member-history-modal .tep-delete-close {
   border: none !important;
 }
 
@@ -676,7 +709,10 @@ button.ta-btn-danger,
 #taTeamProjectsAddModal .tep-delete-close:hover,
 #taTeamMembersDeleteModal .tep-delete-close:hover,
 #taTeamDeleteModal .tep-delete-close:hover,
-#taTeamProjectsDeleteModal .tep-delete-close:hover {
+#taTeamProjectsDeleteModal .tep-delete-close:hover,
+#taHiringCreateModal .tep-delete-close:hover,
+#taHiringDeleteModal .tep-delete-close:hover,
+.ta-member-history-modal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
 }

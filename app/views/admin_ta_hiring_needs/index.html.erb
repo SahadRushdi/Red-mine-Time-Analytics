@@ -306,12 +306,39 @@
           </div>
           <div>
             <%= f.label :priority, 'Priority', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-            <%= f.select :priority, options_for_select(TaHiringNeed::PRIORITIES.map { |priority| [priority.titleize, priority] }, @new_hiring_need.priority), {}, { required: true, class: 'ts-search-input !h-[43px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm !bg-white' } %>
+            <div class="relative">
+              <button type="button"
+                      id="ta-hiring-create-priority-button"
+                      data-ta-hiring-create-priority-toggle="true"
+                      class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <span id="ta-hiring-create-priority-label" class="truncate"><%= @new_hiring_need.priority.titleize %></span>
+                <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div id="ta-hiring-create-priority-dropdown"
+                   data-ta-hiring-create-priority-menu="true"
+                   class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+                  <% TaHiringNeed::PRIORITIES.each do |priority| %>
+                    <li>
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                              data-ta-hiring-create-priority-value="<%= priority %>"
+                              data-ta-hiring-create-priority-label="<%= priority.titleize %>">
+                        <%= priority.titleize %>
+                      </button>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+              <%= f.hidden_field :priority, id: 'ta-hiring-create-priority-value', required: true %>
+            </div>
           </div>
         </div>
         <div class="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
           <button type="button" data-modal-hide="taHiringCreateModal" class="ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Cancel</button>
-          <%= f.submit 'Create', class: 'ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+          <button type="submit" class="ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Create</button>
         </div>
       <% end %>
     </div>
@@ -505,8 +532,10 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     function closeCreateHiringDropdowns() {
-      var dropdown = document.getElementById('ta-hiring-create-team-dropdown');
-      if (dropdown) dropdown.classList.add('hidden');
+      var teamDropdown = document.getElementById('ta-hiring-create-team-dropdown');
+      var priorityDropdown = document.getElementById('ta-hiring-create-priority-dropdown');
+      if (teamDropdown) teamDropdown.classList.add('hidden');
+      if (priorityDropdown) priorityDropdown.classList.add('hidden');
     }
 
     function switchHiringTab(targetPanelId) {
@@ -551,6 +580,31 @@
         var teamButtonLabel = document.getElementById('ta-hiring-create-team-label');
         if (teamHiddenInput) teamHiddenInput.value = selectedTeamId;
         if (teamButtonLabel) teamButtonLabel.textContent = selectedTeamLabel;
+        closeCreateHiringDropdowns();
+        return;
+      }
+
+      var priorityToggleButton = event.target.closest('[data-ta-hiring-create-priority-toggle]');
+      if (priorityToggleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var priorityDropdown = document.getElementById('ta-hiring-create-priority-dropdown');
+        if (!priorityDropdown) return;
+        var isPriorityHidden = priorityDropdown.classList.contains('hidden');
+        closeCreateHiringDropdowns();
+        if (isPriorityHidden) priorityDropdown.classList.remove('hidden');
+        return;
+      }
+
+      var priorityOptionButton = event.target.closest('[data-ta-hiring-create-priority-value]');
+      if (priorityOptionButton) {
+        event.preventDefault();
+        var selectedPriorityValue = priorityOptionButton.getAttribute('data-ta-hiring-create-priority-value');
+        var selectedPriorityLabel = priorityOptionButton.getAttribute('data-ta-hiring-create-priority-label');
+        var priorityHiddenInput = document.getElementById('ta-hiring-create-priority-value');
+        var priorityButtonLabel = document.getElementById('ta-hiring-create-priority-label');
+        if (priorityHiddenInput) priorityHiddenInput.value = selectedPriorityValue;
+        if (priorityButtonLabel) priorityButtonLabel.textContent = selectedPriorityLabel;
         closeCreateHiringDropdowns();
         return;
       }
