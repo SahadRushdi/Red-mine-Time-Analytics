@@ -90,8 +90,22 @@ class AdminTaTeamsController < ApplicationController
       return
     end
 
-    @team.destroy
-    flash[:notice] = l(:notice_successful_delete)
+    # If schema migration hasn't been applied yet (team_id still NOT NULL),
+    # nullifying hiring history during team deletion will fail.
+    if @team.ta_hiring_needs.exists? && !TaHiringNeed.columns_hash['team_id']&.null
+      flash[:error] = 'Cannot delete team with hiring history until the latest plugin migration is applied.'
+      redirect_to admin_ta_teams_path
+      return
+    end
+
+    if @team.destroy
+      flash[:notice] = l(:notice_successful_delete)
+    else
+      flash[:error] = @team.errors.full_messages.presence&.join(', ') || 'Failed to delete team.'
+    end
+    redirect_to admin_ta_teams_path
+  rescue ActiveRecord::NotNullViolation
+    flash[:error] = 'Team deletion failed because hiring history preservation requires the latest plugin migration.'
     redirect_to admin_ta_teams_path
   end
 

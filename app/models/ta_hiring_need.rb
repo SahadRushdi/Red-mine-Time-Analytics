@@ -6,10 +6,10 @@ class TaHiringNeed < ActiveRecord::Base
   PRIORITIES = %w[high medium low].freeze
   STATUSES = %w[open filled].freeze
 
-  belongs_to :team, class_name: 'TaTeam', foreign_key: 'team_id'
+  belongs_to :team, class_name: 'TaTeam', foreign_key: 'team_id', optional: true
 
   validates :position_title, presence: true, length: { maximum: 255 }
-  validates :team_id, presence: true
+  validates :team_id, presence: true, on: :create
   validates :priority, presence: true, inclusion: { in: PRIORITIES }
   validates :status, presence: true, inclusion: { in: STATUSES }
 

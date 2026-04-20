@@ -140,11 +140,12 @@
           <div class="space-y-2 xl:h-full xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 ta-stable-scroll">
             <% if @open_hiring_needs.any? %>
               <% @open_hiring_needs.each do |need| %>
+                <% team_name = need.team&.name.presence || 'Deleted Team' %>
                 <div class="rounded-lg border border-gray-200 p-3">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                       <p class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></p>
-                      <p class="text-xs text-gray-500"><%= h(need.team.name) %></p>
+                      <p class="text-xs text-gray-500"><%= h(team_name) %></p>
                       <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
                     </div>
                     <%= button_to mark_filled_admin_ta_hiring_need_path(need), method: :patch, class: 'ta-vacancy-action-button inline-flex items-center rounded-lg bg-emerald-700 px-3 py-2 text-center text-xs font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300', form_class: 'shrink-0' do %>
@@ -327,16 +328,17 @@
               <% @hiring_need_history.each do |need| %>
                 <% duration_days = [(need.filled_on || Date.current) - need.created_at.to_date, 0].max.to_i %>
                 <% priority_sort_value = need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>
+                <% team_name = need.team&.name.presence || 'Deleted Team' %>
                 <tr class="ts-issue-row ta-vacancy-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     data-sort-position="<%= need.position_title.to_s.downcase %>"
-                    data-sort-team="<%= need.team.name.to_s.downcase %>"
+                    data-sort-team="<%= team_name.to_s.downcase %>"
                     data-sort-priority="<%= priority_sort_value %>"
                     data-sort-status="<%= need.open? ? 2 : 1 %>"
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
                     data-sort-duration="<%= duration_days %>">
                   <td class="px-4 py-3 font-semibold text-gray-900"><%= h(need.position_title) %></td>
-                  <td class="px-4 py-3 text-gray-600"><%= h(need.team.name) %></td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(team_name) %></td>
                   <td class="px-4 py-3">
                     <% priority_classes = need.priority == 'high' ? 'bg-red-100 text-red-700 border-red-200' : (need.priority == 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200') %>
                     <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= priority_classes %>"><%= need.priority.titleize %></span>

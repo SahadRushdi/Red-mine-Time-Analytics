@@ -15,7 +15,7 @@ class TaTeam < ActiveRecord::Base
   has_many :ta_team_projects, class_name: 'TaTeamProject', foreign_key: 'team_id', dependent: :destroy
   has_many :projects, through: :ta_team_projects
   has_many :ta_team_access_permissions, class_name: 'TaTeamAccessPermission', foreign_key: 'team_id', dependent: :destroy
-  has_many :ta_hiring_needs, class_name: 'TaHiringNeed', foreign_key: 'team_id', dependent: :restrict_with_error
+  has_many :ta_hiring_needs, class_name: 'TaHiringNeed', foreign_key: 'team_id', dependent: :nullify
 
   alias_method :children, :child_teams
   alias_method :team_memberships, :ta_team_memberships
