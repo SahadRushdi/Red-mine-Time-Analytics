@@ -1841,19 +1841,15 @@ class TimeAnalyticsController < ApplicationController
     
     # Admins can view any dashboard
     return true if User.current.admin?
+
+    # Super users can view any dashboard
+    return true if TaTeamSetting.user_super?(User.current.id)
     
-    # Team leads can view their team members' dashboards (including past members)
+    # Team leads can view dashboards for members in led teams and all descendant teams
     led_teams = User.current.led_teams
     return false if led_teams.empty?
-    
-    # Check if target user is or was a member of any team led by current user
-    # Allow access to historical data for past members
-    led_teams.each do |team|
-      team_member_ids = TaTeamMembership.where(team: team)
-                                        .pluck(:user_id)
-      return true if team_member_ids.include?(target_user.id)
-    end
-    
-    false
+
+    accessible_team_ids = led_teams.flat_map { |team| [team.id] + team.all_descendants.map(&:id) }.uniq
+    TaTeamMembership.where(team_id: accessible_team_ids, user_id: target_user.id).exists?
   end
 end

@@ -11,20 +11,11 @@ class TeamAnalyticsController < ApplicationController
   ].freeze
 
   def index
-    # Get teams where current user is a lead
-    @teams = User.current.led_teams
-    
-    # Return 403 if user is not a team lead
+    # Super users can access all teams; team leads can access led teams + descendants
+    @teams = User.current.accessible_team_dashboard_teams.to_a
     return render_403 unless @teams.any?
-    
-    # Get selected team (must be one of the user's led teams)
-    @selected_team = if params[:team_id].present? && params[:team_id] != ""
-      team = TaTeam.find_by(id: params[:team_id])
-      # Security check: ensure user is a lead for this team
-      @teams.include?(team) ? team : @teams.first
-    else
-      @teams.first
-    end
+
+    @selected_team = select_accessible_team(@teams)
     
     Rails.logger.info "Team Analytics: Selected team: #{@selected_team&.name}, Date range: #{@from} to #{@to}"
     
@@ -205,26 +196,18 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def export_csv
-    # Get teams where current user is a lead
-    @teams = User.current.led_teams
+    @teams = User.current.accessible_team_dashboard_teams.to_a
     return render_403 unless @teams.any?
-    
-    @selected_team = if params[:team_id].present?
-      team = TaTeam.find_by(id: params[:team_id])
-      @teams.include?(team) ? team : @teams.first
-    else
-      @teams.first
-    end
+
+    @selected_team = select_accessible_team(@teams)
     
     @view_mode = params[:view_mode] || 'time_entries'
     
     # Get excluded user IDs
     excluded_ids = TaTeamSetting.excluded_user_ids
     
-    # Get team members - retroactive configuration
-    @team_members = TaTeamMembership.where(team: @selected_team)
-                                    .where('end_date IS NULL OR end_date >= ?', @from)
-                                    .includes(:user)
+    # Include selected team + descendants (same access model as dashboard)
+    @team_members = @selected_team.hierarchical_members(@from, @to)
     
     @member_ids = @team_members.map(&:user_id)
     @active_member_ids = @member_ids - excluded_ids
@@ -260,9 +243,8 @@ class TeamAnalyticsController < ApplicationController
 
   # API endpoint for tree view data
   def get_tree_data
-    # Get teams led by current user
-    led_teams = User.current.led_teams
-    return render json: { error: 'Unauthorized' }, status: 403 unless led_teams.any?
+    root_teams = User.current.team_dashboard_root_teams.to_a
+    return render json: { error: 'Unauthorized' }, status: 403 unless root_teams.any?
     
     # Get excluded user IDs
     excluded_ids = TaTeamSetting.excluded_user_ids
@@ -274,7 +256,7 @@ class TeamAnalyticsController < ApplicationController
     # Build hierarchical tree structure
     tree_nodes = []
     
-    led_teams.each do |team|
+    root_teams.each do |team|
       team_node = build_team_node(team, excluded_ids, from_date, to_date)
       tree_nodes << team_node
     end
@@ -344,6 +326,23 @@ class TeamAnalyticsController < ApplicationController
   end
 
   private
+
+  def select_accessible_team(teams)
+    default_team = default_accessible_team(teams)
+    return default_team if params[:team_id].blank?
+
+    requested_team = TaTeam.find_by(id: params[:team_id])
+    teams.include?(requested_team) ? requested_team : default_team
+  end
+
+  def default_accessible_team(teams)
+    return nil if teams.empty?
+    return teams.first unless User.current.super_user_for_team_analytics?
+
+    # For super users, default to the first root to start at org level.
+    root_team = TaTeam.root_teams.ordered_by_name.first
+    teams.include?(root_team) ? root_team : teams.first
+  end
 
   def parse_custom_date(value)
     return nil if value.blank?
