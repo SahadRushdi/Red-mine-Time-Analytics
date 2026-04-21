@@ -8,7 +8,6 @@ class TaHiringNeed < ActiveRecord::Base
 
   belongs_to :team, class_name: 'TaTeam', foreign_key: 'team_id', optional: true
 
-  validates :position_title, presence: true, length: { maximum: 255 }
   validates :title, presence: true, length: { maximum: 255 }
   validates :team_id, presence: true, on: :create
   validates :priority, presence: true, inclusion: { in: PRIORITIES }

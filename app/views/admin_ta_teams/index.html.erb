@@ -301,7 +301,7 @@
                 <div class="rounded-lg border border-gray-200 p-3">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                      <p class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></p>
+                      <p class="text-sm font-semibold text-gray-900"><%= h(need.title) %></p>
                       <p class="text-xs text-gray-500"><%= h(team_name) %></p>
                       <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
                     </div>
@@ -881,7 +881,7 @@
 
     // Prevent default first-input autofocus from selecting the hiring title field on initial page load.
     function clearInitialHiringTitleFocus() {
-      var hiringTitleInput = document.getElementById('ta_hiring_need_position_title');
+      var hiringTitleInput = document.getElementById('ta_hiring_need_title');
       if (!hiringTitleInput) return;
       if (document.activeElement === hiringTitleInput) {
         hiringTitleInput.blur();

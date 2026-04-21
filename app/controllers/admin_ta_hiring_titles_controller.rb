@@ -1,52 +1,52 @@
-# frozen_string_literal: true
-
 class AdminTaHiringTitlesController < ApplicationController
+  layout 'admin'
+  self.main_menu = false
+
   before_action :require_admin
-  before_action :find_hiring_title, only: [:destroy]
+  before_action :find_hiring_title, only: :destroy
 
   def create
-    title_value = params[:title].to_s.strip
-    return render json: { error: 'Title is required.' }, status: :unprocessable_entity if title_value.blank?
+    @hiring_title = TaHiringTitle.new(title: title_params[:title].to_s.strip, active: true)
 
-    hiring_title = TaHiringTitle.find_by('LOWER(title) = ?', title_value.downcase)
-    if hiring_title
-      hiring_title.update!(active: true)
+    if @hiring_title.save
+      render json: {
+        title: title_payload(@hiring_title),
+        titles: titles_payload
+      }, status: :created
     else
-      hiring_title = TaHiringTitle.create!(title: title_value, active: true)
+      render json: { error: @hiring_title.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
-
-    render json: {
-      title: serialize_title(hiring_title),
-      titles: serialized_active_titles
-    }, status: :created
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
   end
 
   def destroy
-    @hiring_title.update!(active: false)
-    render json: { titles: serialized_active_titles }
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    if @hiring_title.destroy
+      render json: { titles: titles_payload }, status: :ok
+    else
+      render json: { error: @hiring_title.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
   end
 
   private
 
+  def title_params
+    params.permit(:title)
+  end
+
   def find_hiring_title
     @hiring_title = TaHiringTitle.find(params[:id])
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Title not found.' }, status: :not_found
+    render_404
   end
 
-  def serialized_active_titles
-    TaHiringTitle.active.ordered_by_title.map { |title| serialize_title(title) }
-  end
-
-  def serialize_title(title)
+  def title_payload(hiring_title)
     {
-      id: title.id,
-      title: title.title,
-      destroy_url: admin_ta_hiring_title_path(title)
+      id: hiring_title.id,
+      title: hiring_title.title,
+      destroy_url: admin_ta_hiring_title_path(hiring_title)
     }
+  end
+
+  def titles_payload
+    TaHiringTitle.active_ordered.map { |hiring_title| title_payload(hiring_title) }
   end
 end

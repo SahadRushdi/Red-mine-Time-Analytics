@@ -52,11 +52,10 @@
     </div>
 
     <div id="ta-hiring-open-panel">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-visible">
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','position'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Position<span id="ta-hiring-open-sort-icon-position" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-open-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-open-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-open-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
@@ -75,25 +74,47 @@
                 <% edit_team_label_id = "ta-hiring-edit-team-label-#{need.id}" %>
                 <% edit_team_list_id = "ta-hiring-edit-team-list-#{need.id}" %>
                 <% edit_team_input_id = "ta-hiring-edit-team-input-#{need.id}" %>
+                <% edit_title_button_id = "ta-hiring-edit-title-button-#{need.id}" %>
+                <% edit_title_label_id = "ta-hiring-edit-title-label-#{need.id}" %>
+                <% edit_title_list_id = "ta-hiring-edit-title-list-#{need.id}" %>
+                <% edit_title_input_id = "ta-hiring-edit-title-input-#{need.id}" %>
                 <% edit_priority_button_id = "ta-hiring-edit-priority-button-#{need.id}" %>
                 <% edit_priority_label_id = "ta-hiring-edit-priority-label-#{need.id}" %>
                 <% edit_priority_list_id = "ta-hiring-edit-priority-list-#{need.id}" %>
                 <% edit_priority_input_id = "ta-hiring-edit-priority-input-#{need.id}" %>
                 <tr class="ta-hiring-open-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     data-hiring-row-id="<%= need.id %>"
-                    data-sort-position="<%= need.position_title.to_s.downcase %>"
                     data-sort-title="<%= need.title.to_s.downcase %>"
                     data-sort-team="<%= team_name.to_s.downcase %>"
                     data-sort-priority="<%= need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>"
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-duration="<%= duration_days %>">
                   <td class="px-4 py-3">
-                    <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></span></div>
-                    <div class="ta-hiring-edit hidden"><input type="text" name="ta_hiring_need[position_title]" form="<%= form_id %>" value="<%= h(need.position_title) %>" class="ts-search-input !h-[38px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm"></div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div class="ta-hiring-view text-gray-700"><%= h(need.title) %></div>
-                    <div class="ta-hiring-edit hidden"><input type="text" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>" class="ts-search-input !h-[38px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm"></div>
+                    <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
+                    <div class="ta-hiring-edit hidden relative">
+                      <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
+                      <button id="<%= edit_title_button_id %>"
+                              type="button"
+                              class="ts-filter-button inline-flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                              data-ta-hiring-inline-toggle="true"
+                              data-ta-hiring-inline-target="<%= edit_title_list_id %>">
+                        <span id="<%= edit_title_label_id %>" class="truncate"><%= h(need.title) %></span>
+                        <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
+                      </button>
+                      <div id="<%= edit_title_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                        <% @hiring_titles.each do |hiring_title| %>
+                          <% title = hiring_title.title %>
+                          <button type="button"
+                                  class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                  data-ta-hiring-inline-value="<%= h(title) %>"
+                                  data-ta-hiring-inline-input="<%= edit_title_input_id %>"
+                                  data-ta-hiring-inline-label="<%= edit_title_label_id %>"
+                                  data-ta-hiring-inline-text="<%= h(title) %>">
+                            <%= h(title) %>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
                   </td>
                   <td class="px-4 py-3">
                     <div class="ta-hiring-view text-gray-600"><%= h(team_name) %></div>
@@ -107,7 +128,7 @@
                         <span id="<%= edit_team_label_id %>" class="truncate"><%= h(team_name) %></span>
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
-                      <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute z-20 mt-1 max-h-56 w-[min(24rem,90vw)] overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% @all_teams.each do |team| %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -136,7 +157,7 @@
                         <span id="<%= edit_priority_label_id %>" class="truncate"><%= need.priority.titleize %></span>
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
-                      <div id="<%= edit_priority_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute z-20 mt-1 w-[min(18rem,90vw)] overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <div id="<%= edit_priority_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% TaHiringNeed::PRIORITIES.each do |priority| %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -172,7 +193,7 @@
                 </tr>
               <% end %>
             <% else %>
-              <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No open hires available.</td></tr>
+              <tr><td colspan="6" class="px-4 py-6 text-center text-sm text-gray-500">No open hires available.</td></tr>
             <% end %>
           </tbody>
         </table>
@@ -192,11 +213,10 @@
     </div>
 
     <div id="ta-hiring-filled-panel" class="hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-visible">
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','position'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Position<span id="ta-hiring-filled-sort-icon-position" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-filled-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-filled-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-filled-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
@@ -216,13 +236,16 @@
                 <% edit_team_label_id = "ta-hiring-edit-team-label-#{need.id}" %>
                 <% edit_team_list_id = "ta-hiring-edit-team-list-#{need.id}" %>
                 <% edit_team_input_id = "ta-hiring-edit-team-input-#{need.id}" %>
+                <% edit_title_button_id = "ta-hiring-edit-title-button-#{need.id}" %>
+                <% edit_title_label_id = "ta-hiring-edit-title-label-#{need.id}" %>
+                <% edit_title_list_id = "ta-hiring-edit-title-list-#{need.id}" %>
+                <% edit_title_input_id = "ta-hiring-edit-title-input-#{need.id}" %>
                 <% edit_priority_button_id = "ta-hiring-edit-priority-button-#{need.id}" %>
                 <% edit_priority_label_id = "ta-hiring-edit-priority-label-#{need.id}" %>
                 <% edit_priority_list_id = "ta-hiring-edit-priority-list-#{need.id}" %>
                 <% edit_priority_input_id = "ta-hiring-edit-priority-input-#{need.id}" %>
                 <tr class="ta-hiring-filled-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     data-hiring-row-id="<%= need.id %>"
-                    data-sort-position="<%= need.position_title.to_s.downcase %>"
                     data-sort-title="<%= need.title.to_s.downcase %>"
                     data-sort-team="<%= team_name.to_s.downcase %>"
                     data-sort-priority="<%= need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>"
@@ -230,12 +253,31 @@
                     data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
                     data-sort-duration="<%= duration_days %>">
                   <td class="px-4 py-3">
-                    <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.position_title) %></span></div>
-                    <div class="ta-hiring-edit hidden"><input type="text" name="ta_hiring_need[position_title]" form="<%= form_id %>" value="<%= h(need.position_title) %>" class="ts-search-input !h-[38px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm"></div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div class="ta-hiring-view text-gray-700"><%= h(need.title) %></div>
-                    <div class="ta-hiring-edit hidden"><input type="text" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>" class="ts-search-input !h-[38px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm"></div>
+                    <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
+                    <div class="ta-hiring-edit hidden relative">
+                      <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
+                      <button id="<%= edit_title_button_id %>"
+                              type="button"
+                              class="ts-filter-button inline-flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                              data-ta-hiring-inline-toggle="true"
+                              data-ta-hiring-inline-target="<%= edit_title_list_id %>">
+                        <span id="<%= edit_title_label_id %>" class="truncate"><%= h(need.title) %></span>
+                        <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
+                      </button>
+                      <div id="<%= edit_title_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                        <% @hiring_titles.each do |hiring_title| %>
+                          <% title = hiring_title.title %>
+                          <button type="button"
+                                  class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                                  data-ta-hiring-inline-value="<%= h(title) %>"
+                                  data-ta-hiring-inline-input="<%= edit_title_input_id %>"
+                                  data-ta-hiring-inline-label="<%= edit_title_label_id %>"
+                                  data-ta-hiring-inline-text="<%= h(title) %>">
+                            <%= h(title) %>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
                   </td>
                   <td class="px-4 py-3">
                     <div class="ta-hiring-view text-gray-600"><%= h(team_name) %></div>
@@ -249,7 +291,7 @@
                         <span id="<%= edit_team_label_id %>" class="truncate"><%= h(team_name) %></span>
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
-                      <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute z-20 mt-1 max-h-56 w-[min(24rem,90vw)] overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% @all_teams.each do |team| %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -278,7 +320,7 @@
                         <span id="<%= edit_priority_label_id %>" class="truncate"><%= need.priority.titleize %></span>
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
-                      <div id="<%= edit_priority_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute z-20 mt-1 w-[min(18rem,90vw)] overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <div id="<%= edit_priority_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% TaHiringNeed::PRIORITIES.each do |priority| %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -315,7 +357,7 @@
                 </tr>
               <% end %>
             <% else %>
-              <tr><td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">No filled hires available.</td></tr>
+              <tr><td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">No filled hires available.</td></tr>
             <% end %>
           </tbody>
         </table>
@@ -367,6 +409,7 @@
                       <button type="button"
                               class="tep-activity-option w-full text-left px-3 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 rounded-md"
                               data-ta-hiring-create-title-id="<%= hiring_title.id %>"
+                              data-ta-hiring-create-title-value="<%= h(hiring_title.title) %>"
                               data-ta-hiring-create-title-label="<%= h(hiring_title.title) %>">
                         <%= h(hiring_title.title) %>
                       </button>
@@ -383,9 +426,7 @@
                 </ul>
               </div>
               <%= f.hidden_field :title, id: 'ta-hiring-create-title-value', required: true %>
-              <%= f.hidden_field :position_title, id: 'ta-hiring-create-position-title-value', required: true %>
             </div>
-
             <div class="mt-2 flex items-center gap-2">
               <input type="text"
                      id="ta-hiring-create-title-new-input"
@@ -398,7 +439,6 @@
                 <span class="material-icons ta-inline-material-icon">done</span>
               </button>
             </div>
-            <p class="mt-1 text-xs text-gray-500">Select from existing titles, add new titles, or delete unused ones.</p>
           </div>
           <div>
             <%= f.label :team_id, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -513,6 +553,7 @@
 
 <script type="text/javascript">
   var hiringPendingDelete = null;
+  var hiringPendingTitleDelete = null;
   var hiringPagination = {
     open: { currentPage: 1, perPage: 10 },
     filled: { currentPage: 1, perPage: 10 }
@@ -555,8 +596,6 @@
     hiringOpenDeleteModal();
   }
 
-  var hiringPendingTitleDelete = null;
-
   function hiringOpenTitleDeleteModal(titleLabel, titleDeleteUrl) {
     hiringPendingTitleDelete = { label: titleLabel, url: titleDeleteUrl };
     var message = document.getElementById('ta-hiring-title-delete-message');
@@ -596,7 +635,7 @@
   }
 
   function resetHiringSortIcons(tabKey, activeColumn) {
-    ['position', 'title', 'team', 'priority', 'opened', 'filled', 'duration'].forEach(function(column) {
+    ['title', 'team', 'priority', 'opened', 'filled', 'duration'].forEach(function(column) {
       var icon = document.getElementById('ta-hiring-' + tabKey + '-sort-icon-' + column);
       if (!icon) return;
       if (column !== activeColumn) delete icon.dataset.order;
@@ -723,10 +762,8 @@
     function setCreateHiringTitle(title) {
       var titleLabel = document.getElementById('ta-hiring-create-title-label');
       var titleValue = document.getElementById('ta-hiring-create-title-value');
-      var positionValue = document.getElementById('ta-hiring-create-position-title-value');
       if (titleLabel) titleLabel.textContent = title || 'Select Title';
       if (titleValue) titleValue.value = title || '';
-      if (positionValue) positionValue.value = title || '';
     }
 
     function escapeHtml(text) {
@@ -750,11 +787,12 @@
 
       titles.forEach(function(item) {
         var safeTitle = escapeHtml(item.title);
-        var safeDeleteUrl = escapeHtml(item.destroy_url || ('/admin/ta_hiring_titles/' + item.id));
+        var safeDeleteUrl = escapeHtml(item.destroy_url);
         list.insertAdjacentHTML('beforeend',
           '<li class="flex items-center gap-1 px-1">' +
             '<button type="button" class="tep-activity-option w-full text-left px-3 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 rounded-md" ' +
               'data-ta-hiring-create-title-id="' + item.id + '" ' +
+              'data-ta-hiring-create-title-value="' + safeTitle + '" ' +
               'data-ta-hiring-create-title-label="' + safeTitle + '">' + safeTitle + '</button>' +
             '<button type="button" class="ta-inline-icon-btn ta-inline-icon-btn--danger" ' +
               'title="Delete title" ' +
@@ -866,11 +904,12 @@
         return;
       }
 
-      var titleOptionButton = event.target.closest('[data-ta-hiring-create-title-id]');
+      var titleOptionButton = event.target.closest('[data-ta-hiring-create-title-value]');
       if (titleOptionButton) {
         event.preventDefault();
+        var selectedTitleValue = titleOptionButton.getAttribute('data-ta-hiring-create-title-value');
         var selectedTitleLabel = titleOptionButton.getAttribute('data-ta-hiring-create-title-label');
-        setCreateHiringTitle(selectedTitleLabel);
+        setCreateHiringTitle(selectedTitleValue || selectedTitleLabel);
         closeCreateHiringDropdowns();
         return;
       }
@@ -1010,8 +1049,8 @@
       window.__hiringDeleteModalListenersBound = true;
     }
 
-    resetHiringSortIcons('open', 'position');
-    resetHiringSortIcons('filled', 'position');
+    resetHiringSortIcons('open', 'title');
+    resetHiringSortIcons('filled', 'title');
     applyHiringPagination('open', false);
     applyHiringPagination('filled', false);
   });
