@@ -20,8 +20,8 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <div class="space-y-6 xl:col-span-2">
+  <div id="ta-team-split-layout" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div id="ta-team-main-column" class="space-y-6 xl:col-span-2">
       <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[700px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
@@ -194,7 +194,16 @@
 
     </div>
 
-    <aside>
+    <div id="ta-team-splitter-controls"
+         class="hidden xl:flex"
+         role="separator"
+         aria-label="Resize panel widths"
+         aria-orientation="vertical"
+         title="Drag to resize panels">
+      <span id="ta-team-splitter-handle" class="ta-team-splitter-handle" aria-hidden="true"></span>
+    </div>
+
+    <aside id="ta-team-sidebar-column">
       <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[700px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
@@ -775,10 +784,98 @@
       });
     });
 
+    function setupTeamSplitLayout() {
+      var splitLayout = document.getElementById('ta-team-split-layout');
+      var mainColumn = document.getElementById('ta-team-main-column');
+      var splitter = document.getElementById('ta-team-splitter-controls');
+      if (!splitLayout || !mainColumn || !splitter) return;
+
+      var SPLIT_STORAGE_KEY = 'taTeamSplitLeftPercent';
+      var DEFAULT_LEFT_PERCENT = 64;
+      var MIN_LEFT_PERCENT = 22;
+      var MAX_LEFT_PERCENT = 78;
+      var dragging = false;
+      var pointerId = null;
+      var mediaQuery = window.matchMedia('(min-width: 1280px)');
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function isDesktopWidth() {
+        return mediaQuery.matches;
+      }
+
+      function applySplitPercent(percent, persist) {
+        var safePercent = clamp(percent, MIN_LEFT_PERCENT, MAX_LEFT_PERCENT);
+        mainColumn.style.flexBasis = safePercent + '%';
+        if (persist && window.sessionStorage) {
+          sessionStorage.setItem(SPLIT_STORAGE_KEY, String(safePercent));
+        }
+      }
+
+      function loadSavedSplitPercent() {
+        var saved = window.sessionStorage ? sessionStorage.getItem(SPLIT_STORAGE_KEY) : null;
+        var parsed = parseFloat(saved);
+        if (Number.isNaN(parsed)) return DEFAULT_LEFT_PERCENT;
+        return clamp(parsed, MIN_LEFT_PERCENT, MAX_LEFT_PERCENT);
+      }
+
+      function updateSplitFromPointer(clientX, persist) {
+        var rect = splitLayout.getBoundingClientRect();
+        if (!rect.width) return;
+        var percent = ((clientX - rect.left) / rect.width) * 100;
+        applySplitPercent(percent, persist);
+      }
+
+      splitter.addEventListener('pointerdown', function(event) {
+        if (!isDesktopWidth()) return;
+        dragging = true;
+        pointerId = event.pointerId;
+        splitter.classList.add('is-dragging');
+        document.body.classList.add('ta-team-split-dragging');
+        if (splitter.setPointerCapture) splitter.setPointerCapture(pointerId);
+        event.preventDefault();
+      });
+
+      window.addEventListener('pointermove', function(event) {
+        if (!dragging || !isDesktopWidth()) return;
+        if (pointerId !== null && event.pointerId !== pointerId) return;
+        updateSplitFromPointer(event.clientX, true);
+      });
+
+      function stopDragging(event) {
+        if (!dragging) return;
+        if (event && pointerId !== null && event.pointerId !== pointerId) return;
+        dragging = false;
+        splitter.classList.remove('is-dragging');
+        document.body.classList.remove('ta-team-split-dragging');
+        if (pointerId !== null && splitter.releasePointerCapture) {
+          try { splitter.releasePointerCapture(pointerId); } catch (_error) {}
+        }
+        pointerId = null;
+      }
+
+      window.addEventListener('pointerup', stopDragging);
+      window.addEventListener('pointercancel', stopDragging);
+
+      function syncSplitForViewport() {
+        if (!isDesktopWidth()) {
+          mainColumn.style.flexBasis = '';
+          return;
+        }
+        applySplitPercent(loadSavedSplitPercent(), false);
+      }
+
+      syncSplitForViewport();
+      window.addEventListener('resize', syncSplitForViewport);
+    }
+
     resetVacancyHistorySortIcons('position');
     updateWorkforceOverviewCountBadge('team-sidebar-members-panel');
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
+    setupTeamSplitLayout();
     applyTeamHistoryPagination('vacancy', false);
     applyTeamHistoryPagination('member', false);
 
