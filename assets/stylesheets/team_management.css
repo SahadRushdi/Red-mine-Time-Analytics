@@ -685,6 +685,10 @@ button.ta-btn-danger,
 #taHiringDeleteModal button:hover,
 #taHiringDeleteModal button:focus,
 #taHiringDeleteModal button:active,
+#taHiringTitleDeleteModal button,
+#taHiringTitleDeleteModal button:hover,
+#taHiringTitleDeleteModal button:focus,
+#taHiringTitleDeleteModal button:active,
 .ta-member-history-modal button,
 .ta-member-history-modal button:hover,
 .ta-member-history-modal button:focus,
@@ -701,6 +705,7 @@ button.ta-btn-danger,
 #taTeamProjectsDeleteModal .tep-delete-close,
 #taHiringCreateModal .tep-delete-close,
 #taHiringDeleteModal .tep-delete-close,
+#taHiringTitleDeleteModal .tep-delete-close,
 .ta-member-history-modal .tep-delete-close {
   border: none !important;
 }
@@ -712,6 +717,7 @@ button.ta-btn-danger,
 #taTeamProjectsDeleteModal .tep-delete-close:hover,
 #taHiringCreateModal .tep-delete-close:hover,
 #taHiringDeleteModal .tep-delete-close:hover,
+#taHiringTitleDeleteModal .tep-delete-close:hover,
 .ta-member-history-modal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
@@ -739,7 +745,11 @@ button.ta-btn-danger,
 #taHiringDeleteModal .tep-delete-cancel,
 #taHiringDeleteModal .tep-delete-cancel:hover,
 #taHiringDeleteModal .tep-delete-cancel:focus,
-#taHiringDeleteModal .tep-delete-cancel:active {
+#taHiringDeleteModal .tep-delete-cancel:active,
+#taHiringTitleDeleteModal .tep-delete-cancel,
+#taHiringTitleDeleteModal .tep-delete-cancel:hover,
+#taHiringTitleDeleteModal .tep-delete-cancel:focus,
+#taHiringTitleDeleteModal .tep-delete-cancel:active {
   color: #6b7280 !important;
   background-color: #ffffff !important;
   border: 1px solid #e5e7eb !important;
@@ -760,7 +770,11 @@ button.ta-btn-danger,
 #taHiringDeleteModal .tep-delete-confirm,
 #taHiringDeleteModal .tep-delete-confirm:hover,
 #taHiringDeleteModal .tep-delete-confirm:focus,
-#taHiringDeleteModal .tep-delete-confirm:active {
+#taHiringDeleteModal .tep-delete-confirm:active,
+#taHiringTitleDeleteModal .tep-delete-confirm,
+#taHiringTitleDeleteModal .tep-delete-confirm:hover,
+#taHiringTitleDeleteModal .tep-delete-confirm:focus,
+#taHiringTitleDeleteModal .tep-delete-confirm:active {
   color: #ffffff !important;
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;

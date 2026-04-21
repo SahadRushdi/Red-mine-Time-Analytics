@@ -8,13 +8,16 @@ class AdminTaHiringNeedsController < ApplicationController
 
   def index
     @all_teams = TaTeam.ordered_by_name.to_a
+    @hiring_titles = TaHiringTitle.table_exists? ? TaHiringTitle.active.ordered_by_title.to_a : []
     @new_hiring_need = TaHiringNeed.new(priority: 'medium')
     @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_by_recent
     @filled_hiring_needs = TaHiringNeed.filled.includes(:team).ordered_by_recent
   end
 
   def create
-    @hiring_need = TaHiringNeed.new(hiring_need_params.merge(status: 'open'))
+    attributes = hiring_need_params.to_h
+    attributes['position_title'] = attributes['title'] if attributes['title'].present?
+    @hiring_need = TaHiringNeed.new(attributes.merge(status: 'open'))
 
     if @hiring_need.save
       flash[:notice] = l(:notice_successful_create)

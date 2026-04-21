@@ -36,6 +36,8 @@ RedmineApp::Application.routes.draw do
       patch :mark_open
     end
   end
+
+  resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :destroy]
   
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection

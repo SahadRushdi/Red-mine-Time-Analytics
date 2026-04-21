@@ -344,13 +344,61 @@
       </div>
       <%= form_for @new_hiring_need, url: admin_ta_hiring_needs_path do |f| %>
         <div class="p-4 space-y-4">
-          <div>
-            <%= f.label :position_title, 'Position', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-            <%= f.text_field :position_title, required: true, class: 'ts-search-input !h-[43px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm', placeholder: 'Enter position' %>
-          </div>
-          <div>
+          <div id="ta-hiring-title-manager"
+               data-create-url="<%= admin_ta_hiring_titles_path %>"
+               data-csrf-token="<%= form_authenticity_token %>">
             <%= f.label :title, 'Title', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-            <%= f.text_field :title, required: true, class: 'ts-search-input !h-[43px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm', placeholder: 'Enter title' %>
+            <div class="relative">
+              <button type="button"
+                      id="ta-hiring-create-title-button"
+                      data-ta-hiring-create-title-toggle="true"
+                      class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <span id="ta-hiring-create-title-label" class="truncate">Select Title</span>
+                <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div id="ta-hiring-create-title-dropdown"
+                   data-ta-hiring-create-title-menu="true"
+                   class="hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                <ul id="ta-hiring-create-title-options" class="max-h-64 overflow-auto py-1 text-sm text-gray-700">
+                  <% @hiring_titles.each do |hiring_title| %>
+                    <li class="flex items-center gap-1 px-1">
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-3 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 rounded-md"
+                              data-ta-hiring-create-title-id="<%= hiring_title.id %>"
+                              data-ta-hiring-create-title-label="<%= h(hiring_title.title) %>">
+                        <%= h(hiring_title.title) %>
+                      </button>
+                      <button type="button"
+                              class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                              title="Delete title"
+                              data-ta-hiring-create-title-delete-id="<%= hiring_title.id %>"
+                              data-ta-hiring-create-title-delete-label="<%= h(hiring_title.title) %>"
+                              data-ta-hiring-create-title-delete-url="<%= admin_ta_hiring_title_path(hiring_title) %>">
+                        <span class="material-icons ta-inline-material-icon">delete</span>
+                      </button>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+              <%= f.hidden_field :title, id: 'ta-hiring-create-title-value', required: true %>
+              <%= f.hidden_field :position_title, id: 'ta-hiring-create-position-title-value', required: true %>
+            </div>
+
+            <div class="mt-2 flex items-center gap-2">
+              <input type="text"
+                     id="ta-hiring-create-title-new-input"
+                     class="ts-search-input !h-[40px] !w-full !rounded-lg !border !border-gray-300 !px-3 !text-sm"
+                     placeholder="Add new title">
+              <button type="button"
+                      id="ta-hiring-create-title-add-button"
+                      class="ta-inline-icon-btn ta-inline-icon-btn--success"
+                      title="Add title">
+                <span class="material-icons ta-inline-material-icon">done</span>
+              </button>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">Select from existing titles, add new titles, or delete unused ones.</p>
           </div>
           <div>
             <%= f.label :team_id, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -441,6 +489,28 @@
   </div>
 </div>
 
+<div id="taHiringTitleDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10060] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              onclick="hiringCloseTitleDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p id="ta-hiring-title-delete-message" class="mb-4 text-gray-500">Are you sure you want to delete this title?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="hiringConfirmTitleDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">Delete</button>
+        <button type="button" onclick="hiringCloseTitleDeleteModal()" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="text/javascript">
   var hiringPendingDelete = null;
   var hiringPagination = {
@@ -483,6 +553,29 @@
   function hiringDelete(url, token) {
     hiringPendingDelete = { url: url, token: token };
     hiringOpenDeleteModal();
+  }
+
+  var hiringPendingTitleDelete = null;
+
+  function hiringOpenTitleDeleteModal(titleLabel, titleDeleteUrl) {
+    hiringPendingTitleDelete = { label: titleLabel, url: titleDeleteUrl };
+    var message = document.getElementById('ta-hiring-title-delete-message');
+    if (message) message.textContent = 'Are you sure you want to delete "' + titleLabel + '"?';
+
+    var modal = document.getElementById('taHiringTitleDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function hiringCloseTitleDeleteModal() {
+    var modal = document.getElementById('taHiringTitleDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    hiringPendingTitleDelete = null;
   }
 
   function hiringConfirmDelete() {
@@ -619,10 +712,96 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     function closeCreateHiringDropdowns() {
+      var titleDropdown = document.getElementById('ta-hiring-create-title-dropdown');
       var teamDropdown = document.getElementById('ta-hiring-create-team-dropdown');
       var priorityDropdown = document.getElementById('ta-hiring-create-priority-dropdown');
+      if (titleDropdown) titleDropdown.classList.add('hidden');
       if (teamDropdown) teamDropdown.classList.add('hidden');
       if (priorityDropdown) priorityDropdown.classList.add('hidden');
+    }
+
+    function setCreateHiringTitle(title) {
+      var titleLabel = document.getElementById('ta-hiring-create-title-label');
+      var titleValue = document.getElementById('ta-hiring-create-title-value');
+      var positionValue = document.getElementById('ta-hiring-create-position-title-value');
+      if (titleLabel) titleLabel.textContent = title || 'Select Title';
+      if (titleValue) titleValue.value = title || '';
+      if (positionValue) positionValue.value = title || '';
+    }
+
+    function escapeHtml(text) {
+      return (text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderCreateHiringTitleOptions(titles) {
+      var list = document.getElementById('ta-hiring-create-title-options');
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (!titles.length) {
+        list.insertAdjacentHTML('beforeend', '<li class="px-4 py-2 text-sm text-gray-500">No titles available. Add a new title below.</li>');
+        return;
+      }
+
+      titles.forEach(function(item) {
+        var safeTitle = escapeHtml(item.title);
+        var safeDeleteUrl = escapeHtml(item.destroy_url || ('/admin/ta_hiring_titles/' + item.id));
+        list.insertAdjacentHTML('beforeend',
+          '<li class="flex items-center gap-1 px-1">' +
+            '<button type="button" class="tep-activity-option w-full text-left px-3 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900 rounded-md" ' +
+              'data-ta-hiring-create-title-id="' + item.id + '" ' +
+              'data-ta-hiring-create-title-label="' + safeTitle + '">' + safeTitle + '</button>' +
+            '<button type="button" class="ta-inline-icon-btn ta-inline-icon-btn--danger" ' +
+              'title="Delete title" ' +
+              'data-ta-hiring-create-title-delete-id="' + item.id + '" ' +
+              'data-ta-hiring-create-title-delete-label="' + safeTitle + '" ' +
+              'data-ta-hiring-create-title-delete-url="' + safeDeleteUrl + '">' +
+              '<span class="material-icons ta-inline-material-icon">delete</span>' +
+            '</button>' +
+          '</li>'
+        );
+      });
+    }
+
+    function fetchHiringTitle(url, method, payload, onSuccess) {
+      var manager = document.getElementById('ta-hiring-title-manager');
+      if (!manager) return;
+      var csrfToken = manager.getAttribute('data-csrf-token');
+      var options = {
+        method: method,
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'Accept': 'application/json'
+        }
+      };
+
+      if (payload) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
+      }
+
+      fetch(url, options)
+        .then(function(response) {
+          return response.json().then(function(body) {
+            if (!response.ok) {
+              var message = body && body.error ? body.error : 'Unable to update titles.';
+              throw new Error(message);
+            }
+            return body;
+          });
+        })
+        .then(function(body) {
+          if (body.titles) renderCreateHiringTitleOptions(body.titles);
+          onSuccess(body);
+        })
+        .catch(function(error) {
+          alert(error.message);
+        });
     }
 
     function switchHiringTab(targetPanelId) {
@@ -672,6 +851,38 @@
         if (hiddenInput) hiddenInput.value = selectedValue;
         if (labelNode) labelNode.textContent = selectedText;
         closeInlineHiringDropdowns();
+        return;
+      }
+
+      var titleToggleButton = event.target.closest('[data-ta-hiring-create-title-toggle]');
+      if (titleToggleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var titleDropdown = document.getElementById('ta-hiring-create-title-dropdown');
+        if (!titleDropdown) return;
+        var isTitleHidden = titleDropdown.classList.contains('hidden');
+        closeCreateHiringDropdowns();
+        if (isTitleHidden) titleDropdown.classList.remove('hidden');
+        return;
+      }
+
+      var titleOptionButton = event.target.closest('[data-ta-hiring-create-title-id]');
+      if (titleOptionButton) {
+        event.preventDefault();
+        var selectedTitleLabel = titleOptionButton.getAttribute('data-ta-hiring-create-title-label');
+        setCreateHiringTitle(selectedTitleLabel);
+        closeCreateHiringDropdowns();
+        return;
+      }
+
+      var deleteTitleButton = event.target.closest('[data-ta-hiring-create-title-delete-id]');
+      if (deleteTitleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var deleteTitleLabel = deleteTitleButton.getAttribute('data-ta-hiring-create-title-delete-label');
+        var deleteTitleUrl = deleteTitleButton.getAttribute('data-ta-hiring-create-title-delete-url');
+        if (!deleteTitleUrl) return;
+        hiringOpenTitleDeleteModal(deleteTitleLabel, deleteTitleUrl);
         return;
       }
 
@@ -729,13 +940,72 @@
       closeCreateHiringDropdowns();
     });
 
+    var addTitleButton = document.getElementById('ta-hiring-create-title-add-button');
+    var newTitleInput = document.getElementById('ta-hiring-create-title-new-input');
+    var titleManager = document.getElementById('ta-hiring-title-manager');
+    var createTitleUrl = titleManager ? titleManager.getAttribute('data-create-url') : null;
+
+    function addCreateHiringTitle() {
+      if (!createTitleUrl || !newTitleInput) return;
+      var newTitle = newTitleInput.value.trim();
+      if (!newTitle) return;
+
+      fetchHiringTitle(createTitleUrl, 'POST', { title: newTitle }, function(responseBody) {
+        var selectedTitle = responseBody.title && responseBody.title.title ? responseBody.title.title : newTitle;
+        setCreateHiringTitle(selectedTitle);
+        newTitleInput.value = '';
+      });
+    }
+
+    if (addTitleButton) {
+      addTitleButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        addCreateHiringTitle();
+      });
+    }
+
+    if (newTitleInput) {
+      newTitleInput.addEventListener('keydown', function(event) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        addCreateHiringTitle();
+      });
+    }
+
+    var createHiringForm = document.querySelector('#taHiringCreateModal form');
+    if (createHiringForm) {
+      createHiringForm.addEventListener('submit', function(event) {
+        var titleValue = document.getElementById('ta-hiring-create-title-value');
+        if (titleValue && titleValue.value.trim()) return;
+        event.preventDefault();
+        alert('Please select a title.');
+      });
+    }
+
+    window.hiringConfirmTitleDelete = function() {
+      if (!hiringPendingTitleDelete || !hiringPendingTitleDelete.url) return;
+
+      var pending = hiringPendingTitleDelete;
+      hiringCloseTitleDeleteModal();
+      var titleValue = document.getElementById('ta-hiring-create-title-value');
+
+      fetchHiringTitle(pending.url, 'DELETE', null, function() {
+        if (titleValue && titleValue.value === pending.label) setCreateHiringTitle('');
+      });
+    };
+
     if (!window.__hiringDeleteModalListenersBound) {
       document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') hiringCloseDeleteModal();
+        if (event.key === 'Escape') {
+          hiringCloseDeleteModal();
+          hiringCloseTitleDeleteModal();
+        }
       });
       document.addEventListener('click', function(event) {
         var modal = document.getElementById('taHiringDeleteModal');
         if (modal && !modal.classList.contains('hidden') && event.target === modal) hiringCloseDeleteModal();
+        var titleModal = document.getElementById('taHiringTitleDeleteModal');
+        if (titleModal && !titleModal.classList.contains('hidden') && event.target === titleModal) hiringCloseTitleDeleteModal();
       });
       window.__hiringDeleteModalListenersBound = true;
     }
