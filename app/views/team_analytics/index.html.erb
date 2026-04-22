@@ -241,13 +241,13 @@
 </div>
 
 <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
-  <div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-1">
-      <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
-        <span class="material-symbols-outlined">account_tree</span>
-      </button>
-      <%= l(:label_team_dashboard) || "Team Dashboard" %> - <%= @selected_team&.name %>
-    </h1>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 mb-1">
+        <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
+          <span class="material-symbols-outlined">account_tree</span>
+        </button>
+        <%= @selected_team&.name || l(:label_team_dashboard) || "Team Dashboard" %>
+      </h1>
     <p class="text-sm text-gray-500">
       <%= "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" %>
     </p>
@@ -841,6 +841,12 @@
     }
   }
 
+  function scrollTeamTableIntoView() {
+    var tableElement = document.querySelector('.ta-analysis-table');
+    if (!tableElement) return;
+    tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     // Initialize chart
     initChart();
@@ -849,6 +855,7 @@
     // Persist scroll intent for Team tab navigation, matching My Time behavior.
     document.addEventListener('click', function(e) {
       if (e.target.closest('a[data-team-tab-nav="true"]')) {
+        sessionStorage.setItem('teamScrollPosition', String(window.pageYOffset || document.documentElement.scrollTop || 0));
         sessionStorage.setItem('scrollToTeamTable', 'true');
       }
     });
@@ -861,13 +868,22 @@
     
     // Restore member view state
     restoreMemberViewState();
+  });
 
+  window.addEventListener('load', function() {
     if (sessionStorage.getItem('scrollToTeamTable') === 'true') {
       sessionStorage.removeItem('scrollToTeamTable');
-      var tableElement = document.querySelector('.ta-analysis-table');
-      if (tableElement) {
-        tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
-      }
+      sessionStorage.removeItem('teamScrollPosition');
+      requestAnimationFrame(function() {
+        requestAnimationFrame(scrollTeamTableIntoView);
+      });
+      return;
+    }
+
+    var savedScrollPosition = sessionStorage.getItem('teamScrollPosition');
+    if (savedScrollPosition !== null) {
+      sessionStorage.removeItem('teamScrollPosition');
+      window.scrollTo(0, parseInt(savedScrollPosition, 10) || 0);
     }
   });
 

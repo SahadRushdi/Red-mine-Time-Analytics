@@ -227,7 +227,7 @@
       <% if @memberships.count > 10 %>
         <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
           Showing 10 of <%= @memberships.count %> memberships.
-          <%= link_to "View all #{@memberships.count} members", admin_ta_team_memberships_path(@team), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
+          <%= link_to 'Open Team Management', admin_ta_teams_path(main_tab: 'members'), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
         </div>
       <% end %>
     <% else %>

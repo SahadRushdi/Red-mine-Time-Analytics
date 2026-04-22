@@ -10,6 +10,11 @@ class AdminTaTeamsController < ApplicationController
 
   def index
     @all_teams = TaTeam.ordered_by_name.to_a
+    @active_main_tab = params[:main_tab].presence || 'structure'
+    @show_add_member_modal = params[:open_add_member_modal].present?
+    @selected_add_member_team_id = params[:add_member_team_id].presence
+    @add_member_membership = TaTeamMembership.new(start_date: Date.current, role: 'member')
+    @add_member_available_users = User.active.sorted
     @team_children_map = @all_teams.group_by(&:parent_team_id)
     @root_teams = @team_children_map[nil] || []
     @team_active_member_counts = TaTeamMembership.active.group(:team_id).count

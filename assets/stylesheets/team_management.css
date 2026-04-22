@@ -949,6 +949,10 @@ button.ta-btn-danger,
   border-color: #9ca3af !important;
 }
 
+#team-main-panel-members .ts-table tbody tr:last-child td {
+  padding-bottom: 1rem !important;
+}
+
 #ta-add-team-member-start-date,
 #ta-add-team-member-start-date:hover,
 #ta-add-team-member-start-date:focus,

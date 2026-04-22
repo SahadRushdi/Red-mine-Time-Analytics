@@ -47,10 +47,12 @@ module TaTeamsHelper
           edit_admin_ta_team_path(team),
           class: 'ta-team-action ta-team-action-edit'
         )
-        right_links << link_to(
-          content_tag(:span, ta_team_action_icon('members') + 'Members'.html_safe, class: 'ta-team-action-content'),
-          admin_ta_team_memberships_path(team),
-          class: 'ta-team-action ta-team-action-members'
+        right_links << content_tag(
+          :button,
+          content_tag(:span, ta_team_action_icon('members') + 'Add Member'.html_safe, class: 'ta-team-action-content'),
+          type: 'button',
+          class: 'ta-team-action ta-team-action-members',
+          onclick: "teamManagementOpenAddMemberModal(#{team.id}, #{team.name.to_json})"
         )
         right_links << link_to(
           content_tag(:span, ta_team_action_icon('projects') + 'Projects'.html_safe, class: 'ta-team-action-content'),

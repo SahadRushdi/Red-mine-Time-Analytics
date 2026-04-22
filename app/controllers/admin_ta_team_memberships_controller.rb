@@ -5,20 +5,9 @@ class AdminTaTeamMembershipsController < ApplicationController
 
   before_action :require_admin
   before_action :find_team
-  before_action :find_membership, only: [:edit, :update, :destroy]
+  before_action :find_membership, only: [:update, :destroy]
 
   helper :ta_teams
-
-  def index
-    @membership = @team.ta_team_memberships.build
-    load_available_users
-    load_memberships
-    @show_add_member_modal = params[:open_add_member_modal].present?
-  end
-
-  def new
-    redirect_to admin_ta_team_memberships_path(@team, open_add_member_modal: 1)
-  end
 
   def create
     @membership = @team.ta_team_memberships.build
@@ -26,50 +15,34 @@ class AdminTaTeamMembershipsController < ApplicationController
 
     if @membership.save
       flash[:notice] = l(:notice_successful_create)
-      redirect_to admin_ta_team_memberships_path(@team)
+      redirect_to admin_ta_teams_path(main_tab: 'members')
     else
-      load_available_users
-      load_memberships
-      @show_add_member_modal = true
-      render :index, status: :unprocessable_entity
+      flash[:error] = @membership.errors.full_messages.to_sentence
+      redirect_to admin_ta_teams_path(
+        main_tab: 'members',
+        open_add_member_modal: 1,
+        add_member_team_id: @team.id
+      )
     end
-  end
-
-  def edit
-    @available_users = User.active.sorted
   end
 
   def update
     if @membership.update(membership_params)
       flash[:notice] = l(:notice_successful_update)
-      redirect_to admin_ta_team_memberships_path(@team)
+      redirect_to admin_ta_teams_path(main_tab: 'members')
     else
-      @available_users = User.active.sorted
-      render :edit
+      flash[:error] = @membership.errors.full_messages.to_sentence
+      redirect_to admin_ta_teams_path(main_tab: 'members')
     end
   end
 
   def destroy
     @membership.destroy
     flash[:notice] = l(:notice_successful_delete)
-    redirect_to admin_ta_team_memberships_path(@team)
+    redirect_to admin_ta_teams_path(main_tab: 'members')
   end
 
   private
-
-  def load_memberships
-    @active_memberships = @team.ta_team_memberships.active.includes(:user).order('start_date DESC')
-    @inactive_memberships = @team.ta_team_memberships.inactive.includes(:user).order('end_date DESC')
-    @hierarchical_memberships = @team.current_hierarchical_members
-    @direct_member_ids = @active_memberships.map(&:user_id)
-    @inherited_memberships = @hierarchical_memberships.reject { |membership| @direct_member_ids.include?(membership.user_id) }
-  end
-
-  def load_available_users
-    @available_users = User.active.sorted.where.not(
-      id: @team.ta_team_memberships.active.pluck(:user_id)
-    )
-  end
 
   def find_team
     @team = TaTeam.find(params[:admin_ta_team_id])
