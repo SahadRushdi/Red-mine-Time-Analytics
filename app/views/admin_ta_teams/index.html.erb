@@ -22,7 +22,7 @@
 
   <div id="ta-team-split-layout" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div id="ta-team-main-column" class="space-y-6 xl:col-span-2">
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[700px] xl:flex-col">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[750px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
             <li class="me-2">
@@ -61,7 +61,7 @@
           </ul>
         </div>
 
-        <div id="team-main-panel-structure" class="<%= 'hidden' unless @active_main_tab == 'structure' %> max-h-[520px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
+        <div id="team-main-panel-structure" class="<%= 'hidden' unless @active_main_tab == 'structure' %> max-h-[570px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
@@ -80,7 +80,7 @@
           </div>
 
           <% if @member_history_groups.any? %>
-            <div class="overflow-x-auto pb-3 xl:flex-1 xl:min-h-0">
+            <div class="overflow-x-auto overflow-y-auto pb-4 xl:flex-1 xl:min-h-0">
               <table class="ts-table w-full text-sm text-left">
                 <thead class="bg-gray-50">
                   <tr class="border-b border-gray-200">
@@ -138,7 +138,7 @@
                     <% modal_id = "ta-member-history-modal-#{idx}" %>
                     <% form_id = current_membership ? "ta-member-history-form-#{current_membership.id}" : nil %>
                     <% last_updated_on = group[:last_updated_on] %>
-                    <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50"
                         data-search-text="<%= h(search_text) %>"
                         data-membership-id="<%= current_membership&.id %>"
                         data-sort-name="<%= user.name.to_s.downcase %>"
@@ -550,7 +550,7 @@
     </div>
 
     <aside id="ta-team-sidebar-column">
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[700px] xl:flex-col">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden xl:flex xl:h-[750px] xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
             <li class="me-2">
@@ -585,7 +585,7 @@
         </div>
 
         <div id="team-sidebar-members-panel" class="p-4 xl:flex-1 xl:min-h-0">
-          <div class="max-h-[680px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:h-full xl:max-h-none">
+          <div class="max-h-[730px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
             <% if @unallocated_users.any? %>
               <% @unallocated_users.each_with_index do |user, idx| %>
                 <div class="ta-unallocated-member-card rounded-lg border border-[#3b82f6] bg-blue-50/70 p-3"
@@ -652,7 +652,7 @@
         </div>
 
         <div id="team-sidebar-vacancies-panel" class="hidden p-4 xl:flex-1 xl:min-h-0">
-          <div class="space-y-2 xl:h-full xl:overflow-y-auto xl:overflow-x-hidden xl:pr-1 ta-stable-scroll">
+          <div class="max-h-[730px] space-y-2 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
             <% if @open_hiring_needs.any? %>
               <% @open_hiring_needs.each do |need| %>
                 <% team_name = need.team&.name.presence || 'Deleted Team' %>
@@ -1496,10 +1496,16 @@
     rows.forEach(function(row) {
       var shouldShow = visibleSet.has(row);
       row.style.display = shouldShow ? '' : 'none';
+      row.classList.remove('ta-member-history-last-visible-row');
       if (!shouldShow && row.classList.contains('is-editing')) {
         teamHistoryCloseMemberEditingState();
       }
     });
+
+    var lastVisibleRow = currentRows[currentRows.length - 1];
+    if (lastVisibleRow) {
+      lastVisibleRow.classList.add('ta-member-history-last-visible-row');
+    }
 
     var startIndex = matchedRows.length ? (start + 1) : 0;
     var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
@@ -1815,6 +1821,10 @@
           item.tab.classList.add('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
         }
       });
+
+      if (targetPanelId === 'team-main-panel-members') {
+        applyTeamHistoryPagination('member', true);
+      }
     }
 
     document.querySelectorAll('[data-team-main-tab-target]').forEach(function(tabButton) {
@@ -1912,6 +1922,7 @@
 
     resetVacancyHistorySortIcons('position');
     resetMemberHistorySortIcons('name');
+    switchTeamSidebarTab('team-sidebar-members-panel');
     updateWorkforceOverviewCountBadge('team-sidebar-members-panel');
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
@@ -1920,6 +1931,7 @@
     applyTeamHistoryPagination('vacancy', false);
     applyTeamHistoryPagination('member', false);
     switchTeamMainTab('<%= @active_main_tab == 'members' ? 'team-main-panel-members' : 'team-main-panel-structure' %>');
+    setTimeout(function() { applyTeamHistoryPagination('member', true); }, 0);
 
     <% if @show_add_member_modal %>
       teamMembersOpenAddModal();

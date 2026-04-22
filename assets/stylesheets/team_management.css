@@ -157,6 +157,24 @@ body.ta-team-split-dragging {
   text-decoration: none;
 }
 
+button.ta-team-action.ta-team-action-members,
+button.ta-team-action.ta-team-action-members:hover,
+button.ta-team-action.ta-team-action-members:focus,
+button.ta-team-action.ta-team-action-members:focus-visible,
+button.ta-team-action.ta-team-action-members:active {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  cursor: pointer !important;
+  color: #2563eb !important;
+}
+
 .ta-team-action-content {
   display: inline-flex;
   align-items: center;
@@ -949,8 +967,17 @@ button.ta-btn-danger,
   border-color: #9ca3af !important;
 }
 
-#team-main-panel-members .ts-table tbody tr:last-child td {
-  padding-bottom: 1rem !important;
+#team-main-panel-members .ts-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#team-main-panel-members .ta-member-history-group-row.ta-member-history-last-visible-row td {
+  padding-bottom: 1.75rem !important;
+}
+
+#team-main-panel-members .ta-member-history-group-row.ta-member-history-last-visible-row td:last-child {
+  padding-bottom: 2rem !important;
 }
 
 #ta-add-team-member-start-date,
