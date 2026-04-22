@@ -1,8 +1,8 @@
 .ta-team-item {
   margin-bottom: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--ta-team-item-color, #e5e7eb);
   border-radius: 0.75rem;
-  background: #ffffff;
+  background: var(--ta-team-item-bg, #ffffff);
   padding: 0.75rem;
   min-height: 56px;
   contain: layout;
@@ -10,9 +10,9 @@
 }
 
 .ta-team-item:hover {
-  border-color: #dadbdd;
-  background: #f9fafb;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+  border-color: var(--ta-team-item-border-dark, #dadbdd);
+  background: var(--ta-team-item-bg-hover, #f9fafb);
+  box-shadow: 0 4px 12px var(--ta-team-item-shadow, rgba(59, 130, 246, 0.08));
   /* transform: translateY(-1px); */
 }
 
@@ -110,7 +110,7 @@ body.ta-team-split-dragging {
 .ta-team-children {
   margin-left: 0.75rem;
   padding-left: 1rem;
-  border-left: 4px solid #93c5fd;
+  border-left: 4px solid var(--ta-team-branch-color, #93c5fd);
 }
 
 .ta-team-children.level-2,

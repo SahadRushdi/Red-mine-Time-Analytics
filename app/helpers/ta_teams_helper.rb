@@ -1,4 +1,6 @@
 module TaTeamsHelper
+  TA_TEAM_BRANCH_COLORS = ['#B3E2CD', '#FDCDAC', '#CBD5E8', '#F4CAE4', '#E6F5C9', '#FFF2AE', '#F1E2CC', '#CCCCCC'].freeze
+
   def ta_team_tree(teams, level = 0, children_map = nil, active_member_counts = nil, open_hiring_counts = nil, team_memberships_map = nil)
     children_map ||= {}
     active_member_counts ||= {}
@@ -11,7 +13,7 @@ module TaTeamsHelper
       members_panel_id = "ta-team-members-#{team.id}"
       child_teams = children_map[team.id] || []
 
-      html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", data: { team_id: team.id }) do
+      html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", style: ta_team_item_style(level), data: { team_id: team.id }) do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
         member_count = active_member_counts[team.id].to_i
@@ -75,7 +77,7 @@ module TaTeamsHelper
       end
 
       if child_teams.any?
-        html << content_tag(:div, class: "ta-team-children level-#{level + 1}") do
+        html << content_tag(:div, class: "ta-team-children level-#{level + 1}", style: ta_team_branch_style(level + 1)) do
           ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts, team_memberships_map)
         end
       end
@@ -182,5 +184,44 @@ module TaTeamsHelper
     parts = user.name.to_s.split(/\s+/).reject(&:blank?)
     initials = parts.first(2).map { |part| part[0] }.join.upcase
     initials.presence || user.name.to_s[0].to_s.upcase
+  end
+
+  def ta_team_branch_style(level)
+    color = ta_team_branch_color(level)
+    dark_color = ta_team_branch_darker_color(color)
+    "--ta-team-branch-color: #{color}; --ta-team-branch-color-dark: #{dark_color};"
+  end
+
+  def ta_team_item_style(level)
+    color = ta_team_branch_color(level)
+    dark_color = ta_team_branch_darker_color(color, 0.34)
+    light_color = ta_team_branch_tint(color, 0.24)
+    lighter_color = ta_team_branch_tint(color, 0.14)
+    shadow_color = ta_team_branch_tint(color, 0.16)
+    "--ta-team-item-color: #{color}; --ta-team-item-border-dark: #{dark_color}; --ta-team-item-bg: #{lighter_color}; --ta-team-item-bg-hover: #{light_color}; --ta-team-item-shadow: #{shadow_color};"
+  end
+
+  def ta_team_branch_color(level)
+    TA_TEAM_BRANCH_COLORS[level.to_i % TA_TEAM_BRANCH_COLORS.length]
+  end
+
+  def ta_team_branch_darker_color(hex_color, factor = 0.18)
+    hex = hex_color.delete_prefix('#')
+    return hex_color unless hex.match?(/\A[0-9a-fA-F]{6}\z/)
+
+    channels = [hex[0..1], hex[2..3], hex[4..5]].map { |channel| channel.to_i(16) }
+    darker = channels.map { |channel| [(channel * (1 - factor)).round, 0].max }
+
+    format('#%02X%02X%02X', *darker)
+  end
+
+  def ta_team_branch_tint(hex_color, alpha)
+    hex = hex_color.delete_prefix('#')
+    return hex_color unless hex.match?(/\A[0-9a-fA-F]{6}\z/)
+
+    red = hex[0..1].to_i(16)
+    green = hex[2..3].to_i(16)
+    blue = hex[4..5].to_i(16)
+    "rgba(#{red}, #{green}, #{blue}, #{alpha})"
   end
 end
