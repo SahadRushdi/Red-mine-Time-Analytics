@@ -1,4 +1,4 @@
-<% html_title 'Team Administration' %>
+<% html_title 'Teams' %>
 
 <% content_for :header_tags do %>
   <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
@@ -11,8 +11,7 @@
 <div class="space-y-6">
   <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
-      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Administration</h2>
-      <p class="text-sm text-gray-500">Manage teams, members, vacancies, and hiring needs from one panel.</p>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Teams</h2>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <%= link_to 'New Team', new_admin_ta_team_path, class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
@@ -30,7 +29,15 @@
                       id="team-main-tab-structure"
                       data-team-main-tab-target="team-main-panel-structure"
                       class="ta-view-tab inline-block rounded-t-lg p-4 ta-view-tab-active">
-                Team Structure
+                <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="5" r="2"></circle>
+                    <circle cx="6" cy="19" r="2"></circle>
+                    <circle cx="18" cy="19" r="2"></circle>
+                    <path d="M12 7v8M12 13H7.5M12 13H16.5"></path>
+                  </svg>
+                  <span>Team Structure</span>
+                </span>
               </button>
             </li>
             <li class="me-2">
@@ -39,7 +46,13 @@
                       data-team-main-tab-target="team-main-panel-members"
                       class="ta-view-tab inline-block rounded-t-lg p-4 text-gray-500 hover:text-gray-600 hover:bg-gray-50">
                 <span class="inline-flex items-center gap-2">
-                  <span>All Members</span>
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M17 20a4 4 0 0 0-8 0"></path>
+                    <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"></path>
+                    <path d="M19 20a6 6 0 0 0-2-4.47"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span>Members</span>
                   <span class="ts-tab-badge"><%= @member_history_groups.size %></span>
                 </span>
               </button>
@@ -119,7 +132,7 @@
                 </tbody>
               </table>
             </div>
-            <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="All members pagination">
+            <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Members pagination">
               <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
               <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
             </nav>
@@ -210,7 +223,13 @@
             <li class="me-2">
               <button type="button" id="team-sidebar-members-tab" data-team-tab-target="team-sidebar-members-panel" class="ta-view-tab inline-block rounded-t-lg p-4 ta-view-tab-active">
                 <span class="inline-flex items-center gap-2">
-                  <span>Unallocated Members</span>
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M15 19a4 4 0 0 0-8 0"></path>
+                    <path d="M11 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"></path>
+                    <path d="M17 8h4"></path>
+                    <path d="M19 6v4"></path>
+                  </svg>
+                  <span>Unassigned</span>
                   <span class="ts-tab-badge"><%= @unallocated_users.size %></span>
                 </span>
               </button>
@@ -218,6 +237,12 @@
             <li class="me-2">
               <button type="button" id="team-sidebar-vacancies-tab" data-team-tab-target="team-sidebar-vacancies-panel" class="ta-view-tab inline-block rounded-t-lg p-4 text-gray-500 hover:text-gray-600 hover:bg-gray-50">
                 <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 21h4"></path>
+                    <path d="M12 21v-6"></path>
+                    <path d="M7 7h10a2 2 0 0 1 2 2v7H5V9a2 2 0 0 1 2-2Z"></path>
+                    <path d="M9 7V6a3 3 0 0 1 6 0v1"></path>
+                  </svg>
                   <span>Open Positions</span>
                   <span class="ts-tab-badge"><%= @open_hiring_needs.size %></span>
                 </span>
@@ -288,7 +313,7 @@
                 </div>
               <% end %>
             <% else %>
-              <p class="text-sm text-gray-500">No unallocated members.</p>
+              <p class="text-sm text-gray-500">No unassigned members.</p>
             <% end %>
           </div>
         </div>
