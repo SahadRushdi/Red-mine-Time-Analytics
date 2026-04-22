@@ -107,6 +107,18 @@ body.ta-team-split-dragging {
 .ta-team-item.level-2 { margin-left: 2rem; }
 .ta-team-item.level-3 { margin-left: 3rem; }
 
+.ta-team-children {
+  margin-left: 0.75rem;
+  padding-left: 1rem;
+  border-left: 4px solid #93c5fd;
+}
+
+.ta-team-children.level-2,
+.ta-team-children.level-3,
+.ta-team-children.level-4 {
+  margin-top: 0.5rem;
+}
+
 .ta-team-name {
   margin-right: 0.5rem;
   font-size: 0.95rem;

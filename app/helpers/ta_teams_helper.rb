@@ -9,6 +9,7 @@ module TaTeamsHelper
     teams.each do |team|
       team_memberships = Array(team_memberships_map[team.id]).select { |membership| membership.user.present? }
       members_panel_id = "ta-team-members-#{team.id}"
+      child_teams = children_map[team.id] || []
 
       html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", data: { team_id: team.id }) do
         left_content = ''.html_safe
@@ -61,18 +62,22 @@ module TaTeamsHelper
           left + right
         end
 
-        next team_row if team_memberships.empty?
+        if team_memberships.empty?
+          team_row
+        else
+          member_chips = team_memberships.map { |membership| ta_team_member_chip(team, membership) }
+          members_panel = content_tag(:div, class: 'ta-team-members-panel hidden', id: members_panel_id) do
+            content_tag(:div, safe_join(member_chips), class: 'ta-team-members-list')
+          end
 
-        member_chips = team_memberships.map { |membership| ta_team_member_chip(team, membership) }
-        members_panel = content_tag(:div, class: 'ta-team-members-panel hidden', id: members_panel_id) do
-          content_tag(:div, safe_join(member_chips), class: 'ta-team-members-list')
+          team_row + members_panel
         end
-
-        team_row + members_panel
       end
-      child_teams = children_map[team.id] || []
+
       if child_teams.any?
-        html << ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts, team_memberships_map)
+        html << content_tag(:div, class: "ta-team-children level-#{level + 1}") do
+          ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts, team_memberships_map)
+        end
       end
     end
     html
