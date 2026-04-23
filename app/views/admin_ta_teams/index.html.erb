@@ -22,7 +22,7 @@
 
   <div id="ta-team-split-layout" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <div id="ta-team-main-column" class="space-y-6 xl:col-span-2">
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex xl:h-[750px] xl:flex-col">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex ta-team-xl-h-780 xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
             <li class="me-2">
@@ -61,7 +61,7 @@
           </ul>
         </div>
 
-        <div id="team-main-panel-structure" class="<%= 'hidden' unless @active_main_tab == 'structure' %> max-h-[570px] overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:h-full xl:max-h-none xl:flex-1 xl:min-h-0">
+        <div id="team-main-panel-structure" class="ta-team-sidebar-panel <%= 'hidden' unless @active_main_tab == 'structure' %> max-h-[570px] ta-team-xl-max-h-760 overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:flex-1 xl:min-h-0">
           <% if @all_teams.empty? %>
             <p class="text-sm text-gray-500">No teams found.</p>
           <% else %>
@@ -69,7 +69,7 @@
           <% end %>
         </div>
 
-        <div id="team-main-panel-members" class="<%= 'hidden' unless @active_main_tab == 'members' %> xl:flex-1 xl:min-h-0">
+        <div id="team-main-panel-members" class="ta-team-sidebar-panel <%= 'hidden' unless @active_main_tab == 'members' %> xl:flex-1 xl:min-h-0">
           <div class="px-4 py-3 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
             <span><%= @member_history_groups.size %> members with team assignments</span>
             <div class="relative w-full max-w-md">
@@ -551,7 +551,7 @@
     </div>
 
     <aside id="ta-team-sidebar-column">
-      <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden xl:flex xl:h-[750px] xl:flex-col">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden xl:flex ta-team-xl-h-780 xl:flex-col">
         <div class="border-b border-gray-200 px-4 pt-2">
           <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
             <li class="me-2">
@@ -585,8 +585,8 @@
           </ul>
         </div>
 
-        <div id="team-sidebar-members-panel" class="p-4 xl:flex-1 xl:min-h-0">
-          <div class="max-h-[730px] space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
+        <div id="team-sidebar-members-panel" class="p-4 ta-team-sidebar-panel xl:flex-1 xl:min-h-0">
+          <div class="max-h-[760px] ta-team-xl-max-h-760 space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
             <% if @unallocated_users.any? %>
               <% @unallocated_users.each_with_index do |user, idx| %>
                 <div class="ta-unallocated-member-card rounded-lg border border-[#3b82f6] bg-blue-50/70 p-3"
@@ -653,8 +653,8 @@
           </div>
         </div>
 
-        <div id="team-sidebar-vacancies-panel" class="hidden p-4 xl:flex-1 xl:min-h-0">
-          <div class="max-h-[730px] space-y-2 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
+        <div id="team-sidebar-vacancies-panel" class="hidden p-4 ta-team-sidebar-panel xl:flex-1 xl:min-h-0">
+          <div class="max-h-[760px] ta-team-xl-max-h-760 space-y-2 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
             <% if @open_hiring_needs.any? %>
               <% @open_hiring_needs.each do |need| %>
                 <% team_name = need.team&.name.presence || 'Deleted Team' %>

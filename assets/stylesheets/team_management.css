@@ -1010,6 +1010,24 @@ button.ta-btn-danger,
   border-color: #3b82f6 !important;
 }
 
+/* Custom Height Utilities for Team Management */
+@media (min-width: 1280px) {
+  .ta-team-xl-h-780 {
+    height: 780px !important;
+  }
+  .ta-team-xl-max-h-760 {
+    max-height: 760px !important;
+  }
+}
+
+.ta-team-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+}
+.ta-team-sidebar-panel.hidden {
+  display: none !important;
+}
+
 #ta-team-settings-search-input.ts-search-input {
   min-height: 42px;
   font-size: 15px !important;
