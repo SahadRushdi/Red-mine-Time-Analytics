@@ -19,6 +19,7 @@
   }
 
   .team-tree-sidebar {
+    position: relative;
     flex: 0 0 360px;
     width: 360px;
     min-width: 280px;
@@ -29,9 +30,9 @@
   }
 
   .team-tree-sidebar.is-collapsed {
-    flex-basis: 0;
-    width: 0;
-    min-width: 0;
+    flex-basis: 56px;
+    width: 56px;
+    min-width: 56px;
   }
 
   .team-tree-sidebar__panel {
@@ -44,42 +45,34 @@
   }
 
   .team-tree-sidebar__panel {
+    position: relative;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
   .team-tree-sidebar.is-collapsed .team-tree-sidebar__panel {
+    display: flex;
+  }
+
+  .team-tree-sidebar.is-collapsed .tree-view-content {
     display: none;
   }
 
-  .tree-view-header {
-    background-color: #ffffff;
-    border-bottom: 1px solid #e2e8f0;
-    color: #0f172a;
-    padding: 18px 20px 14px;
+  .team-tree-sidebar__toggle-row {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    right: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-shrink: 0;
-  }
-
-  .tree-view-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 1.25;
-  }
-
-  .tree-view-subtitle {
-    margin-top: 6px;
-    color: #64748b;
-    font-size: 12px;
-    line-height: 1.4;
+    justify-content: flex-start;
+    padding: 0 12px;
+    pointer-events: none;
+    z-index: 3;
   }
 
   .tree-view-content {
-    padding: 16px 18px 22px;
+    padding: 46px 18px 22px;
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
@@ -140,9 +133,15 @@
     display: block;
   }
 
-  .team-tree-toggle {
-    margin-right: 10px;
+  .team-tree-sidebar-toggle {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    z-index: 4;
+    margin-right: 0;
     border-radius: 9999px;
+    pointer-events: auto;
   }
 
   .team-dashboard-main {
@@ -189,6 +188,22 @@
     color: #1e3a8a !important;
   }
 
+  #team-tree-container li.team-tree-active-row > .jstree-wholerow {
+    background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%) !important;
+    border: 1px solid #93c5fd !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+  }
+
+  #team-tree-container li.team-tree-active-row > a.jstree-anchor {
+    color: #1d4ed8 !important;
+    font-weight: 800 !important;
+  }
+
+  #team-tree-container li.team-tree-active-row > a.jstree-anchor:hover {
+    color: #1d4ed8 !important;
+  }
+
   #team-tree-container .jstree-default .jstree-hovered {
     background-color: #eff6ff !important;
     color: #1e40af !important;
@@ -232,11 +247,7 @@
   let teamTreeLoading = false;
 
   function getTreeSidebarState() {
-    try {
-      return localStorage.getItem(teamTreeSidebarStorageKey) || 'expanded';
-    } catch (error) {
-      return 'expanded';
-    }
+    return 'expanded';
   }
 
   function setTreeSidebarState(state) {
@@ -285,6 +296,21 @@
     setTreeSidebarCollapsed(!sidebar.classList.contains('is-collapsed'));
   }
 
+  function highlightActiveTeamNode() {
+    if (!currentTeamId) return;
+
+    const activeAnchor = $('#team-tree-container .jstree-anchor[data-team-id="' + currentTeamId + '"]');
+    if (!activeAnchor.length) return;
+
+    $('#team-tree-container li.team-tree-active-row')
+      .removeClass('team-tree-active-row')
+      .removeAttr('aria-current');
+
+    const activeRow = activeAnchor.closest('li');
+    activeRow.addClass('team-tree-active-row');
+    activeRow.attr('aria-current', 'true');
+  }
+
   function loadTreeData() {
     if (teamTreeLoading || teamTreeLoaded) return;
 
@@ -327,13 +353,15 @@
       },
       'plugins': ['types', 'wholerow']
     });
-    
+
     $('#team-tree-container').off('select_node.jstree');
+    $('#team-tree-container').off('ready.jstree');
 
     // Team node switches dashboard team; member node opens individual dashboard.
     $('#team-tree-container').on('select_node.jstree', function (e, data) {
       if (data.node.data && data.node.data.team_id) {
         var teamId = String(data.node.data.team_id);
+        highlightActiveTeamNode();
         if (teamId === currentTeamId) {
           setTreeSidebarCollapsed(true);
           return;
@@ -351,22 +379,27 @@
         window.open(url, '_blank');
       }
     });
+
+    $('#team-tree-container').on('ready.jstree', function () {
+      highlightActiveTeamNode();
+    });
+
+    setTimeout(highlightActiveTeamNode, 0);
   }
   
   $(document).ready(function() {
-    const savedTreeState = getTreeSidebarState();
-    setTreeSidebarCollapsed(savedTreeState === 'collapsed', { persist: false });
+    setTreeSidebarCollapsed(false, { persist: false });
+    setTreeSidebarState('expanded');
   });
 </script>
 
 <div class="team-dashboard-shell">
   <aside id="team-tree-sidebar" class="team-tree-sidebar is-expanded" aria-label="Team hierarchy sidebar">
     <div class="team-tree-sidebar__panel">
-      <div class="tree-view-header">
-        <div>
-          <h3>Team Hierarchy</h3>
-          <p class="tree-view-subtitle">Click a <strong>team</strong> to switch this dashboard. Click a member to open their dashboard in a new tab.</p>
-        </div>
+      <div class="team-tree-sidebar__toggle-row">
+        <button type="button" class="tree-view-toggle-btn team-tree-sidebar-toggle" data-tree-sidebar-toggle onclick="toggleTreeSidebar()" aria-label="Collapse team hierarchy" title="Collapse team hierarchy">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
       </div>
       <div class="tree-view-content">
         <div id="team-tree-container">
@@ -379,9 +412,6 @@
 <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
     <div>
       <h1 class="text-2xl font-bold text-gray-900 mb-1">
-        <button type="button" class="tree-view-toggle-btn team-tree-toggle" data-tree-sidebar-toggle onclick="toggleTreeSidebar()" aria-label="Collapse team hierarchy" title="Collapse team hierarchy">
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
         <%= @selected_team&.name || l(:label_team_dashboard) || "Team Dashboard" %>
       </h1>
     <p class="text-sm text-gray-500">
