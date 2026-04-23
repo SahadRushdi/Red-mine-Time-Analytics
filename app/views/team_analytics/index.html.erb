@@ -11,40 +11,48 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
 <style>
-  /* Tree view slide-out panel */
-  .tree-view-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
+  .team-dashboard-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
     width: 100%;
-    height: 100%;
-    background-color: rgba(15, 23, 42, 0.28);
-    backdrop-filter: blur(2px);
-    z-index: 9998;
-    display: none;
   }
-  
-  .tree-view-panel {
-    position: fixed;
-    top: 0;
-    left: -460px;
-    width: 460px;
-    max-width: calc(100vw - 24px);
-    height: 100%;
+
+  .team-tree-sidebar {
+    flex: 0 0 360px;
+    width: 360px;
+    min-width: 280px;
+    max-width: 420px;
+    display: flex;
+    align-self: stretch;
+    transition: flex-basis 0.24s ease, width 0.24s ease, min-width 0.24s ease;
+  }
+
+  .team-tree-sidebar.is-collapsed {
+    flex-basis: 0;
+    width: 0;
+    min-width: 0;
+  }
+
+  .team-tree-sidebar__panel {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-    border-right: 1px solid #e2e8f0;
-    box-shadow: 16px 0 32px rgba(15, 23, 42, 0.12);
-    z-index: 9999;
-    transition: left 0.26s ease-in-out;
-    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    width: 100%;
+    min-height: 0;
+  }
+
+  .team-tree-sidebar__panel {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
-  
-  .tree-view-panel.open {
-    left: 0;
+
+  .team-tree-sidebar.is-collapsed .team-tree-sidebar__panel {
+    display: none;
   }
-  
+
   .tree-view-header {
     background-color: #ffffff;
     border-bottom: 1px solid #e2e8f0;
@@ -55,7 +63,7 @@
     align-items: flex-start;
     flex-shrink: 0;
   }
-  
+
   .tree-view-header h3 {
     margin: 0;
     font-size: 18px;
@@ -69,34 +77,14 @@
     font-size: 12px;
     line-height: 1.4;
   }
-  
-  .tree-view-close {
-    background-color: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    color: #334155;
-    font-size: 22px;
-    cursor: pointer;
-    padding: 0;
-    width: 34px;
-    height: 34px;
-    line-height: 30px;
-    text-align: center;
-    border-radius: 10px;
-    margin-left: 12px;
-    transition: all 0.18s ease;
-  }
-  
-  .tree-view-close:hover {
-    background-color: #e2e8f0;
-    color: #0f172a;
-  }
-  
+
   .tree-view-content {
     padding: 16px 18px 22px;
-    flex-grow: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
   }
-  
+
   #team-tree-container {
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -110,37 +98,77 @@
     align-items: center;
     justify-content: center;
     margin-right: 8px;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    background: transparent;
+    border: 1px solid transparent;
     cursor: pointer;
-    padding: 6px 8px;
+    padding: 4px;
     color: #1d4ed8;
     font-size: 22px;
-    transition: color 0.2s, background-color 0.2s;
+    transition: color 0.2s, background-color 0.2s, transform 0.2s;
     border-radius: 10px;
     vertical-align: middle;
     text-decoration: none;
     outline: none;
     line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
   }
-  
-  .tree-view-toggle-btn:hover {
-    background-color: #dbeafe;
+
+  .tree-view-toggle-btn:hover,
+  .tree-view-toggle-btn:focus,
+  .tree-view-toggle-btn:active,
+  .tree-view-toggle-btn:focus-visible,
+  .tree-view-toggle-btn:visited {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
     color: #1e40af;
-    text-decoration: none;
+    outline: none !important;
+    text-decoration: none !important;
   }
-  
-  .tree-view-toggle-btn:focus {
-    outline: none;
-    box-shadow: none;
+
+  .tree-view-toggle-btn:active {
+    transform: none;
   }
-  
+
   .tree-view-toggle-btn .material-symbols-outlined {
     font-size: 24px;
     vertical-align: middle;
     display: block;
   }
-  
+
+  .team-tree-toggle {
+    margin-right: 10px;
+    border-radius: 9999px;
+  }
+
+  .team-dashboard-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  @media (max-width: 1279px) {
+    .team-dashboard-shell {
+      flex-direction: column;
+    }
+
+    .team-tree-sidebar {
+      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .team-tree-sidebar.is-collapsed {
+      width: 100%;
+      flex-basis: auto;
+      min-width: 0;
+    }
+  }
+
   /* jsTree customization */
   #team-tree-container .jstree-default .jstree-anchor {
     height: auto;
@@ -150,17 +178,17 @@
     transition: all 0.15s ease;
     color: #1e293b;
   }
-  
+
   #team-tree-container .jstree-default .jstree-node {
     margin-bottom: 4px;
   }
-  
+
   #team-tree-container .jstree-default .jstree-clicked {
     background-color: #dbeafe !important;
     border: 1px solid #93c5fd;
     color: #1e3a8a !important;
   }
-  
+
   #team-tree-container .jstree-default .jstree-hovered {
     background-color: #eff6ff !important;
     color: #1e40af !important;
@@ -169,7 +197,7 @@
   #team-tree-container .jstree-default .jstree-icon.jstree-ocl {
     margin-top: 2px;
   }
-  
+
   /* Team nodes are primary selection targets */
   #team-tree-container .jstree-anchor[data-node-type="team"] {
     font-weight: 700;
@@ -182,37 +210,85 @@
     color: #1d4ed8;
     font-weight: 500;
   }
-  
+
   #team-tree-container .jstree-anchor[data-node-type="member"]:hover {
     text-decoration: underline;
   }
-  
+
   /* Projects node styling */
   #team-tree-container .jstree-anchor[data-node-type="projects"] {
     color: #64748b;
     font-style: italic;
     font-size: 12px;
   }
-  
+
 </style>
 
 <script type="text/javascript">
   const teamDashboardBaseUrl = '<%= team_analytics_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :activity_view_state, :project_view_state, :member_view_state).to_h) %>';
   const currentTeamId = '<%= @selected_team&.id %>';
+  const teamTreeSidebarStorageKey = 'team_tree_sidebar_state';
+  let teamTreeLoaded = false;
+  let teamTreeLoading = false;
 
-  // Tree view functions
-  function openTreeView() {
-    $('.tree-view-overlay').fadeIn(200);
-    $('.tree-view-panel').addClass('open');
-    loadTreeData();
+  function getTreeSidebarState() {
+    try {
+      return localStorage.getItem(teamTreeSidebarStorageKey) || 'expanded';
+    } catch (error) {
+      return 'expanded';
+    }
   }
-  
-  function closeTreeView() {
-    $('.tree-view-overlay').fadeOut(200);
-    $('.tree-view-panel').removeClass('open');
+
+  function setTreeSidebarState(state) {
+    try {
+      localStorage.setItem(teamTreeSidebarStorageKey, state);
+    } catch (error) {
+      // Ignore storage failures and keep the current UI state.
+    }
   }
-  
+
+  function updateTreeSidebarToggleButtons(isCollapsed) {
+    const toggleLabel = isCollapsed ? 'Expand team hierarchy' : 'Collapse team hierarchy';
+
+    document.querySelectorAll('[data-tree-sidebar-toggle]').forEach(function(button) {
+      button.setAttribute('aria-expanded', String(!isCollapsed));
+      button.setAttribute('aria-label', toggleLabel);
+      button.setAttribute('title', toggleLabel);
+
+      const icon = button.querySelector('.material-symbols-outlined');
+      if (icon) {
+        icon.textContent = isCollapsed ? 'chevron_right' : 'chevron_left';
+      }
+    });
+  }
+
+  function setTreeSidebarCollapsed(isCollapsed, options) {
+    const sidebar = document.getElementById('team-tree-sidebar');
+    if (!sidebar) return;
+
+    sidebar.classList.toggle('is-collapsed', isCollapsed);
+    sidebar.classList.toggle('is-expanded', !isCollapsed);
+    updateTreeSidebarToggleButtons(isCollapsed);
+
+    if (!(options && options.persist === false)) {
+      setTreeSidebarState(isCollapsed ? 'collapsed' : 'expanded');
+    }
+
+    if (!isCollapsed) {
+      loadTreeData();
+    }
+  }
+
+  function toggleTreeSidebar() {
+    const sidebar = document.getElementById('team-tree-sidebar');
+    if (!sidebar) return;
+    setTreeSidebarCollapsed(!sidebar.classList.contains('is-collapsed'));
+  }
+
   function loadTreeData() {
+    if (teamTreeLoading || teamTreeLoaded) return;
+
+    teamTreeLoading = true;
     var fromDate = '<%= @from %>';
     var toDate = '<%= @to %>';
     
@@ -222,11 +298,16 @@
       data: { from: fromDate, to: toDate },
       dataType: 'json',
       success: function(data) {
+        teamTreeLoaded = true;
         initializeTree(data);
       },
       error: function(xhr, status, error) {
         console.error('Error loading tree data:', error);
         $('#team-tree-container').html('<p style="color: red;">Error loading tree view. Please try again.</p>');
+        teamTreeLoaded = false;
+      },
+      complete: function() {
+        teamTreeLoading = false;
       }
     });
   }
@@ -254,7 +335,7 @@
       if (data.node.data && data.node.data.team_id) {
         var teamId = String(data.node.data.team_id);
         if (teamId === currentTeamId) {
-          closeTreeView();
+          setTreeSidebarCollapsed(true);
           return;
         }
 
@@ -273,37 +354,33 @@
   }
   
   $(document).ready(function() {
-    // Close tree view when clicking overlay
-    $('.tree-view-overlay').on('click', function() {
-      closeTreeView();
-    });
+    const savedTreeState = getTreeSidebarState();
+    setTreeSidebarCollapsed(savedTreeState === 'collapsed', { persist: false });
   });
 </script>
 
-<!-- Tree View Overlay -->
-<div class="tree-view-overlay"></div>
-
-<!-- Tree View Slide-out Panel -->
-<div class="tree-view-panel">
-  <div class="tree-view-header">
-    <div>
-      <h3>Team Hierarchy</h3>
-      <p class="tree-view-subtitle">Click a <strong>team</strong> to switch this dashboard. Click a member to open their dashboard in a new tab.</p>
+<div class="team-dashboard-shell">
+  <aside id="team-tree-sidebar" class="team-tree-sidebar is-expanded" aria-label="Team hierarchy sidebar">
+    <div class="team-tree-sidebar__panel">
+      <div class="tree-view-header">
+        <div>
+          <h3>Team Hierarchy</h3>
+          <p class="tree-view-subtitle">Click a <strong>team</strong> to switch this dashboard. Click a member to open their dashboard in a new tab.</p>
+        </div>
+      </div>
+      <div class="tree-view-content">
+        <div id="team-tree-container">
+          <p style="text-align: center; color: #999; padding: 20px;">Loading team structure...</p>
+        </div>
+      </div>
     </div>
-    <button class="tree-view-close" onclick="closeTreeView()" title="Close">&times;</button>
-  </div>
-  <div class="tree-view-content">
-    <div id="team-tree-container">
-      <p style="text-align: center; color: #999; padding: 20px;">Loading team structure...</p>
-    </div>
-  </div>
-</div>
-
+  </aside>
+  <div class="team-dashboard-main">
 <div class="flex items-start justify-between mb-6 flex-wrap gap-4">
     <div>
       <h1 class="text-2xl font-bold text-gray-900 mb-1">
-        <button class="tree-view-toggle-btn" onclick="openTreeView()" title="Open Team Hierarchy View">
-          <span class="material-symbols-outlined">account_tree</span>
+        <button type="button" class="tree-view-toggle-btn team-tree-toggle" data-tree-sidebar-toggle onclick="toggleTreeSidebar()" aria-label="Collapse team hierarchy" title="Collapse team hierarchy">
+          <span class="material-symbols-outlined">chevron_left</span>
         </button>
         <%= @selected_team&.name || l(:label_team_dashboard) || "Team Dashboard" %>
       </h1>
@@ -1290,3 +1367,5 @@
   }
 
 </script>
+  </div>
+</div>
