@@ -23,7 +23,7 @@ class AdminTaHiringNeedsController < ApplicationController
       flash[:error] = @hiring_need.errors.full_messages.join(', ')
     end
 
-    redirect_to admin_ta_hiring_needs_path
+    redirect_back(fallback_location: admin_ta_hiring_needs_path)
   end
 
   def update
@@ -33,7 +33,7 @@ class AdminTaHiringNeedsController < ApplicationController
       flash[:error] = @hiring_need.errors.full_messages.join(', ')
     end
 
-    redirect_to admin_ta_hiring_needs_path
+    redirect_back(fallback_location: admin_ta_hiring_needs_path)
   end
 
   def destroy
@@ -43,7 +43,7 @@ class AdminTaHiringNeedsController < ApplicationController
       flash[:error] = @hiring_need.errors.full_messages.presence&.join(', ') || 'Failed to delete hiring request.'
     end
 
-    redirect_to admin_ta_hiring_needs_path
+    redirect_back(fallback_location: admin_ta_hiring_needs_path)
   end
 
   def mark_filled
@@ -52,7 +52,7 @@ class AdminTaHiringNeedsController < ApplicationController
   rescue ActiveRecord::RecordInvalid
     flash[:error] = @hiring_need.errors.full_messages.join(', ')
   ensure
-    redirect_to admin_ta_hiring_needs_path
+    redirect_back(fallback_location: admin_ta_hiring_needs_path)
   end
 
   def mark_open
@@ -61,7 +61,7 @@ class AdminTaHiringNeedsController < ApplicationController
   rescue ActiveRecord::RecordInvalid
     flash[:error] = @hiring_need.errors.full_messages.join(', ')
   ensure
-    redirect_to admin_ta_hiring_needs_path
+    redirect_back(fallback_location: admin_ta_hiring_needs_path)
   end
 
   private

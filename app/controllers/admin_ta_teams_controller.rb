@@ -11,6 +11,7 @@ class AdminTaTeamsController < ApplicationController
   def index
     @all_teams = TaTeam.ordered_by_name.to_a
     @active_main_tab = params[:main_tab].presence || 'structure'
+    @active_sidebar_tab = params[:sidebar_tab].presence || 'members'
     @show_add_member_modal = params[:open_add_member_modal].present?
     @selected_add_member_team_id = params[:add_member_team_id].presence
     @add_member_membership = TaTeamMembership.new(start_date: Date.current, role: 'member')

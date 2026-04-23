@@ -665,7 +665,7 @@
                       <p class="text-xs text-gray-500"><%= h(team_name) %></p>
                       <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
                     </div>
-                    <%= button_to mark_filled_admin_ta_hiring_need_path(need), method: :patch, class: 'ta-vacancy-action-button inline-flex items-center rounded-lg bg-emerald-700 px-3 py-2 text-center text-xs font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300', form_class: 'shrink-0' do %>
+                    <%= button_to mark_filled_admin_ta_hiring_need_path(need), method: :patch, params: { sidebar_tab: 'vacancies' }, class: 'ta-vacancy-action-button inline-flex items-center rounded-lg bg-emerald-700 px-3 py-2 text-center text-xs font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300', form_class: 'shrink-0' do %>
                       <svg class="mr-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                       </svg>
@@ -1924,8 +1924,8 @@
 
     resetVacancyHistorySortIcons('position');
     resetMemberHistorySortIcons('name');
-    switchTeamSidebarTab('team-sidebar-members-panel');
-    updateWorkforceOverviewCountBadge('team-sidebar-members-panel');
+    switchTeamSidebarTab('<%= @active_sidebar_tab == 'vacancies' ? 'team-sidebar-vacancies-panel' : 'team-sidebar-members-panel' %>');
+    updateWorkforceOverviewCountBadge('<%= @active_sidebar_tab == 'vacancies' ? 'team-sidebar-vacancies-panel' : 'team-sidebar-members-panel' %>');
     setupTeamDragAndDrop();
     setupTeamMemberToggles();
     setupTeamSplitLayout();
