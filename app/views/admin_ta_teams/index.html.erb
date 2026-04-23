@@ -380,6 +380,7 @@
                            class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                            style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
                         <% @all_teams.each do |team| %>
+                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
                           <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                                tabindex="0"
                                data-id="<%= team.id %>"
@@ -387,7 +388,7 @@
                                data-search="<%= team.name.downcase %>"
                                onclick="teamMembersSelectAddTeam('<%= team.id %>', '<%= j(team.name) %>')"
                                onkeydown="teamMembersHandleAddTeamOptionKey(event, '<%= team.id %>', '<%= j(team.name) %>')">
-                            <span class="text-gray-700 leading-relaxed"><%= h(team.name) %></span>
+                            <span class="text-gray-700 leading-relaxed"><%= indent.html_safe %><%= h(team.name) %></span>
                           </div>
                         <% end %>
                       </div>
@@ -615,9 +616,10 @@
                       <div id="assign-team-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
                         <ul class="max-h-48 overflow-y-auto overflow-x-hidden py-1 text-sm text-gray-700">
                           <% @all_teams.each do |team| %>
+                            <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
                             <li>
                               <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="assign_team_<%= idx %>" data-ta-dropdown-label-target="assign-team-button-<%= idx %>">
-                                <%= h(team.name) %>
+                                <%= indent.html_safe %><%= h(team.name) %>
                               </button>
                             </li>
                           <% end %>

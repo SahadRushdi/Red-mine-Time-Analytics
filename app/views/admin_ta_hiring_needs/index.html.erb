@@ -58,7 +58,7 @@
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-open-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-open-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-open-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[120px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-open-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','opened'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Opened<span id="ta-hiring-open-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','duration'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Duration<span id="ta-hiring-open-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -89,7 +89,7 @@
                     data-sort-priority="<%= need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>"
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-duration="<%= duration_days %>">
-                  <td class="px-4 py-3">
+                  <td class="w-[120px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
@@ -130,13 +130,14 @@
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% @all_teams.each do |team| %>
+                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
                                   data-ta-hiring-inline-input="<%= edit_team_input_id %>"
                                   data-ta-hiring-inline-label="<%= edit_team_label_id %>"
                                   data-ta-hiring-inline-text="<%= h(team.name) %>">
-                            <%= h(team.name) %>
+                            <%= indent.html_safe %><%= h(team.name) %>
                           </button>
                         <% end %>
                       </div>
@@ -219,7 +220,7 @@
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-filled-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-filled-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-filled-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[120px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-filled-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','opened'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Opened<span id="ta-hiring-filled-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','filled'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Filled<span id="ta-hiring-filled-sort-icon-filled" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','duration'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Duration<span id="ta-hiring-filled-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span></span></th>
@@ -252,7 +253,7 @@
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
                     data-sort-duration="<%= duration_days %>">
-                  <td class="px-4 py-3">
+                  <td class="w-[120px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
@@ -293,13 +294,14 @@
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                         <% @all_teams.each do |team| %>
+                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
                                   data-ta-hiring-inline-input="<%= edit_team_input_id %>"
                                   data-ta-hiring-inline-label="<%= edit_team_label_id %>"
                                   data-ta-hiring-inline-text="<%= h(team.name) %>">
-                            <%= h(team.name) %>
+                            <%= indent.html_safe %><%= h(team.name) %>
                           </button>
                         <% end %>
                       </div>
@@ -558,10 +560,100 @@
     open: { currentPage: 1, perPage: 10 },
     filled: { currentPage: 1, perPage: 10 }
   };
+  var hiringInlineFloatingState = {};
+
+  function hiringEnsureInlineMenuState(menu) {
+    if (!menu || !menu.id) return null;
+    if (!hiringInlineFloatingState[menu.id]) {
+      hiringInlineFloatingState[menu.id] = {
+        parent: menu.parentNode,
+        nextSibling: menu.nextSibling,
+        anchorId: null
+      };
+    }
+    return hiringInlineFloatingState[menu.id];
+  }
+
+  function hiringPositionInlineMenu(menu, anchor) {
+    if (!menu || !anchor) return;
+
+    var rect = anchor.getBoundingClientRect();
+    var targetWidth = Math.max(Math.round(rect.width), 220);
+    var viewportPadding = 8;
+    var preferredHeight = Math.min(menu.scrollHeight || 220, 320);
+    var spaceBelow = Math.max(0, window.innerHeight - rect.bottom - viewportPadding);
+    var spaceAbove = Math.max(0, rect.top - viewportPadding);
+    var openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    var maxHeight = Math.max(120, openUp ? spaceAbove : spaceBelow);
+
+    menu.style.position = 'fixed';
+    var left = Math.max(viewportPadding, rect.left);
+    if (left + targetWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - targetWidth);
+    }
+    menu.style.left = left + 'px';
+    menu.style.width = targetWidth + 'px';
+    menu.style.maxHeight = Math.min(preferredHeight, maxHeight) + 'px';
+    menu.style.top = openUp ? 'auto' : (rect.bottom + 2) + 'px';
+    menu.style.bottom = openUp ? (window.innerHeight - rect.top + 2) + 'px' : 'auto';
+    menu.style.zIndex = '10050';
+  }
+
+  function hiringOpenInlineMenu(menu, anchor) {
+    if (!menu || !anchor || !menu.id || !anchor.id) return;
+    var state = hiringEnsureInlineMenuState(menu);
+    if (!state) return;
+
+    state.anchorId = anchor.id;
+    if (menu.parentNode !== document.body) {
+      document.body.appendChild(menu);
+    }
+    menu.classList.remove('hidden');
+    hiringPositionInlineMenu(menu, anchor);
+  }
+
+  function hiringCloseInlineMenu(menu) {
+    if (!menu || !menu.id) return;
+    var state = hiringInlineFloatingState[menu.id];
+    menu.classList.add('hidden');
+
+    if (state && state.parent && menu.parentNode !== state.parent) {
+      state.parent.insertBefore(menu, state.nextSibling);
+    }
+    if (state) state.anchorId = null;
+
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.top = '';
+    menu.style.bottom = '';
+    menu.style.width = '';
+    menu.style.maxHeight = '';
+    menu.style.zIndex = '';
+  }
+
+  function hiringSyncInlineMenuPositions() {
+    Object.keys(hiringInlineFloatingState).forEach(function(menuId) {
+      var menu = document.getElementById(menuId);
+      var state = hiringInlineFloatingState[menuId];
+      if (!menu || !state || menu.classList.contains('hidden') || !state.anchorId) return;
+      var anchor = document.getElementById(state.anchorId);
+      if (!anchor) {
+        hiringCloseInlineMenu(menu);
+        return;
+      }
+      hiringPositionInlineMenu(menu, anchor);
+    });
+  }
+
+  if (!window.__hiringInlineFloatingListenersBound) {
+    window.addEventListener('resize', hiringSyncInlineMenuPositions);
+    document.addEventListener('scroll', hiringSyncInlineMenuPositions, true);
+    window.__hiringInlineFloatingListenersBound = true;
+  }
 
   function closeInlineHiringDropdowns() {
     document.querySelectorAll('[data-ta-hiring-inline-menu]').forEach(function(menu) {
-      menu.classList.add('hidden');
+      hiringCloseInlineMenu(menu);
     });
   }
 
@@ -734,6 +826,7 @@
   function applyHiringPagination(tabKey, preservePage) {
     var state = hiringPagination[tabKey];
     if (!state) return;
+    closeInlineHiringDropdowns();
     var rows = hiringRowsFor(tabKey);
     var totalPages = Math.max(1, Math.ceil(rows.length / state.perPage));
     if (!preservePage) state.currentPage = 1;
@@ -873,7 +966,7 @@
         var isInlineHidden = inlineMenu.classList.contains('hidden');
         closeInlineHiringDropdowns();
         closeCreateHiringDropdowns();
-        if (isInlineHidden) inlineMenu.classList.remove('hidden');
+        if (isInlineHidden) hiringOpenInlineMenu(inlineMenu, inlineToggleButton);
         return;
       }
 
