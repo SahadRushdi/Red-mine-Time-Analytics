@@ -277,6 +277,13 @@ class TeamAnalyticsController < ApplicationController
       text: team.name,
       icon: "icon icon-group",
       state: { opened: true },
+      a_attr: {
+        'data-node-type': 'team',
+        'data-team-id': team.id
+      },
+      data: {
+        team_id: team.id
+      },
       children: []
     }
     
@@ -308,13 +315,22 @@ class TeamAnalyticsController < ApplicationController
         text: user.name,
         icon: "icon icon-user",
         state: { opened: false },
-        data: { user_id: user.id },
+        a_attr: {
+          'data-node-type': 'member',
+          'data-user-id': user.id
+        },
+        data: {
+          user_id: user.id
+        },
         children: [
           {
             id: "projects_#{team.id}_#{user.id}",
             text: project_text,
             icon: "icon icon-projects",
-            type: "projects"
+            type: "projects",
+            a_attr: {
+              'data-node-type': 'projects'
+            }
           }
         ]
       }

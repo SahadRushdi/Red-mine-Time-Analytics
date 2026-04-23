@@ -18,7 +18,8 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(15, 23, 42, 0.28);
+    backdrop-filter: blur(2px);
     z-index: 9998;
     display: none;
   }
@@ -26,13 +27,15 @@
   .tree-view-panel {
     position: fixed;
     top: 0;
-    left: -450px;
-    width: 450px;
+    left: -460px;
+    width: 460px;
+    max-width: calc(100vw - 24px);
     height: 100%;
-    background-color: #fff;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border-right: 1px solid #e2e8f0;
+    box-shadow: 16px 0 32px rgba(15, 23, 42, 0.12);
     z-index: 9999;
-    transition: left 0.3s ease-in-out;
+    transition: left 0.26s ease-in-out;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -43,58 +46,78 @@
   }
   
   .tree-view-header {
-    background-color: #614ba6;
-    color: #fff;
-    padding: 19px 20px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    color: #0f172a;
+    padding: 18px 20px 14px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     flex-shrink: 0;
   }
   
   .tree-view-header h3 {
     margin: 0;
     font-size: 18px;
-    font-weight: bold;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .tree-view-subtitle {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.4;
   }
   
   .tree-view-close {
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 28px;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 22px;
     cursor: pointer;
     padding: 0;
-    width: 30px;
-    height: 30px;
-    line-height: 28px;
+    width: 34px;
+    height: 34px;
+    line-height: 30px;
     text-align: center;
+    border-radius: 10px;
+    margin-left: 12px;
+    transition: all 0.18s ease;
   }
   
   .tree-view-close:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    background-color: #e2e8f0;
+    color: #0f172a;
   }
   
   .tree-view-content {
-    padding: 20px;
+    padding: 16px 18px 22px;
     flex-grow: 1;
     overflow-y: auto;
   }
   
+  #team-tree-container {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 22px rgba(148, 163, 184, 0.16);
+  }
+
   .tree-view-toggle-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin-right: 8px;
-    background: none;
-    border: none;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
     cursor: pointer;
-    padding: 5px 8px;
-    color: #555;
+    padding: 6px 8px;
+    color: #1d4ed8;
     font-size: 22px;
     transition: color 0.2s, background-color 0.2s;
-    border-radius: 3px;
+    border-radius: 10px;
     vertical-align: middle;
     text-decoration: none;
     outline: none;
@@ -102,8 +125,8 @@
   }
   
   .tree-view-toggle-btn:hover {
-    background-color: #f0f0f0;
-    color: #169;
+    background-color: #dbeafe;
+    color: #1e40af;
     text-decoration: none;
   }
   
@@ -121,44 +144,62 @@
   /* jsTree customization */
   #team-tree-container .jstree-default .jstree-anchor {
     height: auto;
-    line-height: 28px;
-    padding: 4px 8px;
+    line-height: 24px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    transition: all 0.15s ease;
+    color: #1e293b;
   }
   
   #team-tree-container .jstree-default .jstree-node {
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }
   
   #team-tree-container .jstree-default .jstree-clicked {
-    background-color: #e3f2fd !important;
-    border-radius: 4px;
+    background-color: #dbeafe !important;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a !important;
   }
   
   #team-tree-container .jstree-default .jstree-hovered {
-    background-color: #f5f5f5 !important;
-    border-radius: 4px;
+    background-color: #eff6ff !important;
+    color: #1e40af !important;
+  }
+
+  #team-tree-container .jstree-default .jstree-icon.jstree-ocl {
+    margin-top: 2px;
   }
   
-  /* Make member names stand out */
-  #team-tree-container .jstree-anchor[data-user-id] {
-    color: #169;
+  /* Team nodes are primary selection targets */
+  #team-tree-container .jstree-anchor[data-node-type="team"] {
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.01em;
+  }
+
+  /* Members navigate to individual dashboard in new tab */
+  #team-tree-container .jstree-anchor[data-node-type="member"] {
+    color: #1d4ed8;
     font-weight: 500;
   }
   
-  #team-tree-container .jstree-anchor[data-user-id]:hover {
+  #team-tree-container .jstree-anchor[data-node-type="member"]:hover {
     text-decoration: underline;
   }
   
   /* Projects node styling */
-  #team-tree-container .jstree-node[data-type="projects"] .jstree-anchor {
-    color: #666;
+  #team-tree-container .jstree-anchor[data-node-type="projects"] {
+    color: #64748b;
     font-style: italic;
-    font-size: 0.95em;
+    font-size: 12px;
   }
   
 </style>
 
 <script type="text/javascript">
+  const teamDashboardBaseUrl = '<%= team_analytics_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :activity_view_state, :project_view_state, :member_view_state).to_h) %>';
+  const currentTeamId = '<%= @selected_team&.id %>';
+
   // Tree view functions
   function openTreeView() {
     $('.tree-view-overlay').fadeIn(200);
@@ -199,15 +240,30 @@
         'themes': {
           'name': 'default',
           'responsive': true,
-          'dots': true,
+          'dots': false,
           'icons': false
         }
       },
-      'plugins': ['types']
+      'plugins': ['types', 'wholerow']
     });
     
-    // Handle member node clicks - open Individual Dashboard
+    $('#team-tree-container').off('select_node.jstree');
+
+    // Team node switches dashboard team; member node opens individual dashboard.
     $('#team-tree-container').on('select_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        var teamId = String(data.node.data.team_id);
+        if (teamId === currentTeamId) {
+          closeTreeView();
+          return;
+        }
+
+        var targetUrl = new URL(teamDashboardBaseUrl, window.location.origin);
+        targetUrl.searchParams.set('team_id', teamId);
+        window.location.assign(targetUrl.toString());
+        return;
+      }
+
       if (data.node.data && data.node.data.user_id) {
         var userId = data.node.data.user_id;
         var url = '<%= my_time_path %>' + '?user_id=' + userId + '&<%= @member_dashboard_query %>';
@@ -230,7 +286,10 @@
 <!-- Tree View Slide-out Panel -->
 <div class="tree-view-panel">
   <div class="tree-view-header">
-    <h3>Team Hierarchy</h3>
+    <div>
+      <h3>Team Hierarchy</h3>
+      <p class="tree-view-subtitle">Click a <strong>team</strong> to switch this dashboard. Click a member to open their dashboard in a new tab.</p>
+    </div>
     <button class="tree-view-close" onclick="closeTreeView()" title="Close">&times;</button>
   </div>
   <div class="tree-view-content">

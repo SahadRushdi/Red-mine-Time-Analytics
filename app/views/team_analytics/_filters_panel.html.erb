@@ -40,30 +40,6 @@
     </div>
   </div>
 
-  <% if @teams.count > 1 %>
-    <div class="relative">
-      <button type="button" id="team-dropdown-button" onclick="toggleTeamDropdown()"
-          class="inline-flex items-center justify-between min-w-48 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
-        <span id="team-selected-text"><%= @selected_team&.name %></span>
-        <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
-      </button>
-      <div id="team-dropdown" class="hidden absolute z-10 mt-1 min-w-48 bg-white border border-gray-300 rounded-lg shadow-xl py-1 max-h-72 overflow-y-auto">
-        <ul class="text-sm">
-          <% @teams.each do |team| %>
-            <li>
-              <button type="button" onclick="setTeamAndSubmit('<%= team.id %>', '<%= j team.name %>')"
-                  class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @selected_team&.id == team.id ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-                <%= team.name %>
-              </button>
-            </li>
-          <% end %>
-        </ul>
-      </div>
-    </div>
-  <% end %>
-
   <div class="relative">
     <button type="button" id="grouping-dropdown-button" onclick="toggleGroupingDropdown()"
         class="inline-flex items-center justify-between min-w-36 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
@@ -114,24 +90,6 @@
       [startInput, endInput].forEach(function(input) {
         if (input && input.datepicker && input.datepicker.hide) input.datepicker.hide();
       });
-    }
-  }
-
-  function toggleTeamDropdown() {
-    const dropdown = document.getElementById('team-dropdown');
-    if (dropdown) dropdown.classList.toggle('hidden');
-  }
-
-  function setTeamAndSubmit(teamId, teamName) {
-    const teamHidden = document.getElementById('team_id_hidden');
-    const teamText = document.getElementById('team-selected-text');
-    const form = document.getElementById('team-analytics-form');
-    const dropdown = document.getElementById('team-dropdown');
-    if (teamHidden && teamText && form) {
-      teamHidden.value = teamId;
-      teamText.textContent = teamName;
-      if (dropdown) dropdown.classList.add('hidden');
-      form.submit();
     }
   }
 
@@ -270,12 +228,6 @@
     bindTeamCustomDateRangeEvents();
 
     document.addEventListener('click', function(event) {
-      const teamDropdown = document.getElementById('team-dropdown');
-      const teamButton = document.getElementById('team-dropdown-button');
-      if (teamDropdown && teamButton && !teamButton.contains(event.target) && !teamDropdown.contains(event.target)) {
-        teamDropdown.classList.add('hidden');
-      }
-
       const groupingDropdown = document.getElementById('grouping-dropdown');
       const groupingButton = document.getElementById('grouping-dropdown-button');
       if (groupingDropdown && groupingButton && !groupingButton.contains(event.target) && !groupingDropdown.contains(event.target)) {
