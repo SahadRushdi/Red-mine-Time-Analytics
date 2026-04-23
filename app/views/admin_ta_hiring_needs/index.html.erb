@@ -56,9 +56,9 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-open-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[420px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-open-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-open-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
-              <th class="w-[120px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-open-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[260px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-open-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','opened'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Opened<span id="ta-hiring-open-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('open','duration'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Duration<span id="ta-hiring-open-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
@@ -89,7 +89,7 @@
                     data-sort-priority="<%= need.priority == 'high' ? 3 : (need.priority == 'medium' ? 2 : 1) %>"
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-duration="<%= duration_days %>">
-                  <td class="w-[120px] px-4 py-3 whitespace-nowrap">
+                  <td class="w-[420px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
@@ -116,7 +116,7 @@
                       </div>
                     </div>
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="w-[260px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view text-gray-600"><%= h(team_name) %></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_team_input_id %>" name="ta_hiring_need[team_id]" form="<%= form_id %>" value="<%= need.team_id %>">
@@ -143,7 +143,7 @@
                       </div>
                     </div>
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="w-[220px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view">
                       <% priority_classes = need.priority == 'high' ? 'bg-red-100 text-red-700 border-red-200' : (need.priority == 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200') %>
                       <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= priority_classes %>"><%= need.priority.titleize %></span>
@@ -218,9 +218,9 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-filled-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[420px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','title'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Title<span id="ta-hiring-filled-sort-icon-title" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','team'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Team<span id="ta-hiring-filled-sort-icon-team" class="sort desc icon icon-sorted-asc"></span></span></th>
-              <th class="w-[120px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-filled-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
+              <th class="w-[260px] px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','priority'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Priority<span id="ta-hiring-filled-sort-icon-priority" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','opened'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Opened<span id="ta-hiring-filled-sort-icon-opened" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','filled'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Filled<span id="ta-hiring-filled-sort-icon-filled" class="sort desc icon icon-sorted-asc"></span></span></th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide"><span role="button" tabindex="0" onclick="toggleHiringSort('filled','duration'); this.blur();" class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">Duration<span id="ta-hiring-filled-sort-icon-duration" class="sort desc icon icon-sorted-asc"></span></span></th>
@@ -253,7 +253,7 @@
                     data-sort-opened="<%= need.created_at.to_i %>"
                     data-sort-filled="<%= need.filled_on ? need.filled_on.to_time.to_i : 0 %>"
                     data-sort-duration="<%= duration_days %>">
-                  <td class="w-[120px] px-4 py-3 whitespace-nowrap">
+                  <td class="w-[420px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view"><span class="text-sm font-semibold text-gray-900"><%= h(need.title) %></span></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_title_input_id %>" name="ta_hiring_need[title]" form="<%= form_id %>" value="<%= h(need.title) %>">
@@ -280,7 +280,7 @@
                       </div>
                     </div>
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="w-[260px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view text-gray-600"><%= h(team_name) %></div>
                     <div class="ta-hiring-edit hidden relative">
                       <input type="hidden" id="<%= edit_team_input_id %>" name="ta_hiring_need[team_id]" form="<%= form_id %>" value="<%= need.team_id %>">
@@ -307,7 +307,7 @@
                       </div>
                     </div>
                   </td>
-                  <td class="px-4 py-3">
+                  <td class="w-[220px] px-4 py-3 whitespace-nowrap">
                     <div class="ta-hiring-view">
                       <% priority_classes = need.priority == 'high' ? 'bg-red-100 text-red-700 border-red-200' : (need.priority == 'medium' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-green-100 text-green-700 border-green-200') %>
                       <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= priority_classes %>"><%= need.priority.titleize %></span>
