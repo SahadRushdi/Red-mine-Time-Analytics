@@ -299,16 +299,6 @@ class TeamAnalyticsController < ApplicationController
       
       user = membership.user
       
-      # Get projects with logged time in date range
-      projects = TimeEntry.joins(:project)
-                         .where(user_id: user.id, spent_on: from_date..to_date)
-                         .where(projects: { status: Project::STATUS_ACTIVE })
-                         .select('DISTINCT projects.id, projects.name')
-                         .order('projects.name')
-      
-      project_list = projects.map(&:name).join(', ')
-      project_text = project_list.present? ? "Projects: #{project_list}" : "No projects logged"
-      
       # Member node
       member_node = {
         id: "member_#{team.id}_#{user.id}",
@@ -321,18 +311,7 @@ class TeamAnalyticsController < ApplicationController
         },
         data: {
           user_id: user.id
-        },
-        children: [
-          {
-            id: "projects_#{team.id}_#{user.id}",
-            text: project_text,
-            icon: "icon icon-projects",
-            type: "projects",
-            a_attr: {
-              'data-node-type': 'projects'
-            }
-          }
-        ]
+        }
       }
       
       team_node[:children] << member_node
