@@ -247,7 +247,12 @@
   let teamTreeLoading = false;
 
   function getTreeSidebarState() {
-    return 'expanded';
+    try {
+      const saved = localStorage.getItem(teamTreeSidebarStorageKey);
+      return saved || 'expanded';
+    } catch (error) {
+      return 'expanded';
+    }
   }
 
   function setTreeSidebarState(state) {
@@ -459,8 +464,10 @@
   }
   
   $(document).ready(function() {
-    setTreeSidebarCollapsed(false, { persist: false });
-    setTreeSidebarState('expanded');
+    // Restore saved sidebar state on page load
+    const savedSidebarState = getTreeSidebarState();
+    const isCollapsed = savedSidebarState === 'collapsed';
+    setTreeSidebarCollapsed(isCollapsed, { persist: false });
   });
 </script>
 

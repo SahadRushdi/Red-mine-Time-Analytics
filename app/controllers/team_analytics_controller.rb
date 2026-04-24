@@ -276,7 +276,7 @@ class TeamAnalyticsController < ApplicationController
       id: "team_#{team.id}",
       text: team.name,
       icon: "icon icon-group",
-      state: { opened: true },
+      state: { opened: false },
       a_attr: {
         'data-node-type': 'team',
         'data-team-id': team.id
