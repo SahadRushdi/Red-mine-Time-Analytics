@@ -475,7 +475,7 @@ class TeamAnalyticsController < ApplicationController
     # Sort by period key in DESCENDING order (newest first, like Individual Dashboard)
     sorted_data = data.sort_by { |key, _| key }.reverse
     
-    # Return structured data with period, team_size (not member_count), and hours
+    # Return structured data with period, team_size (not member_count), hours, and average
     sorted_data.map do |period, hours|
       # Convert period key to appropriate format for the helper
       period_for_display = case grouping
@@ -493,7 +493,10 @@ class TeamAnalyticsController < ApplicationController
       # Calculate actual team size for this specific period based on membership dates
       team_size = calculate_team_size_for_period(period_for_display, grouping)
       
-      Struct.new(:period, :member_count, :hours).new(period_label, team_size, hours)
+      # Calculate average: Total Hours / (Team Size * Active Working Days)
+      average = calculate_period_average(period_for_display, grouping, hours, team_size)
+      
+      Struct.new(:period, :member_count, :hours, :average).new(period_label, team_size, hours, average)
     end
   end
 
@@ -1178,6 +1181,29 @@ class TeamAnalyticsController < ApplicationController
     end
     
     result
+  end
+
+  # Calculate average for a period: Total Hours / (Team Size * Active Working Days)
+  def calculate_period_average(period_date, grouping, hours, team_size)
+    return 0 if team_size.zero? || hours.zero?
+    
+    period_start, period_end = case grouping
+                               when 'weekly'
+                                 week_start = period_date.beginning_of_week(:monday)
+                                 week_end = week_start + 6.days
+                                 [week_start, week_end]
+                               when 'monthly'
+                                 month_start = period_date.beginning_of_month
+                                 month_end = period_date.end_of_month
+                                 [month_start, month_end]
+                               else
+                                 [period_date, period_date]
+                               end
+    
+    active_working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(period_start, period_end)
+    return 0 if active_working_days.zero?
+    
+    (hours / (team_size * active_working_days)).round(2)
   end
 
   # Calculate team size for a specific period based on membership dates (not time logging)

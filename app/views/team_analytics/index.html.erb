@@ -500,6 +500,7 @@
               </th>
               <th scope="col" class="px-6 py-3 text-center">Team Size</th>
               <th scope="col" class="px-6 py-3 text-right"><%= l(:label_hours) %></th>
+              <th scope="col" class="px-6 py-3 text-right">Average</th>
             </tr>
           </thead>
           <tbody>
@@ -508,6 +509,7 @@
                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
                 <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
+                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
               </tr>
             <% end %>
           </tbody>
