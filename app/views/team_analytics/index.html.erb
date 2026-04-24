@@ -341,6 +341,14 @@
   function initializeTree(treeData) {
     $('#team-tree-container').jstree('destroy');
     
+    // Load saved node states from localStorage
+    const savedNodeStates = getSavedTreeNodeStates();
+    
+    // Merge saved states with tree data
+    treeData = treeData.map(function(node) {
+      return mergeNodeState(node, savedNodeStates);
+    });
+    
     $('#team-tree-container').jstree({
       'core': {
         'data': treeData,
@@ -351,11 +359,17 @@
           'icons': false
         }
       },
-      'plugins': ['types', 'wholerow']
+      'plugins': ['types', 'wholerow', 'state'],
+      'state': {
+        'key': 'jstree_tree_state',
+        'events': 'changed.jstree open_node.jstree close_node.jstree'
+      }
     });
 
     $('#team-tree-container').off('select_node.jstree');
     $('#team-tree-container').off('ready.jstree');
+    $('#team-tree-container').off('open_node.jstree');
+    $('#team-tree-container').off('close_node.jstree');
 
     // Team node switches dashboard team; member node opens individual dashboard.
     $('#team-tree-container').on('select_node.jstree', function (e, data) {
@@ -380,11 +394,68 @@
       }
     });
 
+    // Save node state when expanding/collapsing
+    $('#team-tree-container').on('open_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        saveTreeNodeState(data.node.id, true);
+      }
+    });
+
+    $('#team-tree-container').on('close_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        saveTreeNodeState(data.node.id, false);
+      }
+    });
+
     $('#team-tree-container').on('ready.jstree', function () {
       highlightActiveTeamNode();
     });
 
     setTimeout(highlightActiveTeamNode, 0);
+  }
+
+  // Get saved tree node states from localStorage
+  function getSavedTreeNodeStates() {
+    try {
+      const saved = localStorage.getItem('team_tree_node_states');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  // Save tree node state to localStorage
+  function saveTreeNodeState(nodeId, isOpen) {
+    try {
+      const states = getSavedTreeNodeStates();
+      states[nodeId] = isOpen;
+      localStorage.setItem('team_tree_node_states', JSON.stringify(states));
+    } catch (error) {
+      // Ignore storage failures
+    }
+  }
+
+  // Merge saved node state with tree data recursively
+  function mergeNodeState(node, savedStates) {
+    if (node.data && node.data.team_id) {
+      const nodeId = node.id;
+      const isSaved = savedStates[nodeId];
+      
+      // If there's a saved state, use it; otherwise keep the default
+      if (isSaved !== undefined) {
+        node.state = node.state || {};
+        node.state.opened = isSaved;
+      }
+    }
+    
+    // Recursively process children
+    if (node.children && node.children.length > 0) {
+      node.children = node.children.map(function(child) {
+        return mergeNodeState(child, savedStates);
+      });
+    }
+    
+    return node;
   }
   
   $(document).ready(function() {

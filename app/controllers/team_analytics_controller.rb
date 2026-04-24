@@ -334,8 +334,8 @@ class TeamAnalyticsController < ApplicationController
     return nil if teams.empty?
     return teams.first unless User.current.super_user_for_team_analytics?
 
-    # For super users, default to the first root to start at org level.
-    root_team = TaTeam.root_teams.ordered_by_name.first
+    # For super users, default to the first root team in database order
+    root_team = TaTeam.root_teams.first
     teams.include?(root_team) ? root_team : teams.first
   end
 

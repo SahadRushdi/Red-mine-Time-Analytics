@@ -38,19 +38,19 @@ module RedmineTimeAnalytics
         # Get teams user can open as team dashboards
         # Super users get all teams; team leads get led teams + all descendants
         def accessible_team_dashboard_teams(date = Date.today)
-          return TaTeam.ordered_by_name if super_user_for_team_analytics?
+          return TaTeam.all if super_user_for_team_analytics?
 
           led = led_teams(date)
           return TaTeam.none if led.empty?
 
           team_ids = led.flat_map { |team| [team.id] + team.all_descendants.map(&:id) }.uniq
-          TaTeam.where(id: team_ids).ordered_by_name
+          TaTeam.where(id: team_ids)
         end
 
         # Get team roots for hierarchy tree view
         # Super users get org roots; team leads get only teams they lead
         def team_dashboard_root_teams(date = Date.today)
-          return TaTeam.root_teams.ordered_by_name if super_user_for_team_analytics?
+          return TaTeam.root_teams if super_user_for_team_analytics?
 
           led_teams(date)
         end

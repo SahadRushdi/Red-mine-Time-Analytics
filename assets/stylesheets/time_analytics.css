@@ -39,7 +39,7 @@
 }
 
 .analytics-section .time-overview-box {
-  flex: 0 0 402px;
+  flex: 0 0 500px;
   min-width: 0;
   display: flex;
   flex-direction: column;
