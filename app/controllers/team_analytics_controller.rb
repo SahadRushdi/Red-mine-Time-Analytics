@@ -19,7 +19,7 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Selected team: #{@selected_team&.name}, Date range: #{@from} to #{@to}"
     
-    @view_mode = params[:view_mode] || 'activity'
+    @view_mode = params[:view_mode] || 'members'
     @member_dashboard_params = build_member_dashboard_params
     @member_dashboard_query = @member_dashboard_params.to_query
     
