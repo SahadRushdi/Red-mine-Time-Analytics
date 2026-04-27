@@ -529,14 +529,15 @@
   <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M3 4h18M8 2v4m8-4v4M5 8h14v12H5z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3M4 10h16M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label"><%= max_label_for_grouping(@grouping) %></p>
-      <p class="ts-summary-card-value"><%= format_hours(@max_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+      <p class="ts-summary-card-label">Active Days</p>
+      <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
     </div>
   </div>
+
   <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -544,10 +545,11 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label"><%= min_label_for_grouping(@grouping) %></p>
-      <p class="ts-summary-card-value"><%= format_hours(@min_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+      <p class="ts-summary-card-label"><%= max_label_for_grouping(@grouping) %></p>
+      <p class="ts-summary-card-value"><%= format_hours(@max_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
     </div>
   </div>
+
   <div class="ts-summary-card ts-summary-card--issues flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -555,8 +557,8 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label">Team Size</p>
-      <p class="ts-summary-card-value"><%= @team_size %> <span class="ts-summary-card-unit">members</span></p>
+      <p class="ts-summary-card-label"><%= min_label_for_grouping(@grouping) %></p>
+      <p class="ts-summary-card-value"><%= format_hours(@min_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
     </div>
   </div>
 </div>
