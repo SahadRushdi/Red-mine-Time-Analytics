@@ -58,9 +58,9 @@
     <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2" style="<%= 'visibility: hidden; pointer-events: none;' if @filter == 'custom' %>">
       <div id="tep-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
         <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
         <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'tep-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
       </div>
     </div>
 
@@ -342,7 +342,7 @@
                         id="tep-activity-btn-<%= idx %>"
                         onclick="toggleTepActivityDropdown(<%= idx %>)"
                         onkeydown="tepHandleActivityDropdownTriggerKey(event, 'tep-activity-list-<%= idx %>')"
-                        class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                        class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-52 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                   <span id="tep-activity-text-<%= idx %>" class="text-gray-400 truncate flex-1">Activity *</span>
                   <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -351,7 +351,7 @@
                 <input type="hidden" id="tep-activity-<%= idx %>">
                 <div id="tep-activity-list-<%= idx %>"
                      class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                     style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                     style="min-width: 208px; max-height: 220px; top: calc(100% + 2px);">
                   <div class="px-3 py-2 text-sm text-gray-400 italic">Select an issue first</div>
                 </div>
               </div>
@@ -676,7 +676,7 @@
                                 id="issue-activity-btn-<%= issue.id %>"
                                 onclick="toggleIssueActivityDropdown(<%= issue.id %>)"
                                 onkeydown="tepHandleActivityDropdownTriggerKey(event, 'issue-activity-list-<%= issue.id %>')"
-                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-44 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                                class="tep-field flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-52 text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
                           <span id="issue-activity-text-<%= issue.id %>" class="text-gray-400 truncate flex-1">Activity *</span>
                           <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -685,7 +685,7 @@
                         <input type="hidden" id="issue-activity-<%= issue.id %>">
                         <div id="issue-activity-list-<%= issue.id %>"
                              class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                             style="min-width: 200px; max-height: 220px; top: calc(100% + 2px);">
+                             style="min-width: 208px; max-height: 220px; top: calc(100% + 2px);">
                           <div class="px-3 py-2 text-sm text-gray-400 italic">Loading...</div>
                         </div>
                       </div>
@@ -781,6 +781,7 @@
         tab.classList.remove('ta-view-tab-active');
       }
     });
+    tepSetTabState(tabName);
     document.getElementById('ts-search-input').value = '';
     filterTableRows();
   }
@@ -2105,6 +2106,7 @@
   // ── Persist/restore Logged tab expanded state ────────────────────────────
   var tepLoggedStateKey = 'tep-logged-state:' + window.location.pathname + '?' + window.location.search;
   var tepRestoreFlagKey = 'tep-logged-state-restore:' + window.location.pathname;
+  var tepTabStateKey = 'tep-tab-state:' + window.location.pathname;
 
   function tepMarkStateForRestore() {
     try {
@@ -2136,6 +2138,22 @@
   function tepSetLoggedState(state) {
     try {
       localStorage.setItem(tepLoggedStateKey, JSON.stringify(state));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepGetTabState() {
+    try {
+      return localStorage.getItem(tepTabStateKey) || 'time-logs';
+    } catch (e) {
+      return 'time-logs';
+    }
+  }
+
+  function tepSetTabState(tabName) {
+    try {
+      localStorage.setItem(tepTabStateKey, tabName);
     } catch (e) {
       // Ignore storage errors
     }
@@ -2219,6 +2237,8 @@
   function tepInitLoggedStatePersistence() {
     if (tepConsumeStateRestoreFlag()) {
       tepRestoreOpenState();
+      var savedTab = tepGetTabState();
+      switchTab(savedTab);
     }
     tepPersistOpenState();
   }

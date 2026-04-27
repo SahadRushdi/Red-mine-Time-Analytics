@@ -58,42 +58,34 @@
     <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
       <div id="my-time-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
         <span class="ta-custom-range-label text-sm text-gray-600">From:</span>
-        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'my-time-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <%= text_field_tag :from, (@filter == 'custom' && @from ? @from.strftime('%m/%d/%Y') : ''), id: 'my-time-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
         <span class="ta-custom-range-label text-sm text-gray-600">To:</span>
-        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'my-time-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-gray-400', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+        <%= text_field_tag :to, (@filter == 'custom' && @to ? @to.strftime('%m/%d/%Y') : ''), id: 'my-time-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
       </div>
     </div>
     
     <%# Group By Dropdown - Flowbite Style %>
-    <div class="relative">
+    <div class="relative tep-grouping-wrapper">
       <button type="button" id="grouping-dropdown-button" onclick="toggleGroupingDropdown()" 
-          class="inline-flex items-center justify-between w-32 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          class="inline-flex items-center justify-between w-32 px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
         <span id="grouping-selected-text"><%= @grouping.capitalize %></span>
         <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
       </button>
       <div id="grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-        <ul class="text-sm">
-          <li>
-            <button type="button" onclick="setGroupingAndSubmit('daily')" 
-                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'daily' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-              Daily
-            </button>
-          </li>
-          <li>
-            <button type="button" onclick="setGroupingAndSubmit('weekly')" 
-                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'weekly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-              Weekly
-            </button>
-          </li>
-          <li>
-            <button type="button" onclick="setGroupingAndSubmit('monthly')" 
-                class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'monthly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-              Monthly
-            </button>
-          </li>
-        </ul>
+        <button type="button" onclick="setGroupingAndSubmit('daily')" 
+            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'daily' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
+          Daily
+        </button>
+        <button type="button" onclick="setGroupingAndSubmit('weekly')" 
+            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'weekly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
+          Weekly
+        </button>
+        <button type="button" onclick="setGroupingAndSubmit('monthly')" 
+            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'monthly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
+          Monthly
+        </button>
       </div>
       <%= hidden_field_tag :grouping, @grouping, id: 'grouping_hidden' %>
     </div>
@@ -534,49 +526,49 @@ function switchChartType(chartType) {
             <!-- View Toggle Buttons -->
             <div class="inline-flex rounded-md shadow-sm" role="group">
               <% if @view_mode == 'activity' %>
-                <button type="button" id="show-detailed-btn-activity" 
-                        onclick="showDetailedView('activity');" 
-                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
-                  Detailed
-                </button>
                 <button type="button" id="show-summary-btn-activity" 
                         onclick="showSummaryView('activity');" 
                         style="<%= @activity_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-              <% elsif @view_mode == 'project' %>
-                <button type="button" id="show-detailed-btn-project" 
-                        onclick="showDetailedView('project');" 
-                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-activity" 
+                        onclick="showDetailedView('activity');" 
+                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+              <% elsif @view_mode == 'project' %>
                 <button type="button" id="show-summary-btn-project" 
                         onclick="showSummaryView('project');" 
                         style="<%= @project_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-              <% elsif @view_mode == 'issue' %>
-                <button type="button" id="show-detailed-btn-issue" 
-                        onclick="showDetailedView('issue');" 
-                        style="<%= (@issue_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@issue_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-project" 
+                        onclick="showDetailedView('project');" 
+                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+              <% elsif @view_mode == 'issue' %>
                 <button type="button" id="show-summary-btn-issue" 
                         onclick="showSummaryView('issue');" 
                         style="<%= @issue_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @issue_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @issue_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
+                </button>
+                <button type="button" id="show-detailed-btn-issue" 
+                        onclick="showDetailedView('issue');" 
+                        style="<%= (@issue_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@issue_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
+                  Detailed
                 </button>
               <% end %>
             </div>
