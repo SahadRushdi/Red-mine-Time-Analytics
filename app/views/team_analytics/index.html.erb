@@ -570,6 +570,11 @@
   <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
     <div class="box time-overview-box">
       <h3 class="text-base font-semibold text-gray-900 mb-3 text-center"><%= time_overview_header(@grouping) %></h3>
+      <% if @effective_time_error_message.present? %>
+        <div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Effective Time data unavailable: <%= h(@effective_time_error_message) %>
+        </div>
+      <% end %>
       
       <div class="relative overflow-x-auto team-overview-table-wrap">
         <table class="w-full text-sm text-left text-gray-500">
@@ -581,6 +586,9 @@
               <th scope="col" class="px-6 py-3 text-center">Team Size</th>
               <th scope="col" class="px-6 py-3 text-right"><%= l(:label_hours) %></th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
+              <% if @show_effective_time_column %>
+                <th scope="col" class="px-6 py-3 text-right"><%= l(:label_effective_time) %></th>
+              <% end %>
             </tr>
           </thead>
           <tbody>
@@ -590,6 +598,15 @@
                 <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
+                <% if @show_effective_time_column %>
+                  <td class="px-6 py-4 text-right font-mono text-gray-900">
+                    <% if entry.effective_time_available %>
+                      <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
+                    <% else %>
+                      N/A
+                    <% end %>
+                  </td>
+                <% end %>
               </tr>
             <% end %>
           </tbody>

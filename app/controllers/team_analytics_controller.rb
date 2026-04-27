@@ -1,4 +1,5 @@
 class TeamAnalyticsController < ApplicationController
+
   before_action :require_login
   before_action :set_date_range, except: [:get_tree_data]
   before_action :set_grouping, except: [:get_tree_data]
@@ -9,6 +10,7 @@ class TeamAnalyticsController < ApplicationController
     '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
     '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
   ].freeze
+  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :effective_time_percentage, :effective_time_available)
 
   def index
     # Super users can access all teams; team leads can access led teams + descendants
@@ -95,6 +97,7 @@ class TeamAnalyticsController < ApplicationController
     
     # Generate Time Overview data with team member count
     @time_overview_data = generate_team_time_overview_data(@time_entries, @grouping)
+    apply_effective_time_to_overview_data!
     @overview_total_pages = (@time_overview_data.count.to_f / @overview_limit).ceil
     
     # Handle view-specific data preparation
@@ -497,8 +500,77 @@ class TeamAnalyticsController < ApplicationController
       # Calculate average: Total Hours / (Team Size * Active Working Days)
       average = calculate_period_average(period_for_display, grouping, hours, team_size)
       
-      Struct.new(:period, :member_count, :hours, :average).new(period_label, team_size, hours, average)
+      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, false)
     end
+  end
+
+  def apply_effective_time_to_overview_data!
+    @show_effective_time_column = false
+    @effective_time_error_message = nil
+    return if @time_overview_data.blank?
+
+    external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to)
+    return if external_assignments.blank?
+
+    @show_effective_time_column = true
+    config = TaTeamSetting.support_redmine_settings
+    service = RedmineTimeAnalytics::ExternalRedmineTimeService.new(
+      base_url: config[:base_url],
+      api_key: config[:api_key]
+    )
+
+    result = service.calculate_hours_by_period(
+      assignments: external_assignments,
+      from: @from,
+      to: @to,
+      grouping: @grouping
+    )
+
+    if result.errors.any?
+      @effective_time_error_message = result.errors.uniq.join('; ')
+      @time_overview_data = @time_overview_data.map do |row|
+        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, false)
+      end
+      return
+    end
+
+    raw_periods = period_keys_for_overview_data(@grouping)
+    @time_overview_data = @time_overview_data.each_with_index.map do |row, index|
+      raw_key = raw_periods[index]
+      support_hours = result.hours_by_period[raw_key].to_f
+      internal_hours = row.hours.to_f
+
+      effective_percentage = if internal_hours.zero?
+                               nil
+                             else
+                               ((support_hours / internal_hours) * 100.0).round(2)
+                             end
+
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, effective_percentage, !effective_percentage.nil?)
+    end
+  rescue StandardError => e
+    @show_effective_time_column = true
+    @effective_time_error_message = e.message
+    @time_overview_data = @time_overview_data.map do |row|
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, false)
+    end
+  end
+
+  def period_keys_for_overview_data(grouping)
+    grouped = {}
+    @time_entries.each do |entry|
+      key = if grouping == 'monthly'
+              [entry.spent_on.year, entry.spent_on.month]
+            else
+              entry.spent_on.beginning_of_week(:monday)
+            end
+      grouped[key] ||= 0
+      grouped[key] += entry.hours
+    end
+
+    grouped = fill_missing_weeks_team(grouped, @from, @to) if grouping == 'weekly'
+    grouped = fill_missing_months_team(grouped, @from, @to) if grouping == 'monthly'
+    grouped.sort_by { |key, _| key }.reverse.map(&:first)
   end
 
   # Generate chart data for team view

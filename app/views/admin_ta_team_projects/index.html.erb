@@ -11,6 +11,8 @@
 
 <% selected_project = @available_projects.find { |p| p.id == @team_project.project_id.to_i } %>
 <% selected_project_text = selected_project ? "#{selected_project.name} (#{selected_project.identifier})" : '' %>
+<% selected_source_type = @team_project.source_type.presence || 'local' %>
+<% selected_external_url = @team_project.external_project_url.to_s %>
 <% start_date_value = (@team_project.start_date || Date.current).strftime('%m/%d/%Y') %>
 <% end_date_value = @team_project.end_date ? @team_project.end_date.strftime('%m/%d/%Y') : '' %>
 
@@ -74,17 +76,30 @@
             <% @active_projects.each do |team_project| %>
               <% form_id = "ta-team-project-form-#{team_project.id}" %>
               <% status_label = team_project.active? ? 'Active' : 'Inactive' %>
-              <% search_text = [team_project.project.name, team_project.project.identifier, status_label].join(' ').downcase %>
+              <% project_name = team_project.local_source? ? team_project.project_name : "External Project (#{team_project.project_display_identifier})" %>
+              <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
+              <% search_text = [project_name, project_identifier, status_label, team_project.source_type].join(' ').downcase %>
               <tr class="ta-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= h(search_text) %>"
                   data-team-project-id="<%= team_project.id %>"
-                  data-sort-project="<%= team_project.project.name.to_s.downcase %>"
+                  data-sort-project="<%= project_name.to_s.downcase %>"
                   data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
-                  <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% if team_project.project_linkable? %>
+                    <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% else %>
+                    <span class="text-sm font-semibold text-gray-900"><%= h(project_name) %></span>
+                  <% end %>
+                  <%= hidden_field_tag 'ta_team_project[source_type]', team_project.source_type, form: form_id %>
                   <%= hidden_field_tag 'ta_team_project[project_id]', team_project.project_id, form: form_id, id: "ta-team-project-project-id-#{team_project.id}" %>
+                  <%= hidden_field_tag 'ta_team_project[external_project_url]', team_project.external_project_url, form: form_id %>
                 </td>
-                <td class="px-4 py-3 text-gray-600"><code><%= h(team_project.project.identifier) %></code></td>
+                <td class="px-4 py-3 text-gray-600">
+                  <code><%= h(project_identifier.presence || '—') %></code>
+                  <% if team_project.external_source? %>
+                    <div class="mt-1 text-xs text-gray-500"><%= h(team_project.external_project_url) %></div>
+                  <% end %>
+                </td>
                 <td class="px-4 py-3 text-gray-600">
                   <div class="ta-team-project-view"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></div>
                   <div class="ta-team-project-edit hidden tep-inline-form">
@@ -201,13 +216,24 @@
           </thead>
           <tbody>
             <% @inactive_projects.each do |team_project| %>
+              <% project_name = team_project.local_source? ? team_project.project_name : "External Project (#{team_project.project_display_identifier})" %>
+              <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
               <tr class="ta-inactive-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  data-sort-project="<%= team_project.project.name.to_s.downcase %>"
+                  data-sort-project="<%= project_name.to_s.downcase %>"
                   data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
-                  <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% if team_project.project_linkable? %>
+                    <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% else %>
+                    <span class="text-sm font-semibold text-gray-900"><%= h(project_name) %></span>
+                  <% end %>
                 </td>
-                <td class="px-4 py-3 text-gray-600"><code><%= h(team_project.project.identifier) %></code></td>
+                <td class="px-4 py-3 text-gray-600">
+                  <code><%= h(project_identifier.presence || '—') %></code>
+                  <% if team_project.external_source? %>
+                    <div class="mt-1 text-xs text-gray-500"><%= h(team_project.external_project_url) %></div>
+                  <% end %>
+                </td>
                 <td class="px-4 py-3 text-gray-600"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></td>
                 <td class="px-4 py-3 text-gray-600"><%= team_project.end_date ? format_date(team_project.end_date) : '—' %></td>
                 <td class="px-4 py-3">
@@ -259,6 +285,20 @@
 
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="md:col-span-2">
+              <%= label_tag :ta_team_project_source_type_modal, 'Project Source', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <div class="flex flex-wrap items-center gap-4 pt-1">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+                  <%= radio_button_tag 'ta_team_project[source_type]', 'local', selected_source_type != 'external', id: 'ta-add-team-project-source-local', onclick: "toggleTeamProjectSource('local')" %>
+                  <span>Internal Redmine Project</span>
+                </label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-800">
+                  <%= radio_button_tag 'ta_team_project[source_type]', 'external', selected_source_type == 'external', id: 'ta-add-team-project-source-external', onclick: "toggleTeamProjectSource('external')" %>
+                  <span>External Support Redmine URL</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="md:col-span-2">
               <%= label_tag :ta_team_project_search_modal, 'Project', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
               <div class="relative min-w-0" id="ta-add-team-project-wrapper">
                 <input type="text"
@@ -289,6 +329,17 @@
                   <% end %>
                 </div>
               </div>
+            </div>
+
+            <div class="md:col-span-2 hidden" id="ta-add-external-project-url-wrap">
+              <%= label_tag :ta_team_project_external_project_url_modal, 'External Project URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+              <%= text_field_tag 'ta_team_project[external_project_url]',
+                                 selected_external_url,
+                                 id: 'ta-add-team-project-external-url',
+                                 autocomplete: 'off',
+                                 placeholder: 'https://support.example.com/projects/project-identifier',
+                                 class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+              <p class="mt-1 text-xs text-gray-500">Must include <code>/projects/&lt;identifier&gt;</code>.</p>
             </div>
 
             <div>
@@ -521,10 +572,12 @@
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.setAttribute('aria-hidden', 'false');
+    toggleTeamProjectSource(teamProjectsSelectedSourceType());
     initTeamProjectAddDatepickers();
     teamProjectsRaiseDatepickerLayer();
-    var search = document.getElementById('ta-add-team-project-search');
-    if (search) search.focus();
+    var focusId = teamProjectsSelectedSourceType() === 'external' ? 'ta-add-team-project-external-url' : 'ta-add-team-project-search';
+    var focusEl = document.getElementById(focusId);
+    if (focusEl) focusEl.focus();
   }
 
   function teamProjectsCloseAddModal() {
@@ -546,9 +599,46 @@
   function submitTeamProjectAddForm() {
     var startInput = document.getElementById('ta-add-team-project-start-date');
     var endInput = document.getElementById('ta-add-team-project-end-date');
+    var sourceType = teamProjectsSelectedSourceType();
+    var projectIdInput = document.getElementById('ta-add-team-project-id');
+    var externalUrlInput = document.getElementById('ta-add-team-project-external-url');
     if (startInput) startInput.value = normalizeTeamProjectDate(startInput.value.trim());
     if (endInput) endInput.value = normalizeTeamProjectDate(endInput.value.trim());
+
+    if (sourceType === 'external') {
+      if (projectIdInput) projectIdInput.value = '';
+      if (!externalUrlInput || !externalUrlInput.value.trim()) {
+        alert('Please provide an external project URL.');
+        return false;
+      }
+    } else {
+      if (!projectIdInput || !projectIdInput.value) {
+        alert('Please select an internal project.');
+        return false;
+      }
+      if (externalUrlInput) externalUrlInput.value = '';
+    }
+
     return true;
+  }
+
+  function teamProjectsSelectedSourceType() {
+    var selected = document.querySelector('input[name="ta_team_project[source_type]"]:checked');
+    return selected ? selected.value : 'local';
+  }
+
+  function toggleTeamProjectSource(sourceType) {
+    var localWrap = document.getElementById('ta-add-team-project-wrapper');
+    var localInput = document.getElementById('ta-add-team-project-search');
+    var externalWrap = document.getElementById('ta-add-external-project-url-wrap');
+    var externalInput = document.getElementById('ta-add-team-project-external-url');
+
+    var showExternal = sourceType === 'external';
+    if (externalWrap) externalWrap.classList.toggle('hidden', !showExternal);
+    if (localWrap) localWrap.classList.toggle('hidden', showExternal);
+
+    if (localInput) localInput.required = !showExternal;
+    if (externalInput) externalInput.required = showExternal;
   }
 
   function initTeamProjectInlineDatepickers(teamProjectId) {
@@ -725,6 +815,7 @@
   setTimeout(clearInitialActiveProjectsSearchFocus, 0);
   setTimeout(clearInitialActiveProjectsSearchFocus, 100);
   initTeamProjectAddDatepickers();
+  toggleTeamProjectSource(teamProjectsSelectedSourceType());
   <% if @show_add_project_modal %>
     teamProjectsOpenAddModal();
   <% end %>

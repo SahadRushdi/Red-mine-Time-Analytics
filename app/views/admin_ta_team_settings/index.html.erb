@@ -21,6 +21,43 @@
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900">Support Redmine Integration</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Configure global external Redmine credentials for Effective Time calculation.
+        <% if @support_redmine_configured %>
+          <span class="text-emerald-600 font-medium">Configured</span>
+        <% else %>
+          <span class="text-amber-600 font-medium">Not configured</span>
+        <% end %>
+      </p>
+    </div>
+    <div class="px-6 py-4">
+      <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-4 md:grid-cols-2' do %>
+        <%= hidden_field_tag :setting_type, 'support_redmine' %>
+        <div class="md:col-span-1">
+          <%= label_tag :support_redmine_base_url, 'Support Redmine Base URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= text_field_tag :support_redmine_base_url,
+                             @support_redmine_settings[:base_url],
+                             required: true,
+                             placeholder: 'https://support.example.com',
+                             class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-1">
+          <%= label_tag :support_redmine_api_key, 'Support Redmine API Key', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= password_field_tag :support_redmine_api_key,
+                                 '',
+                                 placeholder: @support_redmine_settings[:api_key].present? ? 'Saved (leave blank to keep existing key)' : 'Enter API key',
+                                 class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <%= button_tag 'Save Support Redmine Settings', type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
     <div class="flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3" style="margin-bottom: -1px;">
       <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
         <li class="me-2">

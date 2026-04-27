@@ -5,14 +5,20 @@
 class TaTeamProject < ActiveRecord::Base
   self.table_name = 'ta_team_projects'
 
+  SOURCE_TYPES = %w[local external].freeze
+
   # Associations
   belongs_to :team, class_name: 'TaTeam', foreign_key: 'team_id'
-  belongs_to :project
+  belongs_to :project, optional: true
 
   # Validations
   validates :team_id, presence: true
-  validates :project_id, presence: true
+  validates :source_type, presence: true, inclusion: { in: SOURCE_TYPES }
   validates :start_date, presence: true
+  validates :project_id, presence: true, if: :local_source?
+  validates :external_project_url, presence: true, if: :external_source?
+  validate :external_project_url_format, if: :external_source?
+  validate :source_specific_payload
   validate :end_date_after_start_date
   validate :no_overlapping_project_assignments
 
@@ -75,7 +81,8 @@ class TaTeamProject < ActiveRecord::Base
   # Get project name (convenience method)
   # @return [String] Project name
   def project_name
-    project&.name || 'Unknown Project'
+    return project&.name || 'Unknown Project' if local_source?
+    "External: #{external_project_identifier.presence || 'Unknown Project'}"
   end
 
   # Get team name (convenience method)
@@ -84,7 +91,26 @@ class TaTeamProject < ActiveRecord::Base
     team&.name || 'Unknown Team'
   end
 
+  def local_source?
+    source_type != 'external'
+  end
+
+  def external_source?
+    source_type == 'external'
+  end
+
+  def project_display_identifier
+    return project&.identifier.to_s if local_source?
+    external_project_identifier.to_s
+  end
+
+  def project_linkable?
+    local_source? && project.present?
+  end
+
   private
+
+  before_validation :normalize_source_fields
 
   # Validation: Ensure end_date is after start_date
   def end_date_after_start_date
@@ -97,10 +123,18 @@ class TaTeamProject < ActiveRecord::Base
 
   # Validation: Prevent overlapping project assignments for same team-project combination
   def no_overlapping_project_assignments
-    return if team_id.nil? || project_id.nil? || start_date.nil?
+    return if team_id.nil? || start_date.nil?
 
     # Build query to check for overlaps
-    query = TaTeamProject.where(team_id: team_id, project_id: project_id)
+    query = TaTeamProject.where(team_id: team_id, source_type: source_type.presence || 'local')
+    if external_source?
+      return if external_project_identifier.blank?
+      query = query.where(external_project_identifier: external_project_identifier)
+    else
+      return if project_id.nil?
+      query = query.where(project_id: project_id)
+    end
+
     query = query.where.not(id: id) if persisted?
 
     # Check for overlapping date ranges
@@ -116,5 +150,41 @@ class TaTeamProject < ActiveRecord::Base
     if overlapping.exists?
       errors.add(:base, "Project is already assigned to this team during this period")
     end
+  end
+
+  def normalize_source_fields
+    self.source_type = source_type.presence || 'local'
+    if external_source?
+      self.project_id = nil
+      self.external_project_url = external_project_url.to_s.strip
+      self.external_project_identifier = extract_project_identifier(external_project_url)
+    else
+      self.external_project_url = nil
+      self.external_project_identifier = nil
+    end
+  end
+
+  def source_specific_payload
+    if local_source? && external_project_url.present?
+      errors.add(:external_project_url, 'must be blank for local projects')
+    end
+
+    if external_source? && project_id.present?
+      errors.add(:project_id, 'must be blank for external projects')
+    end
+  end
+
+  def external_project_url_format
+    return if external_project_url.blank?
+    identifier = extract_project_identifier(external_project_url)
+    if identifier.blank?
+      errors.add(:external_project_url, 'must include /projects/<project-identifier>')
+    end
+  end
+
+  def extract_project_identifier(url)
+    return nil if url.blank?
+    match = url.to_s.match(%r{/projects/([a-z0-9\-_]+)}i)
+    match ? match[1].downcase : nil
   end
 end

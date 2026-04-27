@@ -48,6 +48,7 @@ en:
   label_comment: "Comment"
   label_hours: "Hours"
   label_total: "Total"
+  label_effective_time: "Effective Time"
   
   # Summary statistics
   label_entries_count: "Entries"

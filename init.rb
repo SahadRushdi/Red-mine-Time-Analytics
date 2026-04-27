@@ -1,3 +1,5 @@
+require File.expand_path('lib/redmine_time_analytics/external_redmine_time_service', __dir__)
+
 Redmine::Plugin.register :redmine_time_analytics do
   name 'Redmine Time Analytics Plugin'
   author 'Sahad Rushdi'

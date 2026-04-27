@@ -63,9 +63,8 @@ class AdminTaTeamProjectsController < ApplicationController
   end
 
   def load_available_projects
-    @available_projects = Project.active.sorted.where.not(
-      id: @team.ta_team_projects.active.pluck(:project_id)
-    )
+    assigned_local_ids = @team.ta_team_projects.active.where(source_type: [nil, 'local']).where.not(project_id: nil).pluck(:project_id)
+    @available_projects = Project.active.sorted.where.not(id: assigned_local_ids)
   end
 
   def find_team
@@ -81,6 +80,6 @@ class AdminTaTeamProjectsController < ApplicationController
   end
 
   def team_project_params
-    params.require(:ta_team_project).permit(:project_id, :start_date, :end_date)
+    params.require(:ta_team_project).permit(:source_type, :project_id, :external_project_url, :start_date, :end_date)
   end
 end

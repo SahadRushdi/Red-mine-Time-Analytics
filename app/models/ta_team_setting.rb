@@ -104,6 +104,31 @@ class TaTeamSetting < ActiveRecord::Base
 
   # Instance Methods
 
+  # Global support Redmine integration settings
+  def self.support_redmine_settings
+    raw = Setting.plugin_redmine_time_analytics || {}
+    {
+      base_url: raw['support_redmine_base_url'].to_s.strip,
+      api_key: raw['support_redmine_api_key'].to_s
+    }
+  end
+
+  def self.support_redmine_configured?
+    cfg = support_redmine_settings
+    cfg[:base_url].present? && cfg[:api_key].present?
+  end
+
+  def self.update_support_redmine_settings(base_url:, api_key:)
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+
+    settings['support_redmine_base_url'] = base_url.to_s.strip.sub(%r{/\z}, '')
+    if api_key.present?
+      settings['support_redmine_api_key'] = api_key.to_s.strip
+    end
+
+    Setting.plugin_redmine_time_analytics = settings
+  end
+
   # Check if this setting is for exclusion
   # @return [Boolean] true if setting_type is 'exclusion'
   def exclusion?

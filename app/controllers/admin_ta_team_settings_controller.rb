@@ -1,3 +1,5 @@
+require 'uri'
+
 class AdminTaTeamSettingsController < ApplicationController
   layout 'admin'
   menu_item :team_analytics_configuration
@@ -11,10 +13,29 @@ class AdminTaTeamSettingsController < ApplicationController
     @available_users = User.active.sorted
     @exclusion_settings_by_user_id = TaTeamSetting.exclusions.pluck(:user_id, :id).to_h
     @super_user_settings_by_user_id = TaTeamSetting.super_users.pluck(:user_id, :id).to_h
+    @support_redmine_settings = TaTeamSetting.support_redmine_settings
+    @support_redmine_configured = TaTeamSetting.support_redmine_configured?
   end
 
   def create
     setting_type = params[:setting_type]
+
+    if setting_type == 'support_redmine'
+      base_url = params[:support_redmine_base_url].to_s.strip
+      api_key = params[:support_redmine_api_key].to_s.strip
+
+      begin
+        validate_support_base_url!(base_url)
+        TaTeamSetting.update_support_redmine_settings(base_url: base_url, api_key: api_key)
+        flash[:notice] = 'Support Redmine settings updated'
+      rescue ArgumentError => e
+        flash[:error] = e.message
+      end
+
+      redirect_to admin_ta_team_settings_path
+      return
+    end
+
     user_id = params[:user_id].to_i
 
     if user_id.blank? || user_id.zero?
@@ -60,5 +81,18 @@ class AdminTaTeamSettingsController < ApplicationController
     redirect_to admin_ta_team_settings_path
   rescue ActiveRecord::RecordNotFound
     render_404
+  end
+
+  private
+
+  def validate_support_base_url!(base_url)
+    raise ArgumentError, 'Support Redmine base URL is required' if base_url.blank?
+
+    uri = URI.parse(base_url)
+    unless uri.is_a?(URI::HTTP) && uri.host.present?
+      raise ArgumentError, 'Support Redmine base URL must be a valid http(s) URL'
+    end
+  rescue URI::InvalidURIError
+    raise ArgumentError, 'Support Redmine base URL must be a valid http(s) URL'
   end
 end
