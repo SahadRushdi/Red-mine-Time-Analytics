@@ -781,6 +781,7 @@
         tab.classList.remove('ta-view-tab-active');
       }
     });
+    tepSetTabState(tabName);
     document.getElementById('ts-search-input').value = '';
     filterTableRows();
   }
@@ -2105,6 +2106,7 @@
   // ── Persist/restore Logged tab expanded state ────────────────────────────
   var tepLoggedStateKey = 'tep-logged-state:' + window.location.pathname + '?' + window.location.search;
   var tepRestoreFlagKey = 'tep-logged-state-restore:' + window.location.pathname;
+  var tepTabStateKey = 'tep-tab-state:' + window.location.pathname;
 
   function tepMarkStateForRestore() {
     try {
@@ -2136,6 +2138,22 @@
   function tepSetLoggedState(state) {
     try {
       localStorage.setItem(tepLoggedStateKey, JSON.stringify(state));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }
+
+  function tepGetTabState() {
+    try {
+      return localStorage.getItem(tepTabStateKey) || 'time-logs';
+    } catch (e) {
+      return 'time-logs';
+    }
+  }
+
+  function tepSetTabState(tabName) {
+    try {
+      localStorage.setItem(tepTabStateKey, tabName);
     } catch (e) {
       // Ignore storage errors
     }
@@ -2219,6 +2237,8 @@
   function tepInitLoggedStatePersistence() {
     if (tepConsumeStateRestoreFlag()) {
       tepRestoreOpenState();
+      var savedTab = tepGetTabState();
+      switchTab(savedTab);
     }
     tepPersistOpenState();
   }

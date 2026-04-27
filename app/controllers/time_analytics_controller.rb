@@ -181,9 +181,9 @@ class TimeAnalyticsController < ApplicationController
     chart_type = params[:chart_type] || get_default_chart_type(@view_mode)
     
     # Track activity/project view state (summary vs detailed) for chart generation
-    @activity_view_state = params[:activity_view_state] || 'detailed'
-    @project_view_state = params[:project_view_state] || 'detailed'
-    @issue_view_state = params[:issue_view_state] || 'detailed'
+    @activity_view_state = params[:activity_view_state] || 'summary'
+    @project_view_state = params[:project_view_state] || 'summary'
+    @issue_view_state = params[:issue_view_state] || 'summary'
     
     if @view_mode == 'activity' && ['weekly', 'monthly'].include?(@grouping) && defined?(@activity_pivot_data)
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)

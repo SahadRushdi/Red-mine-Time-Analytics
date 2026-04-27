@@ -523,49 +523,49 @@ function switchChartType(chartType) {
             <!-- View Toggle Buttons -->
             <div class="inline-flex rounded-md shadow-sm" role="group">
               <% if @view_mode == 'activity' %>
-                <button type="button" id="show-detailed-btn-activity" 
-                        onclick="showDetailedView('activity');" 
-                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
-                  Detailed
-                </button>
                 <button type="button" id="show-summary-btn-activity" 
                         onclick="showSummaryView('activity');" 
                         style="<%= @activity_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-              <% elsif @view_mode == 'project' %>
-                <button type="button" id="show-detailed-btn-project" 
-                        onclick="showDetailedView('project');" 
-                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-activity" 
+                        onclick="showDetailedView('activity');" 
+                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+              <% elsif @view_mode == 'project' %>
                 <button type="button" id="show-summary-btn-project" 
                         onclick="showSummaryView('project');" 
                         style="<%= @project_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-              <% elsif @view_mode == 'issue' %>
-                <button type="button" id="show-detailed-btn-issue" 
-                        onclick="showDetailedView('issue');" 
-                        style="<%= (@issue_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@issue_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-project" 
+                        onclick="showDetailedView('project');" 
+                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+              <% elsif @view_mode == 'issue' %>
                 <button type="button" id="show-summary-btn-issue" 
                         onclick="showSummaryView('issue');" 
                         style="<%= @issue_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @issue_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @issue_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
+                </button>
+                <button type="button" id="show-detailed-btn-issue" 
+                        onclick="showDetailedView('issue');" 
+                        style="<%= (@issue_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@issue_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
+                  Detailed
                 </button>
               <% end %>
             </div>
