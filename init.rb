@@ -6,6 +6,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   description 'Comprehensive time tracking analytics and reporting for Redmine'
   version '3.0.0'
   url 'https://github.com/SahadRushdi/Red-mine-Time-Analytics'
+  settings default: {}
 
   # Add to top menu
   menu :top_menu, :time_analytics, { controller: 'time_analytics', action: 'index' }, 
