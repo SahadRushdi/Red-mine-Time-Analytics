@@ -700,13 +700,14 @@
     var input = document.getElementById('ta-team-member-start-date-' + membershipId);
     if (!input) return;
     if (input.datepicker && input.datepicker.setOptions) {
-      input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true });
+      input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
       return;
     }
     if (window.Datepicker) {
       new window.Datepicker(input, {
         format: 'mm/dd/yyyy',
-        autohide: true
+        autohide: true,
+        orientation: 'top auto'
       });
     }
   }
@@ -1244,9 +1245,9 @@
       var input = document.getElementById(id);
       if (!input) return;
       if (input.datepicker && input.datepicker.setOptions) {
-        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true });
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
       } else if (window.Datepicker) {
-        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true });
+        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
       }
       if (!input.dataset.datepickerLayerBound) {
         ['focus', 'click'].forEach(function(eventName) {

@@ -541,7 +541,6 @@ button[onclick*="switchChartType"]:active {
 .tep-inline-form button:active,
 .tep-issue-dropdown,
 .tep-activity-dropdown,
-.tep-issue-option:focus,
 .tep-activity-option:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -624,13 +623,6 @@ button[onclick*="switchChartType"]:active {
 .tep-activity-dropdown {
   overflow-x: hidden !important;
 }
-.tep-issue-option:hover,
-.tep-issue-option:focus,
-.tep-activity-option:hover,
-.tep-activity-option:focus {
-  background-color: #f3f4f6 !important;
-  outline: none !important;
-}
 
 /* Inline form fields — fixed height for single-row alignment */
 .tep-inline-form .tep-field {
@@ -656,7 +648,12 @@ button[onclick*="switchChartType"]:active {
 }
 
 /* Activity option buttons — pure gray hover, never blue */
-.tep-activity-option {
+.tep-activity-option,
+button.tep-activity-option,
+.tep-entry-act-option,
+[data-ta-dropdown-menu="true"] button,
+.tep-activity-dropdown .tep-activity-option,
+.tep-activity-dropdown button.tep-activity-option {
   background-color: transparent !important;
   outline: none !important;
   box-shadow: none !important;
@@ -665,13 +662,34 @@ button[onclick*="switchChartType"]:active {
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
+
 .tep-activity-option:hover,
 .tep-activity-option:focus,
-.tep-activity-option:focus-visible {
+.tep-activity-option:focus-visible,
+button.tep-activity-option:hover,
+button.tep-activity-option:focus,
+.tep-entry-act-option:hover,
+[data-ta-dropdown-menu="true"] button:hover,
+.tep-activity-dropdown .tep-activity-option:hover,
+.tep-activity-dropdown button.tep-activity-option:hover {
   background-color: #f3f4f6 !important;
+  color: #111827 !important;
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+}
+
+/* Issue option divs — same gray hover */
+.tep-issue-option:hover,
+.tep-issue-option:focus,
+.tep-issue-option:active,
+.tep-issue-dropdown .tep-issue-option:hover,
+.tep-issue-dropdown div.tep-issue-option:hover,
+.tep-issue-dropdown .tep-issue-option:focus {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* === Fix Extra Bottom Borders on Tables === */
@@ -1098,6 +1116,7 @@ tbody tr:last-child {
 
 /* Flowbite datepicker popup overrides */
 body .datepicker,
+body .datepicker-dropdown,
 body .datepicker-picker,
 body .datepicker-view,
 body .datepicker-header,
@@ -1108,9 +1127,10 @@ body .datepicker-footer {
   backdrop-filter: none !important;
 }
 
-body .datepicker {
+body .datepicker,
+body .datepicker-dropdown {
   margin-top: 4px !important;
-  z-index: 30 !important;
+  z-index: 11000 !important;
 }
 
 body .datepicker-picker {
@@ -1118,6 +1138,8 @@ body .datepicker-picker {
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12) !important;
   border-radius: 0.75rem !important;
   max-width: min(20rem, calc(100vw - 1rem)) !important;
+  z-index: 11001 !important;
+}
 }
 
 body .datepicker-header,

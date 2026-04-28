@@ -814,7 +814,7 @@ button.ta-btn-danger,
 #taTeamProjectsAddModal .datepicker,
 #taTeamProjectsAddModal .datepicker-picker,
 #taTeamMembersAddModal .datepicker-picker {
-  z-index: 10120 !important;
+  z-index: 11005 !important;
 }
 
 #taTeamMembersDeleteModal .tep-delete-cancel,
