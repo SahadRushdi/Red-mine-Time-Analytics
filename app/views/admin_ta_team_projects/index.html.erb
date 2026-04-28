@@ -78,6 +78,14 @@
               <% status_label = team_project.active? ? 'Active' : 'Inactive' %>
               <% project_name = team_project.local_source? ? team_project.project_name : "External Project (#{team_project.project_display_identifier})" %>
               <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
+              <% selected_source_type = team_project.source_type.presence || 'local' %>
+              <% editable_projects = @available_projects.to_a.dup %>
+              <% if team_project.project_linkable? && team_project.project.present? && editable_projects.none? { |project| project.id == team_project.project.id } %>
+                <% editable_projects << team_project.project %>
+              <% end %>
+              <% editable_projects.sort_by! { |project| [project.name.to_s.downcase, project.identifier.to_s.downcase] } %>
+              <% selected_project_label = team_project.project_linkable? && team_project.project.present? ? "#{team_project.project.name} (#{team_project.project.identifier})" : 'Select project...' %>
+              <% editable_project_options = [['Select project...', '']] + editable_projects.map { |project| ["#{project.name} (#{project.identifier})", project.id] } %>
               <% search_text = [project_name, project_identifier, status_label, team_project.source_type].join(' ').downcase %>
               <tr class="ta-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= h(search_text) %>"
@@ -90,15 +98,95 @@
                   <% else %>
                     <span class="text-sm font-semibold text-gray-900"><%= h(project_name) %></span>
                   <% end %>
-                  <%= hidden_field_tag 'ta_team_project[source_type]', team_project.source_type, form: form_id %>
-                  <%= hidden_field_tag 'ta_team_project[project_id]', team_project.project_id, form: form_id, id: "ta-team-project-project-id-#{team_project.id}" %>
-                  <%= hidden_field_tag 'ta_team_project[external_project_url]', team_project.external_project_url, form: form_id %>
                 </td>
                 <td class="px-4 py-3 text-gray-600">
-                  <code><%= h(project_identifier.presence || '—') %></code>
-                  <% if team_project.external_source? %>
-                    <div class="mt-1 text-xs text-gray-500"><%= h(team_project.external_project_url) %></div>
-                  <% end %>
+                  <div class="ta-team-project-view">
+                    <code><%= h(project_identifier.presence || '—') %></code>
+                    <% if team_project.external_source? %>
+                      <div class="mt-1 text-xs text-gray-500"><%= h(team_project.external_project_url) %></div>
+                    <% end %>
+                  </div>
+                  <div class="ta-team-project-edit hidden tep-inline-form w-full space-y-3">
+                    <div class="md:col-span-2 relative min-w-0">
+                      <%= label_tag "ta-team-project-source-button-#{team_project.id}", 'Project Source', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
+                      <button type="button"
+                              id="ta-team-project-source-button-<%= team_project.id %>"
+                              data-ta-dropdown-toggle="ta-team-project-source-list-<%= team_project.id %>"
+                              class="inline-flex h-[43px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]">
+                        <span id="ta-team-project-source-label-<%= team_project.id %>" class="truncate"><%= selected_source_type == 'external' ? 'External Support Redmine URL' : 'Internal Redmine Project' %></span>
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </button>
+                      <%= hidden_field_tag 'ta_team_project[source_type]', selected_source_type, form: form_id, id: "ta-team-project-source-value-#{team_project.id}" %>
+                      <div id="ta-team-project-source-list-<%= team_project.id %>"
+                           data-ta-dropdown-menu="true"
+                           class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                        <ul class="py-1 text-sm text-gray-700">
+                          <li>
+                            <button type="button"
+                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                    data-ta-team-project-source-value="local"
+                                    data-ta-team-project-source-label="Internal Redmine Project">
+                              Internal Redmine Project
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button"
+                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                    data-ta-team-project-source-value="external"
+                                    data-ta-team-project-source-label="External Support Redmine URL">
+                              External Support Redmine URL
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="md:col-span-2 <%= 'hidden' if selected_source_type == 'external' %>" id="ta-team-project-local-wrap-<%= team_project.id %>">
+                      <%= label_tag "ta-team-project-project-button-#{team_project.id}", 'Project', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
+                      <button type="button"
+                              id="ta-team-project-project-button-<%= team_project.id %>"
+                              data-ta-dropdown-toggle="ta-team-project-project-list-<%= team_project.id %>"
+                              class="inline-flex h-[43px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]">
+                        <span id="ta-team-project-project-label-<%= team_project.id %>" class="truncate"><%= selected_project_label %></span>
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </button>
+                      <%= hidden_field_tag 'ta_team_project[project_id]', team_project.project_id, form: form_id, id: "ta-team-project-project-id-#{team_project.id}" %>
+                      <div id="ta-team-project-project-list-<%= team_project.id %>"
+                           data-ta-dropdown-menu="true"
+                           class="tep-activity-dropdown hidden absolute z-[10050] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white py-1 shadow-xl">
+                        <ul class="py-1 text-sm text-gray-700">
+                          <% editable_project_options.each do |project_label, project_value| %>
+                            <li>
+                              <button type="button"
+                                      class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                      data-ta-team-project-project-value="<%= project_value %>"
+                                      data-ta-team-project-project-label="<%= h(project_label) %>">
+                                <%= h(project_label) %>
+                              </button>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="md:col-span-2 <%= 'hidden' if selected_source_type == 'local' %>" id="ta-team-project-external-wrap-<%= team_project.id %>">
+                      <%= label_tag "ta-team-project-external-url-#{team_project.id}", 'External Project URL', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
+                      <%= text_field_tag 'ta_team_project[external_project_url]',
+                                         team_project.external_project_url,
+                                         id: "ta-team-project-external-url-#{team_project.id}",
+                                         form: form_id,
+                                         autocomplete: 'off',
+                                         placeholder: 'https://support.example.com/projects/project-identifier',
+                                         required: selected_source_type == 'external',
+                                         disabled: selected_source_type != 'external',
+                                         class: 'ta-team-field ta-team-project-inline-url ta-team-settings-member-input block h-[43px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900' %>
+                      <p class="mt-1 text-xs text-gray-500">Must include <code>/projects/&lt;identifier&gt;</code>.</p>
+                    </div>
+                  </div>
                 </td>
                 <td class="px-4 py-3 text-gray-600">
                   <div class="ta-team-project-view"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></div>
@@ -326,8 +414,8 @@
 </div>
 
 <div id="taTeamProjectsAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
-  <div class="relative p-4 w-full max-w-3xl max-h-full">
-    <div class="relative bg-white rounded-lg shadow">
+  <div class="relative p-4 w-full max-w-3xl max-h-full overflow-visible">
+    <div class="relative bg-white rounded-lg shadow overflow-visible">
       <div class="flex items-start justify-between p-4 border-b rounded-t">
         <div>
           <h3 class="text-xl font-semibold text-gray-900">Add Project: <%= h(@team.name) %></h3>
@@ -504,6 +592,7 @@
         editEl.classList.remove('hidden');
       });
       initTeamProjectInlineDatepickers(teamProjectId);
+      teamProjectsSyncEditSource(teamProjectId);
     }
   }
 
@@ -625,9 +714,52 @@
   }
 
   function teamProjectsRaiseDatepickerLayer() {
-    document.querySelectorAll('.datepicker, .datepicker-picker').forEach(function(el) {
-      el.style.zIndex = '10120';
+    document.querySelectorAll('.datepicker, .datepicker-dropdown, .datepicker-picker').forEach(function(el) {
+      el.style.zIndex = '12000';
+      el.style.position = 'fixed';
     });
+  }
+
+  function teamProjectsSyncEditSource(teamProjectId, sourceType) {
+    var sourceButton = document.getElementById('ta-team-project-source-button-' + teamProjectId);
+    var sourceLabel = document.getElementById('ta-team-project-source-label-' + teamProjectId);
+    var sourceValue = document.getElementById('ta-team-project-source-value-' + teamProjectId);
+    var sourceList = document.getElementById('ta-team-project-source-list-' + teamProjectId);
+    var localWrap = document.getElementById('ta-team-project-local-wrap-' + teamProjectId);
+    var externalWrap = document.getElementById('ta-team-project-external-wrap-' + teamProjectId);
+    var projectButton = document.getElementById('ta-team-project-project-button-' + teamProjectId);
+    var projectLabel = document.getElementById('ta-team-project-project-label-' + teamProjectId);
+    var projectValue = document.getElementById('ta-team-project-project-id-' + teamProjectId);
+    var projectList = document.getElementById('ta-team-project-project-list-' + teamProjectId);
+    var externalInput = document.getElementById('ta-team-project-external-url-' + teamProjectId);
+
+    var selectedSource = sourceType || (sourceValue ? sourceValue.value : 'local');
+    var showExternal = selectedSource === 'external';
+
+    if (localWrap) localWrap.classList.toggle('hidden', showExternal);
+    if (externalWrap) externalWrap.classList.toggle('hidden', !showExternal);
+
+    if (sourceValue) sourceValue.value = selectedSource;
+    if (sourceLabel) {
+      sourceLabel.textContent = showExternal ? 'External Support Redmine URL' : 'Internal Redmine Project';
+    }
+    if (sourceButton) sourceButton.setAttribute('aria-expanded', 'false');
+    if (sourceList) sourceList.classList.add('hidden');
+
+    if (projectButton) projectButton.disabled = showExternal;
+    if (projectValue) {
+      projectValue.disabled = showExternal;
+      projectValue.required = !showExternal;
+    }
+    if (projectList) projectList.classList.add('hidden');
+
+    if (externalInput) {
+      externalInput.disabled = !showExternal;
+      externalInput.required = showExternal;
+    }
+    if (projectLabel && projectValue && !showExternal && !projectValue.value) {
+      projectLabel.textContent = 'Select project...';
+    }
   }
 
   function teamProjectsOpenAddModal() {
@@ -639,6 +771,8 @@
     toggleTeamProjectSource(teamProjectsSelectedSourceType());
     initTeamProjectAddDatepickers();
     teamProjectsRaiseDatepickerLayer();
+    setTimeout(teamProjectsRaiseDatepickerLayer, 50);
+    setTimeout(teamProjectsRaiseDatepickerLayer, 250);
     var focusId = teamProjectsSelectedSourceType() === 'external' ? 'ta-add-team-project-external-url' : 'ta-add-team-project-search';
     var focusEl = document.getElementById(focusId);
     if (focusEl) focusEl.focus();
@@ -723,11 +857,89 @@
   }
 
   function submitTeamProjectInlineEdit(teamProjectId) {
+    var sourceValue = document.getElementById('ta-team-project-source-value-' + teamProjectId);
+    var projectValue = document.getElementById('ta-team-project-project-id-' + teamProjectId);
+    var externalInput = document.getElementById('ta-team-project-external-url-' + teamProjectId);
     var startInput = document.getElementById('ta-team-project-start-date-' + teamProjectId);
     var endInput = document.getElementById('ta-team-project-end-date-' + teamProjectId);
+    var selectedSource = sourceValue ? sourceValue.value : 'local';
     if (startInput) startInput.value = normalizeTeamProjectDate(startInput.value);
     if (endInput) endInput.value = normalizeTeamProjectDate(endInput.value);
+    if (selectedSource === 'external') {
+      if (projectValue) projectValue.value = '';
+      if (!externalInput || !externalInput.value.trim()) {
+        alert('Please provide an external project URL.');
+        return false;
+      }
+    } else {
+      if (externalInput) externalInput.value = '';
+      if (!projectValue || !projectValue.value) {
+        alert('Please select a project.');
+        return false;
+      }
+    }
     return true;
+  }
+
+  function teamProjectsCloseInlineDropdowns() {
+    document.querySelectorAll('[id^="ta-team-project-source-list-"], [id^="ta-team-project-project-list-"]').forEach(function(menu) {
+      menu.classList.add('hidden');
+    });
+  }
+
+  function teamProjectsHandleInlineDropdownToggleClick(event) {
+    var button = event.target.closest('[data-ta-dropdown-toggle]');
+    if (!button) return;
+    var dropdownId = button.getAttribute('data-ta-dropdown-toggle');
+    var dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    event.preventDefault();
+    event.stopPropagation();
+    var willOpen = dropdown.classList.contains('hidden');
+    teamProjectsCloseInlineDropdowns();
+    if (willOpen) dropdown.classList.remove('hidden');
+  }
+
+  function teamProjectsHandleInlineDropdownSelect(event) {
+    var sourceItem = event.target.closest('[data-ta-team-project-source-value]');
+    if (sourceItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      var sourceList = sourceItem.closest('[id^="ta-team-project-source-list-"]');
+      if (!sourceList) return;
+      var teamProjectId = sourceList.id.replace('ta-team-project-source-list-', '');
+      var sourceValue = document.getElementById('ta-team-project-source-value-' + teamProjectId);
+      var sourceLabel = document.getElementById('ta-team-project-source-label-' + teamProjectId);
+      if (sourceValue) sourceValue.value = sourceItem.getAttribute('data-ta-team-project-source-value') || 'local';
+      if (sourceLabel) sourceLabel.textContent = sourceItem.getAttribute('data-ta-team-project-source-label') || 'Internal Redmine Project';
+      teamProjectsSyncEditSource(teamProjectId, sourceValue ? sourceValue.value : 'local');
+      return;
+    }
+
+    var projectItem = event.target.closest('[data-ta-team-project-project-value]');
+    if (projectItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      var projectList = projectItem.closest('[id^="ta-team-project-project-list-"]');
+      if (!projectList) return;
+      var projectTeamProjectId = projectList.id.replace('ta-team-project-project-list-', '');
+      var projectValue = document.getElementById('ta-team-project-project-id-' + projectTeamProjectId);
+      var projectLabel = document.getElementById('ta-team-project-project-label-' + projectTeamProjectId);
+      if (projectValue) projectValue.value = projectItem.getAttribute('data-ta-team-project-project-value') || '';
+      if (projectLabel) projectLabel.textContent = projectItem.getAttribute('data-ta-team-project-project-label') || 'Select project...';
+      teamProjectsCloseInlineDropdowns();
+      teamProjectsSyncEditSource(projectTeamProjectId, 'local');
+    }
+  }
+
+  if (!window.__teamProjectsInlineDropdownBound) {
+    document.addEventListener('click', function(event) {
+      teamProjectsHandleInlineDropdownToggleClick(event);
+      teamProjectsHandleInlineDropdownSelect(event);
+      if (event.target.closest('[data-ta-dropdown-toggle]') || event.target.closest('[data-ta-dropdown-menu="true"]')) return;
+      teamProjectsCloseInlineDropdowns();
+    });
+    window.__teamProjectsInlineDropdownBound = true;
   }
 
   function filterActiveProjectRows() {

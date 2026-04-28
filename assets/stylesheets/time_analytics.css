@@ -39,12 +39,15 @@
 }
 
 .analytics-section .time-overview-box {
-  flex: 0 0 500px;
+  flex: 0 1 auto;
   min-width: 0;
+  width: fit-content;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-self: stretch;
-  overflow: hidden;
+  overflow-x: visible;
+  overflow-y: hidden;
 }
 
 .analytics-section .time-overview-box .pagination-wrapper {
@@ -62,8 +65,18 @@
 .analytics-section .time-overview-box .team-overview-table-wrap {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: hidden;
-  overflow-x: auto;
+  overflow: visible;
+}
+
+.analytics-section .time-overview-box table {
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto;
+}
+
+.analytics-section .time-overview-box th,
+.analytics-section .time-overview-box td {
+  white-space: nowrap;
 }
 
 .analytics-section .visualization-section,
