@@ -108,6 +108,32 @@ class TaTeamProject < ActiveRecord::Base
     local_source? && project.present?
   end
 
+  # Check if this is an inherited project
+  # @return [Boolean] true if project is inherited from a child team
+  def inherited?
+    defined?(@inherited) && @inherited
+  end
+
+  # Mark this project as inherited and store the source team
+  # @param source_team [TaTeam] The team this project came from
+  def mark_as_inherited(source_team)
+    @inherited = true
+    @inherited_from_team = source_team
+    @inherited_from_team_id = source_team.id
+  end
+
+  # Get the team this project was inherited from
+  # @return [TaTeam, nil] The source team
+  def inherited_from_team
+    @inherited_from_team
+  end
+
+  # Get the ID of the team this project was inherited from
+  # @return [Integer, nil] The source team ID
+  def inherited_from_team_id
+    @inherited_from_team_id
+  end
+
   private
 
   before_validation :normalize_source_fields

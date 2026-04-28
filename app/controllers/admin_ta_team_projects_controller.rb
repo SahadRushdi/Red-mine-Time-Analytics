@@ -13,6 +13,7 @@ class AdminTaTeamProjectsController < ApplicationController
     @team_project = @team.ta_team_projects.build
     load_available_projects
     load_projects
+    load_inherited_projects
     @show_add_project_modal = params[:open_add_project_modal].present?
   end
 
@@ -60,6 +61,11 @@ class AdminTaTeamProjectsController < ApplicationController
   def load_projects
     @active_projects = @team.ta_team_projects.active.includes(:project).order('start_date DESC')
     @inactive_projects = @team.ta_team_projects.inactive.includes(:project).order('end_date DESC')
+  end
+
+  def load_inherited_projects
+    # Get inherited projects from child teams
+    @inherited_projects = @team.inherited_projects(Date.current, Date.current)
   end
 
   def load_available_projects

@@ -509,8 +509,16 @@ class TeamAnalyticsController < ApplicationController
     @effective_time_error_message = nil
     return if @time_overview_data.blank?
 
-    external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to)
-    return if external_assignments.blank?
+    # Get direct external assignments
+    external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to).to_a
+    
+    # Get inherited external projects from child teams
+    inherited_external = @selected_team.inherited_projects(@from, @to).select { |p| p.external_source? }
+    
+    # Combine all external assignments
+    all_external_assignments = external_assignments + inherited_external
+    
+    return if all_external_assignments.blank?
 
     @show_effective_time_column = true
     config = TaTeamSetting.support_redmine_settings
@@ -520,7 +528,7 @@ class TeamAnalyticsController < ApplicationController
     )
 
     result = service.calculate_hours_by_period(
-      assignments: external_assignments,
+      assignments: all_external_assignments,
       from: @from,
       to: @to,
       grouping: @grouping

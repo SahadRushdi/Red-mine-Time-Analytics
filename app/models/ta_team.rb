@@ -269,6 +269,38 @@ class TaTeam < ActiveRecord::Base
     match ? match[1] : nil
   end
 
+  # Get projects inherited from child teams
+  # Projects from child teams are inherited by parent teams
+  # @param start_date [Date] Start of date range
+  # @param end_date [Date] End of date range
+  # @return [Array<TaTeamProject>] Inherited projects with source team info
+  def inherited_projects(start_date, end_date)
+    inherited = []
+    
+    # Get projects from all child teams (recursively)
+    all_descendants.each do |child_team|
+      child_projects = child_team.active_projects(start_date, end_date).to_a
+      child_projects.each do |project|
+        # Create a copy and mark it as inherited
+        project.mark_as_inherited(child_team)
+        inherited << project
+      end
+    end
+    
+    inherited
+  end
+
+  # Get all projects (direct + inherited) for a date range
+  # @param start_date [Date] Start of date range
+  # @param end_date [Date] End of date range
+  # @return [Hash] Hash with :direct and :inherited keys
+  def all_projects_with_source(start_date, end_date)
+    {
+      direct: active_projects(start_date, end_date),
+      inherited: inherited_projects(start_date, end_date)
+    }
+  end
+
   private
 
   # Validation: Prevent team from being its own parent

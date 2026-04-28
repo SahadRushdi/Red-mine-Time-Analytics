@@ -259,6 +259,70 @@
       <div class="px-6 py-10 text-center text-sm text-gray-500">No inactive projects assigned.</div>
     <% end %>
   </div>
+
+  <% if @inherited_projects.any? %>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h3 class="font-semibold text-gray-900">Inherited Projects from Child Teams (<%= @inherited_projects.count %>)</h3>
+          <p class="text-xs text-gray-500">Projects inherited from child teams in the hierarchy.</p>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Inherited From</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @inherited_projects.each do |team_project| %>
+              <% project_name = team_project.local_source? ? team_project.project_name : "External Project (#{team_project.project_display_identifier})" %>
+              <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
+              <% inherited_team = team_project.inherited_from_team %>
+              <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td class="px-4 py-3">
+                  <% if team_project.project_linkable? %>
+                    <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% else %>
+                    <span class="text-sm font-semibold text-gray-900"><%= h(project_name) %></span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-gray-600">
+                  <code><%= h(project_identifier.presence || '—') %></code>
+                  <% if team_project.external_source? %>
+                    <div class="mt-1 text-xs text-gray-500"><%= h(team_project.external_project_url) %></div>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
+                <td class="px-4 py-3 text-gray-600">
+                  <% if inherited_team %>
+                    <%= link_to inherited_team.name, admin_ta_team_path(inherited_team), class: 'text-sm font-medium !text-blue-600 hover:!underline' %>
+                  <% else %>
+                    <span class="text-sm text-gray-500">—</span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <% if team_project.active? %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                  <% else %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
 </div>
 
 <div id="taTeamProjectsAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
