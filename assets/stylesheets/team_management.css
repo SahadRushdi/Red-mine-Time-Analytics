@@ -812,9 +812,61 @@ button.ta-btn-danger,
 
 #taTeamMembersAddModal .datepicker,
 #taTeamProjectsAddModal .datepicker,
+#taTeamMembersAddModal .datepicker-dropdown,
+#taTeamProjectsAddModal .datepicker-dropdown,
 #taTeamProjectsAddModal .datepicker-picker,
 #taTeamMembersAddModal .datepicker-picker {
-  z-index: 11005 !important;
+  z-index: 12000 !important;
+}
+
+[id^="ta-team-project-source-button-"],
+[id^="ta-team-project-source-button-"]:hover,
+[id^="ta-team-project-source-button-"]:focus,
+[id^="ta-team-project-source-button-"]:focus-visible,
+[id^="ta-team-project-source-button-"]:active,
+[id^="ta-team-project-project-button-"],
+[id^="ta-team-project-project-button-"]:hover,
+[id^="ta-team-project-project-button-"]:focus,
+[id^="ta-team-project-project-button-"]:focus-visible,
+[id^="ta-team-project-project-button-"]:active {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[id^="ta-team-project-project-button-"]:hover,
+[id^="ta-team-project-source-button-"]:hover {
+  background-color: #f9fafb !important;
+}
+
+[id^="ta-team-project-source-list-"] button,
+[id^="ta-team-project-source-list-"] button:hover,
+[id^="ta-team-project-source-list-"] button:focus,
+[id^="ta-team-project-source-list-"] button:focus-visible,
+[id^="ta-team-project-source-list-"] button:active,
+[id^="ta-team-project-project-list-"] button,
+[id^="ta-team-project-project-list-"] button:hover,
+[id^="ta-team-project-project-list-"] button:focus,
+[id^="ta-team-project-project-list-"] button:focus-visible,
+[id^="ta-team-project-project-list-"] button:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  color: #374151 !important;
+}
+
+[id^="ta-team-project-source-list-"] button:hover,
+[id^="ta-team-project-source-list-"] button:focus,
+[id^="ta-team-project-source-list-"] button:focus-visible,
+[id^="ta-team-project-project-list-"] button:hover,
+[id^="ta-team-project-project-list-"] button:focus,
+[id^="ta-team-project-project-list-"] button:focus-visible {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 
 #taTeamMembersDeleteModal .tep-delete-cancel,
