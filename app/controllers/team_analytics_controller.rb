@@ -10,7 +10,7 @@ class TeamAnalyticsController < ApplicationController
     '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
     '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
   ].freeze
-  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :effective_time_percentage, :effective_time_available)
+  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available)
 
   def index
     # Super users can access all teams; team leads can access led teams + descendants
@@ -500,7 +500,7 @@ class TeamAnalyticsController < ApplicationController
       # Calculate average: Total Hours / (Team Size * Active Working Days)
       average = calculate_period_average(period_for_display, grouping, hours, team_size)
       
-      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, false)
+      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false)
     end
   end
 
@@ -537,7 +537,7 @@ class TeamAnalyticsController < ApplicationController
     if result.errors.any?
       @effective_time_error_message = result.errors.uniq.join('; ')
       @time_overview_data = @time_overview_data.map do |row|
-        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, false)
+        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false)
       end
       return
     end
@@ -554,13 +554,13 @@ class TeamAnalyticsController < ApplicationController
                                ((support_hours / internal_hours) * 100.0).round(2)
                              end
 
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, effective_percentage, !effective_percentage.nil?)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?)
     end
   rescue StandardError => e
     @show_effective_time_column = true
     @effective_time_error_message = e.message
     @time_overview_data = @time_overview_data.map do |row|
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, false)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false)
     end
   end
 
