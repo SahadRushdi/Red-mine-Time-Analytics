@@ -586,8 +586,8 @@
               <th scope="col" class="px-6 py-3 text-center">Team Size</th>
               <th scope="col" class="px-6 py-3 text-right"><%= l(:label_hours) %></th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
-              <th scope="col" class="px-6 py-3 text-right">Support Hours</th>
               <% if @show_effective_time_column %>
+                <th scope="col" class="px-6 py-3 text-right">Support Hours</th>
                 <th scope="col" class="px-6 py-3 text-right"><%= l(:label_effective_time) %></th>
               <% end %>
             </tr>
@@ -599,8 +599,8 @@
                 <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
                 <% if @show_effective_time_column %>
+                  <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
                   <td class="px-6 py-4 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
