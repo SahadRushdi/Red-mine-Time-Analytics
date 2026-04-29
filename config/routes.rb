@@ -39,6 +39,7 @@ RedmineApp::Application.routes.draw do
   resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :destroy]
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection
+    post :sync_leave_inbox, on: :collection
   end
   
   resources :custom_holidays do

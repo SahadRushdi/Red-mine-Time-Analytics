@@ -129,6 +129,71 @@ class TaTeamSetting < ActiveRecord::Base
     Setting.plugin_redmine_time_analytics = settings
   end
 
+  def self.leave_sync_settings
+    raw = Setting.plugin_redmine_time_analytics || {}
+    {
+      enabled: raw['leave_sync_enabled'].to_s == '1',
+      recipient_email: raw['leave_sync_recipient_email'].to_s.strip.presence || 'vacation-group@entgra.io',
+      historical_sync_start_date: parse_date_setting(raw['leave_sync_start_date']),
+      gmail_delegated_user: raw['leave_gmail_delegated_user'].to_s.strip,
+      gmail_service_account_json: raw['leave_gmail_service_account_json'].to_s,
+      last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
+      last_sync_mode: raw['leave_sync_last_mode'].to_s
+    }
+  end
+
+  def self.update_leave_sync_settings!(enabled:, recipient_email:, historical_sync_start_date:, gmail_delegated_user:, gmail_service_account_json:)
+    normalized_recipient = recipient_email.to_s.strip.downcase
+    normalized_delegated_user = gmail_delegated_user.to_s.strip.downcase
+    raise ArgumentError, 'Leave recipient email is required' if normalized_recipient.blank?
+    raise ArgumentError, 'Leave recipient email must be valid' unless normalized_recipient.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+    if normalized_delegated_user.present? && !normalized_delegated_user.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+      raise ArgumentError, 'Gmail delegated user must be a valid email'
+    end
+
+    if historical_sync_start_date.present?
+      begin
+        Date.parse(historical_sync_start_date.to_s)
+      rescue ArgumentError
+        raise ArgumentError, 'Historical sync start date is invalid'
+      end
+    end
+
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['leave_sync_enabled'] = enabled.to_s == '1' ? '1' : '0'
+    settings['leave_sync_recipient_email'] = normalized_recipient
+    settings['leave_sync_start_date'] = historical_sync_start_date.to_s
+    settings['leave_gmail_delegated_user'] = normalized_delegated_user
+    if gmail_service_account_json.present?
+      settings['leave_gmail_service_account_json'] = gmail_service_account_json
+    end
+    Setting.plugin_redmine_time_analytics = settings
+  end
+
+  def self.update_leave_sync_runtime!(last_synced_at:, last_sync_mode:)
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['leave_sync_last_synced_at'] = last_synced_at.iso8601
+    settings['leave_sync_last_mode'] = last_sync_mode.to_s
+    Setting.plugin_redmine_time_analytics = settings
+  end
+
+  def self.leave_sync_configured?
+    config = leave_sync_settings
+    config[:recipient_email].present? && config[:gmail_delegated_user].present? && config[:gmail_service_account_json].present?
+  end
+
+  def self.parse_date_setting(value)
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def self.parse_time_setting(value)
+    Time.zone.parse(value.to_s)
+  rescue StandardError
+    nil
+  end
+
   # Check if this setting is for exclusion
   # @return [Boolean] true if setting_type is 'exclusion'
   def exclusion?

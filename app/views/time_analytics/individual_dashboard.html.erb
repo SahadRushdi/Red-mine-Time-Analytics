@@ -321,6 +321,9 @@
     <div class="ts-summary-card-content">
       <p class="ts-summary-card-label">Active Days</p>
       <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
+      <p class="text-xs text-gray-500 mt-1">
+        <%= l(:label_working_days) %>: <%= @working_days_count %> • <%= l(:label_leave_days) %>: <%= @leave_days_count %>
+      </p>
     </div>
   </div>
 

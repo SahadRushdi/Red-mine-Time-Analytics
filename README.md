@@ -39,6 +39,14 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Pre-defined Holidays**: Includes Sri Lankan public holidays, Poya days, and Islamic holidays
 - **See**: [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
 
+### Leave-Aware Active Days (Admin + Dashboards)
+- **Mailbox-based Leave Sync**: Imports leave requests from a configured recipient mailbox (default `vacation-group@entgra.io`)
+- **Historical + Incremental Sync**: Run one-time historical backfill from a configured start date and periodic incremental sync
+- **Leave-aware Active Days**: Individual dashboard active days now uses `Working Days - Leave Days`
+- **Leave-aware Averages**: Individual averages and team overview averages exclude synced leave days from denominators
+- **Half-day Detection**: Leave emails containing `half day`, `morning`, or `evening` are counted as `0.5`
+- **Deduplication/Amendments**: Same-day updates replace prior values to avoid double counting
+
 ### UI/UX Improvements
 - **Modern Button System**: Unified button styling with shared base classes for consistency
   - Primary blue buttons for main actions (Apply, Show Summary View, Active toggle)
@@ -119,6 +127,16 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 7. **Data Table**: Detailed results below the analytics section with pagination
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
 
+### Leave Mailbox Setup
+1. Go to **Administration → Team Analytics Settings**
+2. Configure **Leave Inbox Integration** with:
+   - Leave recipient email
+   - Historical sync start date
+   - Gmail delegated user
+   - Gmail service account JSON
+3. Save settings, then run **Historical Sync** once
+4. Use **Incremental Sync** for ongoing updates (or schedule rake task)
+
 ### Chart Interaction
 - **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default
 - Use the chart type dropdown to switch between bar, line, and pie charts
@@ -137,6 +155,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Views**: Optimized ERB templates with side-by-side analytics layout
 - **Chart Library**: Chart.js for interactive visualizations with real-time type switching
 - **Utilities**: Modular chart generation and CSV export helpers
+- **Leave Sync Services**: `LeaveSyncService`, `GmailLeaveFetcher`, and `LeaveEmailParser` under `lib/redmine_time_analytics/`
 
 ### UI/UX Design
 The plugin implements a modern, space-optimized design:

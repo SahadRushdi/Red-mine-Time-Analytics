@@ -58,6 +58,118 @@
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900">Leave Inbox Integration</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Sync leave requests from a shared mailbox and apply them to Active Days and averages.
+        <% if @leave_sync_configured %>
+          <span class="text-emerald-600 font-medium">Configured</span>
+        <% else %>
+          <span class="text-amber-600 font-medium">Needs setup</span>
+        <% end %>
+      </p>
+    </div>
+    <div class="px-6 py-4 space-y-4">
+      <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-4 md:grid-cols-2' do %>
+        <%= hidden_field_tag :setting_type, 'leave_sync' %>
+        <div class="md:col-span-1">
+          <%= label_tag :leave_sync_recipient_email, 'Leave Recipient Email', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= email_field_tag :leave_sync_recipient_email,
+                              @leave_sync_settings[:recipient_email],
+                              required: true,
+                              placeholder: 'vacation-group@entgra.io',
+                              class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-1">
+          <%= label_tag :leave_sync_start_date, 'Historical Sync Start Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= date_field_tag :leave_sync_start_date,
+                             @leave_sync_settings[:historical_sync_start_date],
+                             class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-1">
+          <%= label_tag :leave_gmail_delegated_user, 'Gmail Delegated User', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= email_field_tag :leave_gmail_delegated_user,
+                              @leave_sync_settings[:gmail_delegated_user],
+                              placeholder: 'admin@example.com',
+                              class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-1">
+          <%= label_tag :leave_sync_enabled, 'Sync Status', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <label class="inline-flex items-center cursor-pointer mt-2">
+            <%= hidden_field_tag :leave_sync_enabled, '0' %>
+            <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], class: 'sr-only peer' %>
+            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 after:content-[\"\"] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+            <span class="ms-3 text-sm font-medium text-gray-700">Enable mailbox sync</span>
+          </label>
+        </div>
+        <div class="md:col-span-2">
+          <%= label_tag :leave_gmail_service_account_json, 'Gmail Service Account JSON', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= text_area_tag :leave_gmail_service_account_json,
+                            '',
+                            rows: 4,
+                            placeholder: @leave_sync_settings[:gmail_service_account_json].present? ? 'Saved (leave blank to keep existing JSON)' : '{ ...service account JSON... }',
+                            class: 'ts-search-input !block !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+          <p class="mt-1 text-xs text-gray-500">Used for Gmail API read-only access to leave request mailbox.</p>
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <%= button_tag 'Save Leave Inbox Settings', type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+        </div>
+      <% end %>
+
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <%= form_tag({ controller: 'admin_ta_team_settings', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
+          <%= hidden_field_tag :sync_mode, 'incremental' %>
+          <p class="text-sm text-gray-700 mb-2">Fetch new leave emails since last sync.</p>
+          <%= button_tag 'Run Incremental Sync', type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+        <% end %>
+
+        <%= form_tag({ controller: 'admin_ta_team_settings', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
+          <%= hidden_field_tag :sync_mode, 'historical' %>
+          <p class="text-sm text-gray-700 mb-2">One-time sync from configured historical start date.</p>
+          <%= button_tag 'Run Historical Sync', type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #1d4ed8 !important;' %>
+        <% end %>
+      </div>
+
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <tr>
+              <th class="px-4 py-3">Date</th>
+              <th class="px-4 py-3">Employee</th>
+              <th class="px-4 py-3">Leave Date</th>
+              <th class="px-4 py-3 text-right">Fraction</th>
+              <th class="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @recent_leave_records.any? %>
+              <% @recent_leave_records.each do |record| %>
+                <tr class="bg-white border-b last:border-0">
+                  <td class="px-4 py-3"><%= format_time(record.source_sent_at || record.created_at) %></td>
+                  <td class="px-4 py-3"><%= h(record.user&.name || record.sender_email) %></td>
+                  <td class="px-4 py-3"><%= format_date(record.leave_date) %></td>
+                  <td class="px-4 py-3 text-right font-mono"><%= record.leave_fraction.to_f %></td>
+                  <td class="px-4 py-3">
+                    <% if record.status == 'confirmed' %>
+                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"><%= h(record.status.to_s.titleize) %></span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            <% else %>
+              <tr class="bg-white">
+                <td colspan="5" class="px-4 py-8 text-center text-gray-500">No leave records synced yet.</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
     <div class="flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3" style="margin-bottom: -1px;">
       <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
         <li class="me-2">

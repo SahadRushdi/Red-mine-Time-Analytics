@@ -65,6 +65,7 @@ en:
   label_min_monthly: "Min Month"
   label_min_yearly: "Min Year"
   label_working_days: "Working Days"
+  label_leave_days: "Leave Days"
   label_week_count: "Weeks"
   label_month_count: "Months"
   label_year_count: "Years"

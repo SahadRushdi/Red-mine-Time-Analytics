@@ -49,8 +49,9 @@ class TimeAnalyticsController < ApplicationController
     
     # Summary card metrics
     @issues_worked_count = @time_entries.where.not(issue_id: nil).distinct.count(:issue_id)
-    # Keep Active Days aligned with Daily Average denominator (working days in selected range)
-    @active_days_count = calculate_working_days_count
+    @working_days_count = calculate_working_days_count
+    @leave_days_count = calculate_leave_days_count(@from, @to)
+    @active_days_count = [@working_days_count - @leave_days_count, 0].max.round(2)
 
     # Calculate summary statistics based on grouping
     case @grouping
@@ -330,11 +331,10 @@ class TimeAnalyticsController < ApplicationController
   def calculate_avg_hours_per_day
     return 0 if @time_entries.empty?
     
-    # Calculate working days in the date range (excluding weekends and Sri Lankan holidays)
-    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
-    return 0 if working_days.zero?
+    active_days = calculate_active_days(@from, @to)
+    return 0 if active_days.zero?
     
-    (@total_hours / working_days).round(2)
+    (@total_hours / active_days).round(2)
   end
 
   def calculate_max_daily_hours
@@ -361,8 +361,14 @@ class TimeAnalyticsController < ApplicationController
     # Fill missing weeks to include 0.00 weeks in average calculation
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
+
+    effective_weeks = weekly_totals.keys.sum do |week_start|
+      week_end = week_start + 6.days
+      effective_period_weight([week_start, @from].max, [week_end, @to].min)
+    end
+    return 0 if effective_weeks.zero?
     
-    (weekly_totals.values.sum / weekly_totals.count).round(2)
+    (weekly_totals.values.sum / effective_weeks).round(2)
   end
 
   def calculate_max_weekly_hours
@@ -399,8 +405,14 @@ class TimeAnalyticsController < ApplicationController
     # Fill missing months to include 0.00 months in average calculation
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
+
+    effective_months = monthly_totals.keys.sum do |month_start|
+      month_end = month_start.end_of_month
+      effective_period_weight([month_start, @from].max, [month_end, @to].min)
+    end
+    return 0 if effective_months.zero?
     
-    (monthly_totals.values.sum / monthly_totals.count).round(2)
+    (monthly_totals.values.sum / effective_months).round(2)
   end
 
   def calculate_max_monthly_hours
@@ -435,8 +447,14 @@ class TimeAnalyticsController < ApplicationController
     
     yearly_totals = get_yearly_totals(@time_entries)
     return 0 if yearly_totals.empty?
-    
-    (yearly_totals.values.sum / yearly_totals.count).round(2)
+
+    effective_years = yearly_totals.keys.sum do |year_start|
+      year_end = year_start.end_of_year
+      effective_period_weight([year_start, @from].max, [year_end, @to].min)
+    end
+    return 0 if effective_years.zero?
+
+    (yearly_totals.values.sum / effective_years).round(2)
   end
 
   def calculate_max_yearly_hours
@@ -466,6 +484,28 @@ class TimeAnalyticsController < ApplicationController
   # Period count calculations for summary display
   def calculate_working_days_count
     RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+  end
+
+  def calculate_leave_days_count(from_date, to_date)
+    TaLeaveRecord.total_leave_days_for_user(
+      user_id: @user.id,
+      from_date: from_date,
+      to_date: to_date
+    ).round(2)
+  end
+
+  def calculate_active_days(from_date, to_date)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
+    leave_days = calculate_leave_days_count(from_date, to_date)
+    [working_days - leave_days, 0].max
+  end
+
+  def effective_period_weight(from_date, to_date)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
+    return 0 if working_days.zero?
+
+    active_days = calculate_active_days(from_date, to_date)
+    active_days / working_days.to_f
   end
 
   def calculate_week_count

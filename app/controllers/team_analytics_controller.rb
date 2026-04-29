@@ -1264,7 +1264,9 @@ class TeamAnalyticsController < ApplicationController
     result
   end
 
-  # Calculate average for a period: Total Hours / (Team Size * Active Working Days)
+  # Calculate average for a period:
+  # Team Active Days = (Working Days * Team Size) - Team Leave Days
+  # Average = Hours / Team Active Days
   def calculate_period_average(period_date, grouping, hours, team_size)
     return 0 if team_size.zero? || hours.zero?
     
@@ -1281,10 +1283,14 @@ class TeamAnalyticsController < ApplicationController
                                  [period_date, period_date]
                                end
     
-    active_working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(period_start, period_end)
-    return 0 if active_working_days.zero?
-    
-    (hours / (team_size * active_working_days)).round(2)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(period_start, period_end)
+    return 0 if working_days.zero?
+
+    leave_days = calculate_team_leave_days_for_period(period_start, period_end)
+    team_active_days = (working_days * team_size) - leave_days
+    return 0 if team_active_days <= 0
+
+    (hours / team_active_days).round(2)
   end
 
   # Calculate team size for a specific period based on membership dates (not time logging)
@@ -1325,6 +1331,32 @@ class TeamAnalyticsController < ApplicationController
     end
     
     active_count
+  end
+
+  def calculate_team_leave_days_for_period(period_start, period_end)
+    excluded_ids = TaTeamSetting.excluded_user_ids
+    seen_user_dates = {}
+    total_leave_days = 0.0
+
+    @team_members.each do |membership|
+      next if excluded_ids.include?(membership.user_id)
+
+      membership_start = [membership.start_date, period_start].max
+      membership_end = membership.end_date ? [membership.end_date, period_end].min : period_end
+      next if membership_end < membership_start
+
+      TaLeaveRecord.confirmed.where(user_id: membership.user_id, leave_date: membership_start..membership_end).find_each do |record|
+        next unless RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(record.leave_date)
+
+        key = [record.user_id, record.leave_date]
+        next if seen_user_dates[key]
+
+        seen_user_dates[key] = true
+        total_leave_days += record.leave_fraction.to_f
+      end
+    end
+
+    total_leave_days
   end
 
   # Format chart label for team dashboard (proper week format: YYYY-WW)
