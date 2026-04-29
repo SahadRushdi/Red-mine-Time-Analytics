@@ -277,13 +277,17 @@
           <tbody>
             <% @projects.limit(10).each do |team_project| %>
               <% status_label = team_project.active? ? 'Active' : 'Inactive' %>
-              <% search_text = [team_project.project.name, status_label].join(' ').downcase %>
+              <% search_text = [team_project.project_name, status_label].join(' ').downcase %>
               <tr class="ta-team-projects-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-search-text="<%= h(search_text) %>"
-                  data-sort-project="<%= team_project.project.name.to_s.downcase %>"
+                  data-sort-project="<%= team_project.project_name.to_s.downcase %>"
                   data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
                 <td class="px-4 py-3">
-                  <%= link_to team_project.project.name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% if team_project.project_linkable? %>
+                    <%= link_to team_project.project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% else %>
+                    <span class="text-sm font-semibold text-gray-900"><%= team_project.project_name %></span>
+                  <% end %>
                 </td>
                 <td class="px-4 py-3 text-gray-600"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></td>
                 <td class="px-4 py-3 text-gray-600"><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
