@@ -24,12 +24,27 @@ class LeavesController < ApplicationController
     unless @leave_record.status == 'flagged' && status == 'confirmed'
       return render json: { error: 'Only flagged records can be unflagged' }, status: :unprocessable_entity
     end
-    if @leave_record.user_id.blank?
+    mapped_user = @leave_record.user || TaLeaveRecord.find_active_user_by_sender(@leave_record.sender_email)
+    if mapped_user.nil?
       return render json: { error: 'Cannot unflag this record because sender is not mapped to a Redmine user' }, status: :unprocessable_entity
     end
 
-    @leave_record.update!(status: 'confirmed')
+    @leave_record.update!(status: 'confirmed', user_id: mapped_user.id)
     render json: { ok: true, record_id: @leave_record.id, status: @leave_record.status }, status: :ok
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Leave record not found' }, status: :not_found
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def destroy
+    leave_record = TaLeaveRecord.find(params[:id])
+    unless leave_record.status == 'flagged'
+      return render json: { error: 'Only flagged records can be deleted' }, status: :unprocessable_entity
+    end
+
+    leave_record.destroy!
+    render json: { ok: true, deleted: true, record_id: params[:id] }, status: :ok
   rescue ActiveRecord::RecordNotFound
     render json: { error: 'Leave record not found' }, status: :not_found
   rescue StandardError => e
@@ -87,15 +102,17 @@ class LeavesController < ApplicationController
   end
 
   def serialize_record(record)
+    mapped_user = record.user || TaLeaveRecord.find_active_user_by_sender(record.sender_email)
     {
       id: record.id,
-      user_id: record.user_id,
-      user_name: record.user&.name || record.sender_email,
+      user_id: mapped_user&.id,
+      user_name: mapped_user&.name || record.sender_email,
       leave_date: record.leave_date,
       leave_fraction: record.leave_fraction.to_f.round(2),
       leave_type: record.leave_fraction.to_f >= 1 ? 'Full Day' : 'Half Day',
       status: record.status,
-      can_unflag: record.status == 'flagged' && record.user_id.present?,
+      can_unflag: record.status == 'flagged' && mapped_user.present?,
+      can_delete: record.status == 'flagged',
       subject: record.raw_subject.to_s
     }
   end

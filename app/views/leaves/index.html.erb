@@ -156,13 +156,27 @@
           group.records.forEach(function (record) {
             var actionHtml = '<span class="text-xs text-gray-400">—</span>';
             if (record.status === 'flagged' && record.can_unflag) {
-              actionHtml = '<button type="button" title="<%= j l(:button_unflag) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-50" data-unflag-id="' + record.id + '">' +
-                '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
-                  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' +
-                '</svg>' +
-              '</button>';
+              actionHtml = '<div class="inline-flex items-center gap-2">' +
+                '<button type="button" title="<%= j l(:button_unflag) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-50" data-unflag-id="' + record.id + '">' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' +
+                  '</svg>' +
+                '</button>' +
+                '<button type="button" title="<%= j l(:button_delete) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50" data-delete-id="' + record.id + '">' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path>' +
+                  '</svg>' +
+                '</button>' +
+              '</div>';
             } else if (record.status === 'flagged') {
-              actionHtml = '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>';
+              actionHtml = '<div class="inline-flex items-center gap-2">' +
+                '<button type="button" title="<%= j l(:button_delete) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-300 bg-white text-rose-700 hover:bg-rose-50" data-delete-id="' + record.id + '">' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-1 12a2 2 0 01-2 2H8a2 2 0 01-2-2L5 7m5 4v6m4-6v6M4 7h16M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"></path>' +
+                  '</svg>' +
+                '</button>' +
+                '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>' +
+              '</div>';
             }
 
             html += '<tr class="border-b last:border-0">' +
@@ -229,6 +243,25 @@
         });
     }
 
+    function sendDelete(id) {
+      if (!confirm('<%= j l(:text_confirm_delete_flagged_leave) %>')) { return; }
+      fetch('/leaves/' + id, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        }
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          loadData();
+        })
+        .catch(function (error) {
+          alert(error.message);
+        });
+    }
+
     filterForm.addEventListener('submit', function (event) {
       event.preventDefault();
       loadData();
@@ -240,6 +273,8 @@
     dailyBody.addEventListener('click', function (event) {
       var button = event.target.closest('[data-unflag-id]');
       if (button) { sendUnflag(button.getAttribute('data-unflag-id')); }
+      var deleteButton = event.target.closest('[data-delete-id]');
+      if (deleteButton) { sendDelete(deleteButton.getAttribute('data-delete-id')); }
     });
 
     loadData();

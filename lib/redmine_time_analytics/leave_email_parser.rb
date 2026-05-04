@@ -52,10 +52,7 @@ module RedmineTimeAnalytics
       normalized_sender = normalize_lookup_email(sender_email)
       return nil if normalized_sender.blank?
 
-      exact = User.active.where('LOWER(mail) = ?', sender_email.to_s.strip.downcase).first
-      return exact if exact
-
-      User.active.sorted.find { |user| normalize_lookup_email(user.mail) == normalized_sender }
+      User.active.sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender }
     end
 
     def normalize_lookup_email(value)
@@ -73,6 +70,14 @@ module RedmineTimeAnalytics
       end
 
       "#{normalized_local}@#{normalized_domain}"
+    end
+
+    def user_email(user)
+      if user.respond_to?(:mail) && user.mail.present?
+        user.mail
+      else
+        user.respond_to?(:email) ? user.email : nil
+      end
     end
 
     def half_day_request?(text)

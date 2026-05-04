@@ -89,6 +89,47 @@ class TaLeaveRecord < ActiveRecord::Base
         to_date: to_date
       ).values.sum
     end
+
+    def find_active_user_by_sender(sender_value)
+      extracted_email = extract_email(sender_value)
+      return nil if extracted_email.blank?
+
+      normalized_sender = normalize_lookup_email(extracted_email)
+      return nil if normalized_sender.blank?
+
+      User.active.sorted.find do |user|
+        normalize_lookup_email(user_email(user)) == normalized_sender
+      end
+    end
+
+    def extract_email(value)
+      value.to_s.downcase.scan(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i).first.to_s.downcase
+    end
+
+    def normalize_lookup_email(value)
+      email = extract_email(value)
+      return '' unless email.include?('@')
+
+      local_part, domain = email.split('@', 2)
+      return '' if local_part.blank? || domain.blank?
+
+      normalized_local = local_part.split('+', 2).first
+      normalized_domain = domain
+      if %w[gmail.com googlemail.com].include?(normalized_domain)
+        normalized_local = normalized_local.delete('.')
+        normalized_domain = 'gmail.com'
+      end
+
+      "#{normalized_local}@#{normalized_domain}"
+    end
+
+    def user_email(user)
+      if user.respond_to?(:mail) && user.mail.present?
+        user.mail
+      else
+        user.respond_to?(:email) ? user.email : nil
+      end
+    end
   end
 
   def confirmed?

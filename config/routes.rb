@@ -6,6 +6,7 @@ RedmineApp::Application.routes.draw do
   get 'leaves', to: 'leaves#index', as: :leaves
   get 'leaves/data', to: 'leaves#data', as: :leaves_data
   patch 'leaves/:id/status', to: 'leaves#update_status', as: :leave_status
+  delete 'leaves/:id', to: 'leaves#destroy', as: :leave_destroy
   
   get 'time_entry_panel', to: 'time_entry_panel#index', as: :time_entry_panel
   get 'time_entry_panel/activities/:issue_id', to: 'time_entry_panel#get_activities', as: :time_entry_panel_activities
