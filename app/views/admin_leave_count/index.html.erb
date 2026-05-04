@@ -1,0 +1,181 @@
+<% html_title l(:label_leave_count_settings) %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leave_count_settings) %></h2>
+      <p class="text-sm text-gray-500">
+        <%= l(:text_leave_count_settings_description) %>
+        <% if @leave_sync_configured %>
+          <span class="text-emerald-600 font-medium"><%= l(:label_configured) %></span>
+        <% else %>
+          <span class="text-amber-600 font-medium"><%= l(:label_not_configured) %></span>
+        <% end %>
+      </p>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <%= form_tag admin_leave_count_path, method: :post, id: 'leave-count-settings-form', class: 'space-y-6' do %>
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <%= label_tag :leave_sync_recipient_email, l(:label_leave_recipient_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= email_field_tag :leave_sync_recipient_email, @leave_sync_settings[:recipient_email], required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <div>
+          <%= label_tag :leave_sync_start_date, l(:label_historical_sync_start_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= date_field_tag :leave_sync_start_date, @leave_sync_settings[:historical_sync_start_date], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+      </div>
+
+      <div>
+        <span class="mb-2 block text-sm font-medium text-gray-700"><%= l(:label_leave_approach) %></span>
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <label class="rounded-lg border border-gray-300 p-3 cursor-pointer">
+            <%= radio_button_tag :leave_sync_approach, 'oauth', @leave_sync_settings[:leave_approach] == 'oauth', class: 'mr-2', data: { approach: 'oauth' } %>
+            <span class="font-medium text-gray-900"><%= l(:label_leave_approach_oauth) %></span>
+          </label>
+          <label class="rounded-lg border border-gray-300 p-3 cursor-pointer">
+            <%= radio_button_tag :leave_sync_approach, 'dwd', @leave_sync_settings[:leave_approach] == 'dwd', class: 'mr-2', data: { approach: 'dwd' } %>
+            <span class="font-medium text-gray-900"><%= l(:label_leave_approach_dwd) %></span>
+          </label>
+          <label class="rounded-lg border border-gray-300 p-3 cursor-pointer">
+            <%= radio_button_tag :leave_sync_approach, 'google_apps_script', @leave_sync_settings[:leave_approach] == 'google_apps_script', class: 'mr-2', data: { approach: 'google_apps_script' } %>
+            <span class="font-medium text-gray-900"><%= l(:label_leave_approach_gas) %></span>
+          </label>
+        </div>
+      </div>
+
+      <div id="leave-approach-oauth" class="rounded-lg border border-blue-100 bg-blue-50 p-4 space-y-3" data-approach-panel="oauth">
+        <p class="text-sm text-gray-700"><%= l(:text_leave_oauth_description) %></p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <%= label_tag :leave_oauth_client_id, l(:label_leave_oauth_client_id), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= text_field_tag :leave_oauth_client_id, @leave_sync_settings[:oauth_client_id], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div>
+            <%= label_tag :leave_oauth_account_email, l(:label_leave_oauth_account_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= email_field_tag :leave_oauth_account_email, @leave_sync_settings[:oauth_account_email], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div class="md:col-span-2">
+            <%= label_tag :leave_oauth_client_secret, l(:label_leave_oauth_client_secret), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= password_field_tag :leave_oauth_client_secret, '', placeholder: @leave_sync_settings[:oauth_client_secret].present? ? l(:text_saved_leave_blank_to_keep) : '', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <%= link_to l(:button_connect_gmail_oauth), admin_leave_count_oauth_start_path, class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+          <% if @leave_sync_settings[:oauth_refresh_token].present? %>
+            <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><%= l(:label_oauth_connected) %>: <%= h(@leave_sync_settings[:oauth_account_email]) %></span>
+          <% else %>
+            <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_oauth_not_connected) %></span>
+          <% end %>
+        </div>
+      </div>
+
+      <div id="leave-approach-dwd" class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3" data-approach-panel="dwd">
+        <p class="text-sm text-gray-700"><%= l(:text_leave_dwd_notice) %></p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <%= label_tag :leave_dwd_delegated_user, l(:label_leave_dwd_delegated_user), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= email_field_tag :leave_dwd_delegated_user, @leave_sync_settings[:dwd_delegated_user], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div class="md:col-span-2">
+            <%= label_tag :leave_dwd_service_account_json, l(:label_leave_dwd_service_json), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= text_area_tag :leave_dwd_service_account_json, '', rows: 4, placeholder: @leave_sync_settings[:dwd_service_account_json].present? ? l(:text_saved_leave_blank_to_keep) : '{ ...service account JSON... }', class: 'ts-search-input !block !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2 !text-sm !text-gray-900' %>
+          </div>
+        </div>
+      </div>
+
+      <div id="leave-approach-gas" class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3" data-approach-panel="google_apps_script">
+        <p class="text-sm text-gray-700"><%= l(:text_leave_gas_description) %></p>
+        <div>
+          <%= label_tag :leave_gas_webhook_url, l(:label_leave_webhook_url), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <div class="flex gap-2">
+            <%= text_field_tag :leave_gas_webhook_url, @webhook_url, readonly: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+            <button type="button" id="copy-webhook-url" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"><%= l(:button_copy) %></button>
+          </div>
+        </div>
+        <div>
+          <%= label_tag :leave_gas_webhook_secret, l(:label_leave_gas_webhook_secret), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= password_field_tag :leave_gas_webhook_secret, '', placeholder: @leave_sync_settings[:gas_webhook_secret].present? ? l(:text_saved_leave_blank_to_keep) : l(:text_leave_optional_secret), class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <details class="rounded-lg border border-gray-300 bg-white p-3">
+          <summary class="cursor-pointer text-sm font-medium text-gray-900"><%= l(:label_leave_gas_template) %></summary>
+          <pre class="mt-3 overflow-auto rounded bg-gray-900 p-3 text-xs text-gray-100"><%= h(@apps_script_template) %></pre>
+        </details>
+      </div>
+
+      <div>
+        <%= label_tag :leave_sync_enabled, l(:label_sync_status), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+        <label class="inline-flex items-center cursor-pointer">
+          <%= hidden_field_tag :leave_sync_enabled, '0' %>
+          <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], class: 'sr-only peer' %>
+          <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 after:content-[\"\"] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+          <span class="ms-3 text-sm font-medium text-gray-700"><%= l(:label_enable_mailbox_sync) %></span>
+        </label>
+      </div>
+
+      <div class="flex justify-end">
+        <%= button_tag l(:button_save_leave_count_settings), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #2563eb !important;' %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <h3 class="text-base font-semibold text-gray-900 mb-3"><%= l(:label_manual_sync_actions) %></h3>
+    <% if @manual_pull_available %>
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <%= form_tag({ controller: 'admin_leave_count', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
+          <%= hidden_field_tag :sync_mode, 'incremental' %>
+          <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_incremental_sync) %></p>
+          <%= button_tag l(:button_run_incremental_sync), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #2563eb !important;' %>
+        <% end %>
+        <%= form_tag({ controller: 'admin_leave_count', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
+          <%= hidden_field_tag :sync_mode, 'historical' %>
+          <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_historical_sync) %></p>
+          <%= button_tag l(:button_run_historical_sync), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #1d4ed8 !important;' %>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-sm text-gray-600"><%= l(:text_leave_push_only_sync_notice) %></p>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var approachRadios = Array.prototype.slice.call(document.querySelectorAll('input[name="leave_sync_approach"]'));
+    var approachPanels = Array.prototype.slice.call(document.querySelectorAll('[data-approach-panel]'));
+
+    function toggleApproachPanels() {
+      var selected = document.querySelector('input[name="leave_sync_approach"]:checked');
+      var value = selected ? selected.value : 'oauth';
+      approachPanels.forEach(function (panel) {
+        panel.style.display = panel.dataset.approachPanel === value ? '' : 'none';
+      });
+    }
+
+    approachRadios.forEach(function (radio) {
+      radio.addEventListener('change', toggleApproachPanels);
+    });
+    toggleApproachPanels();
+
+    var copyWebhookBtn = document.getElementById('copy-webhook-url');
+    if (copyWebhookBtn) {
+      copyWebhookBtn.addEventListener('click', function () {
+        var input = document.getElementById('leave_gas_webhook_url');
+        if (!input) return;
+        input.select();
+        document.execCommand('copy');
+      });
+    }
+  });
+</script>

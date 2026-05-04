@@ -3,6 +3,9 @@ RedmineApp::Application.routes.draw do
   get 'my/time', to: 'time_analytics#individual_dashboard', as: :my_time
   get 'time_analytics/custom_dashboard', to: 'time_analytics#custom_dashboard'
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
+  get 'leaves', to: 'leaves#index', as: :leaves
+  get 'leaves/data', to: 'leaves#data', as: :leaves_data
+  patch 'leaves/:id/status', to: 'leaves#update_status', as: :leave_status
   
   get 'time_entry_panel', to: 'time_entry_panel#index', as: :time_entry_panel
   get 'time_entry_panel/activities/:issue_id', to: 'time_entry_panel#get_activities', as: :time_entry_panel_activities
@@ -39,8 +42,13 @@ RedmineApp::Application.routes.draw do
   resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :destroy]
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection
-    post :sync_leave_inbox, on: :collection
   end
+  get 'admin/leave_count', to: 'admin_leave_count#index', as: :admin_leave_count
+  post 'admin/leave_count', to: 'admin_leave_count#create'
+  post 'admin/leave_count/sync_leave_inbox', to: 'admin_leave_count#sync_leave_inbox', as: :admin_leave_count_sync_leave_inbox
+  get 'admin/leave_count/oauth_start', to: 'admin_leave_count#oauth_start', as: :admin_leave_count_oauth_start
+  get 'admin/leave_count/oauth_callback', to: 'admin_leave_count#oauth_callback', as: :admin_leave_count_oauth_callback
+  post 'webhooks/leave_email/google_apps_script', to: 'leave_webhooks#google_apps_script', as: :leave_google_apps_script_webhook
   
   resources :custom_holidays do
     collection do

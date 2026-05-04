@@ -7,6 +7,7 @@ class TaTeamSetting < ActiveRecord::Base
 
   # Constants
   SETTING_TYPES = %w[exclusion super_user].freeze
+  LEAVE_APPROACHES = %w[oauth dwd google_apps_script].freeze
 
   # Associations
   belongs_to :user
@@ -131,25 +132,46 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.leave_sync_settings
     raw = Setting.plugin_redmine_time_analytics || {}
+    approach = raw['leave_sync_approach'].to_s
+    approach = 'oauth' unless LEAVE_APPROACHES.include?(approach)
+
+    oauth_client_secret_raw = raw['leave_oauth_client_secret_enc'].presence || raw['leave_oauth_client_secret'].to_s
+    oauth_refresh_token_raw = raw['leave_oauth_refresh_token_enc'].presence || raw['leave_oauth_refresh_token'].to_s
+    dwd_service_json_raw = raw['leave_dwd_service_account_json_enc'].presence || raw['leave_gmail_service_account_json'].to_s
+    gas_secret_raw = raw['leave_gas_webhook_secret_enc'].presence || raw['leave_gas_webhook_secret'].to_s
+
     {
       enabled: raw['leave_sync_enabled'].to_s == '1',
       recipient_email: raw['leave_sync_recipient_email'].to_s.strip.presence || 'vacation-group@entgra.io',
       historical_sync_start_date: parse_date_setting(raw['leave_sync_start_date']),
-      gmail_delegated_user: raw['leave_gmail_delegated_user'].to_s.strip,
-      gmail_service_account_json: raw['leave_gmail_service_account_json'].to_s,
+      leave_approach: approach,
+      oauth_client_id: raw['leave_oauth_client_id'].to_s.strip,
+      oauth_client_secret: decrypt_value(oauth_client_secret_raw),
+      oauth_refresh_token: decrypt_value(oauth_refresh_token_raw),
+      oauth_account_email: raw['leave_oauth_account_email'].to_s.strip,
+      dwd_delegated_user: raw['leave_dwd_delegated_user'].to_s.strip.presence || raw['leave_gmail_delegated_user'].to_s.strip,
+      dwd_service_account_json: decrypt_value(dwd_service_json_raw),
+      gas_webhook_secret: decrypt_value(gas_secret_raw),
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
       last_sync_mode: raw['leave_sync_last_mode'].to_s
     }
   end
 
-  def self.update_leave_sync_settings!(enabled:, recipient_email:, historical_sync_start_date:, gmail_delegated_user:, gmail_service_account_json:)
+  def self.update_leave_sync_settings!(
+    enabled:,
+    recipient_email:,
+    historical_sync_start_date:,
+    leave_approach:,
+    oauth_client_id: nil,
+    oauth_client_secret: nil,
+    oauth_account_email: nil,
+    dwd_delegated_user: nil,
+    dwd_service_account_json: nil,
+    gas_webhook_secret: nil
+  )
     normalized_recipient = recipient_email.to_s.strip.downcase
-    normalized_delegated_user = gmail_delegated_user.to_s.strip.downcase
     raise ArgumentError, 'Leave recipient email is required' if normalized_recipient.blank?
     raise ArgumentError, 'Leave recipient email must be valid' unless normalized_recipient.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
-    if normalized_delegated_user.present? && !normalized_delegated_user.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
-      raise ArgumentError, 'Gmail delegated user must be a valid email'
-    end
 
     if historical_sync_start_date.present?
       begin
@@ -158,15 +180,42 @@ class TaTeamSetting < ActiveRecord::Base
         raise ArgumentError, 'Historical sync start date is invalid'
       end
     end
+    approach = leave_approach.to_s
+    raise ArgumentError, 'Leave approach is invalid' unless LEAVE_APPROACHES.include?(approach)
+
+    normalized_oauth_account = oauth_account_email.to_s.strip.downcase
+    normalized_dwd_user = dwd_delegated_user.to_s.strip.downcase
+    if normalized_oauth_account.present? && !normalized_oauth_account.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+      raise ArgumentError, 'OAuth account email must be valid'
+    end
+    if normalized_dwd_user.present? && !normalized_dwd_user.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+      raise ArgumentError, 'DWD delegated user must be valid'
+    end
 
     settings = (Setting.plugin_redmine_time_analytics || {}).dup
     settings['leave_sync_enabled'] = enabled.to_s == '1' ? '1' : '0'
     settings['leave_sync_recipient_email'] = normalized_recipient
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
-    settings['leave_gmail_delegated_user'] = normalized_delegated_user
-    if gmail_service_account_json.present?
-      settings['leave_gmail_service_account_json'] = gmail_service_account_json
+    settings['leave_sync_approach'] = approach
+
+    settings['leave_oauth_client_id'] = oauth_client_id.to_s.strip
+    settings['leave_oauth_account_email'] = normalized_oauth_account
+    if oauth_client_secret.present?
+      settings['leave_oauth_client_secret_enc'] = encrypt_value(oauth_client_secret.to_s)
     end
+
+    settings['leave_dwd_delegated_user'] = normalized_dwd_user
+    if dwd_service_account_json.present?
+      settings['leave_dwd_service_account_json_enc'] = encrypt_value(dwd_service_account_json.to_s)
+    end
+
+    if gas_webhook_secret.present?
+      settings['leave_gas_webhook_secret_enc'] = encrypt_value(gas_webhook_secret.to_s)
+    elsif approach != 'google_apps_script'
+      settings.delete('leave_gas_webhook_secret_enc')
+    end
+
+    validate_leave_sync_config!(settings, approach: approach)
     Setting.plugin_redmine_time_analytics = settings
   end
 
@@ -179,7 +228,41 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.leave_sync_configured?
     config = leave_sync_settings
-    config[:recipient_email].present? && config[:gmail_delegated_user].present? && config[:gmail_service_account_json].present?
+    return false if config[:recipient_email].blank?
+
+    case config[:leave_approach]
+    when 'oauth'
+      config[:oauth_client_id].present? &&
+        config[:oauth_client_secret].present? &&
+        config[:oauth_account_email].present? &&
+        config[:oauth_refresh_token].present?
+    when 'dwd'
+      config[:dwd_delegated_user].present? && config[:dwd_service_account_json].present?
+    when 'google_apps_script'
+      true
+    else
+      false
+    end
+  end
+
+  def self.leave_sync_manual_pull?
+    leave_sync_settings[:leave_approach] != 'google_apps_script'
+  end
+
+  def self.update_leave_oauth_refresh_token!(refresh_token:, account_email: nil)
+    token = refresh_token.to_s.strip
+    raise ArgumentError, 'Refresh token is required' if token.blank?
+
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['leave_oauth_refresh_token_enc'] = encrypt_value(token)
+    settings['leave_sync_approach'] = 'oauth'
+    if account_email.present?
+      normalized_account = account_email.to_s.strip.downcase
+      raise ArgumentError, 'OAuth account email must be valid' unless normalized_account.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+
+      settings['leave_oauth_account_email'] = normalized_account
+    end
+    Setting.plugin_redmine_time_analytics = settings
   end
 
   def self.parse_date_setting(value)
@@ -192,6 +275,51 @@ class TaTeamSetting < ActiveRecord::Base
     Time.zone.parse(value.to_s)
   rescue StandardError
     nil
+  end
+
+  def self.encrypt_value(value)
+    plain = value.to_s
+    return plain if plain.blank?
+
+    if defined?(Redmine::Ciphering)
+      return Redmine::Ciphering.encrypt_text(plain) if Redmine::Ciphering.respond_to?(:encrypt_text)
+      return Redmine::Ciphering.encrypt(plain) if Redmine::Ciphering.respond_to?(:encrypt)
+    end
+
+    plain
+  end
+
+  def self.decrypt_value(value)
+    encrypted = value.to_s
+    return encrypted if encrypted.blank?
+
+    if defined?(Redmine::Ciphering)
+      return Redmine::Ciphering.decrypt_text(encrypted) if Redmine::Ciphering.respond_to?(:decrypt_text)
+      return Redmine::Ciphering.decrypt(encrypted) if Redmine::Ciphering.respond_to?(:decrypt)
+    end
+
+    encrypted
+  rescue StandardError
+    encrypted
+  end
+
+  def self.validate_leave_sync_config!(settings, approach:)
+    case approach
+    when 'oauth'
+      client_id = settings['leave_oauth_client_id'].to_s.strip
+      client_secret = decrypt_value(settings['leave_oauth_client_secret_enc'].to_s)
+      account_email = settings['leave_oauth_account_email'].to_s.strip
+      raise ArgumentError, 'OAuth client ID is required' if client_id.blank?
+      raise ArgumentError, 'OAuth client secret is required' if client_secret.blank?
+      raise ArgumentError, 'OAuth account email is required' if account_email.blank?
+    when 'dwd'
+      delegated_user = settings['leave_dwd_delegated_user'].to_s.strip
+      service_json = decrypt_value(settings['leave_dwd_service_account_json_enc'].to_s)
+      raise ArgumentError, 'DWD delegated user is required' if delegated_user.blank?
+      raise ArgumentError, 'DWD service account JSON is required' if service_json.blank?
+    when 'google_apps_script'
+      # Webhook secret is optional but recommended.
+    end
   end
 
   # Check if this setting is for exclusion

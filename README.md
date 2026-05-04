@@ -40,8 +40,13 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **See**: [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
 
 ### Leave-Aware Active Days (Admin + Dashboards)
-- **Mailbox-based Leave Sync**: Imports leave requests from a configured recipient mailbox (default `vacation-group@entgra.io`)
-- **Historical + Incremental Sync**: Run one-time historical backfill from a configured start date and periodic incremental sync
+- **Multiple Leave Ingestion Approaches**:
+  - Gmail OAuth 2.0 (recommended default)
+  - Domain-Wide Delegation (DWD)
+  - Google Apps Script webhook push
+- **Dedicated Leave Config Page**: Configure leave ingestion from **Administration → Leave Count**
+- **Admin Leaves Operations Page**: Use top-menu **Leaves** (admins only) for filtering, totals, grouped daily views, and unflagging records
+- **Historical + Incremental Sync**: Available for OAuth and DWD approaches
 - **Leave-aware Active Days**: Individual dashboard active days now uses `Working Days - Leave Days`
 - **Leave-aware Averages**: Individual averages and team overview averages exclude synced leave days from denominators
 - **Half-day Detection**: Leave emails containing `half day`, `morning`, or `evening` are counted as `0.5`
@@ -128,14 +133,18 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
 
 ### Leave Mailbox Setup
-1. Go to **Administration → Team Analytics Settings**
-2. Configure **Leave Inbox Integration** with:
+1. Go to **Administration → Leave Count**
+2. Configure common fields:
    - Leave recipient email
    - Historical sync start date
-   - Gmail delegated user
-   - Gmail service account JSON
-3. Save settings, then run **Historical Sync** once
-4. Use **Incremental Sync** for ongoing updates (or schedule rake task)
+   - Sync enabled toggle
+3. Choose one ingestion approach:
+   - **Gmail OAuth 2.0 (Recommended)**: set OAuth client ID/secret + account email, save, then click **Connect Gmail Account**
+   - **Domain-Wide Delegation**: set delegated user + service account JSON
+   - **Google Apps Script (Webhook Push)**: copy webhook URL and deploy script template from the page
+4. Save settings
+5. For OAuth/DWD, run **Historical Sync** once, then **Incremental Sync** (or schedule rake task)
+6. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
 
 ### Chart Interaction
 - **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default
@@ -155,7 +164,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Views**: Optimized ERB templates with side-by-side analytics layout
 - **Chart Library**: Chart.js for interactive visualizations with real-time type switching
 - **Utilities**: Modular chart generation and CSV export helpers
-- **Leave Sync Services**: `LeaveSyncService`, `GmailLeaveFetcher`, and `LeaveEmailParser` under `lib/redmine_time_analytics/`
+- **Leave Sync Services**: `LeaveSyncService`, provider adapters (OAuth/DWD/GAS), and `LeaveEmailParser` under `lib/redmine_time_analytics/`
 
 ### UI/UX Design
 The plugin implements a modern, space-optimized design:

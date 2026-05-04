@@ -7,41 +7,55 @@ class TaLeaveRecord < ActiveRecord::Base
   HALF_DAY_FRACTION = 0.5
   FULL_DAY_FRACTION = 1.0
 
-  belongs_to :user
+  belongs_to :user, optional: true
 
-  validates :user_id, presence: true
+  validates :user_id, presence: true, if: :confirmed?
   validates :leave_date, presence: true
   validates :leave_fraction, presence: true, numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 }
   validates :status, presence: true, inclusion: { in: STATUSES }
-  validates :user_id, uniqueness: { scope: :leave_date }
+  validates :user_id, uniqueness: { scope: :leave_date }, allow_nil: true
 
   scope :confirmed, -> { where(status: 'confirmed') }
+  scope :flagged, -> { where(status: 'flagged') }
   scope :within_range, ->(from_date, to_date) { where(leave_date: from_date..to_date) }
 
   class << self
     def upsert_from_email!(attrs)
-      user = attrs.fetch(:user)
+      user = attrs[:user]
       leave_date = attrs.fetch(:leave_date)
       leave_fraction = attrs.fetch(:leave_fraction)
       status = attrs.fetch(:status, 'confirmed')
+      sender_email = attrs[:sender_email].to_s.strip.downcase
+      source_message_id = attrs[:source_message_id].to_s.strip.presence
 
-      record = find_or_initialize_by(user_id: user.id, leave_date: leave_date)
+      if status == 'confirmed' && user.nil?
+        raise ArgumentError, 'Confirmed leave records require a mapped user'
+      end
+
+      record = if source_message_id.present?
+                 find_or_initialize_by(source_message_id: source_message_id, leave_date: leave_date)
+               elsif user.present?
+                 find_or_initialize_by(user_id: user.id, leave_date: leave_date)
+               else
+                 find_or_initialize_by(sender_email: sender_email, leave_date: leave_date, status: 'flagged')
+               end
       incoming_sent_at = attrs[:source_sent_at]
 
       if record.persisted? && incoming_sent_at.present? && record.source_sent_at.present?
         return record if record.source_sent_at > incoming_sent_at && record.status == 'confirmed'
       end
 
-      if status == 'flagged' && record.persisted? && record.status == 'confirmed'
+      if status == 'flagged' && user.present? && record.persisted? && record.status == 'confirmed'
         return record
       end
 
       record.assign_attributes(
+        user_id: user&.id,
         leave_fraction: leave_fraction,
         status: status,
-        sender_email: attrs[:sender_email].to_s.strip.downcase,
+        sender_email: sender_email,
         recipient_email: attrs[:recipient_email].to_s.strip.downcase,
-        source_message_id: attrs[:source_message_id],
+        source_message_id: source_message_id,
         source_thread_id: attrs[:source_thread_id],
         source_sent_at: incoming_sent_at,
         raw_subject: attrs[:raw_subject].to_s[0, 1000],
@@ -75,5 +89,9 @@ class TaLeaveRecord < ActiveRecord::Base
         to_date: to_date
       ).values.sum
     end
+  end
+
+  def confirmed?
+    status == 'confirmed'
   end
 end

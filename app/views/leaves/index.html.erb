@@ -1,0 +1,247 @@
+<% html_title l(:label_leaves) %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="space-y-6">
+  <div>
+    <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leaves) %></h2>
+    <p class="text-sm text-gray-500"><%= l(:text_leaves_admin_description) %></p>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+    <form id="leaves-filter-form" class="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div>
+        <label for="leaves-filter-from" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_from) %></label>
+        <input id="leaves-filter-from" name="from" type="date" value="<%= @default_from %>" class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900">
+      </div>
+      <div>
+        <label for="leaves-filter-to" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_to) %></label>
+        <input id="leaves-filter-to" name="to" type="date" value="<%= @default_to %>" class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900">
+      </div>
+      <div>
+        <label for="leaves-filter-user" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
+        <select id="leaves-filter-user" name="user_id" class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900">
+          <option value=""><%= l(:label_all_users) %></option>
+          <% @users.each do |user| %>
+            <option value="<%= user.id %>"><%= h(user.name) %></option>
+          <% end %>
+        </select>
+      </div>
+      <div>
+        <label for="leaves-filter-status" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_status) %></label>
+        <select id="leaves-filter-status" name="status" class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900">
+          <option value=""><%= l(:label_all_statuses) %></option>
+          <option value="confirmed"><%= l(:label_confirmed) %></option>
+          <option value="flagged"><%= l(:label_flagged) %></option>
+        </select>
+      </div>
+      <div class="flex items-end gap-2">
+        <button type="submit" class="ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium"><%= l(:button_apply) %></button>
+        <button type="button" id="leaves-reset-filters" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"><%= l(:button_clear) %></button>
+      </div>
+    </form>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500"><%= l(:label_overall_leave_days) %></p>
+      <p id="leaves-card-overall" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500"><%= l(:label_users_with_leave) %></p>
+      <p id="leaves-card-users" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500"><%= l(:label_flagged_records) %></p>
+      <p id="leaves-card-flagged" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+    </div>
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <p class="text-xs uppercase tracking-wide text-gray-500"><%= l(:label_total_records) %></p>
+      <p id="leaves-card-records" class="mt-2 text-2xl font-bold text-gray-900">0</p>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 px-4 pt-2">
+      <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
+        <li class="me-2"><button id="leaves-tab-daily" class="ta-view-tab ta-view-tab-active inline-block rounded-t-lg p-3"><%= l(:label_daily_leaves) %></button></li>
+        <li class="me-2"><button id="leaves-tab-summary" class="ta-view-tab inline-block rounded-t-lg p-3 text-gray-500 hover:text-gray-700"><%= l(:label_period_summary) %></button></li>
+      </ul>
+    </div>
+    <div class="p-4">
+      <div id="leaves-daily-panel" class="overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+            <tr>
+              <th class="px-3 py-2"><%= l(:label_date) %></th>
+              <th class="px-3 py-2"><%= l(:label_user) %></th>
+              <th class="px-3 py-2"><%= l(:label_leave_type) %></th>
+              <th class="px-3 py-2 text-right"><%= l(:label_total) %></th>
+              <th class="px-3 py-2"><%= l(:label_status) %></th>
+              <th class="px-3 py-2"><%= l(:label_actions) %></th>
+            </tr>
+          </thead>
+          <tbody id="leaves-daily-tbody"></tbody>
+        </table>
+      </div>
+      <div id="leaves-summary-panel" class="hidden overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-600">
+          <thead class="bg-gray-50 text-xs uppercase text-gray-700">
+            <tr>
+              <th class="px-3 py-2"><%= l(:label_user) %></th>
+              <th class="px-3 py-2 text-right"><%= l(:label_total_leave_days) %></th>
+            </tr>
+          </thead>
+          <tbody id="leaves-summary-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var filterForm = document.getElementById('leaves-filter-form');
+    var resetFilters = document.getElementById('leaves-reset-filters');
+    var dailyTab = document.getElementById('leaves-tab-daily');
+    var summaryTab = document.getElementById('leaves-tab-summary');
+    var dailyPanel = document.getElementById('leaves-daily-panel');
+    var summaryPanel = document.getElementById('leaves-summary-panel');
+    var dailyBody = document.getElementById('leaves-daily-tbody');
+    var summaryBody = document.getElementById('leaves-summary-tbody');
+    var csrfToken = '<%= form_authenticity_token %>';
+
+    function switchTab(tab) {
+      if (tab === 'summary') {
+        summaryPanel.classList.remove('hidden');
+        dailyPanel.classList.add('hidden');
+        summaryTab.classList.add('ta-view-tab-active');
+        dailyTab.classList.remove('ta-view-tab-active');
+      } else {
+        dailyPanel.classList.remove('hidden');
+        summaryPanel.classList.add('hidden');
+        dailyTab.classList.add('ta-view-tab-active');
+        summaryTab.classList.remove('ta-view-tab-active');
+      }
+    }
+
+    dailyTab.addEventListener('click', function () { switchTab('daily'); });
+    summaryTab.addEventListener('click', function () { switchTab('summary'); });
+
+    function updateCards(totals) {
+      document.getElementById('leaves-card-overall').textContent = totals.overall_leave_days || 0;
+      document.getElementById('leaves-card-users').textContent = totals.users_with_leave || 0;
+      document.getElementById('leaves-card-flagged').textContent = totals.flagged_records || 0;
+      document.getElementById('leaves-card-records').textContent = totals.total_records || 0;
+    }
+
+    function statusBadge(status) {
+      if (status === 'confirmed') {
+        return '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>';
+      }
+      return '<span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>';
+    }
+
+    function renderDailyRows(groups) {
+      var html = '';
+      if (!groups.length) {
+        html = '<tr><td colspan="6" class="px-3 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        groups.forEach(function (group) {
+          group.records.forEach(function (record) {
+            var actionHtml = '<span class="text-xs text-gray-400">—</span>';
+            if (record.status === 'flagged' && record.can_unflag) {
+              actionHtml = '<button type="button" title="<%= j l(:button_unflag) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300 bg-white text-blue-700 hover:bg-blue-50" data-unflag-id="' + record.id + '">' +
+                '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                  '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' +
+                '</svg>' +
+              '</button>';
+            } else if (record.status === 'flagged') {
+              actionHtml = '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>';
+            }
+
+            html += '<tr class="border-b last:border-0">' +
+              '<td class="px-3 py-2">' + group.date + '</td>' +
+              '<td class="px-3 py-2">' + (record.user_name || '') + '</td>' +
+              '<td class="px-3 py-2">' + record.leave_type + '</td>' +
+              '<td class="px-3 py-2 text-right">' + record.leave_fraction + '</td>' +
+              '<td class="px-3 py-2">' + statusBadge(record.status) + '</td>' +
+              '<td class="px-3 py-2">' + actionHtml + '</td>' +
+              '</tr>';
+          });
+        });
+      }
+      dailyBody.innerHTML = html;
+    }
+
+    function renderSummaryRows(entries) {
+      var html = '';
+      if (!entries.length) {
+        html = '<tr><td colspan="2" class="px-3 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        entries.forEach(function (entry) {
+          html += '<tr class="border-b last:border-0">' +
+            '<td class="px-3 py-2">' + entry.user_name + '</td>' +
+            '<td class="px-3 py-2 text-right">' + entry.total_leave_days + '</td>' +
+          '</tr>';
+        });
+      }
+      summaryBody.innerHTML = html;
+    }
+
+    function loadData() {
+      var params = new URLSearchParams(new FormData(filterForm));
+      fetch('<%= leaves_data_path %>?' + params.toString(), { headers: { Accept: 'application/json' } })
+        .then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) { throw new Error(payload.error); }
+          updateCards(payload.totals || {});
+          renderDailyRows(payload.daily_groups || []);
+          renderSummaryRows(payload.user_summary || []);
+        })
+        .catch(function (error) {
+          dailyBody.innerHTML = '<tr><td colspan="6" class="px-3 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+          summaryBody.innerHTML = '<tr><td colspan="2" class="px-3 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+        });
+    }
+
+    function sendUnflag(id) {
+      fetch('/leaves/' + id + '/status', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({ status: 'confirmed' })
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          loadData();
+        })
+        .catch(function (error) {
+          alert(error.message);
+        });
+    }
+
+    filterForm.addEventListener('submit', function (event) {
+      event.preventDefault();
+      loadData();
+    });
+    resetFilters.addEventListener('click', function () {
+      filterForm.reset();
+      loadData();
+    });
+    dailyBody.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-unflag-id]');
+      if (button) { sendUnflag(button.getAttribute('data-unflag-id')); }
+    });
+
+    loadData();
+  });
+</script>

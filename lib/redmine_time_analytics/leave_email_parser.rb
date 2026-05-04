@@ -18,7 +18,7 @@ module RedmineTimeAnalytics
         return Result.new(status: :ignored, reason: 'recipient_not_matched', leave_dates: [], leave_fraction: 0)
       end
 
-      user = User.active.find_by(mail: sender_email)
+      user = find_active_user_by_email(sender_email)
       return Result.new(status: :flagged, reason: 'user_not_found', leave_dates: [], leave_fraction: 0) unless user
 
       text = [message[:subject], message[:body]].compact.join("\n")
@@ -46,6 +46,33 @@ module RedmineTimeAnalytics
 
     def extract_recipient_addresses(raw_to)
       raw_to.to_s.downcase.scan(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i).map(&:downcase).uniq
+    end
+
+    def find_active_user_by_email(sender_email)
+      normalized_sender = normalize_lookup_email(sender_email)
+      return nil if normalized_sender.blank?
+
+      exact = User.active.where('LOWER(mail) = ?', sender_email.to_s.strip.downcase).first
+      return exact if exact
+
+      User.active.sorted.find { |user| normalize_lookup_email(user.mail) == normalized_sender }
+    end
+
+    def normalize_lookup_email(value)
+      email = value.to_s.strip.downcase
+      return '' unless email.include?('@')
+
+      local_part, domain = email.split('@', 2)
+      return '' if local_part.blank? || domain.blank?
+
+      normalized_local = local_part.split('+', 2).first
+      normalized_domain = domain
+      if %w[gmail.com googlemail.com].include?(normalized_domain)
+        normalized_local = normalized_local.delete('.')
+        normalized_domain = 'gmail.com'
+      end
+
+      "#{normalized_local}@#{normalized_domain}"
     end
 
     def half_day_request?(text)

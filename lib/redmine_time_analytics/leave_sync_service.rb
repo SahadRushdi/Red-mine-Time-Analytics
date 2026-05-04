@@ -7,7 +7,7 @@ module RedmineTimeAnalytics
     def initialize(settings: TaTeamSetting.leave_sync_settings)
       @settings = settings
       @parser = RedmineTimeAnalytics::LeaveEmailParser.new
-      @fetcher = RedmineTimeAnalytics::GmailLeaveFetcher.new(@settings)
+      @fetcher = RedmineTimeAnalytics::LeaveFetcherFactory.build(@settings)
     end
 
     def sync!(mode: :incremental)
@@ -21,13 +21,7 @@ module RedmineTimeAnalytics
         synced_after: (mode.to_s == 'historical' ? nil : @settings[:last_synced_at])
       )
 
-      result = SyncResult.new(processed_count: 0, imported_count: 0, flagged_count: 0, errors: [])
-      messages.each do |message|
-        result.processed_count += 1
-        handle_message(message, recipient_email, mode, result)
-      rescue StandardError => e
-        result.errors << e.message
-      end
+      result = process_messages!(messages: messages, recipient_email: recipient_email, mode: mode)
 
       TaTeamSetting.update_leave_sync_runtime!(
         last_synced_at: Time.zone.now,
@@ -37,7 +31,30 @@ module RedmineTimeAnalytics
       result
     end
 
+    def sync_messages!(messages:, mode: :push, recipient_email: nil)
+      effective_recipient = recipient_email.to_s.strip.presence || @settings[:recipient_email]
+      raise 'Leave recipient email is required' if effective_recipient.blank?
+
+      result = process_messages!(messages: messages, recipient_email: effective_recipient, mode: mode)
+      TaTeamSetting.update_leave_sync_runtime!(
+        last_synced_at: Time.zone.now,
+        last_sync_mode: mode.to_s
+      )
+      result
+    end
+
     private
+
+    def process_messages!(messages:, recipient_email:, mode:)
+      result = SyncResult.new(processed_count: 0, imported_count: 0, flagged_count: 0, errors: [])
+      Array(messages).each do |message|
+        result.processed_count += 1
+        handle_message(message.symbolize_keys, recipient_email, mode, result)
+      rescue StandardError => e
+        result.errors << e.message
+      end
+      result
+    end
 
     def handle_message(message, recipient_email, mode, result)
       parsed = @parser.parse(message: message, recipient_email: recipient_email)
@@ -69,8 +86,6 @@ module RedmineTimeAnalytics
     end
 
     def persist_flagged_message(parsed, message, mode)
-      return unless parsed.user
-
       TaLeaveRecord.upsert_from_email!(
         user: parsed.user,
         leave_date: message[:sent_at].to_date,
@@ -81,7 +96,7 @@ module RedmineTimeAnalytics
         source_message_id: message[:message_id],
         source_thread_id: message[:thread_id],
         source_sent_at: message[:sent_at],
-        raw_subject: "[FLAGGED] #{message[:subject]}",
+        raw_subject: "[FLAGGED:#{parsed.reason}] #{message[:subject]}",
         raw_body: message[:body],
         sync_mode: mode.to_s
       )
