@@ -512,6 +512,18 @@ button[data-table-sort].text-blue-600:focus-visible {
   color: #111827 !important;
 }
 
+button[data-table-sort],
+button[data-table-sort]:hover,
+button[data-table-sort]:focus,
+button[data-table-sort]:focus-visible,
+button[data-table-sort]:active {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
 button[data-table-sort]:focus,
 button[data-table-sort]:focus-visible,
 button[data-table-sort]:active {
@@ -582,6 +594,35 @@ button[data-table-sort]:active {
 #leaves-per-page-dropdown button:focus-visible {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+}
+
+#leaves-user-dropdown-button,
+#leaves-user-dropdown-button:hover,
+#leaves-user-dropdown-button:focus,
+#leaves-user-dropdown-button:focus-visible,
+#leaves-user-dropdown-button:active,
+#leaves-status-dropdown-button,
+#leaves-status-dropdown-button:hover,
+#leaves-status-dropdown-button:focus,
+#leaves-status-dropdown-button:focus-visible,
+#leaves-status-dropdown-button:active,
+#leaves-per-page-dropdown-button,
+#leaves-per-page-dropdown-button:hover,
+#leaves-per-page-dropdown-button:focus,
+#leaves-per-page-dropdown-button:focus-visible,
+#leaves-per-page-dropdown-button:active {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-user-dropdown-button:hover,
+#leaves-status-dropdown-button:hover,
+#leaves-per-page-dropdown-button:hover {
+  background-color: #f9fafb !important;
 }
 
 #leaves-filter-from,

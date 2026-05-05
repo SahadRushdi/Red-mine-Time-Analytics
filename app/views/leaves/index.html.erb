@@ -52,7 +52,7 @@
 
         <div class="relative">
           <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_status) %></label>
-          <button type="button" id="leaves-status-dropdown-button" class="inline-flex h-[43px] min-w-[160px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]">
+          <button type="button" id="leaves-status-dropdown-button" class="inline-flex h-[43px] min-w-[160px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
             <span id="leaves-status-dropdown-label" class="truncate"><%= selected_status_label %></span>
             <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -678,16 +678,16 @@
             if (record.status === 'flagged' && record.can_unflag) {
               actionHtml = '<div class="inline-flex items-center gap-2">' +
                 '<button type="button" title="<%= j l(:button_unflag) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--confirm inline-flex h-8 w-8 items-center justify-center" data-unflag-id="' + record.id + '">' +
-                  '<span class="material-icons" style="font-size:18px;line-height:1;">done</span>' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' +
                 '</button>' +
                 '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
-                  '<span class="material-icons" style="font-size:18px;line-height:1;">delete</span>' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
                 '</button>' +
               '</div>';
             } else if (record.status === 'flagged') {
               actionHtml = '<div class="inline-flex items-center gap-2">' +
                 '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
-                  '<span class="material-icons" style="font-size:18px;line-height:1;">delete</span>' +
+                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
                 '</button>' +
                 '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>' +
               '</div>';
@@ -814,6 +814,21 @@
         });
     }
 
+    function hideDatePickers() {
+      [elements.from, elements.to].forEach(function (input) {
+        if (!input) return;
+        if (input.datepicker && typeof input.datepicker.hide === 'function') {
+          input.datepicker.hide();
+        }
+        input.blur();
+      });
+    }
+
+    function deferHideDatePickers() {
+      window.setTimeout(hideDatePickers, 0);
+      window.setTimeout(hideDatePickers, 120);
+    }
+
     function statusBadge(status) {
       if (status === 'confirmed') {
         return '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>';
@@ -884,20 +899,17 @@
     });
 
     function bindDateAutoReload(input) {
-      ['change', 'input', 'blur', 'changeDate'].forEach(function (eventName) {
-        input.addEventListener(eventName, scheduleLoadData);
+      input.addEventListener('change', scheduleLoadData);
+      input.addEventListener('changeDate', function () {
+        scheduleLoadData();
+        hideDatePickers();
       });
     }
 
     bindDateAutoReload(elements.from);
     bindDateAutoReload(elements.to);
 
-    var dateRangePicker = document.getElementById('leaves-date-range-picker');
-    if (dateRangePicker) {
-      ['changeDate', 'change'].forEach(function (eventName) {
-        dateRangePicker.addEventListener(eventName, scheduleLoadData);
-      });
-    }
+    window.addEventListener('pageshow', deferHideDatePickers);
 
     elements.search.addEventListener('input', function () {
       state.dailyPage = 1;
@@ -958,6 +970,7 @@
     syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
     updateSortIndicators();
     setTab('daily');
+    deferHideDatePickers();
     loadData();
   });
 </script>
