@@ -20,8 +20,18 @@ module RedmineTimeAnalytics
           query << "after:#{synced_after.strftime('%Y/%m/%d')}"
         end
 
-        response = gmail_service.list_user_messages('me', q: query.join(' '), max_results: 250)
-        Array(response.messages).map { |message_ref| build_message_payload(message_ref.id) }.compact
+        message_refs = []
+        page_token = nil
+        loop do
+          response = gmail_service.list_user_messages('me', q: query.join(' '), max_results: 250, page_token: page_token)
+          message_refs.concat(Array(response.messages))
+          page_token = response.next_page_token
+          break if page_token.blank?
+        end
+
+        cutoff = mode.to_s == 'historical' ? historical_start_date : synced_after
+        payloads = message_refs.map { |message_ref| build_message_payload(message_ref.id) }.compact
+        payloads.select { |message| within_requested_window?(message[:sent_at], mode, cutoff) }
       end
 
       private
@@ -89,6 +99,16 @@ module RedmineTimeAnalytics
         Time.zone.parse(value.to_s)
       rescue StandardError
         nil
+      end
+
+      def within_requested_window?(sent_at, mode, cutoff)
+        return true if sent_at.nil? || cutoff.nil?
+
+        if mode.to_s == 'historical'
+          sent_at.to_date >= cutoff.to_date
+        else
+          sent_at > cutoff
+        end
       end
     end
   end

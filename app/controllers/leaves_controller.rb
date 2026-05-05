@@ -29,7 +29,11 @@ class LeavesController < ApplicationController
       return render json: { error: 'Cannot unflag this record because sender is not mapped to a Redmine user' }, status: :unprocessable_entity
     end
 
-    @leave_record.update!(status: 'confirmed', user_id: mapped_user.id)
+    @leave_record.update!(
+      status: 'confirmed',
+      user_id: mapped_user.id,
+      leave_fraction: effective_leave_fraction(@leave_record)
+    )
     render json: { ok: true, record_id: @leave_record.id, status: @leave_record.status }, status: :ok
   rescue ActiveRecord::RecordNotFound
     render json: { error: 'Leave record not found' }, status: :not_found
@@ -72,13 +76,13 @@ class LeavesController < ApplicationController
     records.each do |record|
       next if record.user_id.blank?
 
-      user_totals[record.user_id] += record.leave_fraction.to_f
+      user_totals[record.user_id] += effective_leave_fraction(record)
     end
 
     {
       filters: { from: from_date, to: to_date, user_id: filters[:user_id].to_s, status: filters[:status].to_s },
       totals: {
-        overall_leave_days: records.sum { |record| record.leave_fraction.to_f }.round(2),
+        overall_leave_days: records.sum { |record| effective_leave_fraction(record) }.round(2),
         users_with_leave: user_totals.keys.compact.count,
         flagged_records: records.count { |record| record.status == 'flagged' },
         total_records: records.count
@@ -86,7 +90,7 @@ class LeavesController < ApplicationController
       daily_groups: grouped_by_date.map do |date, group_records|
         {
           date: date,
-          total_leave_days: group_records.sum { |record| record.leave_fraction.to_f }.round(2),
+          total_leave_days: group_records.sum { |record| effective_leave_fraction(record) }.round(2),
           records: group_records.map { |record| serialize_record(record) }
         }
       end,
@@ -103,18 +107,45 @@ class LeavesController < ApplicationController
 
   def serialize_record(record)
     mapped_user = record.user || TaLeaveRecord.find_active_user_by_sender(record.sender_email)
+    leave_fraction = effective_leave_fraction(record)
     {
       id: record.id,
       user_id: mapped_user&.id,
       user_name: mapped_user&.name || record.sender_email,
       leave_date: record.leave_date,
-      leave_fraction: record.leave_fraction.to_f.round(2),
-      leave_type: record.leave_fraction.to_f >= 1 ? 'Full Day' : 'Half Day',
+      leave_fraction: leave_fraction.round(2),
+      leave_type: leave_fraction >= 1 ? 'Full Day' : (leave_fraction >= 0.5 ? 'Half Day' : 'Unknown'),
       status: record.status,
       can_unflag: record.status == 'flagged' && mapped_user.present?,
       can_delete: record.status == 'flagged',
       subject: record.raw_subject.to_s
     }
+  end
+
+  def effective_leave_fraction(record)
+    stored = record.leave_fraction.to_f
+    return stored if stored.positive?
+
+    parsed = parse_leave_record(record)
+    parsed.leave_fraction.to_f
+  end
+
+  def parse_leave_record(record)
+    subject = record.raw_subject.to_s.sub(/\A\[FLAGGED:[^\]]+\]\s*/, '')
+    recipient_email = record.recipient_email.to_s.presence || TaTeamSetting.leave_sync_settings[:recipient_email]
+    parser = RedmineTimeAnalytics::LeaveEmailParser.new
+    parser.parse(
+      message: {
+        from: record.sender_email,
+        to: recipient_email,
+        subject: subject,
+        body: record.raw_body,
+        sent_at: record.source_sent_at || record.created_at || Time.zone.now
+      },
+      recipient_email: recipient_email
+    )
+  rescue StandardError
+    nil
   end
 
   def parse_date(value)

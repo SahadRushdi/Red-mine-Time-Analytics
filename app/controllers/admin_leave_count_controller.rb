@@ -52,7 +52,11 @@ class AdminLeaveCountController < ApplicationController
     result = RedmineTimeAnalytics::LeaveSyncService.new(settings: settings).sync!(mode: sync_mode)
 
     if result.errors.any?
-      flash[:error] = "Leave sync finished with errors: #{result.errors.uniq.join('; ')}"
+      unique_errors = result.errors.uniq
+      Rails.logger.warn(
+        "[LeaveSync] completed with #{result.errors.length} errors (#{unique_errors.length} unique): #{unique_errors.first(10).join(' | ')}"
+      )
+      flash[:error] = "Leave sync finished with errors (#{result.errors.length} total). See log for details."
     else
       flash[:notice] = "Leave sync completed (Processed: #{result.processed_count}, Imported: #{result.imported_count}, Flagged: #{result.flagged_count})"
     end

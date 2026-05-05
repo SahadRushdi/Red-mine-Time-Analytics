@@ -25,17 +25,18 @@ class TaLeaveRecord < ActiveRecord::Base
       leave_date = attrs.fetch(:leave_date)
       leave_fraction = attrs.fetch(:leave_fraction)
       status = attrs.fetch(:status, 'confirmed')
-      sender_email = attrs[:sender_email].to_s.strip.downcase
+      sender_email = extract_email(attrs[:sender_email])
+      recipient_email = extract_email(attrs[:recipient_email])
       source_message_id = attrs[:source_message_id].to_s.strip.presence
 
       if status == 'confirmed' && user.nil?
         raise ArgumentError, 'Confirmed leave records require a mapped user'
       end
 
-      record = if source_message_id.present?
-                 find_or_initialize_by(source_message_id: source_message_id, leave_date: leave_date)
-               elsif user.present?
+      record = if user.present?
                  find_or_initialize_by(user_id: user.id, leave_date: leave_date)
+               elsif source_message_id.present?
+                 find_or_initialize_by(source_message_id: source_message_id)
                else
                  find_or_initialize_by(sender_email: sender_email, leave_date: leave_date, status: 'flagged')
                end
@@ -54,7 +55,7 @@ class TaLeaveRecord < ActiveRecord::Base
         leave_fraction: leave_fraction,
         status: status,
         sender_email: sender_email,
-        recipient_email: attrs[:recipient_email].to_s.strip.downcase,
+        recipient_email: recipient_email,
         source_message_id: source_message_id,
         source_thread_id: attrs[:source_thread_id],
         source_sent_at: incoming_sent_at,
@@ -103,7 +104,8 @@ class TaLeaveRecord < ActiveRecord::Base
     end
 
     def extract_email(value)
-      value.to_s.downcase.scan(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i).first.to_s.downcase
+      email = value.to_s.downcase.scan(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i).first.to_s.downcase
+      email.presence || value.to_s.strip.downcase[0, 255]
     end
 
     def normalize_lookup_email(value)

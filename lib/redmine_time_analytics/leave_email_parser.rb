@@ -30,7 +30,13 @@ module RedmineTimeAnalytics
 
       working_dates = extracted_dates.select { |date| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) }.uniq.sort
       if working_dates.empty?
-        return Result.new(status: :flagged, reason: 'no_working_day_found', user: user, leave_dates: [], leave_fraction: 0)
+        return Result.new(
+          status: :flagged,
+          reason: 'no_working_day_found',
+          user: user,
+          leave_dates: extracted_dates.uniq.sort,
+          leave_fraction: leave_fraction
+        )
       end
 
       Result.new(status: :confirmed, user: user, leave_dates: working_dates, leave_fraction: leave_fraction)
@@ -119,7 +125,12 @@ module RedmineTimeAnalytics
       return nil if parts.length != 3
 
       first, second, year = parts
-      format = first > 12 ? '%d/%m/%Y' : '%m/%d/%Y'
+      # Prefer DD/MM/YYYY because the organization emails leave dates in that format.
+      format = if first > 12 || second <= 12
+                 '%d/%m/%Y'
+               else
+                 '%m/%d/%Y'
+               end
       Date.strptime(candidate, format)
     rescue ArgumentError
       nil

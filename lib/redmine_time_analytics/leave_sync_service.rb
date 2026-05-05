@@ -61,7 +61,7 @@ module RedmineTimeAnalytics
       return if parsed.status == :ignored
 
       if parsed.status == :flagged
-        persist_flagged_message(parsed, message, mode)
+        persist_flagged_message(parsed, message, recipient_email, mode)
         result.flagged_count += 1
         return
       end
@@ -73,7 +73,7 @@ module RedmineTimeAnalytics
           leave_fraction: parsed.leave_fraction,
           status: 'confirmed',
           sender_email: message[:from],
-          recipient_email: message[:to],
+          recipient_email: recipient_email,
           source_message_id: message[:message_id],
           source_thread_id: message[:thread_id],
           source_sent_at: message[:sent_at],
@@ -85,14 +85,15 @@ module RedmineTimeAnalytics
       result.imported_count += parsed.leave_dates.length
     end
 
-    def persist_flagged_message(parsed, message, mode)
+    def persist_flagged_message(parsed, message, recipient_email, mode)
+      leave_date = parsed.leave_dates.first || message[:sent_at].to_date
       TaLeaveRecord.upsert_from_email!(
         user: parsed.user,
-        leave_date: message[:sent_at].to_date,
-        leave_fraction: 0,
+        leave_date: leave_date,
+        leave_fraction: parsed.leave_fraction.to_f,
         status: 'flagged',
         sender_email: message[:from],
-        recipient_email: message[:to],
+        recipient_email: recipient_email,
         source_message_id: message[:message_id],
         source_thread_id: message[:thread_id],
         source_sent_at: message[:sent_at],
