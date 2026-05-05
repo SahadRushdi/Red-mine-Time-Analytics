@@ -526,8 +526,10 @@ button[data-table-sort]:active {
 .leaves-dropdown-option:active {
   color: #374151 !important;
   background: #ffffff !important;
+  border: none !important;
   outline: none !important;
   box-shadow: none !important;
+  text-decoration: none !important;
 }
 
 .leaves-dropdown-option:hover,
@@ -543,7 +545,98 @@ button[data-table-sort]:active {
 .leaves-dropdown-option--active:active {
   background: #f3f4f6 !important;
   color: #111827 !important;
+  border: none !important;
   font-weight: 600 !important;
+}
+
+#leaves-user-dropdown button,
+#leaves-user-dropdown button:hover,
+#leaves-user-dropdown button:focus,
+#leaves-user-dropdown button:focus-visible,
+#leaves-user-dropdown button:active,
+#leaves-status-dropdown button,
+#leaves-status-dropdown button:hover,
+#leaves-status-dropdown button:focus,
+#leaves-status-dropdown button:focus-visible,
+#leaves-status-dropdown button:active,
+#leaves-per-page-dropdown button,
+#leaves-per-page-dropdown button:hover,
+#leaves-per-page-dropdown button:focus,
+#leaves-per-page-dropdown button:focus-visible,
+#leaves-per-page-dropdown button:active {
+  border: none !important;
+  color: #374151 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-user-dropdown button:hover,
+#leaves-user-dropdown button:focus,
+#leaves-user-dropdown button:focus-visible,
+#leaves-status-dropdown button:hover,
+#leaves-status-dropdown button:focus,
+#leaves-status-dropdown button:focus-visible,
+#leaves-per-page-dropdown button:hover,
+#leaves-per-page-dropdown button:focus,
+#leaves-per-page-dropdown button:focus-visible {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#leaves-filter-from,
+#leaves-filter-to {
+  height: 43px !important;
+  line-height: 1.2 !important;
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#leaves-filter-from:focus,
+#leaves-filter-from:active,
+#leaves-filter-from:focus-visible,
+#leaves-filter-to:focus,
+#leaves-filter-to:active,
+#leaves-filter-to:focus-visible {
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 0 1px #3b82f6 !important;
+}
+
+.leaves-entry-icon-btn,
+.leaves-entry-icon-btn:hover,
+.leaves-entry-icon-btn:focus,
+.leaves-entry-icon-btn:focus-visible,
+.leaves-entry-icon-btn:active {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0.25rem !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.leaves-entry-icon-btn--confirm,
+.leaves-entry-icon-btn--confirm:focus,
+.leaves-entry-icon-btn--confirm:focus-visible,
+.leaves-entry-icon-btn--confirm:active {
+  color: #3b82f6 !important;
+}
+
+.leaves-entry-icon-btn--confirm:hover {
+  color: #1d4ed8 !important;
+}
+
+.leaves-entry-icon-btn--delete,
+.leaves-entry-icon-btn--delete:focus,
+.leaves-entry-icon-btn--delete:focus-visible,
+.leaves-entry-icon-btn--delete:active {
+  color: #f87171 !important;
+}
+
+.leaves-entry-icon-btn--delete:hover {
+  color: #dc2626 !important;
 }
 
 /* Specific fix for inactive Detailed/Summary buttons - keep gray border on hover */
@@ -1584,6 +1677,43 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 #deleteModal .tep-delete-confirm:hover,
 #deleteModal .tep-delete-confirm:focus,
 #deleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
+
+/* === Flowbite delete confirmation modal (Leaves) === */
+#leaves-delete-modal button,
+#leaves-delete-modal button:hover,
+#leaves-delete-modal button:focus,
+#leaves-delete-modal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-delete-modal .tep-delete-close {
+  border: none !important;
+}
+
+#leaves-delete-modal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#leaves-delete-modal .tep-delete-cancel,
+#leaves-delete-modal .tep-delete-cancel:hover,
+#leaves-delete-modal .tep-delete-cancel:focus,
+#leaves-delete-modal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#leaves-delete-modal .tep-delete-confirm,
+#leaves-delete-modal .tep-delete-confirm:hover,
+#leaves-delete-modal .tep-delete-confirm:focus,
+#leaves-delete-modal .tep-delete-confirm:active {
   color: #ffffff !important;
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;

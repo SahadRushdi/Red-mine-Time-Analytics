@@ -27,22 +27,22 @@
         <div>
           <div id="leaves-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
             <span class="text-sm text-gray-600">From:</span>
-            <%= text_field_tag :from, @default_from.strftime('%m/%d/%Y'), id: 'leaves-filter-from', autocomplete: 'off', placeholder: 'Select date start', class: 'block h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] focus:outline-none', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+            <%= text_field_tag :from, @default_from.strftime('%m/%d/%Y'), id: 'leaves-filter-from', autocomplete: 'off', placeholder: 'Select date start', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
             <span class="text-sm text-gray-600">To:</span>
-            <%= text_field_tag :to, @default_to.strftime('%m/%d/%Y'), id: 'leaves-filter-to', autocomplete: 'off', placeholder: 'Select date end', class: 'block h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:ring-1 focus:ring-[#3b82f6] focus:outline-none', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+            <%= text_field_tag :to, @default_to.strftime('%m/%d/%Y'), id: 'leaves-filter-to', autocomplete: 'off', placeholder: 'Select date end', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
           </div>
         </div>
 
         <div class="relative">
           <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
-          <button type="button" id="leaves-user-dropdown-button" class="inline-flex h-[43px] min-w-[180px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-2 focus:ring-[#3b82f6]">
+          <button type="button" id="leaves-user-dropdown-button" class="inline-flex h-[43px] min-w-[220px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
             <span id="leaves-user-dropdown-label" class="truncate"><%= selected_user_label %></span>
             <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
           <input type="hidden" id="leaves-filter-user" value="<%= @filter_user_id %>">
-          <div id="leaves-user-dropdown" class="hidden absolute right-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+          <div id="leaves-user-dropdown" class="hidden absolute right-0 z-20 mt-1 max-h-80 min-w-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
             <button type="button" class="leaves-dropdown-option leaves-dropdown-option--active w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-label="<%= j l(:label_all_users) %>"><%= l(:label_all_users) %></button>
             <% @users.each do |user| %>
               <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
@@ -88,8 +88,8 @@
         </svg>
       </div>
       <div class="ts-summary-card-content">
-        <p class="ts-summary-card-label"><%= l(:label_users_with_leave) %></p>
-        <p id="leaves-card-users" class="ts-summary-card-value">0</p>
+        <p class="ts-summary-card-label"><%= l(:label_total_records) %></p>
+        <p id="leaves-card-records" class="ts-summary-card-value">0</p>
       </div>
     </div>
     <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
@@ -110,8 +110,8 @@
         </svg>
       </div>
       <div class="ts-summary-card-content">
-        <p class="ts-summary-card-label"><%= l(:label_total_records) %></p>
-        <p id="leaves-card-records" class="ts-summary-card-value">0</p>
+        <p class="ts-summary-card-label"><%= l(:label_users_with_leave) %></p>
+        <p id="leaves-card-users" class="ts-summary-card-value">0</p>
       </div>
     </div>
   </div>
@@ -245,7 +245,7 @@
   <div class="relative p-4 w-full max-w-md">
     <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
       <button type="button"
-              class="text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center !border-0 !outline-none !shadow-none !ring-0"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center !border-0 !outline-none !shadow-none !ring-0"
               data-modal-hide="leaves-delete-modal">
         <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -257,8 +257,8 @@
       </svg>
       <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
       <div class="flex justify-center items-center space-x-4">
-        <button type="button" id="leaves-delete-confirm" class="py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
-        <button type="button" id="leaves-delete-cancel" data-modal-hide="leaves-delete-modal" class="py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
+        <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
+        <button type="button" id="leaves-delete-cancel" data-modal-hide="leaves-delete-modal" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
       </div>
     </div>
   </div>
@@ -359,6 +359,9 @@
       var button = document.getElementById(buttonId);
       if (!button) return;
       var width = Math.max(button.offsetWidth, button.getBoundingClientRect().width);
+      if (menuId === 'leaves-user-dropdown') {
+        width = Math.max(width, 300);
+      }
       menu.style.width = width + 'px';
       menu.style.minWidth = width + 'px';
     }
@@ -674,16 +677,16 @@
           var actionHtml = '<span class="text-xs text-gray-400">—</span>';
             if (record.status === 'flagged' && record.can_unflag) {
               actionHtml = '<div class="inline-flex items-center gap-2">' +
-                '<button type="button" title="<%= j l(:button_unflag) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50" data-unflag-id="' + record.id + '">' +
-                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' +
+                '<button type="button" title="<%= j l(:button_unflag) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--confirm inline-flex h-8 w-8 items-center justify-center" data-unflag-id="' + record.id + '">' +
+                  '<span class="material-icons" style="font-size:18px;line-height:1;">done</span>' +
                 '</button>' +
-                '<button type="button" title="<%= j l(:button_delete) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50" data-delete-id="' + record.id + '">' +
+                '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
                   '<span class="material-icons" style="font-size:18px;line-height:1;">delete</span>' +
                 '</button>' +
               '</div>';
             } else if (record.status === 'flagged') {
               actionHtml = '<div class="inline-flex items-center gap-2">' +
-                '<button type="button" title="<%= j l(:button_delete) %>" class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-700 hover:bg-rose-50" data-delete-id="' + record.id + '">' +
+                '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
                   '<span class="material-icons" style="font-size:18px;line-height:1;">delete</span>' +
                 '</button>' +
                 '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>' +
@@ -880,10 +883,21 @@
       button.addEventListener('click', handleSortClick);
     });
 
-    elements.from.addEventListener('change', scheduleLoadData);
-    elements.from.addEventListener('input', scheduleLoadData);
-    elements.to.addEventListener('change', scheduleLoadData);
-    elements.to.addEventListener('input', scheduleLoadData);
+    function bindDateAutoReload(input) {
+      ['change', 'input', 'blur', 'changeDate'].forEach(function (eventName) {
+        input.addEventListener(eventName, scheduleLoadData);
+      });
+    }
+
+    bindDateAutoReload(elements.from);
+    bindDateAutoReload(elements.to);
+
+    var dateRangePicker = document.getElementById('leaves-date-range-picker');
+    if (dateRangePicker) {
+      ['changeDate', 'change'].forEach(function (eventName) {
+        dateRangePicker.addEventListener(eventName, scheduleLoadData);
+      });
+    }
 
     elements.search.addEventListener('input', function () {
       state.dailyPage = 1;
