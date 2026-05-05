@@ -474,6 +474,78 @@ button[onclick*="toggleCustomDateRange"]:not([style*="background-color: #3b82f6"
   border-color: #d1d5db !important;
 }
 
+/* === Leaves page tab and control overrides === */
+button.leaves-tab,
+button.leaves-tab:hover,
+button.leaves-tab:focus,
+button.leaves-tab:focus-visible,
+button.leaves-tab:active {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: rgb(107 114 128) !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.leaves-tab.leaves-tab-active,
+button.leaves-tab.leaves-tab-active:hover,
+button.leaves-tab.leaves-tab-active:focus,
+button.leaves-tab.leaves-tab-active:focus-visible,
+button.leaves-tab.leaves-tab-active:active {
+  background: rgb(243 244 246) !important;
+  color: rgb(37 99 235) !important;
+}
+
+button.leaves-tab:active {
+  background: transparent !important;
+}
+
+button.leaves-tab.leaves-tab-active:active {
+  background: rgb(243 244 246) !important;
+}
+
+button[data-table-sort].text-blue-600,
+button[data-table-sort].text-blue-600:hover,
+button[data-table-sort].text-blue-600:focus,
+button[data-table-sort].text-blue-600:focus-visible {
+  color: #111827 !important;
+}
+
+button[data-table-sort]:focus,
+button[data-table-sort]:focus-visible,
+button[data-table-sort]:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.leaves-dropdown-option,
+.leaves-dropdown-option:hover,
+.leaves-dropdown-option:focus,
+.leaves-dropdown-option:focus-visible,
+.leaves-dropdown-option:active {
+  color: #374151 !important;
+  background: #ffffff !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.leaves-dropdown-option:hover,
+.leaves-dropdown-option:focus-visible {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.leaves-dropdown-option--active,
+.leaves-dropdown-option--active:hover,
+.leaves-dropdown-option--active:focus,
+.leaves-dropdown-option--active:focus-visible,
+.leaves-dropdown-option--active:active {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
 /* Specific fix for inactive Detailed/Summary buttons - keep gray border on hover */
 button[onclick*="showDetailedView"]:not([style*="background-color: #3b82f6"]):hover,
 button[onclick*="showSummaryView"]:not([style*="background-color: #3b82f6"]):hover {

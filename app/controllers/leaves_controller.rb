@@ -6,10 +6,11 @@ class LeavesController < ApplicationController
 
   def index
     @users = User.active.sorted
-    @default_from = Date.current.beginning_of_month
-    @default_to = Date.current
+    @default_from = parse_date(params[:from]) || Date.current.beginning_of_month
+    @default_to = parse_date(params[:to]) || Date.current
     @filter_status = params[:status].to_s.presence
     @filter_user_id = params[:user_id].to_s.presence
+    @selected_user = @filter_user_id.present? ? User.find_by(id: @filter_user_id) : nil
   end
 
   def data
@@ -112,6 +113,7 @@ class LeavesController < ApplicationController
       id: record.id,
       user_id: mapped_user&.id,
       user_name: mapped_user&.name || record.sender_email,
+      sender_email: record.sender_email.to_s,
       leave_date: record.leave_date,
       leave_fraction: leave_fraction.round(2),
       leave_type: leave_fraction >= 1 ? 'Full Day' : (leave_fraction >= 0.5 ? 'Half Day' : 'Unknown'),
@@ -149,7 +151,12 @@ class LeavesController < ApplicationController
   end
 
   def parse_date(value)
-    Date.parse(value.to_s)
+    raw = value.to_s.strip
+    return nil if raw.blank?
+
+    Date.strptime(raw, '%m/%d/%Y')
+  rescue ArgumentError, TypeError
+    Date.parse(raw)
   rescue ArgumentError, TypeError
     nil
   end
