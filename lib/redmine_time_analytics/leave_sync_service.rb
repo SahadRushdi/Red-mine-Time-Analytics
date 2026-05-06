@@ -47,9 +47,9 @@ module RedmineTimeAnalytics
 
     def process_messages!(messages:, recipient_email:, mode:)
       result = SyncResult.new(processed_count: 0, imported_count: 0, flagged_count: 0, errors: [])
-      Array(messages).each do |message|
+      sorted_messages(messages).each do |message|
         result.processed_count += 1
-        handle_message(message.symbolize_keys, recipient_email, mode, result)
+        handle_message(message, recipient_email, mode, result)
       rescue StandardError => e
         result.errors << e.message
       end
@@ -59,13 +59,22 @@ module RedmineTimeAnalytics
     def handle_message(message, recipient_email, mode, result)
       parsed = @parser.parse(message: message, recipient_email: recipient_email)
       return if parsed.status == :ignored
+      sent_at = normalized_sent_time(message[:sent_at])
 
       if parsed.status == :flagged
-        persist_flagged_message(parsed, message, recipient_email, mode)
+        persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
         result.flagged_count += 1
         return
       end
 
+      if parsed.status == :cancelled
+        handle_cancelled_message(parsed, message, sent_at)
+        return
+      end
+
+      return if newer_thread_message?(parsed.user, message, sent_at)
+
+      reconcile_thread_records(parsed, message, sent_at)
       parsed.leave_dates.each do |leave_date|
         TaLeaveRecord.upsert_from_email!(
           user: parsed.user,
@@ -76,7 +85,7 @@ module RedmineTimeAnalytics
           recipient_email: recipient_email,
           source_message_id: message[:message_id],
           source_thread_id: message[:thread_id],
-          source_sent_at: message[:sent_at],
+          source_sent_at: sent_at,
           raw_subject: message[:subject],
           raw_body: message[:body],
           sync_mode: mode.to_s
@@ -85,8 +94,8 @@ module RedmineTimeAnalytics
       result.imported_count += parsed.leave_dates.length
     end
 
-    def persist_flagged_message(parsed, message, recipient_email, mode)
-      leave_date = parsed.leave_dates.first || message[:sent_at].to_date
+    def persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
+      leave_date = parsed.leave_dates.first || sent_at&.to_date || Time.zone.now.to_date
       TaLeaveRecord.upsert_from_email!(
         user: parsed.user,
         leave_date: leave_date,
@@ -96,11 +105,62 @@ module RedmineTimeAnalytics
         recipient_email: recipient_email,
         source_message_id: message[:message_id],
         source_thread_id: message[:thread_id],
-        source_sent_at: message[:sent_at],
+        source_sent_at: sent_at,
         raw_subject: "[FLAGGED:#{parsed.reason}] #{message[:subject]}",
         raw_body: message[:body],
         sync_mode: mode.to_s
       )
+    end
+
+    def handle_cancelled_message(parsed, message, sent_at)
+      return unless parsed.user
+
+      thread_id = message[:thread_id].to_s
+      if thread_id.present?
+        TaLeaveRecord.cancel_thread_records!(
+          user_id: parsed.user.id,
+          thread_id: thread_id,
+          incoming_sent_at: sent_at,
+          leave_dates: parsed.leave_dates
+        )
+      else
+        TaLeaveRecord.cancel_user_dates!(user_id: parsed.user.id, leave_dates: parsed.leave_dates)
+      end
+    end
+
+    def newer_thread_message?(user, message, sent_at)
+      return false unless user && message[:thread_id].present?
+
+      TaLeaveRecord.newer_thread_update_exists?(
+        user_id: user.id,
+        thread_id: message[:thread_id],
+        incoming_sent_at: sent_at
+      )
+    end
+
+    def reconcile_thread_records(parsed, message, sent_at)
+      return unless parsed.user && message[:thread_id].present?
+
+      TaLeaveRecord.replace_thread_records!(
+        user_id: parsed.user.id,
+        thread_id: message[:thread_id],
+        incoming_sent_at: sent_at,
+        leave_dates: parsed.leave_dates
+      )
+    end
+
+    def sorted_messages(messages)
+      Array(messages)
+        .map { |message| message.symbolize_keys }
+        .sort_by { |message| [normalized_sent_time(message[:sent_at]) || Time.zone.at(0), message[:message_id].to_s] }
+    end
+
+    def normalized_sent_time(value)
+      return value.in_time_zone if value.respond_to?(:in_time_zone)
+
+      Time.zone.parse(value.to_s)
+    rescue StandardError
+      nil
     end
   end
 end

@@ -5,6 +5,10 @@ module RedmineTimeAnalytics
     Result = Struct.new(:status, :reason, :user, :leave_dates, :leave_fraction, keyword_init: true)
 
     HALF_DAY_KEYWORDS = ['half day', 'half-day', 'morning', 'evening'].freeze
+    FULL_DAY_KEYWORDS = ['full day', 'full-day', 'whole day', 'entire day'].freeze
+    CANCELLATION_KEYWORDS = ['cancel', 'cancelled', 'canceled', 'withdraw', 'revoked', 'revoke'].freeze
+    FULL_DAY_FRACTION = 1.0
+    HALF_DAY_FRACTION = 0.5
     MONTH_REGEX = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
                   'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
                   'nov(?:ember)?|dec(?:ember)?)'.freeze
@@ -21,12 +25,26 @@ module RedmineTimeAnalytics
       user = find_active_user_by_email(sender_email)
       return Result.new(status: :flagged, reason: 'user_not_found', leave_dates: [], leave_fraction: 0) unless user
 
-      text = [message[:subject], message[:body]].compact.join("\n")
-      leave_fraction = half_day_request?(text) ? 0.5 : 1.0
+      subject_text = message[:subject].to_s
+      body_text = message[:body].to_s
+      leave_fraction = determine_leave_fraction(subject_text: subject_text, body_text: body_text)
+      if cancellation_request?(subject_text: subject_text, body_text: body_text)
+        cancellation_dates = extract_dates_with_priority(subject_text: subject_text, body_text: body_text)
+        return Result.new(
+          status: :cancelled,
+          reason: 'cancelled',
+          user: user,
+          leave_dates: cancellation_dates,
+          leave_fraction: FULL_DAY_FRACTION
+        )
+      end
 
-      extracted_dates = extract_dates_from_text(text)
-      fallback_date = message[:sent_at].to_date
-      extracted_dates = [fallback_date] if extracted_dates.empty?
+      extracted_dates = extract_dates_with_priority(subject_text: subject_text, body_text: body_text)
+      fallback_date = sent_date(message[:sent_at])
+      extracted_dates = [fallback_date] if extracted_dates.empty? && fallback_date.present?
+      if extracted_dates.empty?
+        return Result.new(status: :flagged, reason: 'no_date_found', user: user, leave_dates: [], leave_fraction: leave_fraction)
+      end
 
       working_dates = extracted_dates.select { |date| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) }.uniq.sort
       if working_dates.empty?
@@ -89,6 +107,34 @@ module RedmineTimeAnalytics
     def half_day_request?(text)
       normalized = text.to_s.downcase
       HALF_DAY_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
+    end
+
+    def determine_leave_fraction(subject_text:, body_text:)
+      normalized = [subject_text, body_text].compact.join("\n").downcase
+      return FULL_DAY_FRACTION if FULL_DAY_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
+      return HALF_DAY_FRACTION if half_day_request?(normalized)
+
+      FULL_DAY_FRACTION
+    end
+
+    def cancellation_request?(subject_text:, body_text:)
+      normalized = [subject_text, body_text].compact.join("\n").downcase
+      CANCELLATION_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
+    end
+
+    def extract_dates_with_priority(subject_text:, body_text:)
+      subject_dates = extract_dates_from_text(subject_text)
+      return subject_dates if subject_dates.present?
+
+      extract_dates_from_text(body_text)
+    end
+
+    def sent_date(value)
+      return value.to_date if value.respond_to?(:to_date)
+
+      Time.zone.parse(value.to_s)&.to_date
+    rescue StandardError
+      nil
     end
 
     def extract_dates_from_text(text)

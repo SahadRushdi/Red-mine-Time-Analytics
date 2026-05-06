@@ -52,6 +52,7 @@ class TaLeaveRecord < ActiveRecord::Base
 
       record.assign_attributes(
         user_id: user&.id,
+        leave_date: leave_date,
         leave_fraction: leave_fraction,
         status: status,
         sender_email: sender_email,
@@ -65,6 +66,51 @@ class TaLeaveRecord < ActiveRecord::Base
       )
       record.save!
       record
+    end
+
+    def newer_thread_update_exists?(user_id:, thread_id:, incoming_sent_at:)
+      return false if user_id.blank? || thread_id.blank? || incoming_sent_at.blank?
+
+      where(user_id: user_id, source_thread_id: thread_id)
+        .where.not(source_sent_at: nil)
+        .where('source_sent_at > ?', incoming_sent_at)
+        .exists?
+    end
+
+    def replace_thread_records!(user_id:, thread_id:, incoming_sent_at:, leave_dates:)
+      return if user_id.blank? || thread_id.blank?
+
+      scope = confirmed.where(user_id: user_id, source_thread_id: thread_id)
+      if incoming_sent_at.present?
+        scope = scope.where('source_sent_at IS NULL OR source_sent_at <= ?', incoming_sent_at)
+      end
+
+      if leave_dates.present?
+        scope.where.not(leave_date: leave_dates).delete_all
+      else
+        scope.delete_all
+      end
+    end
+
+    def cancel_thread_records!(user_id:, thread_id:, incoming_sent_at:, leave_dates:)
+      return if user_id.blank? || thread_id.blank?
+
+      scope = confirmed.where(user_id: user_id, source_thread_id: thread_id)
+      if incoming_sent_at.present?
+        scope = scope.where('source_sent_at IS NULL OR source_sent_at <= ?', incoming_sent_at)
+      end
+
+      if leave_dates.present?
+        scope.where(leave_date: leave_dates).delete_all
+      else
+        scope.delete_all
+      end
+    end
+
+    def cancel_user_dates!(user_id:, leave_dates:)
+      return if user_id.blank? || leave_dates.blank?
+
+      confirmed.where(user_id: user_id, leave_date: leave_dates).delete_all
     end
 
     def total_leave_days_for_user(user_id:, from_date:, to_date:)
