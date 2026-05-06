@@ -76,6 +76,7 @@ class LeavesController < ApplicationController
     user_totals = Hash.new(0.0)
     records.each do |record|
       next if record.user_id.blank?
+      next if record.status == 'flagged'
 
       user_totals[record.user_id] += effective_leave_fraction(record)
     end
@@ -83,7 +84,7 @@ class LeavesController < ApplicationController
     {
       filters: { from: from_date, to: to_date, user_id: filters[:user_id].to_s, status: filters[:status].to_s },
       totals: {
-        overall_leave_days: records.sum { |record| effective_leave_fraction(record) }.round(2),
+        overall_leave_days: records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
         users_with_leave: user_totals.keys.compact.count,
         flagged_records: records.count { |record| record.status == 'flagged' },
         total_records: records.count
@@ -91,7 +92,7 @@ class LeavesController < ApplicationController
       daily_groups: grouped_by_date.map do |date, group_records|
         {
           date: date,
-          total_leave_days: group_records.sum { |record| effective_leave_fraction(record) }.round(2),
+          total_leave_days: group_records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
           records: group_records.map { |record| serialize_record(record) }
         }
       end,
