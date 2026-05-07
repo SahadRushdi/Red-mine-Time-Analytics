@@ -435,6 +435,8 @@
         <%= form_for @team_project, url: admin_ta_team_team_projects_path(@team), html: { id: 'ta-team-project-modal-form', class: 'space-y-6', onsubmit: 'return submitTeamProjectAddForm()' } do |f| %>
           <%= error_messages_for 'ta_team_project' %>
 
+          <%= hidden_field_tag 'ta_team_project[source_type]', 'external', id: 'ta-add-team-project-source-type' %>
+
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="md:col-span-2">
               <%= label_tag :ta_team_project_source_type_modal, 'Project Source', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
