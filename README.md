@@ -49,7 +49,9 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Historical + Incremental Sync**: Available for OAuth and DWD approaches
 - **Leave-aware Active Days**: Individual dashboard active days now uses `Working Days - Leave Days`
 - **Leave-aware Averages**: Individual averages and team overview averages exclude synced leave days from denominators
-- **Half-day Detection**: Leave emails containing `half day`, `morning`, or `evening` are counted as `0.5`
+- **Natural Language Parsing**: Chronic + Nickel parse leave dates from the email subject first, then the body, then the sent date as a last fallback
+- **Half-Day Detection**: Emails containing `half day`, `morning`, or `evening` are counted as `0.5`; full-day phrases stay `1.0`
+- **Reply Updates**: Follow-up replies in the same thread replace earlier leave records so amendments are not double-counted
 - **Deduplication/Amendments**: Same-day updates replace prior values to avoid double counting
 
 ### UI/UX Improvements
