@@ -438,52 +438,15 @@
           <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="md:col-span-2">
               <%= label_tag :ta_team_project_source_type_modal, 'Project Source', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-              <div class="flex flex-wrap items-center gap-4 pt-1">
-                <label class="inline-flex items-center gap-2 text-sm text-gray-800">
-                  <%= radio_button_tag 'ta_team_project[source_type]', 'local', selected_source_type != 'external', id: 'ta-add-team-project-source-local', onclick: "toggleTeamProjectSource('local')" %>
-                  <span>Internal Redmine Project</span>
-                </label>
-                <label class="inline-flex items-center gap-2 text-sm text-gray-800">
-                  <%= radio_button_tag 'ta_team_project[source_type]', 'external', selected_source_type == 'external', id: 'ta-add-team-project-source-external', onclick: "toggleTeamProjectSource('external')" %>
-                  <span>External Support Redmine URL</span>
-                </label>
+              <div class="flex items-center gap-2 pt-1">
+                <span class="text-sm text-gray-800 font-medium">External Support Redmine URL</span>
               </div>
             </div>
 
-            <div class="md:col-span-2">
-              <%= label_tag :ta_team_project_search_modal, 'Project', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-              <div class="relative min-w-0" id="ta-add-team-project-wrapper">
-                <input type="text"
-                       id="ta-add-team-project-search"
-                       value="<%= h(selected_project_text) %>"
-                       placeholder="🔍 Search project... *"
-                       autocomplete="off"
-                       onclick="teamProjectsOpenAddDropdown()"
-                       oninput="teamProjectsFilterAddProjects()"
-                       onkeydown="teamProjectsHandleAddProjectKey(event)"
-                       class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
-                       required>
-                <%= hidden_field_tag 'ta_team_project[project_id]', @team_project.project_id, id: 'ta-add-team-project-id' %>
-                <div id="ta-add-team-project-list"
-                     class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                     style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
-                  <% @available_projects.each do |project| %>
-                    <% project_text = "#{project.name} (#{project.identifier})" %>
-                    <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
-                         tabindex="0"
-                         data-id="<%= project.id %>"
-                         data-text="<%= j(project_text) %>"
-                         data-search="<%= j("#{project.name} #{project.identifier}".downcase) %>"
-                         onclick="teamProjectsSelectAddProject(this.getAttribute('data-id'), this.getAttribute('data-text'))"
-                         onkeydown="teamProjectsHandleAddProjectOptionKey(event, this.getAttribute('data-id'), this.getAttribute('data-text'))">
-                      <span class="text-gray-700 leading-relaxed"><%= h(project.name) %> <span class="text-gray-400">(<%= h(project.identifier) %>)</span></span>
-                    </div>
-                  <% end %>
-                </div>
-              </div>
-            </div>
+            <%# Internal project selection removed - default to External Support Redmine URL %>
+            <%= hidden_field_tag 'ta_team_project[project_id]', @team_project.project_id, id: 'ta-add-team-project-id' %>
 
-            <div class="md:col-span-2 hidden" id="ta-add-external-project-url-wrap">
+            <div class="md:col-span-2" id="ta-add-external-project-url-wrap">
               <%= label_tag :ta_team_project_external_project_url_modal, 'External Project URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
               <%= text_field_tag 'ta_team_project[external_project_url]',
                                  selected_external_url,
@@ -821,7 +784,7 @@
 
   function teamProjectsSelectedSourceType() {
     var selected = document.querySelector('input[name="ta_team_project[source_type]"]:checked');
-    return selected ? selected.value : 'local';
+    return selected ? selected.value : 'external';
   }
 
   function toggleTeamProjectSource(sourceType) {
