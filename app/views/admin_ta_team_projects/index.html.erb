@@ -109,41 +109,11 @@
                   <div class="ta-team-project-edit hidden tep-inline-form w-full space-y-3">
                     <div class="md:col-span-2 relative min-w-0">
                       <%= label_tag "ta-team-project-source-button-#{team_project.id}", 'Project Source', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
-                      <button type="button"
-                              id="ta-team-project-source-button-<%= team_project.id %>"
-                              data-ta-dropdown-toggle="ta-team-project-source-list-<%= team_project.id %>"
-                              class="inline-flex h-[43px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]">
-                        <span id="ta-team-project-source-label-<%= team_project.id %>" class="truncate"><%= selected_source_type == 'external' ? 'External Support Redmine URL' : 'Internal Redmine Project' %></span>
-                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                      </button>
-                      <%= hidden_field_tag 'ta_team_project[source_type]', selected_source_type, form: form_id, id: "ta-team-project-source-value-#{team_project.id}" %>
-                      <div id="ta-team-project-source-list-<%= team_project.id %>"
-                           data-ta-dropdown-menu="true"
-                           class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-                        <ul class="py-1 text-sm text-gray-700">
-                          <li>
-                            <button type="button"
-                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                                    data-ta-team-project-source-value="local"
-                                    data-ta-team-project-source-label="Internal Redmine Project">
-                              Internal Redmine Project
-                            </button>
-                          </li>
-                          <li>
-                            <button type="button"
-                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                                    data-ta-team-project-source-value="external"
-                                    data-ta-team-project-source-label="External Support Redmine URL">
-                              External Support Redmine URL
-                            </button>
-                          </li>
-                        </ul>
-                      </div>
+                      <div class="mb-1 text-xs text-gray-500">External Support Redmine URL</div>
+                      <%= hidden_field_tag 'ta_team_project[source_type]', 'external', form: form_id, id: "ta-team-project-source-value-#{team_project.id}" %>
                     </div>
 
-                    <div class="md:col-span-2 <%= 'hidden' if selected_source_type == 'external' %>" id="ta-team-project-local-wrap-<%= team_project.id %>">
+                    <div class="md:col-span-2 hidden" id="ta-team-project-local-wrap-<%= team_project.id %>">
                       <%= label_tag "ta-team-project-project-button-#{team_project.id}", 'Project', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
                       <button type="button"
                               id="ta-team-project-project-button-<%= team_project.id %>"
@@ -173,7 +143,7 @@
                       </div>
                     </div>
 
-                    <div class="md:col-span-2 <%= 'hidden' if selected_source_type == 'local' %>" id="ta-team-project-external-wrap-<%= team_project.id %>">
+                    <div class="md:col-span-2" id="ta-team-project-external-wrap-<%= team_project.id %>">
                       <%= label_tag "ta-team-project-external-url-#{team_project.id}", 'External Project URL', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
                       <%= text_field_tag 'ta_team_project[external_project_url]',
                                          team_project.external_project_url,
@@ -181,8 +151,8 @@
                                          form: form_id,
                                          autocomplete: 'off',
                                          placeholder: 'https://support.example.com/projects/project-identifier',
-                                         required: selected_source_type == 'external',
-                                         disabled: selected_source_type != 'external',
+                                         required: true,
+                                         disabled: false,
                                          class: 'ta-team-field ta-team-project-inline-url ta-team-settings-member-input block h-[43px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900' %>
                       <p class="mt-1 text-xs text-gray-500">Must include <code>/projects/&lt;identifier&gt;</code>.</p>
                     </div>
