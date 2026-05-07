@@ -674,32 +674,69 @@
         html = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
       } else {
         page.items.forEach(function (record) {
-          var actionHtml = '<span class="text-xs text-gray-400">—</span>';
-            if (record.status === 'flagged' && record.can_unflag) {
-              actionHtml = '<div class="inline-flex items-center gap-2">' +
-                '<button type="button" title="<%= j l(:button_unflag) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--confirm inline-flex h-8 w-8 items-center justify-center" data-unflag-id="' + record.id + '">' +
-                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' +
-                '</button>' +
-                '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
-                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
-                '</button>' +
-              '</div>';
-            } else if (record.status === 'flagged') {
-              actionHtml = '<div class="inline-flex items-center gap-2">' +
-                '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
-                  '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
-                '</button>' +
-                '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>' +
-              '</div>';
-          }
+          var leaveDateValue = formatLeaveDateForInput(record.leave_date);
+          var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
+          var actionHtml = '<div class="inline-flex items-center gap-2">' +
+            '<button type="button" title="<%= j l(:button_edit) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--edit inline-flex h-8 w-8 items-center justify-center" data-edit-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4h2M4 20h16M6 16l10.5-10.5a1.5 1.5 0 112.12 2.12L8.12 18.12 4 20l1.88-4.12z"></path></svg>' +
+            '</button>';
 
-          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50">' +
-            '<td class="px-4 py-3 whitespace-nowrap text-gray-900">' + record.leave_date + '</td>' +
+          if (record.status === 'flagged' && record.can_unflag) {
+            actionHtml += '<button type="button" title="<%= j l(:button_unflag) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--confirm inline-flex h-8 w-8 items-center justify-center" data-unflag-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' +
+            '</button>' +
+            '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
+            '</button>';
+          } else if (record.status === 'flagged') {
+            actionHtml += '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
+            '</button>' +
+            '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>';
+          }
+          actionHtml += '</div>';
+
+          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
+            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
             '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
-            '<td class="px-4 py-3 text-gray-700">' + record.leave_type + '</td>' +
-            '<td class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
+            '<td id="leaves-type-value-' + record.id + '" class="px-4 py-3 text-gray-700">' + (record.leave_type || leaveTypeForFraction(record.leave_fraction)) + '</td>' +
+            '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
             '<td class="px-4 py-3">' + statusBadge(record.status) + '</td>' +
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
+          '</tr>';
+          html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
+            '<td colspan="6" class="px-4 py-4">' +
+              '<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">' +
+                '<div class="flex flex-col gap-4 sm:flex-row sm:items-end">' +
+                  '<div class="w-full sm:w-48">' +
+                    '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_date) %></label>' +
+                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[43px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
+                  '</div>' +
+                  '<div class="relative w-full sm:w-40" id="leaves-fraction-wrapper-' + record.id + '">' +
+                    '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_total) %></label>' +
+                    '<button type="button" class="tep-field flex h-[40px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
+                      '<span data-leaves-fraction-label="' + record.id + '" class="text-gray-700 truncate flex-1">' + leaveFractionValue + '</span>' +
+                      '<svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>' +
+                      '</svg>' +
+                    '</button>' +
+                    '<input type="hidden" value="' + leaveFractionValue + '" data-leaves-fraction-input="' + record.id + '">' +
+                    '<div id="leaves-fraction-menu-' + record.id + '" data-leaves-fraction-menu="' + record.id + '" class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto" style="min-width: 128px; max-height: 360px; top: calc(100% + 2px);">' +
+                      '<button type="button" class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900' + (leaveFractionValue === '0.5' ? ' !font-semibold !bg-blue-50' : '') + '" data-leaves-fraction-option="' + record.id + '" data-fraction-value="0.5" data-fraction-label="0.5">0.5</button>' +
+                      '<button type="button" class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900' + (leaveFractionValue === '1' ? ' !font-semibold !bg-blue-50' : '') + '" data-leaves-fraction-option="' + record.id + '" data-fraction-value="1" data-fraction-label="1">1</button>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="rounded-lg border border-blue-100 bg-blue-100/60 px-3 py-2 text-sm text-blue-800">' +
+                    '<span class="font-medium"><%= j l(:label_leave_type) %>:</span> ' +
+                    '<span data-leaves-type-preview="' + record.id + '">' + (record.leave_type || leaveTypeForFraction(record.leave_fraction)) + '</span>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2">' +
+                  '<button type="button" class="inline-flex items-center rounded-lg bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]" data-leaves-save-id="' + record.id + '"><%= j l(:button_save) %></button>' +
+                  '<button type="button" class="tep-entry-cancel-btn px-4 py-2 text-sm font-medium !text-gray-600 !bg-white rounded-lg" data-leaves-cancel-id="' + record.id + '">Cancel</button>' +
+                '</div>' +
+              '</div>' +
+            '</td>' +
           '</tr>';
         });
       }
@@ -836,6 +873,195 @@
       return '<span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>';
     }
 
+    function leaveTypeForFraction(fraction) {
+      var value = Number(fraction) || 0;
+      if (value >= 1) return 'Full Day';
+      if (value >= 0.5) return 'Half Day';
+      return 'Unknown';
+    }
+
+    function formatLeaveDateForInput(value) {
+      var text = String(value || '');
+      if (!text) return '';
+      if (text.indexOf('/') !== -1) return text;
+      var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (parts) return parts[2] + '/' + parts[3] + '/' + parts[1];
+      return text;
+    }
+
+    function leaveFractionLabel(fraction) {
+      return Number(fraction) >= 1 ? '1' : '0.5';
+    }
+
+    function closeFractionDropdowns(exceptId) {
+      document.querySelectorAll('[data-leaves-fraction-menu]').forEach(function (menu) {
+        if (exceptId && menu.getAttribute('data-leaves-fraction-menu') === String(exceptId)) return;
+        menu.classList.add('hidden');
+      });
+    }
+
+    function syncFractionLabel(recordId, fraction) {
+      var label = document.querySelector('[data-leaves-fraction-label="' + recordId + '"]');
+      var typeCell = document.getElementById('leaves-type-value-' + recordId);
+      var typePreview = document.querySelector('[data-leaves-type-preview="' + recordId + '"]');
+      var leaveType = leaveTypeForFraction(fraction);
+
+      if (label) label.textContent = leaveFractionLabel(fraction);
+      if (typeCell) typeCell.textContent = leaveType;
+      if (typePreview) typePreview.textContent = leaveType;
+    }
+
+    function toggleFractionDropdown(recordId) {
+      var menu = document.getElementById('leaves-fraction-menu-' + recordId);
+      if (!menu) return;
+      var shouldOpen = menu.classList.contains('hidden');
+      closeFractionDropdowns(recordId);
+      menu.classList.toggle('hidden', !shouldOpen);
+    }
+
+    function selectFraction(recordId, fraction) {
+      var input = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      if (input) input.value = fraction;
+      syncFractionLabel(recordId, fraction);
+      closeFractionDropdowns();
+    }
+
+    function initLeavesEditDatepicker(recordId) {
+      var input = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      if (!input) return;
+      var picker = input.datepicker || input._leavesDatepicker || null;
+
+      if (picker && picker.setOptions) {
+          picker.setOptions({
+          todayHighlight: true,
+          showOnFocus: false,
+          showOnClick: true,
+          autohide: true
+        });
+      } else if (window.Datepicker && !input._leavesDatepicker) {
+        input._leavesDatepicker = new window.Datepicker(input, {
+          format: 'mm/dd/yyyy',
+          autohide: true,
+          showOnFocus: false,
+          showOnClick: true
+        });
+        picker = input.datepicker || input._leavesDatepicker;
+      }
+
+      if (!input.dataset.leavesDatepickerBound) {
+        input.addEventListener('keydown', function (event) {
+          var activePicker = input.datepicker || input._leavesDatepicker;
+          if (event.key === 'Escape' && activePicker && activePicker.hide) {
+            activePicker.hide();
+            input.blur();
+          }
+        });
+        input.dataset.leavesDatepickerBound = '1';
+      }
+    }
+
+    function closeAllEditRows(exceptId) {
+      document.querySelectorAll('[data-leaves-edit-row]').forEach(function (row) {
+        if (exceptId && row.getAttribute('data-leaves-edit-row') === String(exceptId)) return;
+        resetRowPreview(row.getAttribute('data-leaves-edit-row'));
+        row.classList.add('hidden');
+      });
+    }
+
+    function resetRowPreview(recordId) {
+      if (!recordId) return;
+      var row = document.querySelector('[data-leaves-edit-row="' + recordId + '"]');
+      if (!row) return;
+
+      var originalDate = row.getAttribute('data-original-leave-date') || '';
+      var originalFraction = row.getAttribute('data-original-leave-fraction') || '';
+      var dateCell = document.getElementById('leaves-date-value-' + recordId);
+      var fractionCell = document.getElementById('leaves-fraction-value-' + recordId);
+      var typeCell = document.getElementById('leaves-type-value-' + recordId);
+      var typePreview = document.querySelector('[data-leaves-type-preview="' + recordId + '"]');
+      var fractionInput = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      var fractionLabel = document.querySelector('[data-leaves-fraction-label="' + recordId + '"]');
+      var fractionValue = originalFraction || '0';
+      var leaveType = leaveTypeForFraction(fractionValue);
+
+      if (dateCell && originalDate) {
+        dateCell.textContent = originalDate;
+      }
+      if (fractionCell && originalFraction) {
+        fractionCell.textContent = formatNumber(originalFraction);
+      }
+      if (fractionInput && originalFraction) {
+        fractionInput.value = originalFraction;
+      }
+      if (fractionLabel && originalFraction) {
+        fractionLabel.textContent = originalFraction;
+      }
+      if (typeCell) {
+        typeCell.textContent = leaveType;
+      }
+      if (typePreview) {
+        typePreview.textContent = leaveType;
+      }
+    }
+
+    function updateRowPreview(recordId) {
+      var dateInput = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      var fractionSelect = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      var dateCell = document.getElementById('leaves-date-value-' + recordId);
+      var fractionCell = document.getElementById('leaves-fraction-value-' + recordId);
+      if (!fractionSelect || !dateInput) return;
+
+      var leaveFraction = Number(fractionSelect.value) || 0;
+      var leaveDate = dateInput.value || '';
+      if (dateCell && leaveDate) {
+        dateCell.textContent = leaveDate;
+      }
+      if (fractionCell) {
+        fractionCell.textContent = formatNumber(leaveFraction);
+      }
+      syncFractionLabel(recordId, leaveFraction);
+    }
+
+    function toggleEditRow(recordId) {
+      var row = document.getElementById('leaves-edit-row-' + recordId);
+      if (!row) return;
+      if (row.classList.contains('hidden')) {
+        closeAllEditRows(recordId);
+        closeFractionDropdowns(recordId);
+        row.classList.remove('hidden');
+        initLeavesEditDatepicker(recordId);
+        return;
+      }
+
+      resetRowPreview(recordId);
+      row.classList.add('hidden');
+      closeFractionDropdowns();
+    }
+
+    function saveEditRow(recordId) {
+      var dateInput = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      var fractionSelect = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      if (!dateInput || !fractionSelect) return;
+
+      fetch('/leaves/' + recordId, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          leave_date: dateInput.value,
+          leave_fraction: fractionSelect.value
+        })
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          loadData();
+        })
+        .catch(function (error) { alert(error.message); });
+    }
+
     function setUserFilter(userId, userLabel) {
       elements.userInput.value = userId || '';
       elements.userLabel.textContent = selectedText(userLabel, '<%= j l(:label_all_users) %>');
@@ -923,11 +1149,33 @@
           !event.target.closest('#leaves-per-page-dropdown-button') && !event.target.closest('#leaves-per-page-dropdown')) {
         closeDropdowns();
       }
+      if (!event.target.closest('[data-leaves-fraction-toggle]') &&
+          !event.target.closest('[data-leaves-fraction-menu]')) {
+        closeFractionDropdowns();
+      }
     });
 
     document.getElementById('leaves-daily-tbody').addEventListener('click', function (event) {
+      var editButton = event.target.closest('[data-edit-id]');
+      var fractionToggle = event.target.closest('[data-leaves-fraction-toggle]');
+      var fractionOption = event.target.closest('[data-leaves-fraction-option]');
       var unflagButton = event.target.closest('[data-unflag-id]');
       var deleteButton = event.target.closest('[data-delete-id]');
+      var saveButton = event.target.closest('[data-leaves-save-id]');
+      var cancelButton = event.target.closest('[data-leaves-cancel-id]');
+
+      if (editButton) {
+        toggleEditRow(editButton.getAttribute('data-edit-id'));
+      }
+      if (fractionToggle) {
+        toggleFractionDropdown(fractionToggle.getAttribute('data-leaves-fraction-toggle'));
+      }
+      if (fractionOption) {
+        selectFraction(
+          fractionOption.getAttribute('data-leaves-fraction-option'),
+          fractionOption.getAttribute('data-fraction-value')
+        );
+      }
       if (unflagButton) {
         fetch('/leaves/' + unflagButton.getAttribute('data-unflag-id') + '/status', {
           method: 'PATCH',
@@ -946,6 +1194,35 @@
       }
       if (deleteButton) {
         openDeleteModal(deleteButton.getAttribute('data-delete-id'));
+      }
+      if (saveButton) {
+        saveEditRow(saveButton.getAttribute('data-leaves-save-id'));
+      }
+      if (cancelButton) {
+        resetRowPreview(cancelButton.getAttribute('data-leaves-cancel-id'));
+        var cancelRow = document.getElementById('leaves-edit-row-' + cancelButton.getAttribute('data-leaves-cancel-id'));
+        if (cancelRow) cancelRow.classList.add('hidden');
+        closeFractionDropdowns();
+      }
+    });
+
+    document.getElementById('leaves-daily-tbody').addEventListener('change', function (event) {
+      var fractionInput = event.target.closest('[data-leaves-fraction-input]');
+      var dateInput = event.target.closest('[data-leaves-date-input]');
+      var recordId = null;
+      if (fractionInput) {
+        recordId = fractionInput.getAttribute('data-leaves-fraction-input');
+      } else if (dateInput) {
+        recordId = dateInput.getAttribute('data-leaves-date-input');
+      }
+      if (!recordId) return;
+      updateRowPreview(recordId);
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('[data-leaves-fraction-toggle]') &&
+          !event.target.closest('[data-leaves-fraction-menu]')) {
+        closeFractionDropdowns();
       }
     });
 

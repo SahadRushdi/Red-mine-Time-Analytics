@@ -669,6 +669,17 @@ button[data-table-sort]:active {
   color: #1d4ed8 !important;
 }
 
+.leaves-entry-icon-btn--edit,
+.leaves-entry-icon-btn--edit:focus,
+.leaves-entry-icon-btn--edit:focus-visible,
+.leaves-entry-icon-btn--edit:active {
+  color: #6b7280 !important;
+}
+
+.leaves-entry-icon-btn--edit:hover {
+  color: #111827 !important;
+}
+
 .leaves-entry-icon-btn--delete,
 .leaves-entry-icon-btn--delete:focus,
 .leaves-entry-icon-btn--delete:focus-visible,

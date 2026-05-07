@@ -42,6 +42,37 @@ class LeavesController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def update
+    leave_record = TaLeaveRecord.find(params[:id])
+    leave_fraction = params[:leave_fraction].to_f
+    leave_date = parse_date(params[:leave_date])
+
+    unless leave_fraction.between?(0, 1)
+      return render json: { error: 'Leave fraction must be between 0 and 1' }, status: :unprocessable_entity
+    end
+
+    if leave_date.nil?
+      return render json: { error: 'Leave date is required' }, status: :unprocessable_entity
+    end
+
+    leave_record.update!(
+      leave_fraction: leave_fraction,
+      leave_date: leave_date
+    )
+
+    render json: {
+      ok: true,
+      record_id: leave_record.id,
+      leave_date: leave_record.leave_date.to_s,
+      leave_fraction: leave_record.leave_fraction.to_f.round(2),
+      leave_type: leave_type_for_fraction(leave_record.leave_fraction)
+    }, status: :ok
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: 'Leave record not found' }, status: :not_found
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def destroy
     leave_record = TaLeaveRecord.find(params[:id])
     unless leave_record.status == 'flagged'
@@ -117,10 +148,11 @@ class LeavesController < ApplicationController
       sender_email: record.sender_email.to_s,
       leave_date: record.leave_date,
       leave_fraction: leave_fraction.round(2),
-      leave_type: leave_fraction >= 1 ? 'Full Day' : (leave_fraction >= 0.5 ? 'Half Day' : 'Unknown'),
+      leave_type: leave_type_for_fraction(leave_fraction),
       status: record.status,
       can_unflag: record.status == 'flagged' && mapped_user.present?,
       can_delete: record.status == 'flagged',
+      can_edit: true,
       subject: record.raw_subject.to_s
     }
   end
@@ -160,5 +192,13 @@ class LeavesController < ApplicationController
     Date.parse(raw)
   rescue ArgumentError, TypeError
     nil
+  end
+
+  def leave_type_for_fraction(fraction)
+    value = fraction.to_f
+    return 'Full Day' if value >= 1
+    return 'Half Day' if value >= 0.5
+
+    'Unknown'
   end
 end
