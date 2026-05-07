@@ -8,21 +8,22 @@ class AdminTaTeamSettingsController < ApplicationController
   before_action :require_admin
 
   def index
-    @excluded_users = User.where(id: TaTeamSetting.excluded_user_ids).sorted
+    @excluded_settings = TaTeamSetting.exclusions.includes(:user).to_a.sort_by { |setting| setting.user_name.to_s.downcase }
+    @excluded_users = @excluded_settings.map(&:user).compact
     @super_users = User.where(id: TaTeamSetting.super_user_ids).sorted
     @available_users = User.active.sorted
-    @exclusion_settings_by_user_id = TaTeamSetting.exclusions.pluck(:user_id, :id).to_h
+    @exclusion_settings_by_user_id = @excluded_settings.index_by(&:user_id)
     @super_user_settings_by_user_id = TaTeamSetting.super_users.pluck(:user_id, :id).to_h
     @support_redmine_settings = TaTeamSetting.support_redmine_settings
     @support_redmine_configured = TaTeamSetting.support_redmine_configured?
   end
 
   def create
-    setting_type = params[:setting_type]
+    setting_type = team_setting_params[:setting_type]
 
     if setting_type == 'support_redmine'
-      base_url = params[:support_redmine_base_url].to_s.strip
-      api_key = params[:support_redmine_api_key].to_s.strip
+      base_url = team_setting_params[:support_redmine_base_url].to_s.strip
+      api_key = team_setting_params[:support_redmine_api_key].to_s.strip
 
       begin
         validate_support_base_url!(base_url)
@@ -36,7 +37,7 @@ class AdminTaTeamSettingsController < ApplicationController
       return
     end
 
-    user_id = params[:user_id].to_i
+    user_id = team_setting_params[:user_id].to_i
 
     if user_id.blank? || user_id.zero?
       flash[:error] = "Please select a user"
@@ -46,21 +47,20 @@ class AdminTaTeamSettingsController < ApplicationController
 
     case setting_type
     when 'exclusion'
-      if TaTeamSetting.excluded_user_ids.include?(user_id)
-        flash[:warning] = "User is already in exclusion list"
+      start_date = parse_admin_setting_date(team_setting_params[:start_date]) || Date.current
+      end_date = parse_admin_setting_date(team_setting_params[:end_date])
+      setting = TaTeamSetting.add_to_exclusion_list(user_id, start_date: start_date, end_date: end_date)
+
+      if setting.persisted?
+        flash[:notice] = setting.previously_new_record? ? "User added to exclusion list" : "Exclusion dates updated"
       else
-        setting = TaTeamSetting.create(setting_type: 'exclusion', user_id: user_id)
-        if setting.persisted?
-          flash[:notice] = "User added to exclusion list"
-        else
-          flash[:error] = "Failed to add user: #{setting.errors.full_messages.join(', ')}"
-        end
+        flash[:error] = "Failed to add user: #{setting.errors.full_messages.join(', ')}"
       end
     when 'super_user'
       if TaTeamSetting.super_user_ids.include?(user_id)
         flash[:warning] = "User is already a super user"
       else
-        setting = TaTeamSetting.create(setting_type: 'super_user', user_id: user_id)
+        setting = TaTeamSetting.add_super_user(user_id)
         if setting.persisted?
           flash[:notice] = "User added as super user"
         else
@@ -94,5 +94,17 @@ class AdminTaTeamSettingsController < ApplicationController
     end
   rescue URI::InvalidURIError
     raise ArgumentError, 'Support Redmine base URL must be a valid http(s) URL'
+  end
+
+  def team_setting_params
+    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key)
+  end
+
+  def parse_admin_setting_date(value)
+    return nil if value.blank?
+
+    Date.strptime(value, '%m/%d/%Y')
+  rescue ArgumentError
+    Date.parse(value)
   end
 end

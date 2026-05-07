@@ -25,8 +25,7 @@ class TeamAnalyticsController < ApplicationController
     @member_dashboard_params = build_member_dashboard_params
     @member_dashboard_query = @member_dashboard_params.to_query
     
-    # Get excluded user IDs from settings
-    excluded_ids = TaTeamSetting.excluded_user_ids
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
     # Get hierarchical team members (own + inherited from child teams)
     # This implements the "bubble up" logic where child team members appear in parent teams
@@ -43,21 +42,8 @@ class TeamAnalyticsController < ApplicationController
     
     Rails.logger.info "Team Analytics: Team members: #{@member_ids.count}, Active members: #{@active_member_ids.count}, Excluded: #{excluded_ids.count}, Sub-teams: #{@sub_teams.count}"
     
-    # Get time entries for all active team members on ALL projects where they have logged time
-    # Filter by member start_date and end_date within the selected date range
-    # Build conditions to respect each member's start date and end date
-    member_conditions = @team_members.map do |membership|
-      member_from_date = [membership.start_date, @from].max
-      member_to_date = membership.end_date ? [membership.end_date, @to].min : @to
-      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
-    end.uniq.join(' OR ')
-    
-    @time_entries = TimeEntry.joins(:project)
-                             .where(user_id: @active_member_ids)
-                             .where(spent_on: @from..@to)
-                             .where(projects: { status: Project::STATUS_ACTIVE })
-                             .where(member_conditions) if member_conditions.present?
-    
+    @time_entries = team_time_entries_scope(@team_members, @from, @to)
+
     @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
                                  .order('time_entries.spent_on DESC, time_entries.created_on DESC') if @time_entries
     
@@ -207,8 +193,7 @@ class TeamAnalyticsController < ApplicationController
     
     @view_mode = params[:view_mode] || 'time_entries'
     
-    # Get excluded user IDs
-    excluded_ids = TaTeamSetting.excluded_user_ids
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
     # Include selected team + descendants (same access model as dashboard)
     @team_members = @selected_team.hierarchical_members(@from, @to)
@@ -216,19 +201,7 @@ class TeamAnalyticsController < ApplicationController
     @member_ids = @team_members.map(&:user_id)
     @active_member_ids = @member_ids - excluded_ids
     
-    # Get time entries for all active team members on ALL projects where they have logged time
-    # Filter by member start_date and end_date within the selected date range
-    member_conditions = @team_members.map do |membership|
-      member_from_date = [membership.start_date, @from].max
-      member_to_date = membership.end_date ? [membership.end_date, @to].min : @to
-      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
-    end.join(' OR ')
-    
-    @time_entries = TimeEntry.joins(:project)
-                             .where(user_id: @active_member_ids)
-                             .where(spent_on: @from..@to)
-                             .where(projects: { status: Project::STATUS_ACTIVE })
-                             .where(member_conditions) if member_conditions.present?
+    @time_entries = team_time_entries_scope(@team_members, @from, @to)
     
     @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
                                  .order('time_entries.spent_on DESC') if @time_entries
@@ -249,13 +222,13 @@ class TeamAnalyticsController < ApplicationController
   def get_tree_data
     root_teams = User.current.team_dashboard_root_teams.to_a
     return render json: { error: 'Unauthorized' }, status: 403 unless root_teams.any?
-    
-    # Get excluded user IDs
-    excluded_ids = TaTeamSetting.excluded_user_ids
-    
+
     # Date range from params or use defaults
     from_date = parse_custom_date(params[:from]) || (Date.today - 7.days)
     to_date = parse_custom_date(params[:to]) || Date.today
+
+    # Get excluded user IDs for the requested tree range
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(from_date, to_date)
     
     # Build hierarchical tree structure
     tree_nodes = []
@@ -341,6 +314,25 @@ class TeamAnalyticsController < ApplicationController
     # For super users, default to the first root team in database order
     root_team = TaTeam.root_teams.first
     teams.include?(root_team) ? root_team : teams.first
+  end
+
+  def team_time_entries_scope(team_members, from_date, to_date)
+    return TimeEntry.none if team_members.blank?
+
+    member_ids = team_members.map(&:user_id).uniq
+    member_conditions = team_members.map do |membership|
+      member_from_date = [membership.start_date, from_date].max
+      member_to_date = membership.end_date ? [membership.end_date, to_date].min : to_date
+      "(time_entries.user_id = #{membership.user_id} AND time_entries.spent_on >= '#{member_from_date}' AND time_entries.spent_on <= '#{member_to_date}')"
+    end.uniq.join(' OR ')
+
+    scope = TimeEntry.joins(:project)
+                     .where(user_id: member_ids)
+                     .where(spent_on: from_date..to_date)
+                     .where(projects: { status: Project::STATUS_ACTIVE })
+
+    scope = scope.where("(#{member_conditions})") if member_conditions.present?
+    scope.where(TaTeamSetting.exclusion_time_entry_condition)
   end
 
   def parse_custom_date(value)
@@ -1289,9 +1281,6 @@ class TeamAnalyticsController < ApplicationController
 
   # Calculate team size for a specific period based on membership dates (not time logging)
   def calculate_team_size_for_period(period_date, grouping)
-    # Get excluded user IDs
-    excluded_ids = TaTeamSetting.excluded_user_ids
-    
     # Determine period start and end dates based on grouping
     period_start, period_end = case grouping
                                 when 'weekly'
@@ -1308,6 +1297,9 @@ class TeamAnalyticsController < ApplicationController
                                   week_end = week_start + 6.days
                                   [week_start, week_end]
                                 end
+
+    # Excluded users are still filtered by the period they overlap with
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
     
     # Count members who were active during this period (based on membership dates, not time entries)
     active_count = @team_members.count do |membership|

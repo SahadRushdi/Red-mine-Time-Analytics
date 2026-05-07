@@ -68,7 +68,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414-1.414L12 9.172 7.05 4.222 5.636 5.636 10.586 10.586 5.636 15.536l1.414 1.414L12 12l4.95 4.95 1.414-1.414-4.95-4.95z"></path>
               </svg>
               Exclusion List
-              <span class="ts-tab-badge"><%= @excluded_users.count %></span>
+              <span class="ts-tab-badge"><%= @excluded_settings.count %></span>
             </span>
           </button>
         </li>
@@ -100,13 +100,13 @@
 
     <div id="panel-exclusions">
       <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
-        <span>Users in this list are excluded from team analytics reports.</span>
+        <span>Users in this list are excluded from team analytics reports for the selected date range.</span>
       </div>
 
       <div class="px-6 py-4 border-b border-gray-100">
-        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-end' do %>
           <%= hidden_field_tag :setting_type, 'exclusion' %>
-          <div>
+          <div class="min-w-0">
             <%= label_tag 'ta-team-settings-user-search-exclusion', 'Add user to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
             <div class="relative min-w-0" id="ta-team-settings-user-wrapper-exclusion">
               <input type="text"
@@ -119,8 +119,8 @@
                       class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
               <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
               <div id="ta-team-settings-user-list-exclusion"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                    style="min-width: 420px; max-height: 220px; top: calc(100% + 2px);">
+                    class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                     style="min-width: 300px; max-width: 100%; max-height: 220px; top: calc(100% + 2px);">
                 <% @available_users.each do |user| %>
                   <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                        tabindex="0"
@@ -135,11 +135,38 @@
               </div>
             </div>
           </div>
-          <%= button_tag 'Add to Exclusion List', type: 'submit', class: 'tep-action-btn flex-shrink-0 inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+          <div class="min-w-0">
+            <%= label_tag :start_date, 'Start Date', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= text_field_tag :start_date,
+                               Date.current.strftime('%m/%d/%Y'),
+                               autocomplete: 'off',
+                               required: true,
+                               placeholder: 'Select start date',
+                               class: 'ts-search-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]',
+                               'datepicker' => true,
+                               'datepicker-format' => 'mm/dd/yyyy',
+                               'datepicker-show-on-focus' => 'false',
+                               'datepicker-autohide' => 'true' %>
+          </div>
+          <div class="min-w-0">
+            <%= label_tag :end_date, 'End Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= text_field_tag :end_date,
+                               '',
+                               autocomplete: 'off',
+                               placeholder: 'Optional end date',
+                               class: 'ts-search-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]',
+                               'datepicker' => true,
+                               'datepicker-format' => 'mm/dd/yyyy',
+                               'datepicker-show-on-focus' => 'false',
+                               'datepicker-autohide' => 'true' %>
+          </div>
+          <div class="lg:self-end">
+            <%= button_tag 'Add to Exclusion List', type: 'submit', class: 'tep-action-btn w-full lg:w-auto flex-shrink-0 inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+          </div>
         <% end %>
       </div>
 
-      <% if @excluded_users.any? %>
+      <% if @excluded_settings.any? %>
         <div class="overflow-x-auto">
           <table class="ts-table w-full text-sm text-left">
             <thead class="bg-gray-50">
@@ -160,20 +187,26 @@
                     <span id="ta-team-settings-sort-icon-exclusions-email" class="sort desc icon icon-sorted-asc"></span>
                   </span>
                 </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
               </tr>
             </thead>
             <tbody>
-              <% @excluded_users.each do |user| %>
-                <% setting_id = @exclusion_settings_by_user_id[user.id] %>
+              <% @excluded_settings.each do |setting| %>
+                <% user = setting.user %>
+                <% next unless user %>
+                <% setting_id = setting.id %>
                 <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>"
+                    data-search-text="<%= "#{user.name} #{user.mail} #{setting.start_date} #{setting.end_date}".downcase %>"
                     data-user-sort="<%= user.name.to_s.downcase %>"
                     data-email-sort="<%= user.mail.to_s.downcase %>">
                   <td class="px-4 py-3">
                     <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                   </td>
                   <td class="px-4 py-3 text-gray-600"><%= h(user.mail) %></td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(setting.start_date.strftime('%Y-%m-%d')) %></td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(setting.end_date.present? ? setting.end_date.strftime('%Y-%m-%d') : 'Ongoing') %></td>
                   <td class="px-4 py-3 text-right">
                     <% if setting_id.present? %>
                       <button type="button"
