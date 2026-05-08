@@ -74,12 +74,13 @@ module RedmineTimeAnalytics
 
       return if newer_thread_message?(parsed.user, message, sent_at)
 
-      reconcile_thread_records(parsed, message, sent_at)
-      parsed.leave_dates.each do |leave_date|
+      leave_entries = parsed_leave_entries(parsed)
+      reconcile_thread_entries(parsed, message, sent_at, leave_entries)
+      leave_entries.each do |entry|
         TaLeaveRecord.upsert_from_email!(
           user: parsed.user,
-          leave_date: leave_date,
-          leave_fraction: parsed.leave_fraction,
+          leave_date: entry[:date],
+          leave_fraction: entry[:fraction],
           status: 'confirmed',
           sender_email: message[:from],
           recipient_email: recipient_email,
@@ -91,7 +92,7 @@ module RedmineTimeAnalytics
           sync_mode: mode.to_s
         )
       end
-      result.imported_count += parsed.leave_dates.length
+      result.imported_count += leave_entries.length
     end
 
     def persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
@@ -138,15 +139,32 @@ module RedmineTimeAnalytics
       )
     end
 
-    def reconcile_thread_records(parsed, message, sent_at)
+    def reconcile_thread_entries(parsed, message, sent_at, leave_entries)
       return unless parsed.user && message[:thread_id].present?
 
+      dates = leave_entries.map { |entry| entry[:date] }
       TaLeaveRecord.replace_thread_records!(
         user_id: parsed.user.id,
         thread_id: message[:thread_id],
         incoming_sent_at: sent_at,
-        leave_dates: parsed.leave_dates
+        leave_dates: dates
       )
+
+      TaLeaveRecord.reconcile_thread_entries!(
+        user_id: parsed.user.id,
+        thread_id: message[:thread_id],
+        incoming_sent_at: sent_at,
+        leave_entries: leave_entries
+      )
+    end
+
+    def parsed_leave_entries(parsed)
+      entries = Array(parsed.leave_entries)
+      return entries if entries.any?
+
+      parsed.leave_dates.map do |leave_date|
+        { date: leave_date, fraction: parsed.leave_fraction.to_f }
+      end
     end
 
     def sorted_messages(messages)

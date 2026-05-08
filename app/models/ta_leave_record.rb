@@ -92,6 +92,31 @@ class TaLeaveRecord < ActiveRecord::Base
       end
     end
 
+    def reconcile_thread_entries!(user_id:, thread_id:, incoming_sent_at:, leave_entries:)
+      return if user_id.blank? || thread_id.blank?
+
+      scope = confirmed.where(user_id: user_id, source_thread_id: thread_id)
+      if incoming_sent_at.present?
+        scope = scope.where('source_sent_at IS NULL OR source_sent_at <= ?', incoming_sent_at)
+      end
+
+      normalized_entries = Array(leave_entries).each_with_object({}) do |entry, memo|
+        date = entry[:date] || entry['date']
+        next if date.nil?
+
+        memo[date] = entry[:fraction].to_f
+      end
+
+      scope.find_each do |record|
+        fraction = normalized_entries[record.leave_date]
+        next if fraction.nil?
+
+        next if record.leave_fraction.to_f == fraction.to_f
+
+        record.update_columns(leave_fraction: fraction, updated_at: Time.zone.now)
+      end
+    end
+
     def cancel_thread_records!(user_id:, thread_id:, incoming_sent_at:, leave_dates:)
       return if user_id.blank? || thread_id.blank?
 
