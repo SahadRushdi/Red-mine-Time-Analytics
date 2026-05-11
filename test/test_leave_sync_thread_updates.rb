@@ -199,7 +199,10 @@ def assert_equal(expected, actual, message)
   raise "Assertion failed: #{message}. Expected #{expected.inspect}, got #{actual.inspect}" unless expected == actual
 end
 
-User.seed([User.new(id: 14, mail: 'arshana@entgra.io')])
+User.seed([
+  User.new(id: 14, mail: 'arshana@entgra.io'),
+  User.new(id: 15, mail: 'sandali@example.com')
+])
 
 parser = RedmineTimeAnalytics::LeaveEmailParser.new
 body_priority = parser.parse(
@@ -215,6 +218,20 @@ body_priority = parser.parse(
 
 assert_equal(Date.new(2026, 2, 5), body_priority.leave_dates.first, 'body date should override the older subject date')
 assert_equal(:body, body_priority.date_source, 'body date should be the chosen source')
+
+year_first = parser.parse(
+  message: {
+    from: 'Sandali Kavishka <sandali@example.com>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On Leave 2026/04/03',
+    body: 'Hi all,\n\nPlease note the subject due to a university exam.\n\nThanks and regards,\nSandali Kavishka',
+    sent_at: Time.zone.parse('2026-03-30 18:38:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+
+assert_equal(Date.new(2026, 4, 3), year_first.leave_dates.first, 'year-first subject date should be parsed instead of sent date')
+assert_equal(:subject, year_first.date_source, 'year-first subject date should come from the subject')
 
 def sync_case(thread_id:, original_date:, shifted_date:, first_sent_at:, second_sent_at:, third_sent_at:, second_body:, third_body:)
   recipient = 'vacation-group@entgra.io'

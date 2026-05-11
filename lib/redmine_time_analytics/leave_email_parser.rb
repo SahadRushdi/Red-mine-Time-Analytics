@@ -460,6 +460,10 @@ module RedmineTimeAnalytics
         next
       end
 
+      normalized.scan(/\b\d{4}[\/.]\d{1,2}[\/.]\d{1,2}\b/).each do |candidate|
+        dates << parse_year_first_date(candidate)
+      end
+
       normalized.scan(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/).each do |candidate|
         dates << parse_slash_date(candidate)
       end
@@ -569,6 +573,16 @@ module RedmineTimeAnalytics
                  '%m/%d/%Y'
       end
       Date.strptime(candidate, format)
+    rescue ArgumentError
+      nil
+    end
+
+    def parse_year_first_date(candidate)
+      parts = candidate.split(/[\/.]/).map(&:to_i)
+      return nil if parts.length != 3
+
+      year, month, day = parts
+      Date.new(year, month, day)
     rescue ArgumentError
       nil
     end
