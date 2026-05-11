@@ -171,7 +171,6 @@ module RedmineTimeAnalytics
     def preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
       return leave_entries unless parsed.user && message[:thread_id].present?
       return leave_entries unless leave_entries.any?
-      return leave_entries if parsed.body_has_explicit_date
 
       latest_entries = TaLeaveRecord.latest_thread_entries(
         user_id: parsed.user.id,

@@ -199,6 +199,23 @@ def assert_equal(expected, actual, message)
   raise "Assertion failed: #{message}. Expected #{expected.inspect}, got #{actual.inspect}" unless expected == actual
 end
 
+User.seed([User.new(id: 14, mail: 'arshana@entgra.io')])
+
+parser = RedmineTimeAnalytics::LeaveEmailParser.new
+body_priority = parser.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Re: Half day leave(Evening) - 29.01.2026',
+    body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
+    sent_at: Time.zone.parse('2026-01-28 19:03:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+
+assert_equal(Date.new(2026, 2, 5), body_priority.leave_dates.first, 'body date should override the older subject date')
+assert_equal(:body, body_priority.date_source, 'body date should be the chosen source')
+
 def sync_case(thread_id:, original_date:, shifted_date:, first_sent_at:, second_sent_at:, third_sent_at:, second_body:, third_body:)
   recipient = 'vacation-group@entgra.io'
   subject = "Half day leave(Evening) - #{original_date.strftime('%d.%m.%Y')}"
@@ -252,7 +269,6 @@ def sync_case(thread_id:, original_date:, shifted_date:, first_sent_at:, second_
 end
 
 TaLeaveRecord.reset!
-User.seed([User.new(id: 14, mail: 'arshana@entgra.io')])
 
 sync_case(
   thread_id: 'case-1',

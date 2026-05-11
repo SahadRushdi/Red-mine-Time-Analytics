@@ -419,6 +419,10 @@ module RedmineTimeAnalytics
       body_text = body_text.to_s
       body_dates = extract_dates_from_text(leave_focused_text(primary_body_text(body_text)), reference_time)
       return { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } if body_override_subject?(body_text, subject_dates, body_dates)
+      if subject_dates.any? && body_dates.any?
+        return body_dates.max > subject_dates.max ? { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } :
+                                                    { dates: subject_dates, source: :subject, subject_dates: subject_dates, body_dates: body_dates }
+      end
       return { dates: subject_dates, source: :subject, subject_dates: subject_dates, body_dates: body_dates } if subject_dates.any?
       return { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } if body_dates.any?
 
