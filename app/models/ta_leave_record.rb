@@ -117,6 +117,21 @@ class TaLeaveRecord < ActiveRecord::Base
       end
     end
 
+    def latest_thread_entries(user_id:, thread_id:, before_sent_at: nil)
+      return [] if user_id.blank? || thread_id.blank?
+
+      scope = confirmed.where(user_id: user_id, source_thread_id: thread_id)
+      if before_sent_at.present?
+        scope = scope.where('source_sent_at IS NULL OR source_sent_at < ?', before_sent_at)
+      end
+
+      latest_sent_at = scope.where.not(source_sent_at: nil).maximum(:source_sent_at)
+      scoped_records = latest_sent_at.present? ? scope.where(source_sent_at: latest_sent_at) : scope
+      scoped_records.order(:leave_date).map do |record|
+        { date: record.leave_date, fraction: record.leave_fraction.to_f }
+      end
+    end
+
     def cancel_thread_records!(user_id:, thread_id:, incoming_sent_at:, leave_dates:)
       return if user_id.blank? || thread_id.blank?
 

@@ -75,6 +75,7 @@ module RedmineTimeAnalytics
       return if newer_thread_message?(parsed.user, message, sent_at)
 
       leave_entries = parsed_leave_entries(parsed)
+      leave_entries = preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
       reconcile_thread_entries(parsed, message, sent_at, leave_entries)
       leave_entries.each do |entry|
         TaLeaveRecord.upsert_from_email!(
@@ -92,7 +93,7 @@ module RedmineTimeAnalytics
           sync_mode: mode.to_s
         )
       end
-      result.imported_count += leave_entries.length
+      result.imported_count += 1 if leave_entries.any?
     end
 
     def persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
@@ -164,6 +165,31 @@ module RedmineTimeAnalytics
 
       parsed.leave_dates.map do |leave_date|
         { date: leave_date, fraction: parsed.leave_fraction.to_f }
+      end
+    end
+
+    def preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
+      return leave_entries unless parsed.user && message[:thread_id].present?
+      return leave_entries unless leave_entries.any?
+      return leave_entries if parsed.body_has_explicit_date
+
+      latest_entries = TaLeaveRecord.latest_thread_entries(
+        user_id: parsed.user.id,
+        thread_id: message[:thread_id],
+        before_sent_at: sent_at
+      )
+      return leave_entries unless latest_entries.any?
+
+      incoming_dates = leave_entries.map { |entry| entry[:date] }.compact.uniq.sort
+      latest_dates = latest_entries.map { |entry| entry[:date] }.compact.uniq.sort
+      return latest_entries.map { |entry| { date: entry[:date], fraction: parsed.leave_fraction.to_f } } if parsed.used_sent_fallback
+
+      latest_date = latest_dates.max
+      incoming_date = incoming_dates.max
+      return leave_entries if incoming_date.present? && latest_date.present? && incoming_date > latest_date
+
+      latest_entries.map do |entry|
+        { date: entry[:date], fraction: parsed.leave_fraction.to_f }
       end
     end
 

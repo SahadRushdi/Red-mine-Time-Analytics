@@ -5,7 +5,19 @@ require 'nickel'
 
 module RedmineTimeAnalytics
   class LeaveEmailParser
-    Result = Struct.new(:status, :reason, :user, :leave_dates, :leave_fraction, :leave_entries, keyword_init: true)
+    Result = Struct.new(
+      :status,
+      :reason,
+      :user,
+      :leave_dates,
+      :leave_fraction,
+      :leave_entries,
+      :date_source,
+      :subject_has_explicit_date,
+      :body_has_explicit_date,
+      :used_sent_fallback,
+      keyword_init: true
+    )
 
     CANCELLATION_KEYWORDS = ['cancel', 'cancelled', 'canceled', 'withdraw', 'revoked', 'revoke'].freeze
     HALF_DAY_KEYWORDS = ['half day', 'half-day', 'morning', 'evening', 'first half', 'second half',
@@ -47,7 +59,11 @@ module RedmineTimeAnalytics
           user: user,
           leave_dates: [],
           leave_fraction: 0,
-          leave_entries: []
+          leave_entries: [],
+          date_source: :none,
+          subject_has_explicit_date: false,
+          body_has_explicit_date: false,
+          used_sent_fallback: false
         )
       end
 
@@ -59,7 +75,7 @@ module RedmineTimeAnalytics
       leave_fraction = leave_entries.map { |entry| entry[:fraction].to_f }.max || determine_leave_fraction(subject_text: subject_text, body_text: body_text)
 
       if cancellation_request?(subject_text: subject_text, body_text: body_text)
-        cancellation_dates = extract_dates_with_priority(
+        cancellation_extraction = extract_dates_with_priority(
           subject_text: subject_text,
           body_text: body_text,
           reference_time: reference_time
@@ -68,21 +84,47 @@ module RedmineTimeAnalytics
           status: :cancelled,
           reason: 'cancelled',
           user: user,
-          leave_dates: cancellation_dates,
+          leave_dates: cancellation_extraction[:dates],
           leave_fraction: leave_fraction,
-          leave_entries: []
+          leave_entries: [],
+          date_source: cancellation_extraction[:source],
+          subject_has_explicit_date: cancellation_extraction[:subject_dates].any?,
+          body_has_explicit_date: cancellation_extraction[:body_dates].any?,
+          used_sent_fallback: false
         )
       end
 
-      extracted_dates = extract_dates_with_priority(
+      date_extraction = extract_dates_with_priority(
         subject_text: subject_text,
         body_text: body_text,
         reference_time: reference_time
       )
+      extracted_dates = date_extraction[:dates]
+      used_sent_fallback = false
+      date_source = date_extraction[:source]
+      subject_has_explicit_date = date_extraction[:subject_dates].any?
+      body_has_explicit_date = date_extraction[:body_dates].any?
+
       fallback_date = reference_time&.to_date
-      extracted_dates = [fallback_date] if extracted_dates.empty? && fallback_date
+      if extracted_dates.empty? && fallback_date
+        extracted_dates = [fallback_date]
+        date_source = :sent_fallback
+        used_sent_fallback = true
+      end
+
       if extracted_dates.empty?
-        return Result.new(status: :flagged, reason: 'no_date_found', user: user, leave_dates: [], leave_fraction: leave_fraction, leave_entries: [])
+        return Result.new(
+          status: :flagged,
+          reason: 'no_date_found',
+          user: user,
+          leave_dates: [],
+          leave_fraction: leave_fraction,
+          leave_entries: [],
+          date_source: :none,
+          subject_has_explicit_date: subject_has_explicit_date,
+          body_has_explicit_date: body_has_explicit_date,
+          used_sent_fallback: used_sent_fallback
+        )
       end
 
       working_dates = extracted_dates.select { |date| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) }.uniq.sort
@@ -93,7 +135,11 @@ module RedmineTimeAnalytics
           user: user,
           leave_dates: extracted_dates.uniq.sort,
           leave_fraction: leave_fraction,
-          leave_entries: []
+          leave_entries: [],
+          date_source: date_source,
+          subject_has_explicit_date: subject_has_explicit_date,
+          body_has_explicit_date: body_has_explicit_date,
+          used_sent_fallback: used_sent_fallback
         )
       end
 
@@ -103,10 +149,24 @@ module RedmineTimeAnalytics
         user: user,
         leave_dates: working_dates,
         leave_fraction: leave_fraction,
-        leave_entries: normalized_entries
+        leave_entries: normalized_entries,
+        date_source: date_source,
+        subject_has_explicit_date: subject_has_explicit_date,
+        body_has_explicit_date: body_has_explicit_date,
+        used_sent_fallback: used_sent_fallback
       )
     rescue StandardError
-      Result.new(status: :flagged, reason: 'parse_error', leave_dates: [], leave_fraction: 0, leave_entries: [])
+      Result.new(
+        status: :flagged,
+        reason: 'parse_error',
+        leave_dates: [],
+        leave_fraction: 0,
+        leave_entries: [],
+        date_source: :none,
+        subject_has_explicit_date: false,
+        body_has_explicit_date: false,
+        used_sent_fallback: false
+      )
     end
 
     private
@@ -358,10 +418,11 @@ module RedmineTimeAnalytics
       subject_dates = extract_dates_from_text(leave_focused_text(subject_text), reference_time)
       body_text = body_text.to_s
       body_dates = extract_dates_from_text(leave_focused_text(primary_body_text(body_text)), reference_time)
-      return body_dates if body_override_subject?(body_text, subject_dates, body_dates)
-      return subject_dates if subject_dates.any?
+      return { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } if body_override_subject?(body_text, subject_dates, body_dates)
+      return { dates: subject_dates, source: :subject, subject_dates: subject_dates, body_dates: body_dates } if subject_dates.any?
+      return { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } if body_dates.any?
 
-      body_dates
+      { dates: [], source: :none, subject_dates: subject_dates, body_dates: body_dates }
     end
 
     def sent_time(value)

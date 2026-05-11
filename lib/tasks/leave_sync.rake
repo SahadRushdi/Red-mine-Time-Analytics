@@ -5,9 +5,9 @@ namespace :redmine_time_analytics do
     service = RedmineTimeAnalytics::LeaveSyncService.new
     result = service.sync!(mode: mode.to_sym)
 
-    puts "Processed: #{result.processed_count}"
-    puts "Imported: #{result.imported_count}"
-    puts "Flagged: #{result.flagged_count}"
+    puts "Processed messages: #{result.processed_count}"
+    puts "Imported messages: #{result.imported_count}"
+    puts "Flagged messages: #{result.flagged_count}"
     if result.errors.any?
       puts 'Errors:'
       result.errors.uniq.each { |error| puts "- #{error}" }

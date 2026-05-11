@@ -58,7 +58,7 @@ class AdminLeaveCountController < ApplicationController
       )
       flash[:error] = "Leave sync finished with errors (#{result.errors.length} total). See log for details."
     else
-      flash[:notice] = "Leave sync completed (Processed: #{result.processed_count}, Imported: #{result.imported_count}, Flagged: #{result.flagged_count})"
+      flash[:notice] = "Leave sync completed (Processed messages: #{result.processed_count}, Imported messages: #{result.imported_count}, Flagged messages: #{result.flagged_count})"
     end
   rescue StandardError => e
     flash[:error] = "Leave sync failed: #{e.message}"

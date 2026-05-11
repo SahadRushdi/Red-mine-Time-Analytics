@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'base64'
+require 'cgi'
 require 'json'
 require 'stringio'
 
@@ -66,7 +67,7 @@ module RedmineTimeAnalytics
           to: headers['to'],
           subject: headers['subject'],
           sent_at: parse_date(headers['date']) || Time.zone.now,
-          body: extract_body(payload)
+          body: extract_body(payload).presence || msg.snippet.to_s
         }
       rescue StandardError
         nil
@@ -82,17 +83,30 @@ module RedmineTimeAnalytics
         return '' if part.nil?
 
         data = part.body&.data
-        if data.present? && (part.mime_type == 'text/plain' || part.parts.blank?)
+        if data.present? && part.mime_type == 'text/plain'
           return Base64.urlsafe_decode64(data.tr('-_', '+/'))
+        end
+
+        if data.present? && part.mime_type == 'text/html'
+          return html_to_text(Base64.urlsafe_decode64(data.tr('-_', '+/')))
         end
 
         Array(part.parts).each do |sub_part|
           body = extract_body(sub_part)
           return body if body.present?
         end
+
+        if data.present?
+          decoded = Base64.urlsafe_decode64(data.tr('-_', '+/'))
+          return decoded if decoded.present?
+        end
         ''
       rescue ArgumentError
         ''
+      end
+
+      def html_to_text(html)
+        CGI.unescapeHTML(html.to_s.gsub(/<\/(p|div|tr|li|h[1-6])>/i, "\n").gsub(/<br\s*\/?>/i, "\n").gsub(/<[^>]+>/, ' ')).gsub(/[ \t]+/, ' ').gsub(/\n\s+/, "\n").strip
       end
 
       def parse_date(value)
