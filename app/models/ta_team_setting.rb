@@ -8,6 +8,7 @@ class TaTeamSetting < ActiveRecord::Base
   # Constants
   SETTING_TYPES = %w[exclusion super_user].freeze
   LEAVE_APPROACHES = %w[oauth dwd google_apps_script].freeze
+  AI_PROVIDERS = %w[google openai anthropic custom].freeze
 
   # Associations
   belongs_to :user
@@ -139,6 +140,7 @@ class TaTeamSetting < ActiveRecord::Base
     oauth_refresh_token_raw = raw['leave_oauth_refresh_token_enc'].presence || raw['leave_oauth_refresh_token'].to_s
     dwd_service_json_raw = raw['leave_dwd_service_account_json_enc'].presence || raw['leave_gmail_service_account_json'].to_s
     gas_secret_raw = raw['leave_gas_webhook_secret_enc'].presence || raw['leave_gas_webhook_secret'].to_s
+    ai_api_key_raw = raw['leave_ai_api_key_enc'].presence || raw['leave_ai_api_key'].to_s
 
     {
       enabled: raw['leave_sync_enabled'].to_s == '1',
@@ -152,6 +154,11 @@ class TaTeamSetting < ActiveRecord::Base
       dwd_delegated_user: raw['leave_dwd_delegated_user'].to_s.strip.presence || raw['leave_gmail_delegated_user'].to_s.strip,
       dwd_service_account_json: decrypt_value(dwd_service_json_raw),
       gas_webhook_secret: decrypt_value(gas_secret_raw),
+      ai_extraction_enabled: raw['leave_ai_extraction_enabled'].to_s == '1',
+      ai_provider: raw['leave_ai_provider'].to_s.strip,
+      ai_model: raw['leave_ai_model'].to_s.strip,
+      ai_api_key: decrypt_value(ai_api_key_raw),
+      ai_base_url: raw['leave_ai_base_url'].to_s.strip,
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
       last_sync_mode: raw['leave_sync_last_mode'].to_s
     }
@@ -167,7 +174,12 @@ class TaTeamSetting < ActiveRecord::Base
     oauth_account_email: nil,
     dwd_delegated_user: nil,
     dwd_service_account_json: nil,
-    gas_webhook_secret: nil
+    gas_webhook_secret: nil,
+    ai_extraction_enabled: nil,
+    ai_provider: nil,
+    ai_model: nil,
+    ai_api_key: nil,
+    ai_base_url: nil
   )
     normalized_recipient = recipient_email.to_s.strip.downcase
     raise ArgumentError, 'Leave recipient email is required' if normalized_recipient.blank?
@@ -197,6 +209,10 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_recipient_email'] = normalized_recipient
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_approach'] = approach
+    settings['leave_ai_extraction_enabled'] = ai_extraction_enabled.to_s == '1' ? '1' : '0'
+    settings['leave_ai_provider'] = ai_provider.to_s.strip
+    settings['leave_ai_model'] = ai_model.to_s.strip
+    settings['leave_ai_base_url'] = ai_base_url.to_s.strip
 
     settings['leave_oauth_client_id'] = oauth_client_id.to_s.strip
     settings['leave_oauth_account_email'] = normalized_oauth_account
@@ -215,7 +231,10 @@ class TaTeamSetting < ActiveRecord::Base
       settings.delete('leave_gas_webhook_secret_enc')
     end
 
+    settings['leave_ai_api_key_enc'] = encrypt_value(ai_api_key.to_s) if ai_api_key.present?
+
     validate_leave_sync_config!(settings, approach: approach)
+    validate_leave_ai_config!(settings)
     Setting.plugin_redmine_time_analytics = settings
   end
 
@@ -247,6 +266,14 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.leave_sync_manual_pull?
     leave_sync_settings[:leave_approach] != 'google_apps_script'
+  end
+
+  def self.leave_ai_configured?
+    config = leave_sync_settings
+    return false unless config[:ai_extraction_enabled]
+    return false unless AI_PROVIDERS.include?(config[:ai_provider].to_s)
+
+    config[:ai_model].present? && config[:ai_api_key].present?
   end
 
   def self.update_leave_oauth_refresh_token!(refresh_token:, account_email: nil)
@@ -319,6 +346,22 @@ class TaTeamSetting < ActiveRecord::Base
       raise ArgumentError, 'DWD service account JSON is required' if service_json.blank?
     when 'google_apps_script'
       # Webhook secret is optional but recommended.
+    end
+  end
+
+  def self.validate_leave_ai_config!(settings)
+    return unless settings['leave_ai_extraction_enabled'].to_s == '1'
+
+    provider = settings['leave_ai_provider'].to_s.strip
+    model = settings['leave_ai_model'].to_s.strip
+    api_key = decrypt_value(settings['leave_ai_api_key_enc'].to_s)
+    base_url = settings['leave_ai_base_url'].to_s.strip
+
+    raise ArgumentError, 'AI provider is invalid' unless AI_PROVIDERS.include?(provider)
+    raise ArgumentError, 'AI model is required when AI extraction is enabled' if model.blank?
+    raise ArgumentError, 'AI API key is required when AI extraction is enabled' if api_key.blank?
+    if provider == 'custom' && base_url.blank?
+      raise ArgumentError, 'AI base URL is required for custom AI provider'
     end
   end
 

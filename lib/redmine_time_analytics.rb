@@ -4,6 +4,9 @@ end
 
 require_relative 'redmine_time_analytics/working_days_calculator'
 require_relative 'redmine_time_analytics/leave_email_parser'
+require_relative 'redmine_time_analytics/simple_leave_email_parser'
+require_relative 'redmine_time_analytics/ai_leave_extractor'
+require_relative 'redmine_time_analytics/hybrid_leave_extractor'
 require_relative 'redmine_time_analytics/leave_providers/base_provider'
 require_relative 'redmine_time_analytics/leave_providers/gmail_base_provider'
 require_relative 'redmine_time_analytics/leave_providers/gmail_oauth_provider'

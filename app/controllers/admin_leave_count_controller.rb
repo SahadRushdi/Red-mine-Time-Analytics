@@ -32,7 +32,12 @@ class AdminLeaveCountController < ApplicationController
       oauth_account_email: sync_params[:leave_oauth_account_email],
       dwd_delegated_user: sync_params[:leave_dwd_delegated_user],
       dwd_service_account_json: sync_params[:leave_dwd_service_account_json],
-      gas_webhook_secret: sync_params[:leave_gas_webhook_secret]
+      gas_webhook_secret: sync_params[:leave_gas_webhook_secret],
+      ai_extraction_enabled: sync_params[:leave_ai_extraction_enabled],
+      ai_provider: sync_params[:leave_ai_provider],
+      ai_model: sync_params[:leave_ai_model],
+      ai_api_key: sync_params[:leave_ai_api_key],
+      ai_base_url: sync_params[:leave_ai_base_url]
     )
     flash[:notice] = l(:notice_leave_count_settings_updated)
   rescue ArgumentError => e
@@ -143,7 +148,12 @@ class AdminLeaveCountController < ApplicationController
       :leave_oauth_account_email,
       :leave_dwd_delegated_user,
       :leave_dwd_service_account_json,
-      :leave_gas_webhook_secret
+      :leave_gas_webhook_secret,
+      :leave_ai_extraction_enabled,
+      :leave_ai_provider,
+      :leave_ai_model,
+      :leave_ai_api_key,
+      :leave_ai_base_url
     )
   end
 

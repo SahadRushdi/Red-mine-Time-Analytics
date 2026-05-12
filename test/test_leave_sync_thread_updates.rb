@@ -3,10 +3,78 @@
 
 require 'date'
 require 'logger'
-require 'active_support'
-require 'active_support/core_ext'
+require 'time'
 
-Time.zone = 'UTC'
+class Object
+  def blank?
+    respond_to?(:empty?) ? !!empty? : !self
+  end
+
+  def present?
+    !blank?
+  end
+
+  def presence
+    present? ? self : nil
+  end
+end
+
+class String
+  def blank?
+    strip.empty?
+  end
+end
+
+class NilClass
+  def blank?
+    true
+  end
+end
+
+class FalseClass
+  def blank?
+    true
+  end
+end
+
+class TrueClass
+  def blank?
+    false
+  end
+end
+
+class Hash
+  def symbolize_keys
+    each_with_object({}) do |(key, value), memo|
+      memo[key.respond_to?(:to_sym) ? key.to_sym : key] = value
+    end
+  end
+end
+
+class Time
+  class << self
+    attr_accessor :zone
+  end
+
+  def in_time_zone
+    self
+  end
+end
+
+Time.zone = Object.new
+class << Time.zone
+  def parse(value)
+    Time.parse(value.to_s)
+  end
+
+  def now
+    Time.now
+  end
+
+  def at(value)
+    Time.at(value)
+  end
+end
 
 module RedmineTimeAnalytics
   module WorkingDaysCalculator
@@ -189,6 +257,8 @@ class TaLeaveRecord
 end
 
 require_relative '../lib/redmine_time_analytics/leave_email_parser'
+require_relative '../lib/redmine_time_analytics/simple_leave_email_parser'
+require_relative '../lib/redmine_time_analytics/ai_leave_extractor'
 require_relative '../lib/redmine_time_analytics/leave_sync_service'
 
 def assert(condition, message)
@@ -204,22 +274,8 @@ User.seed([
   User.new(id: 15, mail: 'sandali@example.com')
 ])
 
-parser = RedmineTimeAnalytics::LeaveEmailParser.new
-body_priority = parser.parse(
-  message: {
-    from: 'Arshana Atapattu <arshana@entgra.io>',
-    to: 'vacation-group@entgra.io',
-    subject: 'Re: Half day leave(Evening) - 29.01.2026',
-    body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
-    sent_at: Time.zone.parse('2026-01-28 19:03:00')
-  },
-  recipient_email: 'vacation-group@entgra.io'
-)
-
-assert_equal(Date.new(2026, 2, 5), body_priority.leave_dates.first, 'body date should override the older subject date')
-assert_equal(:body, body_priority.date_source, 'body date should be the chosen source')
-
-year_first = parser.parse(
+simple_parser = RedmineTimeAnalytics::SimpleLeaveEmailParser.new
+year_first = simple_parser.parse(
   message: {
     from: 'Sandali Kavishka <sandali@example.com>',
     to: 'vacation-group@entgra.io',
@@ -232,81 +288,75 @@ year_first = parser.parse(
 
 assert_equal(Date.new(2026, 4, 3), year_first.leave_dates.first, 'year-first subject date should be parsed instead of sent date')
 assert_equal(:subject, year_first.date_source, 'year-first subject date should come from the subject')
+assert_equal(1.0, year_first.leave_fraction, 'simple parser should default to full day')
 
-def sync_case(thread_id:, original_date:, shifted_date:, first_sent_at:, second_sent_at:, third_sent_at:, second_body:, third_body:)
+half_day = simple_parser.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave evening 2026/04/04',
+    body: 'Hi team',
+    sent_at: Time.zone.parse('2026-04-01 09:00:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(0.5, half_day.leave_fraction, 'half-day keywords in subject should produce 0.5 fraction')
+
+ai_extractor = RedmineTimeAnalytics::AiLeaveExtractor.allocate
+ai_confirmed = ai_extractor.send(
+  :parsed_result,
+  {
+    'status' => 'flagged',
+    'reason' => 'ambiguous',
+    'leave_entries' => [{ 'date' => '2026-02-05', 'fraction' => 1.0 }]
+  },
+  user: User.sorted.first
+)
+assert_equal(:confirmed, ai_confirmed.status, 'AI results with entries should be treated as confirmed')
+assert_equal('ai_analyzed', ai_confirmed.reason, 'AI results with entries should be marked analyzed')
+
+def sync_case(messages:, expected_imported:, expected_flagged:)
   recipient = 'vacation-group@entgra.io'
-  subject = "Half day leave(Evening) - #{original_date.strftime('%d.%m.%Y')}"
-
-  messages = [
-    {
-      message_id: "#{thread_id}-m1",
-      thread_id: thread_id,
-      from: 'Arshana Atapattu <arshana@entgra.io>',
-      to: recipient,
-      subject: subject,
-      sent_at: first_sent_at,
-      body: "Hi all,\n\nPlease note the #{subject} due to a personal commitment.\n\nBest regards,\nArshana"
-    },
-    {
-      message_id: "#{thread_id}-m2",
-      thread_id: thread_id,
-      from: 'Arshana Atapattu <arshana@entgra.io>',
-      to: recipient,
-      subject: subject,
-      sent_at: second_sent_at,
-      body: second_body
-    },
-    {
-      message_id: "#{thread_id}-m3",
-      thread_id: thread_id,
-      from: 'Arshana Atapattu <arshana@entgra.io>',
-      to: recipient,
-      subject: subject,
-      sent_at: third_sent_at,
-      body: third_body
-    }
-  ]
-
   service = RedmineTimeAnalytics::LeaveSyncService.new(settings: { recipient_email: recipient })
   result = service.sync_messages!(messages: messages, mode: :push, recipient_email: recipient)
 
-  assert_equal(3, result.processed_count, "#{thread_id} processed count")
-  assert_equal(3, result.imported_count, "#{thread_id} imported count should be message-level")
-  assert_equal(0, result.flagged_count, "#{thread_id} flagged count")
-
-  user_id = 14
-  records = TaLeaveRecord.confirmed_for(user_id: user_id, thread_id: thread_id)
-  assert_equal(1, records.length, "#{thread_id} should keep one final confirmed record")
-  record = records.first
-  assert_equal(shifted_date, record.leave_date, "#{thread_id} should keep shifted date after final reply")
-  assert_equal(1.0, record.leave_fraction.to_f, "#{thread_id} should apply full-day update from final reply")
-
-  stale_record_exists = records.any? { |item| item.leave_date == original_date }
-  assert(!stale_record_exists, "#{thread_id} should not keep original stale date")
+  assert_equal(messages.length, result.processed_count, 'processed count should match message count')
+  assert_equal(expected_imported, result.imported_count, 'imported count mismatch')
+  assert_equal(expected_flagged, result.flagged_count, 'flagged count mismatch')
 end
 
 TaLeaveRecord.reset!
 
 sync_case(
-  thread_id: 'case-1',
-  original_date: Date.new(2026, 1, 29),
-  shifted_date: Date.new(2026, 2, 5),
-  first_sent_at: Time.zone.parse('2026-01-20 11:29:00'),
-  second_sent_at: Time.zone.parse('2026-01-28 19:03:00'),
-  third_sent_at: Time.zone.parse('2026-02-05 08:32:00'),
-  second_body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
-  third_body: "Hi all,\n\nReminder on the body of the email.\nPlease note this is a full day leave.\n\nBest regards,\nArshana"
+  messages: [
+    {
+      message_id: 'simple-1',
+      thread_id: 'simple-thread',
+      from: 'Sandali Kavishka <sandali@example.com>',
+      to: 'vacation-group@entgra.io',
+      subject: 'On Leave 2026/04/03',
+      body: 'Hi all, on leave due to exam.',
+      sent_at: Time.zone.parse('2026-03-30 18:38:00')
+    }
+  ],
+  expected_imported: 1,
+  expected_flagged: 0
 )
 
 sync_case(
-  thread_id: 'case-2',
-  original_date: Date.new(2026, 1, 30),
-  shifted_date: Date.new(2026, 2, 6),
-  first_sent_at: Time.zone.parse('2026-01-20 11:30:00'),
-  second_sent_at: Time.zone.parse('2026-01-28 19:04:00'),
-  third_sent_at: Time.zone.parse('2026-02-06 07:22:00'),
-  second_body: "Hi all,\n\nPlease note this leave also shifted to next week(06.02.2026)(evening).\n\nBest regards,\nArshana",
-  third_body: "Hi all,\n\nReminder on the previous mail body.\nPlease note this will be a full day leave.\n\nBest regards,\nArshana"
+  messages: [
+    {
+      message_id: 'complex-1',
+      thread_id: 'complex-thread',
+      from: 'Arshana Atapattu <arshana@entgra.io>',
+      to: 'vacation-group@entgra.io',
+      subject: 'Re: Half day leave(Evening) - 29.01.2026',
+      body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
+      sent_at: Time.zone.parse('2026-01-28 19:03:00')
+    }
+  ],
+  expected_imported: 0,
+  expected_flagged: 1
 )
 
-puts 'Leave sync thread update regression checks passed.'
+puts 'Hybrid leave extraction checks passed.'

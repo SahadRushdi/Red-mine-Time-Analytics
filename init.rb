@@ -1,5 +1,8 @@
 require File.expand_path('lib/redmine_time_analytics/external_redmine_time_service', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_email_parser', __dir__)
+require File.expand_path('lib/redmine_time_analytics/simple_leave_email_parser', __dir__)
+require File.expand_path('lib/redmine_time_analytics/ai_leave_extractor', __dir__)
+require File.expand_path('lib/redmine_time_analytics/hybrid_leave_extractor', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_providers/base_provider', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_providers/gmail_base_provider', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_providers/gmail_oauth_provider', __dir__)

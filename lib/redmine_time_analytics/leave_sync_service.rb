@@ -1,12 +1,17 @@
 # frozen_string_literal: true
 
+require_relative 'leave_email_parser'
+require_relative 'simple_leave_email_parser'
+require_relative 'ai_leave_extractor'
+require_relative 'hybrid_leave_extractor'
+
 module RedmineTimeAnalytics
   class LeaveSyncService
     SyncResult = Struct.new(:processed_count, :imported_count, :flagged_count, :errors, keyword_init: true)
 
     def initialize(settings: TaTeamSetting.leave_sync_settings)
       @settings = settings
-      @parser = RedmineTimeAnalytics::LeaveEmailParser.new
+      @extractor = RedmineTimeAnalytics::HybridLeaveExtractor.new(settings: @settings)
       @fetcher = RedmineTimeAnalytics::LeaveFetcherFactory.build(@settings)
     end
 
@@ -57,7 +62,7 @@ module RedmineTimeAnalytics
     end
 
     def handle_message(message, recipient_email, mode, result)
-      parsed = @parser.parse(message: message, recipient_email: recipient_email)
+      parsed = @extractor.parse(message: message, recipient_email: recipient_email)
       return if parsed.status == :ignored
       sent_at = normalized_sent_time(message[:sent_at])
 
@@ -77,6 +82,7 @@ module RedmineTimeAnalytics
       leave_entries = parsed_leave_entries(parsed)
       leave_entries = preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
       reconcile_thread_entries(parsed, message, sent_at, leave_entries)
+      persisted_sync_mode = persisted_sync_mode(mode, parsed.date_source == :ai)
       leave_entries.each do |entry|
         TaLeaveRecord.upsert_from_email!(
           user: parsed.user,
@@ -90,7 +96,7 @@ module RedmineTimeAnalytics
           source_sent_at: sent_at,
           raw_subject: message[:subject],
           raw_body: message[:body],
-          sync_mode: mode.to_s
+          sync_mode: persisted_sync_mode
         )
       end
       result.imported_count += 1 if leave_entries.any?
@@ -110,7 +116,7 @@ module RedmineTimeAnalytics
         source_sent_at: sent_at,
         raw_subject: "[FLAGGED:#{parsed.reason}] #{message[:subject]}",
         raw_body: message[:body],
-        sync_mode: mode.to_s
+        sync_mode: persisted_sync_mode(mode, parsed.date_source == :ai)
       )
     end
 
@@ -204,6 +210,20 @@ module RedmineTimeAnalytics
       Time.zone.parse(value.to_s)
     rescue StandardError
       nil
+    end
+
+    def persisted_sync_mode(mode, ai_analyzed)
+      base = case mode.to_s
+             when 'historical'
+               'historical'
+             when 'incremental'
+               'incremental'
+             when 'push', 'google_apps_script_push'
+               'push'
+             else
+               mode.to_s[0, 16]
+             end
+      ai_analyzed ? "#{base}_ai" : base
     end
   end
 end

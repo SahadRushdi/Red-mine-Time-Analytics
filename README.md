@@ -53,6 +53,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Half-Day Detection**: Emails containing `half day`, `morning`, or `evening` are counted as `0.5`; full-day phrases stay `1.0`
 - **Reply Updates**: Follow-up replies in the same thread replace earlier leave records so amendments are not double-counted
 - **Deduplication/Amendments**: Same-day updates replace prior values to avoid double counting
+- **Hybrid AI Extraction**: Simple subject-only leave requests are parsed deterministically, and complex/reply/range cases can be routed to AI extraction
 
 ### UI/UX Improvements
 - **Modern Button System**: Unified button styling with shared base classes for consistency
@@ -144,9 +145,13 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
    - **Gmail OAuth 2.0 (Recommended)**: set OAuth client ID/secret + account email, save, then click **Connect Gmail Account**
    - **Domain-Wide Delegation**: set delegated user + service account JSON
    - **Google Apps Script (Webhook Push)**: copy webhook URL and deploy script template from the page
-4. Save settings
-5. For OAuth/DWD, run **Historical Sync** once, then **Incremental Sync** (or schedule rake task)
-6. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
+4. Configure **AI model** extraction for edge cases (optional):
+   - Enable AI extraction
+   - Choose provider (Google/OpenAI/Anthropic/Custom)
+   - Set model + API key (+ base URL for custom provider)
+5. Save settings
+6. For OAuth/DWD, run **Historical Sync** once, then **Incremental Sync** (or schedule rake task)
+7. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
 
 ### Chart Interaction
 - **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default
@@ -166,7 +171,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Views**: Optimized ERB templates with side-by-side analytics layout
 - **Chart Library**: Chart.js for interactive visualizations with real-time type switching
 - **Utilities**: Modular chart generation and CSV export helpers
-- **Leave Sync Services**: `LeaveSyncService`, provider adapters (OAuth/DWD/GAS), and `LeaveEmailParser` under `lib/redmine_time_analytics/`
+- **Leave Sync Services**: `LeaveSyncService`, provider adapters (OAuth/DWD/GAS), `HybridLeaveExtractor`, `SimpleLeaveEmailParser`, `AiLeaveExtractor`, and `LeaveEmailParser` under `lib/redmine_time_analytics/`
 
 ### UI/UX Design
 The plugin implements a modern, space-optimized design:

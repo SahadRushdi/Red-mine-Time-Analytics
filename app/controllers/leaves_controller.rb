@@ -141,20 +141,22 @@ class LeavesController < ApplicationController
   def serialize_record(record)
     mapped_user = record.user || TaLeaveRecord.find_active_user_by_sender(record.sender_email)
     leave_fraction = effective_leave_fraction(record)
-    {
-      id: record.id,
-      user_id: mapped_user&.id,
-      user_name: mapped_user&.name || record.sender_email,
-      sender_email: record.sender_email.to_s,
+      {
+        id: record.id,
+        user_id: mapped_user&.id,
+        user_name: mapped_user&.name || record.sender_email,
+        sender_email: record.sender_email.to_s,
       leave_date: record.leave_date,
       leave_fraction: leave_fraction.round(2),
       leave_type: leave_type_for_fraction(leave_fraction),
-      status: record.status,
-      can_unflag: record.status == 'flagged' && mapped_user.present?,
-      can_delete: record.status == 'flagged',
-      can_edit: true,
-      subject: record.raw_subject.to_s
-    }
+        status: record.status,
+        flagged_reason: flagged_reason_for(record),
+        ai_analyzed: ai_analyzed?(record),
+        can_unflag: record.status == 'flagged' && mapped_user.present?,
+        can_delete: record.status == 'flagged',
+        can_edit: true,
+        subject: record.raw_subject.to_s
+      }
   end
 
   def effective_leave_fraction(record)
@@ -200,5 +202,19 @@ class LeavesController < ApplicationController
     return 'Half Day' if value >= 0.5
 
     'Unknown'
+  end
+
+  def flagged_reason_for(record)
+    return '' unless record.status == 'flagged'
+
+    raw_reason = record.raw_subject.to_s[/\A\[FLAGGED:([^\]]+)\]/, 1].to_s
+    return '' if raw_reason.blank?
+
+    text = raw_reason.tr('_', ' ').strip.split.map(&:capitalize).join(' ')
+    text.gsub(/\bAi\b/, 'AI')
+  end
+
+  def ai_analyzed?(record)
+    record.sync_mode.to_s.include?('_ai')
   end
 end

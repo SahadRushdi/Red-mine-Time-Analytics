@@ -525,6 +525,7 @@
         record.sender_email,
         record.leave_type,
         record.status,
+        record.flagged_reason,
         record.leave_date,
         record.subject
       ].join(' ').toLowerCase();
@@ -701,7 +702,7 @@
             '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
             '<td id="leaves-type-value-' + record.id + '" class="px-4 py-3 text-gray-700">' + (record.leave_type || leaveTypeForFraction(record.leave_fraction)) + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
-            '<td class="px-4 py-3">' + statusBadge(record.status) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
           '</tr>';
           html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
@@ -866,11 +867,14 @@
       window.setTimeout(hideDatePickers, 120);
     }
 
-    function statusBadge(status) {
+    function statusBadge(status, flaggedReason, aiAnalyzed) {
       if (status === 'confirmed') {
-        return '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>';
+        var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>' + analyzedHtml + '</div>';
       }
-      return '<span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>';
+      var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
+      var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + analyzedHtml + '</div>';
     }
 
     function leaveTypeForFraction(fraction) {

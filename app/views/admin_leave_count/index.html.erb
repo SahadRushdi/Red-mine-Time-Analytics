@@ -113,6 +113,45 @@
         </details>
       </div>
 
+      <div class="rounded-lg border border-purple-100 bg-purple-50 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-gray-900"><%= l(:label_leave_approach_ai_model) %></span>
+          <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-purple-700"><%= l(:label_leave_ai_extraction_mode) %></span>
+        </div>
+        <p class="text-sm text-gray-700"><%= l(:text_leave_ai_description) %></p>
+        <div>
+          <label class="inline-flex items-center cursor-pointer">
+            <%= hidden_field_tag :leave_ai_extraction_enabled, '0' %>
+            <%= check_box_tag :leave_ai_extraction_enabled, '1', @leave_sync_settings[:ai_extraction_enabled], class: 'sr-only peer', id: 'leave-ai-extraction-enabled' %>
+            <div class="relative w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-purple-600 after:content-[\"\"] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:border-gray-300 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+            <span class="ms-3 text-sm font-medium text-gray-700"><%= l(:label_enable_ai_leave_extraction) %></span>
+          </label>
+        </div>
+        <div id="leave-ai-model-panel" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <%= label_tag :leave_ai_provider, l(:label_leave_ai_provider), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= select_tag :leave_ai_provider, options_for_select([
+              ['Google AI Studio (Gemini)', 'google'],
+              ['OpenAI', 'openai'],
+              ['Anthropic Claude', 'anthropic'],
+              ['Custom (OpenAI-compatible)', 'custom']
+            ], @leave_sync_settings[:ai_provider].presence || 'google'), class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div>
+            <%= label_tag :leave_ai_model, l(:label_leave_ai_model), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= text_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], placeholder: 'gemini-2.0-flash', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div>
+            <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div>
+            <%= label_tag :leave_ai_base_url, l(:label_leave_ai_base_url), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= text_field_tag :leave_ai_base_url, @leave_sync_settings[:ai_base_url], placeholder: 'Optional (required for custom provider)', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+        </div>
+      </div>
+
       <div>
         <%= label_tag :leave_sync_enabled, l(:label_sync_status), class: 'mb-1 block text-sm font-medium text-gray-700' %>
         <label class="inline-flex items-center cursor-pointer">
@@ -167,6 +206,17 @@
       radio.addEventListener('change', toggleApproachPanels);
     });
     toggleApproachPanels();
+
+    var aiEnabledToggle = document.getElementById('leave-ai-extraction-enabled');
+    var aiPanel = document.getElementById('leave-ai-model-panel');
+    function toggleAiPanel() {
+      if (!aiEnabledToggle || !aiPanel) return;
+      aiPanel.style.display = aiEnabledToggle.checked ? '' : 'none';
+    }
+    if (aiEnabledToggle) {
+      aiEnabledToggle.addEventListener('change', toggleAiPanel);
+      toggleAiPanel();
+    }
 
     var copyWebhookBtn = document.getElementById('copy-webhook-url');
     if (copyWebhookBtn) {
