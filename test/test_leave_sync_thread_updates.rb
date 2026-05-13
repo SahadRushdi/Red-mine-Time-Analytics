@@ -315,6 +315,100 @@ ai_confirmed = ai_extractor.send(
 assert_equal(:confirmed, ai_confirmed.status, 'AI results with entries should be treated as confirmed')
 assert_equal('ai_analyzed', ai_confirmed.reason, 'AI results with entries should be marked analyzed')
 
+ai_live_extractor = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+ai_live_extractor.define_singleton_method(:request_ai!) do |**|
+  {
+    'status' => 'flagged',
+    'reason' => 'ai_model_failed',
+    'leave_entries' => []
+  }
+end
+multi_day_ai = ai_live_extractor.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 16/04/2026 & 17/04/2026',
+    body: 'Hi all, please approve this leave request.',
+    sent_at: Time.zone.parse('2026-04-10 10:00:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, multi_day_ai.status, 'AI fallback should confirm multi-day explicit dates')
+assert_equal(2, multi_day_ai.leave_dates.length, 'multi-day explicit dates should become two leave entries')
+assert_equal(Date.new(2026, 4, 16), multi_day_ai.leave_dates.first, 'first multi-day date should be preserved')
+
+comma_day_ai = ai_live_extractor.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave 28,29 of May 2026',
+    body: 'Hi all, please approve this leave request.',
+    sent_at: Time.zone.parse('2026-05-01 10:00:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, comma_day_ai.status, 'comma-day multi-day explicit dates should be confirmed')
+assert_equal(2, comma_day_ai.leave_dates.length, 'comma-day explicit dates should become two leave entries')
+
+partial_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+partial_ai.define_singleton_method(:request_ai!) do |**|
+  {
+    'status' => 'confirmed',
+    'reason' => 'ai_analyzed',
+    'leave_entries' => [{ 'date' => '2026-04-16', 'fraction' => 1.0 }]
+  }
+end
+partial_result = partial_ai.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 16/04/2026 & 17/04/2026',
+    body: 'Hi all, please approve this leave request.',
+    sent_at: Time.zone.parse('2026-04-10 10:00:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, partial_result.status, 'partial AI result should stay confirmed')
+assert_equal(2, partial_result.leave_dates.length, 'partial AI result should expand to both explicit dates')
+assert_equal(Date.new(2026, 4, 17), partial_result.leave_dates.last, 'partial AI result should include the second date')
+
+failing_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+failing_ai.define_singleton_method(:request_ai!) do |**|
+  raise StandardError, 'RESOURCE_EXHAUSTED'
+end
+range_result = failing_ai.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave from 16/04/2026 to 18/04/2026',
+    body: 'Hi all, please approve this leave request.',
+    sent_at: Time.zone.parse('2026-04-10 10:00:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, range_result.status, 'provider failures should still confirm explicit ranges')
+assert_equal(3, range_result.leave_dates.length, 'explicit date ranges should expand to all days')
+assert_equal(Date.new(2026, 4, 16), range_result.leave_dates.first, 'range fallback should keep the first date')
+assert_equal(Date.new(2026, 4, 18), range_result.leave_dates.last, 'range fallback should keep the last date')
+
 def sync_case(messages:, expected_imported:, expected_flagged:)
   recipient = 'vacation-group@entgra.io'
   service = RedmineTimeAnalytics::LeaveSyncService.new(settings: { recipient_email: recipient })

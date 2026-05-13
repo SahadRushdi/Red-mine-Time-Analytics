@@ -7,6 +7,7 @@ require_relative 'hybrid_leave_extractor'
 
 module RedmineTimeAnalytics
   class LeaveSyncService
+    AI_BATCH_DELAY_SECONDS = 6
     SyncResult = Struct.new(:processed_count, :imported_count, :flagged_count, :errors, keyword_init: true)
 
     def initialize(settings: TaTeamSetting.leave_sync_settings)
@@ -52,9 +53,10 @@ module RedmineTimeAnalytics
 
     def process_messages!(messages:, recipient_email:, mode:)
       result = SyncResult.new(processed_count: 0, imported_count: 0, flagged_count: 0, errors: [])
-      sorted_messages(messages).each do |message|
+      sorted_messages(messages).each_with_index do |message, index|
         result.processed_count += 1
-        handle_message(message, recipient_email, mode, result)
+        parsed = handle_message(message, recipient_email, mode, result)
+        throttle_ai_batch!(parsed, mode, index, messages)
       rescue StandardError => e
         result.errors << e.message
       end
@@ -69,12 +71,12 @@ module RedmineTimeAnalytics
       if parsed.status == :flagged
         persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
         result.flagged_count += 1
-        return
+        return parsed
       end
 
       if parsed.status == :cancelled
         handle_cancelled_message(parsed, message, sent_at)
-        return
+        return parsed
       end
 
       return if newer_thread_message?(parsed.user, message, sent_at)
@@ -100,6 +102,7 @@ module RedmineTimeAnalytics
         )
       end
       result.imported_count += 1 if leave_entries.any?
+      parsed
     end
 
     def persist_flagged_message(parsed, message, recipient_email, mode, sent_at)
@@ -224,6 +227,14 @@ module RedmineTimeAnalytics
                mode.to_s[0, 16]
              end
       ai_analyzed ? "#{base}_ai" : base
+    end
+
+    def throttle_ai_batch!(parsed, mode, index, messages)
+      return unless mode.to_s == 'historical'
+      return unless parsed&.date_source == :ai
+      return if index >= Array(messages).length - 1
+
+      sleep(AI_BATCH_DELAY_SECONDS)
     end
   end
 end

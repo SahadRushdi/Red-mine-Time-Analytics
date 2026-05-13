@@ -6,6 +6,10 @@ require 'uri'
 
 module RedmineTimeAnalytics
   class AiLeaveExtractor
+    AI_HTTP_RETRYABLE_CODES = [429, 500, 502, 503, 504].freeze
+    AI_HTTP_MAX_RETRIES = 2
+    AI_HTTP_RETRY_DELAY_SECONDS = 2
+
     SYSTEM_PROMPT = <<~PROMPT.freeze
       You extract leave details from a leave-request email.
       Output JSON only (no markdown).
@@ -22,6 +26,8 @@ module RedmineTimeAnalytics
       - If the request is cancellation, set status to "cancelled" and return dates to cancel in leave_entries.
       - Analyze the latest reply body first; if the email is a reply thread, the newest body overrides quoted older text.
       - Prefer the most recently updated date in the message when there are corrections or shifted dates.
+      - If the subject or body mentions multiple explicit dates, return each date as a separate leave entry.
+      - Do not use the sent date when explicit leave dates are present.
       - Do not flag just because the wording is informal or because there is a mix of subject/body text.
       - If you can determine any leave date and leave type, return "confirmed".
       - Return "flagged" only for non-leave emails or when no leave date can be determined at all.
@@ -43,13 +49,46 @@ module RedmineTimeAnalytics
       user = find_active_user_by_email(sender_email)
       return result(status: :flagged, reason: 'user_not_found') unless user
 
-      ai_payload = request_ai!(
+      parsed = begin
+        ai_payload = request_ai!(
+          subject: message[:subject].to_s,
+          body: message[:body].to_s,
+          primary_body: primary_body_text(message[:body].to_s),
+          sent_at: normalize_sent_time(message[:sent_at]) || Time.zone.now
+        )
+        parsed_result(ai_payload, user: user)
+      rescue StandardError => e
+        Rails.logger.warn("[LeaveAI] provider error: #{e.class}: #{e.message}") if defined?(Rails)
+        result(status: :flagged, reason: 'ai_model_failed', user: user, date_source: :ai)
+      end
+      explicit_entries = explicit_leave_entries_from_message(
         subject: message[:subject].to_s,
         body: message[:body].to_s,
-        primary_body: primary_body_text(message[:body].to_s),
-        sent_at: normalize_sent_time(message[:sent_at]) || Time.zone.now
+        sent_at: message[:sent_at]
       )
-      parsed_result(ai_payload, user: user)
+
+      if explicit_entries.length > 1 && parsed.leave_dates.length < explicit_entries.length
+        fallback = result(
+          status: :confirmed,
+          reason: 'ai_analyzed',
+          user: user,
+          leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
+          leave_fraction: 1.0,
+          leave_entries: explicit_entries,
+          date_source: :ai
+        )
+        return fallback
+      end
+
+      return parsed unless parsed.status == :flagged && parsed.leave_entries.blank?
+
+      fallback = fallback_from_message(
+        subject: message[:subject].to_s,
+        body: message[:body].to_s,
+        user: user,
+        sent_at: message[:sent_at]
+      )
+      fallback.leave_entries.any? ? fallback : parsed
     end
 
     private
@@ -280,16 +319,25 @@ module RedmineTimeAnalytics
       headers.each { |key, value| request[key] = value }
       request.body = JSON.generate(body)
 
-      response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
-        http.request(request)
-      end
-      payload = JSON.parse(response.body.to_s)
-      unless response.code.to_i.between?(200, 299)
-        error_message = payload['error'].is_a?(Hash) ? payload['error']['message'] : payload['error']
-        raise(error_message.presence || "AI request failed with HTTP #{response.code}")
-      end
+      attempts = 0
+      loop do
+        response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          http.request(request)
+        end
+        payload = JSON.parse(response.body.to_s)
+        if retryable_http_response?(response, payload) && attempts < AI_HTTP_MAX_RETRIES
+          attempts += 1
+          sleep(ai_retry_delay(attempts))
+          next
+        end
 
-      payload
+        unless response.code.to_i.between?(200, 299)
+          error_message = payload['error'].is_a?(Hash) ? payload['error']['message'] : payload['error']
+          raise(error_message.presence || "AI request failed with HTTP #{response.code}")
+        end
+
+        return payload
+      end
     rescue JSON::ParserError
       raise 'AI provider returned invalid JSON'
     end
@@ -352,6 +400,57 @@ module RedmineTimeAnalytics
       }
     end
 
+    def fallback_from_message(subject:, body:, user:, sent_at:)
+      reference_time = normalize_sent_time(sent_at) || Time.zone.now
+      entries = explicit_leave_entries_from_message(subject: subject, body: body, sent_at: reference_time)
+
+      if entries.any?
+        result(
+          status: :confirmed,
+          reason: 'ai_analyzed',
+          user: user,
+          leave_dates: entries.map { |entry| entry[:date] }.uniq.sort,
+          leave_fraction: entries.map { |entry| entry[:fraction].to_f }.max || 1.0,
+          leave_entries: entries,
+          date_source: :ai
+        )
+      else
+        result(status: :flagged, reason: 'ai_model_failed', user: user, date_source: :ai)
+      end
+    end
+
+    def explicit_leave_entries_from_message(subject:, body:, sent_at:)
+      reference_time = normalize_sent_time(sent_at) || Time.zone.now
+      subject_entries = parse_explicit_entries(subject, reference_time)
+      body_entries = parse_explicit_entries(primary_body_text(body), reference_time)
+      (subject_entries + body_entries).uniq { |entry| entry[:date] }
+    end
+
+    def parse_explicit_entries(text, reference_time)
+      normalized = normalize_date_text(text.to_s)
+      dates = extract_dates_from_text(normalized)
+      dates.concat(expand_comma_day_lists(normalized, reference_time))
+      dates = expand_range_dates(normalized, dates)
+      dates.compact.uniq.sort.map do |date|
+        { date: date, fraction: 1.0 }
+      end
+    end
+
+    def expand_range_dates(text, dates)
+      return dates if dates.length < 2
+      return dates unless explicit_range_text?(text)
+
+      first_date = dates.min
+      last_date = dates.max
+      return dates if first_date.nil? || last_date.nil? || last_date < first_date
+
+      (first_date..last_date).to_a
+    end
+
+    def explicit_range_text?(text)
+      text.match?(/\b(?:from|between|through|until)\b/i)
+    end
+
     def extract_dates_from_text(text)
       normalized = text.to_s
       dates = []
@@ -385,6 +484,33 @@ module RedmineTimeAnalytics
         dates << Date.parse(candidate)
       rescue ArgumentError
         next
+      end
+
+      dates.compact.uniq.sort
+    end
+
+    def normalize_date_text(text)
+      text.to_s
+          .gsub(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/, '\1/\2/\3')
+          .gsub(/\b(\d{1,2})(st|nd|rd|th)\b/i, '\1')
+    end
+
+    def expand_comma_day_lists(text, reference_time)
+      normalized = text.to_s
+      month_regex = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
+                    'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
+                    'nov(?:ember)?|dec(?:ember)?)'
+      dates = []
+
+      normalized.scan(/\b(\d{1,2}(?:\s*,\s*\d{1,2})+)\s*(?:of\s+)?(#{month_regex})(?:\s+(\d{4}))?\b/i).each do |day_list, month_name, year|
+        year = year.present? ? year.to_i : reference_time.year
+        day_list.split(/\s*,\s*/).each do |day_str|
+          begin
+            dates << Date.parse("#{month_name} #{day_str}, #{year}")
+          rescue ArgumentError
+            next
+          end
+        end
       end
 
       dates.compact.uniq.sort
@@ -444,6 +570,19 @@ module RedmineTimeAnalytics
 
     def extract_recipient_addresses(raw_to)
       raw_to.to_s.downcase.scan(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i).map(&:downcase).uniq
+    end
+
+    def retryable_http_response?(response, payload)
+      code = response.code.to_i
+      return true if AI_HTTP_RETRYABLE_CODES.include?(code)
+
+      error = payload['error']
+      error_text = error.is_a?(Hash) ? error.values.join(' ') : error.to_s
+      error_text.match?(/rate limit|too many requests|resource exhausted|overloaded/i)
+    end
+
+    def ai_retry_delay(attempt)
+      AI_HTTP_RETRY_DELAY_SECONDS * attempt
     end
 
     def find_active_user_by_email(sender_email)
