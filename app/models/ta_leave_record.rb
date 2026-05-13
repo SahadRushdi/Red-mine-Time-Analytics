@@ -135,7 +135,7 @@ class TaLeaveRecord < ActiveRecord::Base
     def cancel_thread_records!(user_id:, thread_id:, incoming_sent_at:, leave_dates:)
       return if user_id.blank? || thread_id.blank?
 
-      scope = confirmed.where(user_id: user_id, source_thread_id: thread_id)
+      scope = where(user_id: user_id, source_thread_id: thread_id)
       if incoming_sent_at.present?
         scope = scope.where('source_sent_at IS NULL OR source_sent_at <= ?', incoming_sent_at)
       end
@@ -150,7 +150,7 @@ class TaLeaveRecord < ActiveRecord::Base
     def cancel_user_dates!(user_id:, leave_dates:)
       return if user_id.blank? || leave_dates.blank?
 
-      confirmed.where(user_id: user_id, leave_date: leave_dates).delete_all
+      where(user_id: user_id, leave_date: leave_dates).delete_all
     end
 
     def total_leave_days_for_user(user_id:, from_date:, to_date:)

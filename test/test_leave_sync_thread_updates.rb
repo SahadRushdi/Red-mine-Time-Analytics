@@ -271,7 +271,8 @@ end
 
 User.seed([
   User.new(id: 14, mail: 'arshana@entgra.io'),
-  User.new(id: 15, mail: 'sandali@example.com')
+  User.new(id: 15, mail: 'sandali@example.com'),
+  User.new(id: 16, mail: 'oshani@entgra.io')
 ])
 
 simple_parser = RedmineTimeAnalytics::SimpleLeaveEmailParser.new
@@ -409,6 +410,64 @@ assert_equal(3, range_result.leave_dates.length, 'explicit date ranges should ex
 assert_equal(Date.new(2026, 4, 16), range_result.leave_dates.first, 'range fallback should keep the first date')
 assert_equal(Date.new(2026, 4, 18), range_result.leave_dates.last, 'range fallback should keep the last date')
 
+cancel_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+cancel_ai.define_singleton_method(:request_ai!) do |**|
+  {
+    'status' => 'flagged',
+    'reason' => 'ai_model_failed',
+    'leave_entries' => []
+  }
+end
+cancel_result = cancel_ai.parse(
+  message: {
+    from: 'Oshani Silva <oshani@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave - Morning 2026/04/07',
+    body: "Hi all,\n\nPlease note the subject due to a personal commitment.\n\nThis is cancelled as I was able to work.\n",
+    sent_at: Time.zone.parse('2026-03-31 09:17:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:cancelled, cancel_result.status, 'latest cancellation reply should override the subject')
+assert_equal(1, cancel_result.leave_dates.length, 'cancelled reply should keep the original requested date')
+assert_equal(0.5, cancel_result.leave_fraction, 'cancelled half-day request should preserve the half-day fraction')
+
+mixed_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+mixed_ai.define_singleton_method(:request_ai!) do |**|
+  {
+    'status' => 'flagged',
+    'reason' => 'ai_model_failed',
+    'leave_entries' => []
+  }
+end
+mixed_result = mixed_ai.parse(
+  message: {
+    from: 'Oshani Silva <oshani@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On Leave - 06/04/2026 Half Day (Evening) & 16/04/2026, 17/04/2026 (Full Days)',
+    body: 'Hi all,\n\nPlease note the subject due to a personal commitment.',
+    sent_at: Time.zone.parse('2026-04-06 07:53:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, mixed_result.status, 'mixed fraction request should stay confirmed')
+assert_equal(3, mixed_result.leave_dates.length, 'mixed request should expand to three leave dates')
+assert_equal(0.5, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 6) }[:fraction], 'first date should be half day')
+assert_equal(1.0, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 16) }[:fraction], 'second date should be full day')
+assert_equal(1.0, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 17) }[:fraction], 'third date should be full day')
+
 def sync_case(messages:, expected_imported:, expected_flagged:)
   recipient = 'vacation-group@entgra.io'
   service = RedmineTimeAnalytics::LeaveSyncService.new(settings: { recipient_email: recipient })
@@ -452,5 +511,70 @@ sync_case(
   expected_imported: 0,
   expected_flagged: 1
 )
+
+TaLeaveRecord.reset!
+cancel_user = User.sorted.find { |user| user.mail == 'oshani@entgra.io' }
+TaLeaveRecord.upsert_from_email!(
+  user: cancel_user,
+  leave_date: Date.new(2026, 4, 7),
+  leave_fraction: 0.5,
+  status: 'confirmed',
+  sender_email: 'oshani@entgra.io',
+  recipient_email: 'vacation-group@entgra.io',
+  source_message_id: 'leave-1',
+  source_thread_id: 'cancel-thread',
+  source_sent_at: Time.zone.parse('2026-03-31 09:17:00'),
+  raw_subject: 'Half day leave - Morning 2026/04/07',
+  raw_body: 'Please note the subject due to a personal commitment.',
+  sync_mode: 'historical_ai'
+)
+TaLeaveRecord.upsert_from_email!(
+  user: cancel_user,
+  leave_date: Date.new(2026, 4, 7),
+  leave_fraction: 0.5,
+  status: 'confirmed',
+  sender_email: 'oshani@entgra.io',
+  recipient_email: 'vacation-group@entgra.io',
+  source_message_id: 'leave-1-reminder',
+  source_thread_id: 'cancel-thread',
+  source_sent_at: Time.zone.parse('2026-04-07 05:47:00'),
+  raw_subject: 'Reminder on Half day leave - Morning 2026/04/07',
+  raw_body: 'Reminder on the subject.',
+  sync_mode: 'historical_ai'
+)
+
+cancel_service = RedmineTimeAnalytics::LeaveSyncService.new(settings: { recipient_email: 'vacation-group@entgra.io' })
+cancel_extractor = Object.new
+cancel_extractor.define_singleton_method(:parse) do |message:, recipient_email:|
+  RedmineTimeAnalytics::LeaveEmailParser::Result.new(
+    status: :cancelled,
+    reason: 'cancelled',
+    user: cancel_user,
+    leave_dates: [Date.new(2026, 4, 7)],
+    leave_fraction: 0.5,
+    leave_entries: [{ date: Date.new(2026, 4, 7), fraction: 0.5 }],
+    date_source: :ai,
+    subject_has_explicit_date: true,
+    body_has_explicit_date: true,
+    used_sent_fallback: false
+  )
+end
+cancel_service.instance_variable_set(:@extractor, cancel_extractor)
+cancel_service.sync_messages!(
+  messages: [
+    {
+      message_id: 'cancel-1',
+      thread_id: 'cancel-thread',
+      from: 'Oshani Silva <oshani@entgra.io>',
+      to: 'vacation-group@entgra.io',
+      subject: 'Half day leave - Morning 2026/04/07',
+      body: "This is cancelled as I was able to work.",
+      sent_at: Time.zone.parse('2026-04-08 00:38:00')
+    }
+  ],
+  mode: :historical,
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(0, TaLeaveRecord.records.length, 'cancelled leave should be deleted from the database')
 
 puts 'Hybrid leave extraction checks passed.'

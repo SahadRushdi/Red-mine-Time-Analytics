@@ -11,26 +11,35 @@ module RedmineTimeAnalytics
     AI_HTTP_RETRY_DELAY_SECONDS = 2
 
     SYSTEM_PROMPT = <<~PROMPT.freeze
-      You extract leave details from a leave-request email.
-      Output JSON only (no markdown).
-      JSON schema:
+      You are a strict data extractor for leave requests. Output JSON ONLY.
+      
+      STEP 1: ANALYZE LATEST MESSAGE (Case 4 Fix)
+      - Check the "Latest reply body" immediately. 
+      - If it contains "cancelled", "cancel", "ignore", "working instead", or "able to work", the status for those dates MUST be "cancelled".
+      - The latest message content OVERRIDES everything else, including the Subject line.
+
+      STEP 2: DATE-FRACTION MAPPING (Case 5 Fix)
+      - Do NOT apply one fraction to all dates in a list.
+      - Look for modifiers (Half Day, Morning, Evening, Full Day) specifically linked to each date.
+      - Example: "06/04 Half Day & 16/04 Full Day" must return:
+        {"date": "2026-04-06", "fraction": 0.5}, {"date": "2026-04-16", "fraction": 1.0}
+
+      STEP 3: FRACTION DEFINITIONS
+      - 0.5: Keywords "Half day", "Morning", "Evening", "Late arrival", "After 12:30", "Early leave".
+      - 1.0: Keywords "On leave", "Full day", "Sick", "Study", or dates mentioned without a time modifier.
+      - If the latest reply cancels a request, return the original requested dates with status "cancelled" so the sync layer can delete the saved leave rows.
+
+      STEP 4: OUTPUT JSON
       {
         "status": "confirmed" | "cancelled" | "flagged",
-        "reason": "short_reason_string",
-        "leave_entries": [
-          {"date": "YYYY-MM-DD", "fraction": 1.0 or 0.5}
-        ]
+        "reason": "short_explanation",
+        "leave_entries": [{"date": "YYYY-MM-DD", "fraction": 1.0 | 0.5}]
       }
-      Rules:
-      - Use only 1.0 for full-day and 0.5 for half-day.
-      - If the request is cancellation, set status to "cancelled" and return dates to cancel in leave_entries.
-      - Analyze the latest reply body first; if the email is a reply thread, the newest body overrides quoted older text.
-      - Prefer the most recently updated date in the message when there are corrections or shifted dates.
-      - If the subject or body mentions multiple explicit dates, return each date as a separate leave entry.
-      - Do not use the sent date when explicit leave dates are present.
-      - Do not flag just because the wording is informal or because there is a mix of subject/body text.
-      - If you can determine any leave date and leave type, return "confirmed".
-      - Return "flagged" only for non-leave emails or when no leave date can be determined at all.
+
+      RULES:
+      - Ignore all punctuation (. / -) and casing in subject lines.
+      - Use "Sent at" for the year if missing.
+      - Return "flagged" only if no leave dates or intentions are found at all.
     PROMPT
 
     def initialize(settings:)
@@ -67,13 +76,25 @@ module RedmineTimeAnalytics
         sent_at: message[:sent_at]
       )
 
+      if cancellation_request?(message[:subject].to_s, message[:body].to_s) && explicit_entries.any?
+        return result(
+          status: :cancelled,
+          reason: 'cancelled',
+          user: user,
+          leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
+          leave_fraction: explicit_entries.map { |entry| entry[:fraction].to_f }.max || 0.0,
+          leave_entries: explicit_entries,
+          date_source: :ai
+        )
+      end
+
       if explicit_entries.length > 1 && parsed.leave_dates.length < explicit_entries.length
         fallback = result(
           status: :confirmed,
           reason: 'ai_analyzed',
           user: user,
           leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
-          leave_fraction: 1.0,
+          leave_fraction: explicit_entries.map { |entry| entry[:fraction].to_f }.max || 1.0,
           leave_entries: explicit_entries,
           date_source: :ai
         )
@@ -428,12 +449,24 @@ module RedmineTimeAnalytics
 
     def parse_explicit_entries(text, reference_time)
       normalized = normalize_date_text(text.to_s)
-      dates = extract_dates_from_text(normalized)
-      dates.concat(expand_comma_day_lists(normalized, reference_time))
-      dates = expand_range_dates(normalized, dates)
-      dates.compact.uniq.sort.map do |date|
-        { date: date, fraction: 1.0 }
+      entries = explicit_segments(normalized).flat_map do |segment|
+        dates = extract_dates_from_text(segment)
+        dates.concat(expand_comma_day_lists(segment, reference_time))
+        dates = expand_range_dates(segment, dates)
+        fraction = fraction_for_text(segment)
+
+        dates.compact.uniq.sort.map do |date|
+          { date: date, fraction: fraction }
+        end
       end
+
+      if entries.empty?
+        return extract_dates_from_text(normalized).map do |date|
+          { date: date, fraction: fraction_for_text(normalized) }
+        end
+      end
+
+      entries.uniq { |entry| entry[:date] }.sort_by { |entry| entry[:date] }
     end
 
     def expand_range_dates(text, dates)
@@ -449,6 +482,20 @@ module RedmineTimeAnalytics
 
     def explicit_range_text?(text)
       text.match?(/\b(?:from|between|through|until)\b/i)
+    end
+
+    def explicit_segments(text)
+      text.split(/(?:\n|[.!?;]|\s+\&\s+|\s+\band\b\s+)/i)
+          .map(&:strip)
+          .reject(&:empty?)
+    end
+
+    def fraction_for_text(text)
+      normalized = normalize_date_text(text.to_s).downcase
+      return 0.5 if normalized.match?(/\b(half\s*day|half-day|morning|evening|first half|second half|late arrival|late-arrival|after 12:30|early leave)\b/i)
+      return 1.0 if normalized.match?(/\b(full\s*day|full-day|whole day|entire day|on leave|leave)\b/i)
+
+      1.0
     end
 
     def extract_dates_from_text(text)
@@ -583,6 +630,11 @@ module RedmineTimeAnalytics
 
     def ai_retry_delay(attempt)
       AI_HTTP_RETRY_DELAY_SECONDS * attempt
+    end
+
+    def cancellation_request?(subject, body)
+      normalized = [subject, primary_body_text(body)].compact.join("\n").downcase
+      normalized.match?(/\b(cancelled|canceled|cancel|ignore|working instead|able to work|work instead)\b/)
     end
 
     def find_active_user_by_email(sender_email)
