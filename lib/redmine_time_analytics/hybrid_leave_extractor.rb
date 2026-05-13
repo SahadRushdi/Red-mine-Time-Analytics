@@ -6,6 +6,12 @@ module RedmineTimeAnalytics
                            'cancel', 'cancelled', 'canceled', 'withdraw', 'revoked', 'revoke',
                            'from', 'between', 'through', 'until'].freeze
     LEAVE_CONTEXT_KEYWORDS = ['leave', 'on leave', 'sick leave', 'vacation', 'holiday', 'absent'].freeze
+    MULTI_DATE_LIST_REGEX = /
+      \b\d{1,2}(?:\s*,\s*\d{1,2})+\s*(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|
+      jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b|
+      \b\d{1,2}\s*&\s*\d{1,2}\b|
+      \b(?:from|between|through|until)\b
+    /ix.freeze
     DATE_TOKEN_REGEX = /
       \b\d{4}-\d{2}-\d{2}\b|
       \b\d{4}[\/.]\d{1,2}[\/.]\d{1,2}\b|
@@ -54,6 +60,7 @@ module RedmineTimeAnalytics
       sent_year = normalize_sent_time(message[:sent_at])&.year
 
       return false unless LEAVE_CONTEXT_KEYWORDS.any? { |keyword| normalized_subject.include?(keyword) }
+      return false if multi_date_subject?(normalized_subject)
       return false if COMPLEXITY_KEYWORDS.any? { |keyword| normalized_subject.include?(keyword) }
       return false if COMPLEXITY_KEYWORDS.any? { |keyword| normalized_body.include?(keyword) }
       return false if contains_date_token?(normalized_body)
@@ -73,13 +80,18 @@ module RedmineTimeAnalytics
       text.match?(DATE_TOKEN_REGEX)
     end
 
+    def multi_date_subject?(subject_text)
+      subject_text.match?(MULTI_DATE_LIST_REGEX) || subject_text.scan(DATE_TOKEN_REGEX).length > 1
+    end
+
     def primary_body_text(text)
       normalized = text.to_s.gsub("\r\n", "\n")
       lines = normalized.lines
       separator_index = lines.index do |line|
         line.match?(/\A\s*>\s?/) ||
           line.match?(/\Aon .+wrote:\s*\z/i) ||
-          line.match?(/\A-----original message-----\s*\z/i)
+          line.match?(/\A-----original message-----\s*\z/i) ||
+          line.match?(/\A\[quoted text hidden\]\s*\z/i)
       end
       separator_index ? lines.take(separator_index).join : normalized
     end

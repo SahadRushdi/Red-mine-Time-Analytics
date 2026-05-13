@@ -272,7 +272,10 @@ end
 User.seed([
   User.new(id: 14, mail: 'arshana@entgra.io'),
   User.new(id: 15, mail: 'sandali@example.com'),
-  User.new(id: 16, mail: 'oshani@entgra.io')
+  User.new(id: 16, mail: 'oshani@entgra.io'),
+  User.new(id: 17, mail: 'viranga@entgra.io'),
+  User.new(id: 18, mail: 'yumeth@entgra.io'),
+  User.new(id: 19, mail: 'thushara@entgra.io')
 ])
 
 simple_parser = RedmineTimeAnalytics::SimpleLeaveEmailParser.new
@@ -356,6 +359,20 @@ comma_day_ai = ai_live_extractor.parse(
 )
 assert_equal(:confirmed, comma_day_ai.status, 'comma-day multi-day explicit dates should be confirmed')
 assert_equal(2, comma_day_ai.leave_dates.length, 'comma-day explicit dates should become two leave entries')
+
+ampersand_day_ai = ai_live_extractor.parse(
+  message: {
+    from: 'Thushara Abeykoon <thushara@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On Leave - 17 & 20 April 2026',
+    body: 'Hi all, please approve this leave request.',
+    sent_at: Time.zone.parse('2026-04-16 09:59:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, ampersand_day_ai.status, 'ampersand multi-day explicit dates should be confirmed')
+assert_equal(2, ampersand_day_ai.leave_dates.length, 'ampersand explicit dates should become two leave entries')
+assert_equal(Date.new(2026, 4, 17), ampersand_day_ai.leave_dates.first, 'first ampersand date should be preserved')
 
 partial_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
   settings: {
@@ -576,5 +593,170 @@ cancel_service.sync_messages!(
   recipient_email: 'vacation-group@entgra.io'
 )
 assert_equal(0, TaLeaveRecord.records.length, 'cancelled leave should be deleted from the database')
+
+case7_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+case7_ai.define_singleton_method(:request_ai!) do |**|
+  {
+    'status' => 'flagged',
+    'reason' => 'ai_model_failed',
+    'leave_entries' => []
+  }
+end
+case7_cancel = case7_ai.parse(
+  message: {
+    from: 'Yumeth Sumathipala <yumeth@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half-day Leave Today (06/04/2026 Evening)',
+    body: "I am cancelling my half-day leave request for this afternoon. The NAITA officer has postponed our meeting, so I will be working for the full day today.",
+    sent_at: Time.zone.parse('2026-04-06 08:45:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:cancelled, case7_cancel.status, 'cancellation reply should be classified as cancelled even without an explicit date')
+assert_equal([Date.new(2026, 4, 6)], case7_cancel.leave_dates, 'case 7 cancellation should keep the original leave date')
+
+TaLeaveRecord.reset!
+TaLeaveRecord.upsert_from_email!(
+  user: User.sorted.find { |user| user.mail == 'yumeth@entgra.io' },
+  leave_date: Date.new(2026, 4, 6),
+  leave_fraction: 0.5,
+  status: 'confirmed',
+  sender_email: 'yumeth@entgra.io',
+  recipient_email: 'vacation-group@entgra.io',
+  source_message_id: 'case7-1',
+  source_thread_id: 'case7-thread',
+  source_sent_at: Time.zone.parse('2026-04-06 08:25:00'),
+  raw_subject: 'Half-day Leave Today (06/04/2026 Evening)',
+  raw_body: 'I will be taking a half-day leave this afternoon.',
+  sync_mode: 'historical_ai'
+)
+case7_service = RedmineTimeAnalytics::LeaveSyncService.new(settings: { recipient_email: 'vacation-group@entgra.io' })
+case7_service.instance_variable_set(:@extractor, Object.new.tap do |extractor|
+  extractor.define_singleton_method(:parse) do |message:, recipient_email:|
+    RedmineTimeAnalytics::LeaveEmailParser::Result.new(
+      status: :cancelled,
+      reason: 'cancelled',
+      user: User.sorted.find { |user| user.mail == 'yumeth@entgra.io' },
+      leave_dates: [],
+      leave_fraction: 0.5,
+      leave_entries: [],
+      date_source: :ai,
+      subject_has_explicit_date: false,
+      body_has_explicit_date: false,
+      used_sent_fallback: false
+    )
+  end
+end)
+case7_service.sync_messages!(
+  messages: [
+    {
+      message_id: 'case7-cancel',
+      thread_id: 'case7-thread',
+      from: 'Yumeth Sumathipala <yumeth@entgra.io>',
+      to: 'vacation-group@entgra.io',
+      subject: 'Half-day Leave Today (06/04/2026 Evening)',
+      body: "I am cancelling my half-day leave request for this afternoon. The NAITA officer has postponed our meeting, so I will be working for the full day today.",
+      sent_at: Time.zone.parse('2026-04-06 08:45:00')
+    }
+  ],
+  mode: :historical,
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(0, TaLeaveRecord.records.length, 'case 7 cancellation should delete the saved half-day leave')
+
+case7_followup = ai_live_extractor.parse(
+  message: {
+    from: 'Yumeth Sumathipala <yumeth@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half-day Leave Today (07/04/2026 Evening)',
+    body: "Hi team,\n\nI will be taking that half-day leave this afternoon (07/04/2026).\n\n[Quoted text hidden]\nI am cancelling my half-day leave request for this afternoon. The NAITA officer has postponed our meeting, so I will be working for the full day today.\n",
+    sent_at: Time.zone.parse('2026-04-07 07:43:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case7_followup.status, 'follow-up leave request should not be cancelled by hidden quoted text')
+assert_equal([Date.new(2026, 4, 7)], case7_followup.leave_dates, 'follow-up leave request should keep the 07/04 date')
+assert_equal(0.5, case7_followup.leave_fraction, 'follow-up leave request should remain half day')
+
+hybrid = RedmineTimeAnalytics::HybridLeaveExtractor.new(
+  settings: {
+    ai_extraction_enabled: true,
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+simple_called = false
+ai_called = false
+hybrid.instance_variable_set(:@simple_parser, Object.new.tap do |parser|
+  parser.define_singleton_method(:parse) do |**|
+    simple_called = true
+    raise 'simple parser should not handle multi-date subjects'
+  end
+end)
+hybrid.instance_variable_set(:@ai_extractor, Object.new.tap do |parser|
+  parser.define_singleton_method(:parse) do |**|
+    ai_called = true
+    RedmineTimeAnalytics::LeaveEmailParser::Result.new(
+      status: :confirmed,
+      reason: 'ai_analyzed',
+      user: User.sorted.first,
+      leave_dates: [Date.new(2026, 4, 9), Date.new(2026, 4, 10), Date.new(2026, 4, 16), Date.new(2026, 4, 17)],
+      leave_fraction: 1.0,
+      leave_entries: [
+        { date: Date.new(2026, 4, 9), fraction: 1.0 },
+        { date: Date.new(2026, 4, 10), fraction: 1.0 },
+        { date: Date.new(2026, 4, 16), fraction: 1.0 },
+        { date: Date.new(2026, 4, 17), fraction: 1.0 }
+      ],
+      date_source: :ai,
+      subject_has_explicit_date: true,
+      body_has_explicit_date: false,
+      used_sent_fallback: false
+    )
+  end
+end)
+hybrid_result = hybrid.parse(
+  message: {
+    from: 'Inosh Perera <inosh@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 9, 10, 16, 17 April 2026',
+    body: "Hi all,\n\nPlease note I will be on leave due to personal commitments.\n",
+    sent_at: Time.zone.parse('2026-04-01 12:26:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(true, ai_called, 'multi-date subject should be routed to AI')
+assert_equal(false, simple_called, 'multi-date subject should not be routed to the simple parser')
+assert_equal(4, hybrid_result.leave_dates.length, 'multi-date subject should preserve all requested dates')
+
+ai_fallback = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+ai_fallback.define_singleton_method(:request_ai!) do |**|
+  raise StandardError, 'RESOURCE_EXHAUSTED'
+end
+fallback_result = ai_fallback.parse(
+  message: {
+    from: 'Viranga Gunarathne <viranga@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Sick leave - 2026/03/24',
+    body: "Hi all,\n\nI'll be on leave tomorrow (24th), since I need to take some rest.\n",
+    sent_at: Time.zone.parse('2026-04-23 23:42:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, fallback_result.status, 'provider failures should still fall back to the legacy parser')
+assert_equal(Date.new(2026, 4, 24), fallback_result.leave_dates.first, 'relative date should resolve to the requested day')
 
 puts 'Hybrid leave extraction checks passed.'

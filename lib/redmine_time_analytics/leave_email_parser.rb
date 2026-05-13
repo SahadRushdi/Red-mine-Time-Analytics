@@ -212,16 +212,16 @@ module RedmineTimeAnalytics
     end
 
     def cancellation_request?(subject_text:, body_text:)
-      normalized = [subject_text, body_text].compact.join("\n").downcase
+      normalized = [subject_text, primary_body_text(body_text)].compact.join("\n").downcase
       CANCELLATION_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
     end
 
     def determine_leave_fraction(subject_text:, body_text:)
       subject_normalized = normalize_date_text(subject_text).downcase
       body_normalized = normalize_date_text(primary_body_text(body_text)).downcase
-      full_body_normalized = normalize_date_text(body_text).downcase
+      latest_body_normalized = normalize_date_text(primary_body_text(body_text)).downcase
 
-      return FULL_DAY_FRACTION if full_day_requested?(body_normalized) || full_day_requested?(full_body_normalized)
+      return FULL_DAY_FRACTION if full_day_requested?(body_normalized) || full_day_requested?(latest_body_normalized)
       return HALF_DAY_FRACTION if half_day_requested?(body_normalized)
       return FULL_DAY_FRACTION if full_day_requested?(subject_normalized)
       return HALF_DAY_FRACTION if half_day_requested?(subject_normalized)
@@ -444,7 +444,8 @@ module RedmineTimeAnalytics
       separator_index = lines.index do |line|
         line.match?(/\A\s*>\s?/) ||
           line.match?(/\Aon .+wrote:\s*\z/i) ||
-          line.match?(/\A-----original message-----\s*\z/i)
+          line.match?(/\A-----original message-----\s*\z/i) ||
+          line.match?(/\A\[quoted text hidden\]\s*\z/i)
       end
       separator_index ? lines.take(separator_index).join : normalized
     end

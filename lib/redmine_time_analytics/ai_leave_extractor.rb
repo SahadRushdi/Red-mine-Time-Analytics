@@ -3,6 +3,7 @@
 require 'json'
 require 'net/http'
 require 'uri'
+require_relative 'leave_email_parser'
 
 module RedmineTimeAnalytics
   class AiLeaveExtractor
@@ -13,14 +14,17 @@ module RedmineTimeAnalytics
     SYSTEM_PROMPT = <<~PROMPT.freeze
       You are a strict data extractor for leave requests. Output JSON ONLY.
       
-      STEP 1: ANALYZE LATEST MESSAGE (Case 4 Fix)
-      - Check the "Latest reply body" immediately. 
-      - If it contains "cancelled", "cancel", "ignore", "working instead", or "able to work", the status for those dates MUST be "cancelled".
-      - The latest message content OVERRIDES everything else, including the Subject line.
+      STEP 1: ANALYZE LATEST MESSAGE (Case 4 / Case 7 Fix)
+      - Check only the newest visible reply text first.
+      - Ignore quoted history, hidden quoted blocks, and any text after markers like "[Quoted text hidden]" or ">" lines.
+      - If the newest visible reply contains "cancelled", "cancel", "ignore", "working instead", or "able to work", the status for those dates MUST be "cancelled".
+      - If the newest visible reply says it is still a leave request, keep it as a confirmed leave even if quoted history contains a cancellation.
+      - The latest visible message content OVERRIDES everything else, including the Subject line.
 
       STEP 2: DATE-FRACTION MAPPING (Case 5 Fix)
       - Do NOT apply one fraction to all dates in a list.
       - Look for modifiers (Half Day, Morning, Evening, Full Day) specifically linked to each date.
+      - Subjects like "9, 10, 16, 17 April 2026" or "17 & 20 April 2026" mean multiple separate leave dates.
       - Example: "06/04 Half Day & 16/04 Full Day" must return:
         {"date": "2026-04-06", "fraction": 0.5}, {"date": "2026-04-16", "fraction": 1.0}
 
@@ -28,6 +32,7 @@ module RedmineTimeAnalytics
       - 0.5: Keywords "Half day", "Morning", "Evening", "Late arrival", "After 12:30", "Early leave".
       - 1.0: Keywords "On leave", "Full day", "Sick", "Study", or dates mentioned without a time modifier.
       - If the latest reply cancels a request, return the original requested dates with status "cancelled" so the sync layer can delete the saved leave rows.
+      - Example for Case 7: if the visible reply says "I will be taking that half-day leave this afternoon (07/04/2026)" and quoted text later says "I am cancelling...", output confirmed half-day leave for 2026-04-07.
 
       STEP 4: OUTPUT JSON
       {
@@ -76,14 +81,15 @@ module RedmineTimeAnalytics
         sent_at: message[:sent_at]
       )
 
-      if cancellation_request?(message[:subject].to_s, message[:body].to_s) && explicit_entries.any?
+      if cancellation_request?(message[:subject].to_s, message[:body].to_s)
+        cancellation_dates = explicit_entries.any? ? explicit_entries : parsed.leave_entries
         return result(
           status: :cancelled,
           reason: 'cancelled',
           user: user,
-          leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
-          leave_fraction: explicit_entries.map { |entry| entry[:fraction].to_f }.max || 0.0,
-          leave_entries: explicit_entries,
+          leave_dates: cancellation_dates.map { |entry| entry[:date] }.uniq.sort,
+          leave_fraction: cancellation_dates.map { |entry| entry[:fraction].to_f }.max || 0.0,
+          leave_entries: cancellation_dates,
           date_source: :ai
         )
       end
@@ -107,7 +113,8 @@ module RedmineTimeAnalytics
         subject: message[:subject].to_s,
         body: message[:body].to_s,
         user: user,
-        sent_at: message[:sent_at]
+        sent_at: message[:sent_at],
+        recipient_email: recipient_email
       )
       fallback.leave_entries.any? ? fallback : parsed
     end
@@ -392,7 +399,8 @@ module RedmineTimeAnalytics
       separator_index = lines.index do |line|
         line.match?(/\A\s*>\s?/) ||
           line.match?(/\Aon .+wrote:\s*\z/i) ||
-          line.match?(/\A-----original message-----\s*\z/i)
+          line.match?(/\A-----original message-----\s*\z/i) ||
+          line.match?(/\A\[quoted text hidden\]\s*\z/i)
       end
       separator_index ? lines.take(separator_index).join : normalized
     end
@@ -421,7 +429,16 @@ module RedmineTimeAnalytics
       }
     end
 
-    def fallback_from_message(subject:, body:, user:, sent_at:)
+    def fallback_from_message(subject:, body:, user:, sent_at:, recipient_email:)
+      legacy_result = legacy_parse(
+        subject: subject,
+        body: body,
+        user: user,
+        sent_at: sent_at,
+        recipient_email: recipient_email
+      )
+      return legacy_result if legacy_result && legacy_result.status != :flagged
+
       reference_time = normalize_sent_time(sent_at) || Time.zone.now
       entries = explicit_leave_entries_from_message(subject: subject, body: body, sent_at: reference_time)
 
@@ -440,6 +457,23 @@ module RedmineTimeAnalytics
       end
     end
 
+    def legacy_parse(subject:, body:, user:, sent_at:, recipient_email:)
+      parser = RedmineTimeAnalytics::LeaveEmailParser.new
+      parser.parse(
+        message: {
+          from: user_email_for_lookup(user),
+          to: recipient_email,
+          subject: subject,
+          body: body,
+          sent_at: normalize_sent_time(sent_at) || Time.zone.now
+        },
+        recipient_email: recipient_email
+      )
+    rescue StandardError => e
+      Rails.logger.warn("[LeaveAI] legacy fallback failed: #{e.class}: #{e.message}") if defined?(Rails)
+      nil
+    end
+
     def explicit_leave_entries_from_message(subject:, body:, sent_at:)
       reference_time = normalize_sent_time(sent_at) || Time.zone.now
       subject_entries = parse_explicit_entries(subject, reference_time)
@@ -452,6 +486,7 @@ module RedmineTimeAnalytics
       entries = explicit_segments(normalized).flat_map do |segment|
         dates = extract_dates_from_text(segment)
         dates.concat(expand_comma_day_lists(segment, reference_time))
+        dates.concat(expand_ampersand_day_lists(segment, reference_time))
         dates = expand_range_dates(segment, dates)
         fraction = fraction_for_text(segment)
 
@@ -484,10 +519,27 @@ module RedmineTimeAnalytics
       text.match?(/\b(?:from|between|through|until)\b/i)
     end
 
+    def user_email_for_lookup(user)
+      if user.respond_to?(:mail) && !user.mail.to_s.empty?
+        user.mail
+      else
+        user.respond_to?(:email) ? user.email : nil
+      end
+    end
+
     def explicit_segments(text)
-      text.split(/(?:\n|[.!?;]|\s+\&\s+|\s+\band\b\s+)/i)
-          .map(&:strip)
-          .reject(&:empty?)
+      protected = protect_day_list_ampersands(text.to_s)
+      protected.split(/(?:\n|[.!?;]|\s+\band\b\s+|\s+\&\s+)/i)
+               .map { |segment| segment.gsub('__AMP__', '&') }
+               .map(&:strip)
+               .reject(&:empty?)
+    end
+
+    def protect_day_list_ampersands(text)
+      month_regex = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
+                    'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
+                    'nov(?:ember)?|dec(?:ember)?)'
+      text.gsub(/(\b\d{1,2})\s*&\s*(\d{1,2}(?:\s*,\s*\d{1,2})*\s*(?:of\s+)?#{month_regex}(?:\s+\d{4})?\b)/i, '\1 __AMP__ \2')
     end
 
     def fraction_for_text(text)
@@ -552,6 +604,27 @@ module RedmineTimeAnalytics
       normalized.scan(/\b(\d{1,2}(?:\s*,\s*\d{1,2})+)\s*(?:of\s+)?(#{month_regex})(?:\s+(\d{4}))?\b/i).each do |day_list, month_name, year|
         year = year.present? ? year.to_i : reference_time.year
         day_list.split(/\s*,\s*/).each do |day_str|
+          begin
+            dates << Date.parse("#{month_name} #{day_str}, #{year}")
+          rescue ArgumentError
+            next
+          end
+        end
+      end
+
+      dates.compact.uniq.sort
+    end
+
+    def expand_ampersand_day_lists(text, reference_time)
+      normalized = text.to_s
+      month_regex = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
+                    'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
+                    'nov(?:ember)?|dec(?:ember)?)'
+      dates = []
+
+      normalized.scan(/\b(\d{1,2}(?:\s*&\s*\d{1,2})+)\s*(?:of\s+)?(#{month_regex})(?:\s+(\d{4}))?\b/i).each do |day_list, month_name, year|
+        year = year.present? ? year.to_i : reference_time.year
+        day_list.split(/\s*&\s*/).each do |day_str|
           begin
             dates << Date.parse("#{month_name} #{day_str}, #{year}")
           rescue ArgumentError
@@ -634,7 +707,7 @@ module RedmineTimeAnalytics
 
     def cancellation_request?(subject, body)
       normalized = [subject, primary_body_text(body)].compact.join("\n").downcase
-      normalized.match?(/\b(cancelled|canceled|cancel|ignore|working instead|able to work|work instead)\b/)
+      normalized.match?(/\b(cancelled|canceled|cancel|cancelling|cancellation|ignore|working instead|able to work|work instead)\b/)
     end
 
     def find_active_user_by_email(sender_email)
