@@ -29,7 +29,9 @@ module RedmineTimeAnalytics
     LEAVE_CONTEXT_KEYWORDS = ['leave', 'sick leave', 'on leave', 'out of office', 'ooh', 'vacation', 'holiday',
                               'absent', 'not feeling well'].freeze
     DATE_OVERRIDE_KEYWORDS = ['shift', 'shifted', 'reschedul', 'moved to', 'updated', 'update',
-                              'changed to', 'next week', 'next day', 'replacement', 'revised'].freeze
+                              'changed to', 'next week', 'next day', 'replacement', 'revised',
+                              'correction', 'correct', 'tomorrow', 'today', 'yesterday',
+                              'this afternoon', 'this morning', 'tonight', 'later'].freeze
     FULL_DAY_FRACTION = 1.0
     HALF_DAY_FRACTION = 0.5
     MONTH_REGEX = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
@@ -418,7 +420,10 @@ module RedmineTimeAnalytics
       subject_dates = extract_dates_from_text(leave_focused_text(subject_text), reference_time)
       body_text = body_text.to_s
       body_dates = extract_dates_from_text(leave_focused_text(primary_body_text(body_text)), reference_time)
-      return { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } if body_override_subject?(body_text, subject_dates, body_dates)
+      if body_override_subject?(body_text, subject_dates, body_dates)
+        filtered_body_dates = body_dates.reject { |date| subject_dates.include?(date) }
+        return { dates: filtered_body_dates.any? ? filtered_body_dates : body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates }
+      end
       if subject_dates.any? && body_dates.any?
         return body_dates.max > subject_dates.max ? { dates: body_dates, source: :body, subject_dates: subject_dates, body_dates: body_dates } :
                                                     { dates: subject_dates, source: :subject, subject_dates: subject_dates, body_dates: body_dates }

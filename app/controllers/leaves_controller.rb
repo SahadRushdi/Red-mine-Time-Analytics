@@ -75,8 +75,8 @@ class LeavesController < ApplicationController
 
   def destroy
     leave_record = TaLeaveRecord.find(params[:id])
-    unless leave_record.status == 'flagged'
-      return render json: { error: 'Only flagged records can be deleted' }, status: :unprocessable_entity
+    unless %w[confirmed flagged].include?(leave_record.status)
+      return render json: { error: 'Only confirmed or flagged records can be deleted' }, status: :unprocessable_entity
     end
 
     leave_record.destroy!
@@ -153,7 +153,7 @@ class LeavesController < ApplicationController
         flagged_reason: flagged_reason_for(record),
         ai_analyzed: ai_analyzed?(record),
         can_unflag: record.status == 'flagged' && mapped_user.present?,
-        can_delete: record.status == 'flagged',
+        can_delete: %w[confirmed flagged].include?(record.status),
         can_edit: true,
         subject: record.raw_subject.to_s
       }

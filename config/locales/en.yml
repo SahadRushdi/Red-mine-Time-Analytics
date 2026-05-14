@@ -171,4 +171,4 @@ en:
   text_leave_historical_sync: "One-time backfill from the configured historical start date."
   text_leave_push_only_sync_notice: "Google Apps Script push mode is active. Use Apps Script triggers to push leave emails."
   text_unmapped_sender_cannot_unflag: "Map sender email to a Redmine user first."
-  text_confirm_delete_flagged_leave: "Delete this flagged leave request?"
+  text_confirm_delete_flagged_leave: "Delete this leave request?"

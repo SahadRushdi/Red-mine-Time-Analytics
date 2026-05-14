@@ -10,42 +10,49 @@ module RedmineTimeAnalytics
     AI_HTTP_RETRYABLE_CODES = [429, 500, 502, 503, 504].freeze
     AI_HTTP_MAX_RETRIES = 2
     AI_HTTP_RETRY_DELAY_SECONDS = 2
+    DATE_OVERRIDE_KEYWORDS = ['shift', 'shifted', 'reschedul', 'moved to', 'updated', 'update',
+                              'changed to', 'correction', 'correct', 'next week', 'next day',
+                              'tomorrow', 'today', 'yesterday', 'this afternoon', 'this morning',
+                              'tonight', 'later', 'replacement', 'revised'].freeze
 
     SYSTEM_PROMPT = <<~PROMPT.freeze
       You are a strict data extractor for leave requests. Output JSON ONLY.
       
-      STEP 1: ANALYZE LATEST MESSAGE (Case 4 / Case 7 Fix)
-      - Check only the newest visible reply text first.
-      - Ignore quoted history, hidden quoted blocks, and any text after markers like "[Quoted text hidden]" or ">" lines.
-      - If the newest visible reply contains "cancelled", "cancel", "ignore", "working instead", or "able to work", the status for those dates MUST be "cancelled".
-      - If the newest visible reply says it is still a leave request, keep it as a confirmed leave even if quoted history contains a cancellation.
-      - The latest visible message content OVERRIDES everything else, including the Subject line.
+      STEP 1: LATEST MESSAGE RESOLUTION (Truth Supremacy)
+      - Your output MUST reflect the FINAL state of the request based on the newest visible reply.
+      - Ignore quoted history (text after ">" or "[Quoted text hidden]"). 
+      - If the latest message "shifts", "moves", "reschedules", or "changes" a leave: 
+        1. Identify the OLD date being abandoned.
+        2. Identify the NEW date being requested.
+        3. Only return the NEW date(s) as "confirmed". Do NOT return the old dates in any capacity.
+      
+      STEP 2: HANDLING SHIFTS & CORRECTIONS (Case 8, 9, & 10 Fix)
+      - CRITICAL: If a message says "shifted to next week (05.02.2026)", the date in the Subject line (e.g., 29.01.2026) is now INVALID. 
+      - You must exclude the original subject dates if they have been moved or corrected in the reply.
+      - Example (Case 8/9):
+        Subject: "Half day leave - 29.01.2026"
+        Latest Body: "This leave is shifted to 05.02.2026 and it will be a full day."
+        RESULT: Output ONLY 2026-02-05 with fraction 1.0. (Exclude 2026-01-29 entirely).
 
-      STEP 2: DATE-FRACTION MAPPING (Case 5 Fix)
+      STEP 3: DATE-FRACTION MAPPING (Case 5 Fix)
       - Do NOT apply one fraction to all dates in a list.
       - Look for modifiers (Half Day, Morning, Evening, Full Day) specifically linked to each date.
-      - Subjects like "9, 10, 16, 17 April 2026" or "17 & 20 April 2026" mean multiple separate leave dates.
-      - Example: "06/04 Half Day & 16/04 Full Day" must return:
-        {"date": "2026-04-06", "fraction": 0.5}, {"date": "2026-04-16", "fraction": 1.0}
-
-      STEP 3: FRACTION DEFINITIONS
-      - 0.5: Keywords "Half day", "Morning", "Evening", "Late arrival", "After 12:30", "Early leave".
-      - 1.0: Keywords "On leave", "Full day", "Sick", "Study", or dates mentioned without a time modifier.
-      - If the latest reply cancels a request, return the original requested dates with status "cancelled" so the sync layer can delete the saved leave rows.
-      - If the latest reply shifts a leave from an old date to a new date, return only the new date(s) as confirmed entries (do not return the old date).
-      - Example for Case 7: if the visible reply says "I will be taking that half-day leave this afternoon (07/04/2026)" and quoted text later says "I am cancelling...", output confirmed half-day leave for 2026-04-07.
+      - Use 0.5 for: "Half day", "Morning", "Evening", "Late arrival", "After 12:30".
+      - Use 1.0 for: "Full day", "On leave", "Sick", or when a reply "upgrades" a leave to full day.
 
       STEP 4: OUTPUT JSON
       {
         "status": "confirmed" | "cancelled" | "flagged",
-        "reason": "short_explanation",
-        "leave_entries": [{"date": "YYYY-MM-DD", "fraction": 1.0 | 0.5}]
+        "reason": "latest_message_priority_shift_applied",
+        "leave_entries": [
+          {"date": "YYYY-MM-DD", "fraction": 1.0 | 0.5}
+        ]
       }
 
       RULES:
-      - Ignore all punctuation (. / -) and casing in subject lines.
-      - Use "Sent at" for the year if missing.
-      - Return "flagged" only if no leave dates or intentions are found at all.
+      - Ignore punctuation (. / -) and casing in subject lines.
+      - Use "Sent at" year if missing from the text.
+      - "cancelled" status is only used if the user is revoking a leave without a replacement. If there is a replacement, use "confirmed" with the NEW date only.
     PROMPT
 
     def initialize(settings:)
@@ -179,6 +186,9 @@ module RedmineTimeAnalytics
         )
         return fallback
       end
+
+      sanitized = remove_sent_date_leak(parsed: parsed, message: message, explicit_entries: explicit_entries)
+      return sanitized if sanitized != parsed
 
       return parsed unless parsed.status == :flagged && parsed.leave_entries.blank?
 
@@ -616,7 +626,37 @@ module RedmineTimeAnalytics
       reference_time = normalize_sent_time(sent_at) || Time.zone.now
       subject_entries = parse_explicit_entries(subject, reference_time)
       body_entries = parse_explicit_entries(primary_body_text(body), reference_time)
+      if body_override_subject?(body, subject_entries, body_entries)
+        subject_dates = subject_entries.map { |entry| entry[:date] }
+        filtered_body_entries = body_entries.reject { |entry| subject_dates.include?(entry[:date]) }
+        return filtered_body_entries.any? ? filtered_body_entries : body_entries
+      end
+
       (subject_entries + body_entries).uniq { |entry| entry[:date] }
+    end
+
+    def remove_sent_date_leak(parsed:, message:, explicit_entries:)
+      sent_date = normalize_sent_time(message[:sent_at])&.to_date
+      return parsed if sent_date.nil? || parsed.leave_entries.length < 2
+
+      parsed_dates = parsed.leave_entries.map { |entry| entry[:date] }
+      return parsed unless parsed_dates.include?(sent_date)
+
+      explicit_dates = explicit_entries.map { |entry| entry[:date] }.uniq
+      return parsed unless explicit_dates.any? && (explicit_dates - [sent_date]).any?
+
+      filtered_entries = parsed.leave_entries.reject { |entry| entry[:date] == sent_date }
+      return parsed if filtered_entries.empty?
+
+      result(
+        status: parsed.status,
+        reason: parsed.reason,
+        user: parsed.user,
+        leave_dates: filtered_entries.map { |entry| entry[:date] }.uniq.sort,
+        leave_fraction: filtered_entries.map { |entry| entry[:fraction].to_f }.max || parsed.leave_fraction,
+        leave_entries: filtered_entries,
+        date_source: parsed.date_source
+      )
     end
 
     def parse_explicit_entries(text, reference_time)
@@ -671,6 +711,13 @@ module RedmineTimeAnalytics
                .map { |segment| segment.gsub('__AMP__', '&') }
                .map(&:strip)
                .reject(&:empty?)
+    end
+
+    def body_override_subject?(body_text, subject_entries, body_entries)
+      return false unless body_entries.any? && subject_entries.any?
+
+      normalized_body = normalize_date_text(primary_body_text(body_text)).downcase
+      DATE_OVERRIDE_KEYWORDS.any? { |keyword| normalized_body.include?(keyword) }
     end
 
     def protect_day_list_ampersands(text)

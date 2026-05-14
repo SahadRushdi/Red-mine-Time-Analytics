@@ -357,12 +357,16 @@ start_only_provider.fetch_messages(
 assert(!start_only_provider.queries.first.include?('before:'), 'historical sync without an end date should not add a before clause')
 
 User.seed([
+  User.new(id: 13, mail: 'inosh@entgra.io'),
   User.new(id: 14, mail: 'arshana@entgra.io'),
   User.new(id: 15, mail: 'sandali@example.com'),
   User.new(id: 16, mail: 'oshani@entgra.io'),
   User.new(id: 17, mail: 'viranga@entgra.io'),
   User.new(id: 18, mail: 'yumeth@entgra.io'),
-  User.new(id: 19, mail: 'thushara@entgra.io')
+  User.new(id: 19, mail: 'thushara@entgra.io'),
+  User.new(id: 20, mail: 'dhishan@entgra.io'),
+  User.new(id: 21, mail: 'pahansith@entgra.io'),
+  User.new(id: 22, mail: 'rajitha@entgra.io')
 ])
 
 simple_parser = RedmineTimeAnalytics::SimpleLeaveEmailParser.new
@@ -446,6 +450,45 @@ comma_day_ai = ai_live_extractor.parse(
 )
 assert_equal(:confirmed, comma_day_ai.status, 'comma-day multi-day explicit dates should be confirmed')
 assert_equal(2, comma_day_ai.leave_dates.length, 'comma-day explicit dates should become two leave entries')
+
+case1_multi_list_result = ai_live_extractor.parse(
+  message: {
+    from: 'Inosh Perera <inosh@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 9, 10, 16, 17 April 2026',
+    body: 'Hi all,\n\nPlease note I will be $subject due to personal commitments.\n',
+    sent_at: Time.zone.parse('2026-04-01 12:26:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case1_multi_list_result.status, 'comma-list request should stay confirmed')
+assert_equal(4, case1_multi_list_result.leave_dates.length, 'comma-list request should keep all four requested dates')
+
+case2_sick_result = ai_live_extractor.parse(
+  message: {
+    from: 'Pahansith Goonetilleke <pahansith@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Sick leave - 28/04/26',
+    body: "Please note the $subject due to migraine.\n\nRegards,\n/Pahansith.",
+    sent_at: Time.zone.parse('2026-04-28 08:02:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case2_sick_result.status, 'single-date sick leave should stay confirmed')
+assert_equal([Date.new(2026, 4, 28)], case2_sick_result.leave_dates, 'single-date sick leave should keep the explicit date')
+
+case3_comma_result = ai_live_extractor.parse(
+  message: {
+    from: 'Rajitha Kumara <rajitha@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On Leave - 16, 17 April 2026',
+    body: "Hi all,\n\nPlease note the $subject due to a family commitment.\n",
+    sent_at: Time.zone.parse('2026-04-02 11:04:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case3_comma_result.status, 'comma list should stay confirmed')
+assert_equal(2, case3_comma_result.leave_dates.length, 'comma list should keep both requested dates')
 
 batch_extractor = RedmineTimeAnalytics::AiLeaveExtractor.new(
   settings: {
@@ -620,6 +663,104 @@ assert_equal(3, mixed_result.leave_dates.length, 'mixed request should expand to
 assert_equal(0.5, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 6) }[:fraction], 'first date should be half day')
 assert_equal(1.0, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 16) }[:fraction], 'second date should be full day')
 assert_equal(1.0, mixed_result.leave_entries.find { |entry| entry[:date] == Date.new(2026, 4, 17) }[:fraction], 'third date should be full day')
+
+case5_shift_result = ai_live_extractor.parse(
+  message: {
+    from: 'Viranga Gunarathne <viranga@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave - 2026/04/23 (Morning)',
+    body: "Hi all,\n\nPlease consider this as a full day leave as I’m feeling unwell.\n",
+    sent_at: Time.zone.parse('2026-04-23 12:03:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case5_shift_result.status, 'correction reply should stay confirmed')
+assert_equal([Date.new(2026, 4, 23)], case5_shift_result.leave_dates, 'case 5 should keep the original date')
+assert_equal(1.0, case5_shift_result.leave_fraction, 'case 5 correction should upgrade to full day')
+
+case6_relative_result = ai_live_extractor.parse(
+  message: {
+    from: 'Viranga Gunarathne <viranga@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Sick leave - 2026/03/24',
+    body: "Hi all,\n\nI'll be on leave tomorrow (24th), since I need to take some rest.\n",
+    sent_at: Time.zone.parse('2026-04-23 23:42:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case6_relative_result.status, 'relative-date reply should stay confirmed')
+assert_equal([Date.new(2026, 4, 24)], case6_relative_result.leave_dates, 'case 6 should use the relative body date')
+
+case8_shift_result = ai_live_extractor.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave(Evening) - 29.01.2026',
+    body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
+    sent_at: Time.zone.parse('2026-01-28 19:03:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case8_shift_result.status, 'shifted leave should stay confirmed')
+assert_equal([Date.new(2026, 2, 5)], case8_shift_result.leave_dates, 'case 8 should replace the old date with the shifted date')
+assert_equal(1.0, case8_shift_result.leave_fraction, 'case 8 should be upgraded to full day')
+
+case9_shift_result = ai_live_extractor.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave(Evening) - 30.01.2026',
+    body: "Hi all,\n\nPlease note this leave also shifted to next week(06.02.2026)(evening).\n",
+    sent_at: Time.zone.parse('2026-01-28 19:04:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case9_shift_result.status, 'shifted leave should stay confirmed')
+assert_equal([Date.new(2026, 2, 6)], case9_shift_result.leave_dates, 'case 9 should replace the old date with the shifted date')
+assert_equal(0.5, case9_shift_result.leave_fraction, 'case 9 should stay half day')
+
+sent_date_leak_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+sent_date_leak_ai.define_singleton_method(:request_ai!) do |subject:, body:, primary_body:, sent_at:|
+  {
+    'status' => 'confirmed',
+    'reason' => 'ai_analyzed',
+    'leave_entries' => [
+      { 'date' => sent_at.to_date.to_s, 'fraction' => 1.0 },
+      { 'date' => '2026-02-05', 'fraction' => 1.0 }
+    ]
+  }
+end
+sent_date_leak_result = sent_date_leak_ai.parse(
+  message: {
+    from: 'Arshana Atapattu <arshana@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'Half day leave(Evening) - 29.01.2026',
+    body: "Hi all,\n\nPlease note that this leave is shifted to next week(05.02.2026) and it will be a full day leave.\n",
+    sent_at: Time.zone.parse('2026-01-28 19:03:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, sent_date_leak_result.status, 'sent-date leak case should stay confirmed')
+assert_equal([Date.new(2026, 2, 5)], sent_date_leak_result.leave_dates, 'sent date should be removed when AI returns it as an extra date')
+
+case10_correction_result = ai_live_extractor.parse(
+  message: {
+    from: 'Dhishan Rangajith <dhishan@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 14/01/2026',
+    body: "Hi all,\n\ncorrection - the leave date should be 16/01/2026., not 14/01/2026.\n",
+    sent_at: Time.zone.parse('2026-01-14 20:54:00')
+  },
+  recipient_email: 'vacation-group@entgra.io'
+)
+assert_equal(:confirmed, case10_correction_result.status, 'correction reply should stay confirmed')
+assert_equal([Date.new(2026, 1, 16)], case10_correction_result.leave_dates, 'case 10 should replace the original date with the corrected one')
 
 def sync_case(messages:, expected_imported:, expected_flagged:)
   recipient = 'vacation-group@entgra.io'
