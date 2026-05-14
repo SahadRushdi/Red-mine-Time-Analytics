@@ -116,6 +116,7 @@ en:
   label_leave_count_settings: "Leave Count"
   label_leave_recipient_email: "Leave Recipient Email"
   label_historical_sync_start_date: "Historical Sync Start Date"
+  label_historical_sync_end_date: "Historical Sync End Date"
   label_leave_approach: "Leave Ingestion Approach"
   label_leave_approach_oauth: "Gmail OAuth 2.0 (Recommended)"
   label_leave_approach_dwd: "Domain-Wide Delegation (DWD)"

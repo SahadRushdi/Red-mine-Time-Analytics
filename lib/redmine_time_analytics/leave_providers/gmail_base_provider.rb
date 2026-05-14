@@ -13,10 +13,11 @@ module RedmineTimeAnalytics
         load_gmail_dependencies!
       end
 
-      def fetch_messages(mode:, recipient_email:, historical_start_date:, synced_after:)
+      def fetch_messages(mode:, recipient_email:, historical_start_date:, historical_end_date:, synced_after:)
         query = ["to:#{recipient_email}"]
         if mode.to_s == 'historical'
           query << "after:#{historical_start_date.strftime('%Y/%m/%d')}" if historical_start_date
+          query << "before:#{(historical_end_date + 1).strftime('%Y/%m/%d')}" if historical_end_date
         elsif synced_after
           query << "after:#{synced_after.strftime('%Y/%m/%d')}"
         end
@@ -30,7 +31,7 @@ module RedmineTimeAnalytics
           break if page_token.blank?
         end
 
-        cutoff = mode.to_s == 'historical' ? historical_start_date : synced_after
+        cutoff = mode.to_s == 'historical' ? [historical_start_date, historical_end_date].compact : synced_after
         payloads = message_refs.map { |message_ref| build_message_payload(message_ref.id) }.compact
         payloads.select { |message| within_requested_window?(message[:sent_at], mode, cutoff) }
       end
@@ -119,7 +120,10 @@ module RedmineTimeAnalytics
         return true if sent_at.nil? || cutoff.nil?
 
         if mode.to_s == 'historical'
-          sent_at.to_date >= cutoff.to_date
+          start_date, end_date = Array(cutoff)
+          within_start = start_date.nil? || sent_at.to_date >= start_date.to_date
+          within_end = end_date.nil? || sent_at.to_date <= end_date.to_date
+          within_start && within_end
         else
           sent_at > cutoff
         end

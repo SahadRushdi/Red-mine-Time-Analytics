@@ -146,6 +146,7 @@ class TaTeamSetting < ActiveRecord::Base
       enabled: raw['leave_sync_enabled'].to_s == '1',
       recipient_email: raw['leave_sync_recipient_email'].to_s.strip.presence || 'vacation-group@entgra.io',
       historical_sync_start_date: parse_date_setting(raw['leave_sync_start_date']),
+      historical_sync_end_date: parse_date_setting(raw['leave_sync_end_date']),
       leave_approach: approach,
       oauth_client_id: raw['leave_oauth_client_id'].to_s.strip,
       oauth_client_secret: decrypt_value(oauth_client_secret_raw),
@@ -168,6 +169,7 @@ class TaTeamSetting < ActiveRecord::Base
     enabled:,
     recipient_email:,
     historical_sync_start_date:,
+    historical_sync_end_date: nil,
     leave_approach:,
     oauth_client_id: nil,
     oauth_client_secret: nil,
@@ -192,8 +194,23 @@ class TaTeamSetting < ActiveRecord::Base
         raise ArgumentError, 'Historical sync start date is invalid'
       end
     end
+    if historical_sync_end_date.present?
+      begin
+        Date.parse(historical_sync_end_date.to_s)
+      rescue ArgumentError
+        raise ArgumentError, 'Historical sync end date is invalid'
+      end
+    end
     approach = leave_approach.to_s
     raise ArgumentError, 'Leave approach is invalid' unless LEAVE_APPROACHES.include?(approach)
+    if historical_sync_start_date.present? && historical_sync_end_date.present?
+      start_date = Date.parse(historical_sync_start_date.to_s)
+      end_date = Date.parse(historical_sync_end_date.to_s)
+      raise ArgumentError, 'Historical sync end date must be on or after start date' if end_date < start_date
+    end
+    if historical_sync_end_date.present? && historical_sync_start_date.blank?
+      raise ArgumentError, 'Historical sync start date is required when an end date is provided'
+    end
 
     normalized_oauth_account = oauth_account_email.to_s.strip.downcase
     normalized_dwd_user = dwd_delegated_user.to_s.strip.downcase
@@ -208,6 +225,7 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_enabled'] = enabled.to_s == '1' ? '1' : '0'
     settings['leave_sync_recipient_email'] = normalized_recipient
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
+    settings['leave_sync_end_date'] = historical_sync_end_date.to_s
     settings['leave_sync_approach'] = approach
     settings['leave_ai_extraction_enabled'] = ai_extraction_enabled.to_s == '1' ? '1' : '0'
     settings['leave_ai_provider'] = ai_provider.to_s.strip

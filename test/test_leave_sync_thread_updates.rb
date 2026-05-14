@@ -260,6 +260,8 @@ require_relative '../lib/redmine_time_analytics/leave_email_parser'
 require_relative '../lib/redmine_time_analytics/simple_leave_email_parser'
 require_relative '../lib/redmine_time_analytics/ai_leave_extractor'
 require_relative '../lib/redmine_time_analytics/leave_sync_service'
+require_relative '../lib/redmine_time_analytics/leave_providers/base_provider'
+require_relative '../lib/redmine_time_analytics/leave_providers/gmail_base_provider'
 
 def assert(condition, message)
   raise "Assertion failed: #{message}" unless condition
@@ -268,6 +270,91 @@ end
 def assert_equal(expected, actual, message)
   raise "Assertion failed: #{message}. Expected #{expected.inspect}, got #{actual.inspect}" unless expected == actual
 end
+
+class HistoricalWindowProvider < RedmineTimeAnalytics::LeaveProviders::GmailBaseProvider
+  Response = Struct.new(:messages, :next_page_token, keyword_init: true)
+  MessageRef = Struct.new(:id, keyword_init: true)
+
+  attr_reader :queries
+
+  def initialize(messages_by_id)
+    @messages_by_id = messages_by_id
+    @queries = []
+  end
+
+  private
+
+  def gmail_service
+    self
+  end
+
+  public
+
+  def list_user_messages(_user, q:, max_results:, page_token:)
+    @queries << q
+    Response.new(messages: @messages_by_id.keys.map { |id| MessageRef.new(id: id) }, next_page_token: nil)
+  end
+
+  def build_message_payload(message_id)
+    @messages_by_id[message_id]
+  end
+
+  def authorization
+    nil
+  end
+end
+
+window_provider = HistoricalWindowProvider.new(
+  'in-range' => {
+    message_id: 'in-range',
+    thread_id: 'thread-1',
+    from: 'Inosh Perera <inosh@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 2026/04/17',
+    sent_at: Time.zone.parse('2026-04-17 08:00:00'),
+    body: 'Leave request'
+  },
+  'out-of-range' => {
+    message_id: 'out-of-range',
+    thread_id: 'thread-2',
+    from: 'Inosh Perera <inosh@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 2026/05/10',
+    sent_at: Time.zone.parse('2026-05-10 08:00:00'),
+    body: 'Leave request'
+  }
+)
+historical_window = window_provider.fetch_messages(
+  mode: :historical,
+  recipient_email: 'vacation-group@entgra.io',
+  historical_start_date: Date.new(2026, 4, 1),
+  historical_end_date: Date.new(2026, 4, 30),
+  synced_after: nil
+)
+assert(window_provider.queries.first.include?('after:2026/04/01'), 'historical sync should include the start date in the Gmail query')
+assert(window_provider.queries.first.include?('before:2026/05/01'), 'historical sync should add an exclusive before date when an end date is provided')
+assert_equal(1, historical_window.length, 'historical sync with an end date should stay within the requested window')
+assert_equal(Date.new(2026, 4, 17), historical_window.first[:sent_at].to_date, 'historical window should keep the in-range message')
+
+start_only_provider = HistoricalWindowProvider.new(
+  'in-range' => {
+    message_id: 'in-range',
+    thread_id: 'thread-1',
+    from: 'Inosh Perera <inosh@entgra.io>',
+    to: 'vacation-group@entgra.io',
+    subject: 'On leave - 2026/04/17',
+    sent_at: Time.zone.parse('2026-04-17 08:00:00'),
+    body: 'Leave request'
+  }
+)
+start_only_provider.fetch_messages(
+  mode: :historical,
+  recipient_email: 'vacation-group@entgra.io',
+  historical_start_date: Date.new(2026, 4, 1),
+  historical_end_date: nil,
+  synced_after: nil
+)
+assert(!start_only_provider.queries.first.include?('before:'), 'historical sync without an end date should not add a before clause')
 
 User.seed([
   User.new(id: 14, mail: 'arshana@entgra.io'),

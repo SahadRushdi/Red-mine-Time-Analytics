@@ -25,7 +25,7 @@
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
     <%= form_tag admin_leave_count_path, method: :post, id: 'leave-count-settings-form', class: 'space-y-6' do %>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <%= label_tag :leave_sync_recipient_email, l(:label_leave_recipient_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
           <%= email_field_tag :leave_sync_recipient_email, @leave_sync_settings[:recipient_email], required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
@@ -33,6 +33,10 @@
         <div>
           <%= label_tag :leave_sync_start_date, l(:label_historical_sync_start_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
           <%= date_field_tag :leave_sync_start_date, @leave_sync_settings[:historical_sync_start_date], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <div>
+          <%= label_tag :leave_sync_end_date, l(:label_historical_sync_end_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= date_field_tag :leave_sync_end_date, @leave_sync_settings[:historical_sync_end_date], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
         </div>
       </div>
 

@@ -7,7 +7,7 @@ module RedmineTimeAnalytics
         @settings = settings
       end
 
-      def fetch_messages(mode:, recipient_email:, historical_start_date:, synced_after:)
+      def fetch_messages(mode:, recipient_email:, historical_start_date:, historical_end_date:, synced_after:)
         raise NotImplementedError, 'Provider must implement fetch_messages'
       end
 

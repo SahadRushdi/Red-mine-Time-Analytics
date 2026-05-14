@@ -24,6 +24,7 @@ module RedmineTimeAnalytics
         mode: mode,
         recipient_email: recipient_email,
         historical_start_date: @settings[:historical_sync_start_date],
+        historical_end_date: @settings[:historical_sync_end_date],
         synced_after: (mode.to_s == 'historical' ? nil : @settings[:last_synced_at])
       )
 
