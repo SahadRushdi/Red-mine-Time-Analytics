@@ -43,6 +43,52 @@ module RedmineTimeAnalytics
       flagged(message: message, recipient_email: recipient_email, reason: 'ai_model_failed')
     end
 
+    def parse_batch(messages:, recipient_email:, chunk_size: 50)
+      indexed = Array(messages).map.with_index { |message, index| { message: message, index: index } }
+      results = Array.new(indexed.length)
+      ai_candidates = []
+
+      indexed.each do |item|
+        message = item[:message]
+        if simple_subject_request?(message)
+          results[item[:index]] = @simple_parser.parse(message: message, recipient_email: recipient_email)
+          next
+        end
+
+        unless ai_enabled_and_configured?
+          results[item[:index]] = flagged(message: message, recipient_email: recipient_email, reason: 'ai_model_not_configured')
+          next
+        end
+
+        ai_candidates << item
+      end
+
+      ai_candidates.each_slice(chunk_size) do |slice|
+        batch_results = @ai_extractor.parse_batch(
+          messages: slice.map { |item| item[:message] },
+          recipient_email: recipient_email,
+          chunk_size: chunk_size
+        )
+        slice.each_with_index do |item, index|
+          results[item[:index]] = batch_results[index] || flagged(
+            message: item[:message],
+            recipient_email: recipient_email,
+            reason: 'ai_batch_missing_response'
+          )
+        end
+      rescue StandardError => e
+        Rails.logger.warn("[LeaveAI] batch extraction failed: #{e.class}: #{e.message}") if defined?(Rails)
+        slice.each do |item|
+          results[item[:index]] = parse(message: item[:message], recipient_email: recipient_email)
+        rescue StandardError => inner_error
+          Rails.logger.warn("[LeaveAI] fallback parse failed: #{inner_error.class}: #{inner_error.message}") if defined?(Rails)
+          results[item[:index]] = flagged(message: item[:message], recipient_email: recipient_email, reason: 'ai_model_failed')
+        end
+      end
+
+      results
+    end
+
     private
 
     def ai_enabled_and_configured?

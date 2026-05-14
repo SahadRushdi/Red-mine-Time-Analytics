@@ -447,6 +447,55 @@ comma_day_ai = ai_live_extractor.parse(
 assert_equal(:confirmed, comma_day_ai.status, 'comma-day multi-day explicit dates should be confirmed')
 assert_equal(2, comma_day_ai.leave_dates.length, 'comma-day explicit dates should become two leave entries')
 
+batch_extractor = RedmineTimeAnalytics::AiLeaveExtractor.new(
+  settings: {
+    ai_provider: 'google',
+    ai_model: 'gemini-2.0-flash',
+    ai_api_key: 'test-key'
+  }
+)
+batch_extractor.define_singleton_method(:request_ai_batch!) do |messages:|
+  {
+    messages.first[:message_id] => {
+      'status' => 'confirmed',
+      'reason' => 'ai_analyzed',
+      'leave_entries' => [{ 'date' => '2026-04-17', 'fraction' => 1.0 }]
+    }
+  }
+end
+batch_extractor.define_singleton_method(:request_ai!) do |subject:, body:, primary_body:, sent_at:|
+  {
+    'status' => 'confirmed',
+    'reason' => 'ai_analyzed',
+    'leave_entries' => [{ 'date' => '2026-04-20', 'fraction' => 1.0 }]
+  }
+end
+batch_results = batch_extractor.parse_batch(
+  messages: [
+    {
+      message_id: 'batch-1',
+      from: 'Thushara Abeykoon <thushara@entgra.io>',
+      to: 'vacation-group@entgra.io',
+      subject: 'On Leave - 17/04/2026',
+      body: 'Please note the subject.',
+      sent_at: Time.zone.parse('2026-04-16 09:59:00')
+    },
+    {
+      message_id: 'batch-2',
+      from: 'Thushara Abeykoon <thushara@entgra.io>',
+      to: 'vacation-group@entgra.io',
+      subject: 'On Leave - 20/04/2026',
+      body: 'Please note the subject.',
+      sent_at: Time.zone.parse('2026-04-16 10:00:00')
+    }
+  ],
+  recipient_email: 'vacation-group@entgra.io',
+  chunk_size: 50
+)
+assert_equal(2, batch_results.length, 'batch parse should return one result for each input email')
+assert_equal(Date.new(2026, 4, 17), batch_results[0].leave_dates.first, 'batch result should map first response correctly')
+assert_equal(Date.new(2026, 4, 20), batch_results[1].leave_dates.first, 'missing batch response should retry individually')
+
 ampersand_day_ai = ai_live_extractor.parse(
   message: {
     from: 'Thushara Abeykoon <thushara@entgra.io>',

@@ -32,6 +32,7 @@ module RedmineTimeAnalytics
       - 0.5: Keywords "Half day", "Morning", "Evening", "Late arrival", "After 12:30", "Early leave".
       - 1.0: Keywords "On leave", "Full day", "Sick", "Study", or dates mentioned without a time modifier.
       - If the latest reply cancels a request, return the original requested dates with status "cancelled" so the sync layer can delete the saved leave rows.
+      - If the latest reply shifts a leave from an old date to a new date, return only the new date(s) as confirmed entries (do not return the old date).
       - Example for Case 7: if the visible reply says "I will be taking that half-day leave this afternoon (07/04/2026)" and quoted text later says "I am cancelling...", output confirmed half-day leave for 2026-04-07.
 
       STEP 4: OUTPUT JSON
@@ -75,6 +76,78 @@ module RedmineTimeAnalytics
         Rails.logger.warn("[LeaveAI] provider error: #{e.class}: #{e.message}") if defined?(Rails)
         result(status: :flagged, reason: 'ai_model_failed', user: user, date_source: :ai)
       end
+      post_process_result(parsed: parsed, message: message, recipient_email: recipient_email, user: user)
+    end
+
+    def parse_batch(messages:, recipient_email:, chunk_size: 50)
+      indexed = Array(messages).map.with_index { |message, index| { message: message, index: index } }
+      results = Array.new(indexed.length)
+      ai_candidates = []
+
+      indexed.each do |item|
+        message = item[:message]
+        sender_email = normalize_email(message[:from])
+        recipient = normalize_email(recipient_email)
+        to_addresses = extract_recipient_addresses(message[:to])
+
+        unless to_addresses.include?(recipient)
+          results[item[:index]] = result(status: :ignored, reason: 'recipient_not_matched')
+          next
+        end
+
+        user = find_active_user_by_email(sender_email)
+        unless user
+          results[item[:index]] = result(status: :flagged, reason: 'user_not_found', date_source: :ai)
+          next
+        end
+
+        ai_candidates << item.merge(user: user)
+      end
+
+      ai_candidates.each_slice(chunk_size) do |slice|
+        inputs = slice.map do |item|
+          message = item[:message]
+          {
+            message_id: batch_message_id(message, item[:index]),
+            subject: message[:subject].to_s,
+            body: message[:body].to_s,
+            primary_body: primary_body_text(message[:body].to_s),
+            sent_at: (normalize_sent_time(message[:sent_at]) || Time.zone.now).iso8601
+          }
+        end
+
+        batch_map = begin
+          request_ai_batch!(messages: inputs)
+        rescue StandardError => e
+          Rails.logger.warn("[LeaveAI] batch provider error: #{e.class}: #{e.message}") if defined?(Rails)
+          {}
+        end
+
+        slice.each do |item|
+          payload = batch_map[batch_message_id(item[:message], item[:index])]
+          if payload.nil?
+            results[item[:index]] = retry_individual_parse(item[:message], recipient_email, item[:user])
+            next
+          end
+
+          parsed = parsed_result(payload, user: item[:user])
+          results[item[:index]] = post_process_result(
+            parsed: parsed,
+            message: item[:message],
+            recipient_email: recipient_email,
+            user: item[:user]
+          )
+        end
+      end
+
+      results.map.with_index do |parsed, index|
+        parsed || result(status: :flagged, reason: 'ai_batch_missing_response', date_source: :ai)
+      end
+    end
+
+    private
+
+    def post_process_result(parsed:, message:, recipient_email:, user:)
       explicit_entries = explicit_leave_entries_from_message(
         subject: message[:subject].to_s,
         body: message[:body].to_s,
@@ -118,8 +191,6 @@ module RedmineTimeAnalytics
       )
       fallback.leave_entries.any? ? fallback : parsed
     end
-
-    private
 
     attr_reader :settings
 
@@ -266,6 +337,49 @@ module RedmineTimeAnalytics
       end
     end
 
+    def request_ai_batch!(messages:)
+      provider = settings[:ai_provider].to_s
+      model = settings[:ai_model].to_s
+      api_key = settings[:ai_api_key].to_s
+      base_url = settings[:ai_base_url].to_s
+      raise 'AI provider is required' if provider.blank?
+      raise 'AI model is required' if model.blank?
+      raise 'AI API key is required' if api_key.blank?
+
+      user_prompt = <<~TEXT
+        Extract leave details for each email below.
+        Return JSON only in this schema:
+        {
+          "results": [
+            {
+              "message_id": "exact_input_message_id",
+              "status": "confirmed|cancelled|flagged",
+              "reason": "short_reason",
+              "leave_entries": [{"date":"YYYY-MM-DD","fraction":1.0|0.5}]
+            }
+          ]
+        }
+        Include one result for every input message_id.
+
+        Emails JSON:
+        #{JSON.generate(messages)}
+      TEXT
+
+      raw = case provider
+            when 'google'
+              call_google(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
+            when 'openai'
+              call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
+            when 'anthropic'
+              call_anthropic(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
+            when 'custom'
+              call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
+            else
+              raise "Unsupported AI provider: #{provider}"
+            end
+      normalize_batch_payload(raw)
+    end
+
     def call_google(model:, api_key:, base_url:, user_prompt:)
       endpoint =
         if base_url.present?
@@ -391,6 +505,30 @@ module RedmineTimeAnalytics
       end
 
       fallback_parse_from_text(text)
+    end
+
+    def normalize_batch_payload(raw_payload)
+      items = case raw_payload
+              when Hash
+                result_nodes = raw_payload['results'] || raw_payload[:results]
+                result_nodes.is_a?(Array) ? result_nodes : [raw_payload]
+              when Array
+                raw_payload
+              else
+                []
+              end
+
+      items.each_with_object({}) do |node, acc|
+        item = node.respond_to?(:to_h) ? node.to_h : {}
+        message_id = item['message_id'].to_s.strip
+        next if message_id.blank?
+
+        acc[message_id] = {
+          'status' => item['status'].to_s,
+          'reason' => item['reason'].to_s,
+          'leave_entries' => item['leave_entries'].is_a?(Array) ? item['leave_entries'] : []
+        }
+      end
     end
 
     def primary_body_text(text)
@@ -703,6 +841,20 @@ module RedmineTimeAnalytics
 
     def ai_retry_delay(attempt)
       AI_HTTP_RETRY_DELAY_SECONDS * attempt
+    end
+
+    def retry_individual_parse(message, recipient_email, user)
+      parse(message: message, recipient_email: recipient_email)
+    rescue StandardError => e
+      Rails.logger.warn("[LeaveAI] missing batch item retry failed: #{e.class}: #{e.message}") if defined?(Rails)
+      result(status: :flagged, reason: 'ai_batch_missing_response', user: user, date_source: :ai)
+    end
+
+    def batch_message_id(message, index)
+      message_id = message[:message_id].to_s.strip
+      return message_id if message_id.present?
+
+      "batch-email-#{index}"
     end
 
     def cancellation_request?(subject, body)
