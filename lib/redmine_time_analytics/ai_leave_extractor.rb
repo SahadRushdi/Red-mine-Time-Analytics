@@ -16,43 +16,177 @@ module RedmineTimeAnalytics
                               'tonight', 'later', 'replacement', 'revised'].freeze
 
     SYSTEM_PROMPT = <<~PROMPT.freeze
-      You are a strict data extractor for leave requests. Output JSON ONLY.
-      
-      STEP 1: LATEST MESSAGE RESOLUTION (Truth Supremacy)
-      - Your output MUST reflect the FINAL state of the request based on the newest visible reply.
-      - Ignore quoted history (text after ">" or "[Quoted text hidden]"). 
-      - If the latest message "shifts", "moves", "reschedules", or "changes" a leave: 
-        1. Identify the OLD date being abandoned.
-        2. Identify the NEW date being requested.
-        3. Only return the NEW date(s) as "confirmed". Do NOT return the old dates in any capacity.
-      
-      STEP 2: HANDLING SHIFTS & CORRECTIONS (Case 8, 9, & 10 Fix)
-      - CRITICAL: If a message says "shifted to next week (05.02.2026)", the date in the Subject line (e.g., 29.01.2026) is now INVALID. 
-      - You must exclude the original subject dates if they have been moved or corrected in the reply.
-      - Example (Case 8/9):
-        Subject: "Half day leave - 29.01.2026"
-        Latest Body: "This leave is shifted to 05.02.2026 and it will be a full day."
-        RESULT: Output ONLY 2026-02-05 with fraction 1.0. (Exclude 2026-01-29 entirely).
+      You are a strict data extractor for leave requests from a Sri Lankan company. Output JSON ONLY.
+      No markdown, no explanation, no thinking text. Raw JSON only.
 
-      STEP 3: DATE-FRACTION MAPPING (Case 5 Fix)
-      - Do NOT apply one fraction to all dates in a list.
-      - Look for modifiers (Half Day, Morning, Evening, Full Day) specifically linked to each date.
-      - Use 0.5 for: "Half day", "Morning", "Evening", "Late arrival", "After 12:30".
-      - Use 1.0 for: "Full day", "On leave", "Sick", or when a reply "upgrades" a leave to full day.
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 0: DISCARD NON-LEAVE EMAILS IMMEDIATELY
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Return {"status":"not_a_leave","leave_entries":[]} for ANY of these:
+      - "Work From Home", "WFH", "working from home", "remote today" — WFH is NOT a leave.
+      - Meeting notices, event invites with no leave request.
+      - Approval/noted replies from managers ("Approved", "Noted", "OK", "Sure").
+      - Out-of-office auto-replies that are not actual leave requests.
+      - Informational broadcasts with no leave dates.
 
-      STEP 4: OUTPUT JSON
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 1: READ THE FULL THREAD — LATEST REPLY IS TRUTH
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - Ignore all quoted text (lines starting with ">", "[Quoted text hidden]", "On ... wrote:").
+      - Process messages in chronological order to build thread state.
+      - The LATEST unquoted reply always overrides earlier ones.
+      - Track these state changes across the thread:
+        * Date shifts ("shifted to", "moved to", "rescheduled to", "next week", "postponed to")
+        * Fraction changes ("full day now", "will be full day", "changed to half day")
+        * Cancellations ("cancelling", "cancelled", "not taking", "will be working", "disregard")
+        * Additions ("also taking", "extending", "additionally")
+        * Reminders ("reminder on previous", "as mentioned") — confirm existing state, do NOT create new entries.
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 2: DATE SHIFT RULES
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      When a date shift occurs:
+      - The original date is ABANDONED. Do not include it in output.
+      - Only the NEW date survives.
+      - Fraction follows the latest reply. If latest reply says "full day", use 1.0 even if original was 0.5.
+
+      Example:
+        Subject:  "Half day leave(Evening) - 30.01.2026"
+        Reply 1:  "This leave is shifted to next week (06.02.2026)(evening)."
+        Reply 2:  "Please note this will be a full day leave."
+        RESULT:   [{"date":"2026-02-06","fraction":1.0}]
+        REASON:   30.01.2026 abandoned. 06.02.2026 upgraded to full day by latest reply.
+
+      Example:
+        Subject:  "Half-day Leave Today (06/04/2026 Evening)"
+        Reply 1:  "I am cancelling my half-day leave for this afternoon. I will be working full day today."
+        Reply 2:  "I will be taking that half-day leave this afternoon (07/04/2026)."
+        RESULT:   [{"date":"2026-04-07","fraction":0.5}]
+        REASON:   06.04.2026 was cancelled. 07.04.2026 is the new confirmed half day.
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 3: CANCELLATION RULES
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Use "cancelled" ONLY when leave is revoked with NO replacement date.
+      Trigger words: "cancelling", "cancelled my leave", "will not be taking leave",
+                     "disregard my previous", "I will be working", "meeting postponed so working".
+
+      If cancelled AND a new date appears in a later reply → "confirmed" with NEW date only.
+
+      Example:
+        Reply 1: "Cancelling my leave for 06.04.2026. I will be working."  → state = cancelled
+        Reply 2: "I will be taking half-day leave on 07.04.2026 instead."  → state = confirmed
+        RESULT:  [{"date":"2026-04-07","fraction":0.5}]
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 4: DATE RANGE AND MULTI-DATE RULES
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Expand ALL date ranges into individual date entries.
+
+      Range formats to handle:
+      - "24 & 25/03/2026"            → 2026-03-24, 2026-03-25
+      - "28,29 of May"               → 2026-05-28, 2026-05-29
+      - "27th February to 7th March" → expand all days inclusive
+      - "28-30 May"                  → 2026-05-28, 2026-05-29, 2026-05-30
+      - "next 3 days from 10/03"     → 2026-03-10, 2026-03-11, 2026-03-12
+
+      CRITICAL — EXCLUDE FROM ALL RANGES:
+      - Saturday and Sunday — NEVER include weekends.
+      - Sri Lanka public holidays for 2026:
+        2026-01-01, 2026-01-14, 2026-02-04, 2026-04-13, 2026-04-14,
+        2026-05-01, 2026-05-22, 2026-06-19, 2026-07-19, 2026-08-18,
+        2026-09-16, 2026-10-16, 2026-11-10, 2026-11-14, 2026-12-14, 2026-12-25.
+
+      When subject and reply BOTH have dates and reply adds more:
+        Subject: "On Leave - 24 & 25/03/2026"
+        Reply:   "I will also take leave on 26 & 27/03/2026."
+        RESULT:  all 4 dates as 1.0 each.
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 5: FRACTION MAPPING
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Use 0.5 for: "Half day", "Morning only", "Evening only", "Late arrival",
+                   "After 12:30", "Half-day", "AM only", "PM only".
+      Use 1.0 for: "Full day", "On leave", "Sick leave", "Annual leave",
+                   "Medical leave", "Casual leave", unspecified leave, or
+                   when a reply explicitly upgrades to full day.
+
+      - Do NOT apply one fraction globally to all dates.
+      - Each date gets its own fraction based on modifiers closest to that date.
+      - If a range has no modifier, default all dates in range to 1.0.
+
+      Example:
+        "Taking half day on 10/03 and full day on 11/03."
+        RESULT: [{"date":"2026-03-10","fraction":0.5},{"date":"2026-03-11","fraction":1.0}]
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 6: MISSING YEAR RESOLUTION
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - If year is missing, use the year from the "Sent at" timestamp.
+      - If resolved date would be >60 days in the past relative to sent date, assume next year.
+      - Never guess a year if no sent date is available — flag instead.
+      - Date format is DD/MM/YYYY (Sri Lanka standard). "01/02/2026" = February 1st, not January 2nd.
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 7: AMBIGUOUS — FLAG RULES
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Return {"status":"flagged","reason":"<specific_reason>","leave_entries":[]} when:
+      - No date found anywhere and no relative date resolvable from sent timestamp.
+      - "Tomorrow", "today", "next week" with no sent timestamp provided.
+      - Conflicting dates with no clear thread resolution.
+      - "Taking leave if the meeting is cancelled" → reason: "conditional_leave_unresolved".
+      - "Might take leave tomorrow" → reason: "uncertain_leave_request".
+      - Body says "as per subject" but subject has no date.
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      STEP 8: OUTPUT FORMAT
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      Always return exactly this structure. No other text outside the JSON.
+
       {
-        "status": "confirmed" | "cancelled" | "flagged",
-        "reason": "latest_message_priority_shift_applied",
+        "status": "confirmed" | "cancelled" | "flagged" | "not_a_leave",
+        "reason": "<brief machine-readable reason>",
         "leave_entries": [
-          {"date": "YYYY-MM-DD", "fraction": 1.0 | 0.5}
+          {"date": "YYYY-MM-DD", "fraction": 1.0}
         ]
       }
 
-      RULES:
-      - Ignore punctuation (. / -) and casing in subject lines.
-      - Use "Sent at" year if missing from the text.
-      - "cancelled" status is only used if the user is revoking a leave without a replacement. If there is a replacement, use "confirmed" with the NEW date only.
+      STATUS RULES:
+      - "confirmed"   → valid leave dates resolved, leave_entries populated.
+      - "cancelled"   → leave revoked with no replacement, leave_entries has cancelled date(s).
+      - "flagged"     → cannot resolve with confidence, leave_entries is [].
+      - "not_a_leave" → WFH, approval reply, broadcast, or non-leave email, leave_entries is [].
+
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      REAL WORLD EDGE CASES
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      RELATIVE DATES (resolve using sent timestamp):
+      - "Today"       → sent date
+      - "Tomorrow"    → sent date + 1 day
+      - "This Friday" → nearest upcoming Friday from sent date
+      - "Next week"   → Monday of next week from sent date
+      If sent timestamp unavailable → flag: "relative_date_no_sent_timestamp".
+
+      MEDICAL/SICK LEAVE with no explicit date:
+      - "I am unwell and will not be coming in today" → sent date, fraction 1.0
+      - "Feeling sick, taking half day this morning"  → sent date, fraction 0.5
+
+      REMINDER EMAILS:
+      - "Reminder on my previous leave request" → do NOT create new entries.
+        Confirm existing state only.
+
+      MIXED FRACTIONS IN ONE EMAIL:
+      - "Half day on 10/03 and full day on 11/03" →
+        [{"date":"2026-03-10","fraction":0.5},{"date":"2026-03-11","fraction":1.0}]
+
+      TYPOS AND FORMAT VARIATIONS:
+      - "30.1.26", "30/1/2026", "30-01-2026", "Jan 30", "30th Jan" → all = 2026-01-30.
+      - Ambiguous formats in Sri Lankan context → always treat as DD/MM/YYYY.
+
+      LEAVE WITH CONDITIONS:
+      - "Taking leave if the meeting is cancelled" → flag: "conditional_leave_unresolved".
+      - "Might take leave tomorrow" → flag: "uncertain_leave_request".
     PROMPT
 
     def initialize(settings:)
@@ -86,7 +220,8 @@ module RedmineTimeAnalytics
       post_process_result(parsed: parsed, message: message, recipient_email: recipient_email, user: user)
     end
 
-    def parse_batch(messages:, recipient_email:, chunk_size: 50)
+    # Change 5 & 6: chunk_size default changed to 30, sleep(6) added between chunks
+    def parse_batch(messages:, recipient_email:, chunk_size: 30)
       indexed = Array(messages).map.with_index { |message, index| { message: message, index: index } }
       results = Array.new(indexed.length)
       ai_candidates = []
@@ -111,7 +246,10 @@ module RedmineTimeAnalytics
         ai_candidates << item.merge(user: user)
       end
 
-      ai_candidates.each_slice(chunk_size) do |slice|
+      ai_candidates.each_slice(chunk_size).with_index do |slice, chunk_index|
+        # Change 5: Rate limit protection — sleep 6s between chunks (not before first)
+        sleep(6) if chunk_index > 0
+
         inputs = slice.map do |item|
           message = item[:message]
           {
@@ -155,6 +293,9 @@ module RedmineTimeAnalytics
     private
 
     def post_process_result(parsed:, message:, recipient_email:, user:)
+      # Short-circuit: not_a_leave and ignored need no further processing
+      return parsed if parsed.status == :ignored
+
       explicit_entries = explicit_leave_entries_from_message(
         subject: message[:subject].to_s,
         body: message[:body].to_s,
@@ -204,12 +345,23 @@ module RedmineTimeAnalytics
 
     attr_reader :settings
 
+    # Change 2: Added not_a_leave branch at the top of parsed_result
     def parsed_result(payload, user:)
       status = payload['status'].to_s.strip.downcase
       reason = payload['reason'].to_s.strip.presence
       leave_entries = normalize_leave_entries(payload['leave_entries'])
       leave_dates = leave_entries.map { |entry| entry[:date] }.uniq.sort
       leave_fraction = leave_entries.map { |entry| entry[:fraction].to_f }.max || 0.0
+
+      # Change 2: Handle not_a_leave status returned by AI (WFH, approvals, broadcasts)
+      if status == 'not_a_leave'
+        return result(
+          status: :ignored,
+          reason: reason || 'not_a_leave',
+          user: user,
+          date_source: :ai
+        )
+      end
 
       case status
       when 'cancelled'
@@ -363,25 +515,27 @@ module RedmineTimeAnalytics
           "results": [
             {
               "message_id": "exact_input_message_id",
-              "status": "confirmed|cancelled|flagged",
+              "status": "confirmed|cancelled|flagged|not_a_leave",
               "reason": "short_reason",
-              "leave_entries": [{"date":"YYYY-MM-DD","fraction":1.0|0.5}]
+              "leave_entries": [{"date":"YYYY-MM-DD","fraction":1.0}]
             }
           ]
         }
-        Include one result for every input message_id.
+        Include one result for every input message_id. No markdown. No explanation. Raw JSON only.
 
         Emails JSON:
         #{JSON.generate(messages)}
       TEXT
 
+      # Change 7: Pass higher max_tokens for batch calls
       raw = case provider
             when 'google'
               call_google(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
             when 'openai'
               call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
             when 'anthropic'
-              call_anthropic(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
+              call_anthropic(model: model, api_key: api_key, base_url: base_url,
+                             user_prompt: user_prompt, max_tokens: 4000)
             when 'custom'
               call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
             else
@@ -437,7 +591,8 @@ module RedmineTimeAnalytics
       parse_model_json(text)
     end
 
-    def call_anthropic(model:, api_key:, base_url:, user_prompt:)
+    # Change 7: Added max_tokens parameter (default 400 for single, 4000 for batch)
+    def call_anthropic(model:, api_key:, base_url:, user_prompt:, max_tokens: 400)
       endpoint = base_url.presence || 'https://api.anthropic.com/v1/messages'
       payload = http_post_json(
         endpoint,
@@ -448,7 +603,7 @@ module RedmineTimeAnalytics
         },
         body: {
           model: model,
-          max_tokens: 400,
+          max_tokens: max_tokens,
           temperature: 0.0,
           system: SYSTEM_PROMPT,
           messages: [
@@ -494,11 +649,24 @@ module RedmineTimeAnalytics
       raise 'AI provider returned invalid JSON'
     end
 
+    # Change 4: Strip Gemini thinking blocks and leading prose before JSON parsing
     def parse_model_json(text)
       json_text = text.to_s.strip
+
+      # Strip Gemini 2.5 Flash thinking blocks (<think>...</think>)
+      json_text = json_text.gsub(/<think>.*?<\/think>/m, '').strip
+
+      # Strip any leading prose before the first JSON brace or bracket
+      # Gemini sometimes emits reasoning text before the actual JSON
+      if (first_brace = json_text.index('{') || json_text.index('['))
+        json_text = json_text[first_brace..]
+      end
+
+      # Strip markdown fences
       if json_text.start_with?('```')
         json_text = json_text.gsub(/\A```(?:json)?\s*/i, '').gsub(/\s*```\z/, '').strip
       end
+
       candidates = [json_text]
       extracted = json_text[/\{.*\}/m]
       candidates << extracted if extracted.present?
@@ -904,8 +1072,13 @@ module RedmineTimeAnalytics
       "batch-email-#{index}"
     end
 
+    # Change 3: Added WFH guard so WFH emails are never treated as cancellations
     def cancellation_request?(subject, body)
       normalized = [subject, primary_body_text(body)].compact.join("\n").downcase
+
+      # WFH is not a cancellation — discard before cancellation check
+      return false if normalized.match?(/\b(work\s*from\s*home|wfh|working\s*from\s*home|remote\s*today)\b/)
+
       normalized.match?(/\b(cancelled|canceled|cancel|cancelling|cancellation|ignore|working instead|able to work|work instead)\b/)
     end
 

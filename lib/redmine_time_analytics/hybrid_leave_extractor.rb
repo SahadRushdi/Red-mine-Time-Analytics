@@ -6,6 +6,8 @@ module RedmineTimeAnalytics
                            'cancel', 'cancelled', 'canceled', 'withdraw', 'revoked', 'revoke',
                            'from', 'between', 'through', 'until'].freeze
     LEAVE_CONTEXT_KEYWORDS = ['leave', 'on leave', 'sick leave', 'vacation', 'holiday', 'absent'].freeze
+    # Phrases that indicate the user is explicitly negating or cancelling the previously requested leave
+    NEGATION_REGEX = /\bnot\s+(?:taking|going to|able to work|able to|attending|available)\b|\bwon'?t\b|\bwill not\b|\bnot available\b/i.freeze
     MULTI_DATE_LIST_REGEX = /
       \b\d{1,2}(?:\s*,\s*\d{1,2})+\s*(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|
       jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?\b|
@@ -109,6 +111,7 @@ module RedmineTimeAnalytics
       return false if multi_date_subject?(normalized_subject)
       return false if COMPLEXITY_KEYWORDS.any? { |keyword| normalized_subject.include?(keyword) }
       return false if COMPLEXITY_KEYWORDS.any? { |keyword| normalized_body.include?(keyword) }
+      return false if normalized_body.match?(NEGATION_REGEX)
       return false if contains_date_token?(normalized_body)
 
       subject_dates = subject_text.scan(DATE_TOKEN_REGEX)
