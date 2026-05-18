@@ -1781,3 +1781,28 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 [data-table-sort]:active {
   color: inherit !important;
 }
+
+/* === Leave Sync Date Picker Fields === */
+/* Override Redmine's purple border on datepicker fields with blue */
+#leave-sync-start-date,
+#leave-sync-end-date {
+  border-color: #60a5fa !important;
+}
+
+#leave-sync-start-date:focus,
+#leave-sync-end-date:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  ring: 0 !important;
+}
+
+/* Override Redmine input field ring styles */
+#leave-sync-start-date,
+#leave-sync-end-date {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+#leave-sync-start-date:focus,
+#leave-sync-end-date:focus {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
