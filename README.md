@@ -84,7 +84,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Hierarchical Team Structure**: Support for parent-child team relationships
 - **Historical Tracking**: Track member and project assignments with date ranges
 - **Access Control**: Team leads see their teams and sub-teams; super users see all teams without team assignment
-- **Exclusion List**: Exclude specific users (e.g., C-level executives) from analytics
+ - **Exclusion List**: Exclude specific users (e.g., C-level executives) from analytics with optional start/end dates
 - **Interactive Charts**: Same powerful Chart.js visualizations as Individual Dashboard
 - **Export Functionality**: CSV export for team time entries
 
@@ -152,6 +152,31 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 5. Save settings
 6. For OAuth/DWD, run **Historical Sync** once, then **Incremental Sync** (or schedule rake task)
 7. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
+
+### Teams Admin Payload API
+- **Endpoint**: `GET /admin/ta_teams/payload.json`
+- **Auth**: Requires admin user API key (session cookie method will not work reliably due to expiration)
+  - Pass API key via **query parameter**: `?api_key=<your_api_key>`
+  - OR via **header**: `X-Redmine-API-Key: <your_api_key>`
+- **Getting your API Key**:
+  - Log in as admin → **My Account** → **API Access Key** → **Show**
+- **Important**: After deploying, **restart Redmine** for API key authentication to take effect
+- **Query Params**:
+  - `api_key` (required, or use `X-Redmine-API-Key` header)
+  - `limit` (default `100`, max `500`)
+  - `offset` (default `0`)
+- **Response**:
+  - `data.teams`: Team hierarchy with `id`, `name`, `parentTeamId`, `leadMemberIds`, `memberIds`, `metadata`
+  - `data.members`: Unique users with `id`, `name`, `email`, `status`, `metadata.memberships`
+  - `pagination`: `{ limit, offset, totalTeams, totalMembers }`
+- **Error Handling**:
+  - No/invalid API key: `HTTP 401` with `{ error: 'API key is required' }`
+  - Non-admin API key: `HTTP 403` with `{ error: 'Invalid API key or insufficient permissions' }`
+- **Example curl request**:
+  ```bash
+  curl -X GET "http://localhost:3000/admin/ta_teams/payload.json?limit=100&offset=0&api_key=YOUR_API_KEY" \
+    -H "Accept: application/json"
+  ```
 
 ### Chart Interaction
 - **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default

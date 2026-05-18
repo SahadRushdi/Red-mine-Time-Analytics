@@ -17,12 +17,21 @@ class TaTeamSetting < ActiveRecord::Base
   validates :user_id, presence: true
   validates :setting_type, presence: true, inclusion: { in: SETTING_TYPES, message: "%{value} is not a valid setting type" }
   validates :user_id, uniqueness: { scope: :setting_type, message: "already has this setting type" }
+  validates :start_date, presence: true, if: :exclusion?
+  validate :end_date_after_start_date, if: :exclusion?
+  before_validation :default_exclusion_start_date, if: :exclusion?
 
   # Scopes
   scope :active, -> { where(active: true) }
   scope :inactive, -> { where(active: false) }
   scope :exclusions, -> { where(setting_type: 'exclusion', active: true) }
   scope :super_users, -> { where(setting_type: 'super_user', active: true) }
+  scope :exclusions_active_on, ->(date) {
+    exclusions.where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', date, date)
+  }
+  scope :exclusions_overlapping, ->(from_date, to_date) {
+    exclusions.where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', to_date, from_date)
+  }
 
   # Class Methods
 
@@ -30,6 +39,31 @@ class TaTeamSetting < ActiveRecord::Base
   # @return [Array<Integer>] User IDs in exclusion list
   def self.excluded_user_ids
     exclusions.pluck(:user_id)
+  end
+
+  # Get array of user IDs excluded during a given period
+  # @param from_date [Date]
+  # @param to_date [Date]
+  # @return [Array<Integer>]
+  def self.excluded_user_ids_for_range(from_date, to_date)
+    exclusions_overlapping(from_date, to_date).distinct.pluck(:user_id)
+  end
+
+  # SQL fragment that excludes a time entry row when its spent_on date falls in an exclusion window.
+  # @param entry_table_alias [String]
+  # @return [String]
+  def self.exclusion_time_entry_condition(entry_table_alias = 'time_entries')
+    <<~SQL.squish
+      NOT EXISTS (
+        SELECT 1
+        FROM ta_team_settings
+        WHERE ta_team_settings.setting_type = 'exclusion'
+          AND ta_team_settings.active = 1
+          AND ta_team_settings.user_id = #{entry_table_alias}.user_id
+          AND ta_team_settings.start_date <= #{entry_table_alias}.spent_on
+          AND (ta_team_settings.end_date IS NULL OR ta_team_settings.end_date >= #{entry_table_alias}.spent_on)
+      )
+    SQL
   end
 
   # Get array of user IDs that are super users (can view all teams)
@@ -56,9 +90,11 @@ class TaTeamSetting < ActiveRecord::Base
   # @param user_id [Integer] User ID to exclude
   # @param notes [String] Optional notes about why user is excluded
   # @return [TaTeamSetting] The created or updated setting
-  def self.add_to_exclusion_list(user_id, notes: nil)
+  def self.add_to_exclusion_list(user_id, start_date: Date.current, end_date: nil, notes: nil)
     setting = find_or_initialize_by(user_id: user_id, setting_type: 'exclusion')
     setting.active = true
+    setting.start_date = start_date
+    setting.end_date = end_date
     setting.notes = notes if notes
     setting.save
     setting
@@ -389,6 +425,27 @@ class TaTeamSetting < ActiveRecord::Base
     setting_type == 'exclusion'
   end
 
+  def active_on?(date)
+    return false unless exclusion? && active? && start_date.present?
+
+    start_date <= date && (end_date.nil? || end_date >= date)
+  end
+
+  def date_range_label
+    return '' unless exclusion?
+    return '' unless start_date.present?
+
+    if end_date.present?
+      "#{start_date.strftime('%Y-%m-%d')} to #{end_date.strftime('%Y-%m-%d')}"
+    else
+      "#{start_date.strftime('%Y-%m-%d')} to present"
+    end
+  end
+
+  def end_date_display
+    end_date.presence || 'Ongoing'
+  end
+
   # Check if this setting is for super user
   # @return [Boolean] true if setting_type is 'super_user'
   def super_user?
@@ -400,6 +457,20 @@ class TaTeamSetting < ActiveRecord::Base
   def toggle_active!
     update(active: !active)
   end
+
+  private
+
+  def end_date_after_start_date
+    return if start_date.blank? || end_date.blank?
+
+    errors.add(:end_date, 'must be after start date') if end_date < start_date
+  end
+
+  def default_exclusion_start_date
+    self.start_date = Date.current if start_date.blank?
+  end
+
+  public
 
   # Get user name (convenience method)
   # @return [String] User's name or login
