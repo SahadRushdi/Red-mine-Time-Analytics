@@ -217,7 +217,7 @@ class AdminTaTeamsController < ApplicationController
       return
     end
 
-    user = User.find_by(api_token: api_key)
+    user = User.find_by_api_key(api_key)
     if user.blank? || !user.admin?
       render json: { error: 'Invalid API key or insufficient permissions' }, status: :forbidden
       return
