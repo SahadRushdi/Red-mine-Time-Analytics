@@ -1,0 +1,220 @@
+<%= error_messages_for 'ta_team' %>
+
+<% parent_team_label = @team.parent_team ? @team.parent_team.name : '(None - Root Team)' %>
+
+<div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+  <div>
+    <%= f.label :name, 'Team Name', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <%= f.text_field :name, required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !leading-[43px] !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+  </div>
+
+  <div>
+    <%= f.label :parent_team_id, 'Parent Team', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <div class="relative">
+      <button type="button"
+              id="ta-parent-team-button"
+              data-ta-parent-team-toggle="true"
+              class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+        <span id="ta-parent-team-label" class="truncate"><%= parent_team_label %></span>
+        <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+      </button>
+      <div id="ta-parent-team-dropdown"
+           data-ta-parent-team-menu="true"
+           class="tep-activity-dropdown hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+        <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+          <li>
+            <button type="button"
+                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                    data-ta-parent-team-value=""
+                    data-ta-parent-team-label="(None - Root Team)">
+              (None - Root Team)
+            </button>
+          </li>
+          <% TaTeam.ordered_by_name.where.not(id: @team.id).each do |team| %>
+            <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+            <li>
+              <button type="button"
+                      class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                      data-ta-parent-team-value="<%= team.id %>"
+                      data-ta-parent-team-label="<%= h(team.name) %>">
+                <%= indent.html_safe %><%= h(team.name) %>
+              </button>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+      <%= f.hidden_field :parent_team_id, id: 'ta-team-parent-team-id' %>
+    </div>
+    <p class="mt-1 text-xs text-gray-500">Select parent team to create a hierarchical structure.</p>
+  </div>
+
+  <div class="md:col-span-2">
+    <%= f.label :description, 'Description', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <%= f.text_area :description, rows: 4, class: 'ts-search-input !block !w-full !min-h-[110px] !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+    <p class="mt-1 text-xs text-gray-500">Optional description of the team.</p>
+  </div>
+
+  <div class="md:col-span-2">
+    <%= f.label :personal_project_urls, 'Personal Projects URLs', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+    <div id="personal-project-urls-container" class="space-y-2">
+      <% urls = @team.parse_personal_project_urls %>
+      <% values = urls.empty? ? [''] : urls %>
+      <% values.each_with_index do |url, index| %>
+        <div class="ta-url-input-row flex flex-col gap-2 sm:flex-row sm:items-center" data-index="<%= index %>">
+          <input type="text"
+                 name="ta_team[personal_project_urls][]"
+                 value="<%= h(url) %>"
+                 data-ta-personal-project-url="true"
+                 spellcheck="false"
+                 autocapitalize="off"
+                 autocomplete="off"
+                 class="ts-search-input !block !h-[43px] !w-full sm:!flex-1 !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !leading-[43px] !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+                 placeholder="http://0.0.0.0:3000/projects/iot-team" />
+          <button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>
+          <button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>
+          <span class="ta-url-validation-result text-sm text-gray-500"></span>
+        </div>
+      <% end %>
+    </div>
+
+    <button type="button" id="add-url-btn" class="mt-3 inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-100">
+      Add Another URL
+    </button>
+    <p class="mt-2 text-xs text-gray-500">
+      Enter parent project URLs whose sub-projects should be grouped as Personal Projects in team dashboard analytics.
+      Parent-team URLs are inherited by child teams.
+    </p>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var container = document.getElementById('personal-project-urls-container');
+    var addBtn = document.getElementById('add-url-btn');
+    if (!container || !addBtn) return;
+
+    var urlIndex = container.querySelectorAll('.ta-url-input-row').length;
+
+    function setValidationMessage(resultSpan, kind, message) {
+      if (!resultSpan) return;
+      var klass = 'text-sm ';
+      if (kind === 'ok') klass += 'text-emerald-600';
+      else if (kind === 'error') klass += 'text-red-600';
+      else klass += 'text-gray-500';
+      resultSpan.className = 'ta-url-validation-result ' + klass;
+      resultSpan.textContent = message;
+    }
+
+    function updateRemoveButtons() {
+      var rows = container.querySelectorAll('.ta-url-input-row');
+      rows.forEach(function(row) {
+        var removeBtn = row.querySelector('.ta-url-remove-btn');
+        if (!removeBtn) return;
+        removeBtn.classList.toggle('hidden', rows.length <= 1);
+      });
+    }
+
+    function attachValidateHandler(row) {
+      var validateBtn = row.querySelector('.ta-url-validate-btn');
+      var urlInput = row.querySelector('[data-ta-personal-project-url]');
+      var resultSpan = row.querySelector('.ta-url-validation-result');
+      if (!(validateBtn && urlInput && resultSpan)) return;
+
+      validateBtn.addEventListener('click', function() {
+        var url = urlInput.value.trim();
+        if (!url) {
+          setValidationMessage(resultSpan, 'neutral', 'No URL provided');
+          return;
+        }
+
+        setValidationMessage(resultSpan, 'neutral', 'Validating...');
+        validateBtn.disabled = true;
+
+        fetch('<%= validate_url_admin_ta_teams_path %>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+          },
+          body: JSON.stringify({ url: url })
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            validateBtn.disabled = false;
+            if (data.valid) {
+              setValidationMessage(resultSpan, 'ok', 'Valid - Project: ' + data.project_name);
+            } else {
+              setValidationMessage(resultSpan, 'error', data.error || 'Validation failed');
+            }
+          })
+          .catch(function() {
+            validateBtn.disabled = false;
+            setValidationMessage(resultSpan, 'error', 'Validation failed');
+          });
+      });
+    }
+
+    function attachRemoveHandler(row) {
+      var removeBtn = row.querySelector('.ta-url-remove-btn');
+      if (!removeBtn) return;
+
+      removeBtn.addEventListener('click', function() {
+        row.remove();
+        updateRemoveButtons();
+      });
+    }
+
+    addBtn.addEventListener('click', function() {
+        var row = document.createElement('div');
+        row.className = 'ta-url-input-row flex flex-col gap-2 sm:flex-row sm:items-center';
+        row.dataset.index = urlIndex++;
+        row.innerHTML = [
+        '<input type="text" name="ta_team[personal_project_urls][]" data-ta-personal-project-url="true" spellcheck="false" autocapitalize="off" autocomplete="off" class="ts-search-input !block !h-[43px] !w-full sm:!flex-1 !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !leading-[43px] !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]" placeholder="http://0.0.0.0:3000/projects/iot-team" />',
+        '<button type="button" class="ta-url-validate-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300">Validate</button>',
+        '<button type="button" class="ta-url-remove-btn ta-url-action-button inline-flex items-center justify-center rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-4 focus:ring-red-300">Remove</button>',
+        '<span class="ta-url-validation-result text-sm text-gray-500"></span>'
+      ].join('');
+
+      container.appendChild(row);
+      attachValidateHandler(row);
+      attachRemoveHandler(row);
+      updateRemoveButtons();
+    });
+
+    container.querySelectorAll('.ta-url-input-row').forEach(function(row) {
+      attachValidateHandler(row);
+      attachRemoveHandler(row);
+    });
+
+    updateRemoveButtons();
+
+    var parentTeamButton = document.getElementById('ta-parent-team-button');
+    var parentTeamDropdown = document.getElementById('ta-parent-team-dropdown');
+    var parentTeamLabel = document.getElementById('ta-parent-team-label');
+    var parentTeamInput = document.getElementById('ta-team-parent-team-id');
+
+    if (parentTeamButton && parentTeamDropdown && parentTeamLabel && parentTeamInput) {
+      parentTeamButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        parentTeamDropdown.classList.toggle('hidden');
+      });
+
+      parentTeamDropdown.querySelectorAll('[data-ta-parent-team-value]').forEach(function(option) {
+        option.addEventListener('click', function(event) {
+          event.preventDefault();
+          parentTeamInput.value = option.getAttribute('data-ta-parent-team-value') || '';
+          parentTeamLabel.textContent = option.getAttribute('data-ta-parent-team-label') || '';
+          parentTeamDropdown.classList.add('hidden');
+        });
+      });
+
+      document.addEventListener('click', function(event) {
+        if (!parentTeamButton.contains(event.target) && !parentTeamDropdown.contains(event.target)) {
+          parentTeamDropdown.classList.add('hidden');
+        }
+      });
+    }
+  });
+</script>

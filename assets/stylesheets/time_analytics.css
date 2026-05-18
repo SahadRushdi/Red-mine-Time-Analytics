@@ -39,12 +39,15 @@
 }
 
 .analytics-section .time-overview-box {
-  flex: 0 0 350px;
+  flex: 0 1 auto;
   min-width: 0;
+  width: fit-content;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   align-self: stretch;
-  overflow: visible;
+  overflow-x: visible;
+  overflow-y: hidden;
 }
 
 .analytics-section .time-overview-box .pagination-wrapper {
@@ -52,6 +55,28 @@
   margin-top: 4px;
   margin-bottom: 0;
   font-size: 11px;
+  flex-shrink: 0;
+}
+
+.analytics-section .time-overview-box tbody {
+  display: table-row-group;
+}
+
+.analytics-section .time-overview-box .team-overview-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.analytics-section .time-overview-box table {
+  width: max-content !important;
+  min-width: 100% !important;
+  table-layout: auto;
+}
+
+.analytics-section .time-overview-box th,
+.analytics-section .time-overview-box td {
+  white-space: nowrap;
 }
 
 .analytics-section .visualization-section,
@@ -207,7 +232,7 @@
   padding-top: 15px;
   padding-bottom: 0;
   border-top: 1px solid #eee;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -245,8 +270,61 @@
 
 .pagination-info,
 .pagination-form label {
-  font-size: 11px;
+  font-size: 12px;
   color: #666;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.pagination-info {
+  flex: 0 1 auto;
+  text-align: right;
+  min-width: 0;
+}
+
+.summary-with-bars {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.summary-with-bars thead th {
+  background-color: #f9fafb;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.summary-with-bars .hours-column {
+  width: 140px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.summary-with-bars .bar-column {
+  width: 42%;
+  min-width: 240px;
+}
+
+.summary-with-bars .bar-container {
+  position: relative;
+  height: 0.8rem;
+  border-radius: 9999px;
+  background-color: #e5e7eb;
+  overflow: hidden;
+}
+
+.summary-with-bars .bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.summary-with-bars .bar-label {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+  vertical-align: middle;
   white-space: nowrap;
 }
 
@@ -284,7 +362,12 @@ button:active,
   box-shadow: none !important;
 }
 
-/* Remove borders from dashboard tab buttons */
+/* Remove borders from dashboard tab controls */
+a.ta-view-tab,
+a.ta-view-tab:hover,
+a.ta-view-tab:focus,
+a.ta-view-tab:focus-visible,
+a.ta-view-tab:active,
 button.ta-view-tab,
 button.ta-view-tab:focus,
 button.ta-view-tab:focus-visible,
@@ -292,8 +375,12 @@ button.ta-view-tab:active {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
+  text-decoration: none !important;
 }
 
+a.ta-view-tab:focus,
+a.ta-view-tab:focus-visible,
+a.ta-view-tab:active,
 button.ta-view-tab:focus,
 button.ta-view-tab:focus-visible,
 button.ta-view-tab:active {
@@ -302,6 +389,11 @@ button.ta-view-tab:active {
 }
 
 /* Visible selected state for Issue/Activity/Project tabs */
+a.ta-view-tab.ta-view-tab-active,
+a.ta-view-tab.ta-view-tab-active:hover,
+a.ta-view-tab.ta-view-tab-active:focus,
+a.ta-view-tab.ta-view-tab-active:focus-visible,
+a.ta-view-tab.ta-view-tab-active:active,
 button.ta-view-tab.ta-view-tab-active,
 button.ta-view-tab.ta-view-tab-active:hover,
 button.ta-view-tab.ta-view-tab-active:focus,
@@ -338,16 +430,265 @@ button[onclick*="setGroupingAndSubmit"] {
   box-shadow: none !important;
 }
 
+/* Team dropdown - match grouping dropdown border override behavior */
+#team-dropdown button,
+#team-dropdown button:hover,
+#team-dropdown button:focus,
+#team-dropdown button:active,
+button[onclick*="setTeamAndSubmit"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 /* === Fix Redmine's Blue Border on Button Hover === */
 /* Prevent Redmine's default blue border (#628db6) on button hover */
 button:hover {
   border-color: currentColor !important;
 }
 
+/* Vacancy action button — keep Flowbite emerald styling and remove Redmine border */
+button.ta-vacancy-action-button,
+button.ta-vacancy-action-button:hover,
+button.ta-vacancy-action-button:focus,
+button.ta-vacancy-action-button:focus-visible,
+button.ta-vacancy-action-button:active {
+  border: 1px solid #047857 !important;
+  border-color: #047857 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button.ta-vacancy-action-button:hover,
+button.ta-vacancy-action-button:focus,
+button.ta-vacancy-action-button:focus-visible,
+button.ta-vacancy-action-button:active {
+  background-color: #065f46 !important;
+  border-color: #065f46 !important;
+  color: #ffffff !important;
+}
+
 /* Specific fix for inactive time period buttons - keep gray border on hover */
 button[onclick*="setFilterAndSubmit"]:not([style*="background-color: #3b82f6"]):hover,
 button[onclick*="toggleCustomDateRange"]:not([style*="background-color: #3b82f6"]):hover {
   border-color: #d1d5db !important;
+}
+
+/* === Leaves page tab and control overrides === */
+button.leaves-tab,
+button.leaves-tab:hover,
+button.leaves-tab:focus,
+button.leaves-tab:focus-visible,
+button.leaves-tab:active {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: rgb(107 114 128) !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.leaves-tab.leaves-tab-active,
+button.leaves-tab.leaves-tab-active:hover,
+button.leaves-tab.leaves-tab-active:focus,
+button.leaves-tab.leaves-tab-active:focus-visible,
+button.leaves-tab.leaves-tab-active:active {
+  background: rgb(243 244 246) !important;
+  color: rgb(37 99 235) !important;
+}
+
+button.leaves-tab:active {
+  background: transparent !important;
+}
+
+button.leaves-tab.leaves-tab-active:active {
+  background: rgb(243 244 246) !important;
+}
+
+button[data-table-sort].text-blue-600,
+button[data-table-sort].text-blue-600:hover,
+button[data-table-sort].text-blue-600:focus,
+button[data-table-sort].text-blue-600:focus-visible {
+  color: #111827 !important;
+}
+
+button[data-table-sort],
+button[data-table-sort]:hover,
+button[data-table-sort]:focus,
+button[data-table-sort]:focus-visible,
+button[data-table-sort]:active {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+button[data-table-sort]:focus,
+button[data-table-sort]:focus-visible,
+button[data-table-sort]:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.leaves-dropdown-option,
+.leaves-dropdown-option:hover,
+.leaves-dropdown-option:focus,
+.leaves-dropdown-option:focus-visible,
+.leaves-dropdown-option:active {
+  color: #374151 !important;
+  background: #ffffff !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.leaves-dropdown-option:hover,
+.leaves-dropdown-option:focus-visible {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.leaves-dropdown-option--active,
+.leaves-dropdown-option--active:hover,
+.leaves-dropdown-option--active:focus,
+.leaves-dropdown-option--active:focus-visible,
+.leaves-dropdown-option--active:active {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+#leaves-user-dropdown button,
+#leaves-user-dropdown button:hover,
+#leaves-user-dropdown button:focus,
+#leaves-user-dropdown button:focus-visible,
+#leaves-user-dropdown button:active,
+#leaves-status-dropdown button,
+#leaves-status-dropdown button:hover,
+#leaves-status-dropdown button:focus,
+#leaves-status-dropdown button:focus-visible,
+#leaves-status-dropdown button:active,
+#leaves-per-page-dropdown button,
+#leaves-per-page-dropdown button:hover,
+#leaves-per-page-dropdown button:focus,
+#leaves-per-page-dropdown button:focus-visible,
+#leaves-per-page-dropdown button:active {
+  border: none !important;
+  color: #374151 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-user-dropdown button:hover,
+#leaves-user-dropdown button:focus,
+#leaves-user-dropdown button:focus-visible,
+#leaves-status-dropdown button:hover,
+#leaves-status-dropdown button:focus,
+#leaves-status-dropdown button:focus-visible,
+#leaves-per-page-dropdown button:hover,
+#leaves-per-page-dropdown button:focus,
+#leaves-per-page-dropdown button:focus-visible {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#leaves-user-dropdown-button,
+#leaves-user-dropdown-button:hover,
+#leaves-user-dropdown-button:focus,
+#leaves-user-dropdown-button:focus-visible,
+#leaves-user-dropdown-button:active,
+#leaves-status-dropdown-button,
+#leaves-status-dropdown-button:hover,
+#leaves-status-dropdown-button:focus,
+#leaves-status-dropdown-button:focus-visible,
+#leaves-status-dropdown-button:active,
+#leaves-per-page-dropdown-button,
+#leaves-per-page-dropdown-button:hover,
+#leaves-per-page-dropdown-button:focus,
+#leaves-per-page-dropdown-button:focus-visible,
+#leaves-per-page-dropdown-button:active {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-user-dropdown-button:hover,
+#leaves-status-dropdown-button:hover,
+#leaves-per-page-dropdown-button:hover {
+  background-color: #f9fafb !important;
+}
+
+#leaves-filter-from,
+#leaves-filter-to {
+  height: 43px !important;
+  line-height: 1.2 !important;
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+#leaves-filter-from:focus,
+#leaves-filter-from:active,
+#leaves-filter-from:focus-visible,
+#leaves-filter-to:focus,
+#leaves-filter-to:active,
+#leaves-filter-to:focus-visible {
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 0 1px #3b82f6 !important;
+}
+
+.leaves-entry-icon-btn,
+.leaves-entry-icon-btn:hover,
+.leaves-entry-icon-btn:focus,
+.leaves-entry-icon-btn:focus-visible,
+.leaves-entry-icon-btn:active {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0.25rem !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.leaves-entry-icon-btn--confirm,
+.leaves-entry-icon-btn--confirm:focus,
+.leaves-entry-icon-btn--confirm:focus-visible,
+.leaves-entry-icon-btn--confirm:active {
+  color: #3b82f6 !important;
+}
+
+.leaves-entry-icon-btn--confirm:hover {
+  color: #1d4ed8 !important;
+}
+
+.leaves-entry-icon-btn--edit,
+.leaves-entry-icon-btn--edit:focus,
+.leaves-entry-icon-btn--edit:focus-visible,
+.leaves-entry-icon-btn--edit:active {
+  color: #6b7280 !important;
+}
+
+.leaves-entry-icon-btn--edit:hover {
+  color: #111827 !important;
+}
+
+.leaves-entry-icon-btn--delete,
+.leaves-entry-icon-btn--delete:focus,
+.leaves-entry-icon-btn--delete:focus-visible,
+.leaves-entry-icon-btn--delete:active {
+  color: #f87171 !important;
+}
+
+.leaves-entry-icon-btn--delete:hover {
+  color: #dc2626 !important;
 }
 
 /* Specific fix for inactive Detailed/Summary buttons - keep gray border on hover */
@@ -417,7 +758,6 @@ button[onclick*="switchChartType"]:active {
 .tep-inline-form button:active,
 .tep-issue-dropdown,
 .tep-activity-dropdown,
-.tep-issue-option:focus,
 .tep-activity-option:focus {
   outline: none !important;
   box-shadow: none !important;
@@ -500,13 +840,6 @@ button[onclick*="switchChartType"]:active {
 .tep-activity-dropdown {
   overflow-x: hidden !important;
 }
-.tep-issue-option:hover,
-.tep-issue-option:focus,
-.tep-activity-option:hover,
-.tep-activity-option:focus {
-  background-color: #f3f4f6 !important;
-  outline: none !important;
-}
 
 /* Inline form fields — fixed height for single-row alignment */
 .tep-inline-form .tep-field {
@@ -532,7 +865,12 @@ button[onclick*="switchChartType"]:active {
 }
 
 /* Activity option buttons — pure gray hover, never blue */
-.tep-activity-option {
+.tep-activity-option,
+button.tep-activity-option,
+.tep-entry-act-option,
+[data-ta-dropdown-menu="true"] button,
+.tep-activity-dropdown .tep-activity-option,
+.tep-activity-dropdown button.tep-activity-option {
   background-color: transparent !important;
   outline: none !important;
   box-shadow: none !important;
@@ -541,13 +879,34 @@ button[onclick*="switchChartType"]:active {
   overflow-wrap: anywhere !important;
   word-break: break-word !important;
 }
+
 .tep-activity-option:hover,
 .tep-activity-option:focus,
-.tep-activity-option:focus-visible {
+.tep-activity-option:focus-visible,
+button.tep-activity-option:hover,
+button.tep-activity-option:focus,
+.tep-entry-act-option:hover,
+[data-ta-dropdown-menu="true"] button:hover,
+.tep-activity-dropdown .tep-activity-option:hover,
+.tep-activity-dropdown button.tep-activity-option:hover {
   background-color: #f3f4f6 !important;
+  color: #111827 !important;
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+}
+
+/* Issue option divs — same gray hover */
+.tep-issue-option:hover,
+.tep-issue-option:focus,
+.tep-issue-option:active,
+.tep-issue-dropdown .tep-issue-option:hover,
+.tep-issue-dropdown div.tep-issue-option:hover,
+.tep-issue-dropdown .tep-issue-option:focus {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* === Fix Extra Bottom Borders on Tables === */
@@ -974,6 +1333,7 @@ tbody tr:last-child {
 
 /* Flowbite datepicker popup overrides */
 body .datepicker,
+body .datepicker-dropdown,
 body .datepicker-picker,
 body .datepicker-view,
 body .datepicker-header,
@@ -984,9 +1344,10 @@ body .datepicker-footer {
   backdrop-filter: none !important;
 }
 
-body .datepicker {
+body .datepicker,
+body .datepicker-dropdown {
   margin-top: 4px !important;
-  z-index: 30 !important;
+  z-index: 11000 !important;
 }
 
 body .datepicker-picker {
@@ -994,6 +1355,8 @@ body .datepicker-picker {
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12) !important;
   border-radius: 0.75rem !important;
   max-width: min(20rem, calc(100vw - 1rem)) !important;
+  z-index: 11001 !important;
+}
 }
 
 body .datepicker-header,
@@ -1153,6 +1516,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
     flex-direction: column;
     gap: 10px;
     text-align: center;
+  }
+
+  .pagination-info {
+    text-align: center;
+  }
+
+  .summary-with-bars .bar-column {
+    min-width: 180px;
   }
 
   .chart-wrapper {
@@ -1361,4 +1732,77 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   color: #ffffff !important;
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;
+}
+
+/* === Flowbite delete confirmation modal (Leaves) === */
+#leaves-delete-modal button,
+#leaves-delete-modal button:hover,
+#leaves-delete-modal button:focus,
+#leaves-delete-modal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#leaves-delete-modal .tep-delete-close {
+  border: none !important;
+}
+
+#leaves-delete-modal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#leaves-delete-modal .tep-delete-cancel,
+#leaves-delete-modal .tep-delete-cancel:hover,
+#leaves-delete-modal .tep-delete-cancel:focus,
+#leaves-delete-modal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#leaves-delete-modal .tep-delete-confirm,
+#leaves-delete-modal .tep-delete-confirm:hover,
+#leaves-delete-modal .tep-delete-confirm:focus,
+#leaves-delete-modal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
+
+/* === Table Sort Header Buttons === */
+/* Ensure sort button text color is preserved on focus/active states */
+[data-table-sort] {
+  color: inherit;
+}
+
+[data-table-sort]:focus,
+[data-table-sort]:active {
+  color: inherit !important;
+}
+
+/* === Leave Sync Date Picker Fields === */
+/* Override Redmine's purple border on datepicker fields with blue */
+#leave-sync-start-date,
+#leave-sync-end-date {
+  border-color: #60a5fa !important;
+}
+
+#leave-sync-start-date:focus,
+#leave-sync-end-date:focus {
+  border-color: #3b82f6 !important;
+  outline: none !important;
+  ring: 0 !important;
+}
+
+/* Override Redmine input field ring styles */
+#leave-sync-start-date,
+#leave-sync-end-date {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+#leave-sync-start-date:focus,
+#leave-sync-end-date:focus {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }

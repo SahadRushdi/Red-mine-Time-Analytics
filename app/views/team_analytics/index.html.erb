@@ -1,0 +1,1502 @@
+<%= render 'time_analytics/includes' %>
+<% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
+<% no_table_data_message = "No data available for the selected period" %>
+<% no_chart_data_message = "No data available for #{date_range_label}. Try adjusting filters or selecting a different date range." %>
+
+<!-- jsTree CSS and JS from CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/jstree.min.js"></script>
+
+<!-- Material Icons from Google Fonts -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
+<style>
+  .team-dashboard-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .team-tree-sidebar {
+    position: relative;
+    flex: 0 0 360px;
+    width: 360px;
+    min-width: 280px;
+    max-width: 420px;
+    display: flex;
+    align-self: stretch;
+    transition: flex-basis 0.24s ease, width 0.24s ease, min-width 0.24s ease;
+  }
+
+  .team-tree-sidebar.is-collapsed {
+    flex-basis: 56px;
+    width: 56px;
+    min-width: 56px;
+  }
+
+  .team-tree-sidebar__panel {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    width: 100%;
+    min-height: 0;
+  }
+
+  .team-tree-sidebar__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .team-tree-sidebar.is-collapsed .team-tree-sidebar__panel {
+    display: flex;
+  }
+
+  .team-tree-sidebar.is-collapsed .tree-view-content {
+    display: none;
+  }
+
+  .team-tree-sidebar__toggle-row {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: flex-start;
+    padding: 0 12px;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .tree-view-content {
+    padding: 46px 18px 22px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  #team-tree-container {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 12px 10px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 22px rgba(148, 163, 184, 0.16);
+  }
+
+  .tree-view-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 4px;
+    color: #1d4ed8;
+    font-size: 22px;
+    transition: color 0.2s, background-color 0.2s, transform 0.2s;
+    border-radius: 10px;
+    vertical-align: middle;
+    text-decoration: none;
+    outline: none;
+    line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tree-view-toggle-btn:hover,
+  .tree-view-toggle-btn:focus,
+  .tree-view-toggle-btn:active,
+  .tree-view-toggle-btn:focus-visible,
+  .tree-view-toggle-btn:visited {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    color: #1e40af;
+    outline: none !important;
+    text-decoration: none !important;
+  }
+
+  .tree-view-toggle-btn:active {
+    transform: none;
+  }
+
+  .tree-view-toggle-btn .material-symbols-outlined {
+    font-size: 24px;
+    vertical-align: middle;
+    display: block;
+  }
+
+  .team-tree-sidebar-toggle {
+    position: relative;
+    top: auto;
+    right: auto;
+    left: auto;
+    z-index: 4;
+    margin-right: 0;
+    border-radius: 9999px;
+    pointer-events: auto;
+  }
+
+  .team-dashboard-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  @media (max-width: 1279px) {
+    .team-dashboard-shell {
+      flex-direction: column;
+    }
+
+    .team-tree-sidebar {
+      width: 100%;
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .team-tree-sidebar.is-collapsed {
+      width: 100%;
+      flex-basis: auto;
+      min-width: 0;
+    }
+  }
+
+  /* jsTree customization */
+  #team-tree-container .jstree-default .jstree-anchor {
+    height: auto;
+    line-height: 24px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    transition: all 0.15s ease;
+    color: #1e293b;
+  }
+
+  #team-tree-container .jstree-default .jstree-node {
+    margin-bottom: 4px;
+  }
+
+  #team-tree-container .jstree-default .jstree-clicked {
+    background-color: #dbeafe !important;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a !important;
+  }
+
+  #team-tree-container li.team-tree-active-row > .jstree-wholerow {
+    background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%) !important;
+    border: 1px solid #93c5fd !important;
+    box-shadow: none !important;
+    border-radius: 10px !important;
+  }
+
+  #team-tree-container li.team-tree-active-row > a.jstree-anchor {
+    color: #1d4ed8 !important;
+    font-weight: 800 !important;
+  }
+
+  #team-tree-container li.team-tree-active-row > a.jstree-anchor:hover {
+    color: #1d4ed8 !important;
+  }
+
+  #team-tree-container .jstree-default .jstree-hovered {
+    background-color: #eff6ff !important;
+    color: #1e40af !important;
+  }
+
+  #team-tree-container .jstree-default .jstree-icon.jstree-ocl {
+    margin-top: 2px;
+  }
+
+  /* Team nodes are primary selection targets */
+  #team-tree-container .jstree-anchor[data-node-type="team"] {
+    font-weight: 700;
+    color: #0f172a;
+    letter-spacing: 0.01em;
+  }
+
+  /* Members navigate to individual dashboard in new tab */
+  #team-tree-container .jstree-anchor[data-node-type="member"] {
+    color: #1d4ed8;
+    font-weight: 500;
+  }
+
+  #team-tree-container .jstree-anchor[data-node-type="member"]:hover {
+    text-decoration: underline;
+  }
+
+  /* Projects node styling */
+  #team-tree-container .jstree-anchor[data-node-type="projects"] {
+    color: #64748b;
+    font-style: italic;
+    font-size: 12px;
+  }
+
+</style>
+
+<script type="text/javascript">
+  const teamDashboardBaseUrl = '<%= team_analytics_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :activity_view_state, :project_view_state, :member_view_state).to_h) %>';
+  const currentTeamId = '<%= @selected_team&.id %>';
+  const teamTreeSidebarStorageKey = 'team_tree_sidebar_state';
+  let teamTreeLoaded = false;
+  let teamTreeLoading = false;
+
+  function getTreeSidebarState() {
+    try {
+      const saved = localStorage.getItem(teamTreeSidebarStorageKey);
+      return saved || 'expanded';
+    } catch (error) {
+      return 'expanded';
+    }
+  }
+
+  function setTreeSidebarState(state) {
+    try {
+      localStorage.setItem(teamTreeSidebarStorageKey, state);
+    } catch (error) {
+      // Ignore storage failures and keep the current UI state.
+    }
+  }
+
+  function updateTreeSidebarToggleButtons(isCollapsed) {
+    const toggleLabel = isCollapsed ? 'Expand team hierarchy' : 'Collapse team hierarchy';
+
+    document.querySelectorAll('[data-tree-sidebar-toggle]').forEach(function(button) {
+      button.setAttribute('aria-expanded', String(!isCollapsed));
+      button.setAttribute('aria-label', toggleLabel);
+      button.setAttribute('title', toggleLabel);
+
+      const icon = button.querySelector('.material-symbols-outlined');
+      if (icon) {
+        icon.textContent = isCollapsed ? 'chevron_right' : 'chevron_left';
+      }
+    });
+  }
+
+  function setTreeSidebarCollapsed(isCollapsed, options) {
+    const sidebar = document.getElementById('team-tree-sidebar');
+    if (!sidebar) return;
+
+    sidebar.classList.toggle('is-collapsed', isCollapsed);
+    sidebar.classList.toggle('is-expanded', !isCollapsed);
+    updateTreeSidebarToggleButtons(isCollapsed);
+
+    if (!(options && options.persist === false)) {
+      setTreeSidebarState(isCollapsed ? 'collapsed' : 'expanded');
+    }
+
+    if (!isCollapsed) {
+      loadTreeData();
+    }
+  }
+
+  function toggleTreeSidebar() {
+    const sidebar = document.getElementById('team-tree-sidebar');
+    if (!sidebar) return;
+    setTreeSidebarCollapsed(!sidebar.classList.contains('is-collapsed'));
+  }
+
+  function highlightActiveTeamNode() {
+    if (!currentTeamId) return;
+
+    const activeAnchor = $('#team-tree-container .jstree-anchor[data-team-id="' + currentTeamId + '"]');
+    if (!activeAnchor.length) return;
+
+    $('#team-tree-container li.team-tree-active-row')
+      .removeClass('team-tree-active-row')
+      .removeAttr('aria-current');
+
+    const activeRow = activeAnchor.closest('li');
+    activeRow.addClass('team-tree-active-row');
+    activeRow.attr('aria-current', 'true');
+  }
+
+  function loadTreeData() {
+    if (teamTreeLoading || teamTreeLoaded) return;
+
+    teamTreeLoading = true;
+    var fromDate = '<%= @from %>';
+    var toDate = '<%= @to %>';
+    
+    $.ajax({
+      url: '<%= team_analytics_tree_data_path %>',
+      type: 'GET',
+      data: { from: fromDate, to: toDate },
+      dataType: 'json',
+      success: function(data) {
+        teamTreeLoaded = true;
+        initializeTree(data);
+      },
+      error: function(xhr, status, error) {
+        console.error('Error loading tree data:', error);
+        $('#team-tree-container').html('<p style="color: red;">Error loading tree view. Please try again.</p>');
+        teamTreeLoaded = false;
+      },
+      complete: function() {
+        teamTreeLoading = false;
+      }
+    });
+  }
+  
+  function initializeTree(treeData) {
+    $('#team-tree-container').jstree('destroy');
+    
+    // Load saved node states from localStorage
+    const savedNodeStates = getSavedTreeNodeStates();
+    
+    // Merge saved states with tree data
+    treeData = treeData.map(function(node) {
+      return mergeNodeState(node, savedNodeStates);
+    });
+    
+    $('#team-tree-container').jstree({
+      'core': {
+        'data': treeData,
+        'themes': {
+          'name': 'default',
+          'responsive': true,
+          'dots': false,
+          'icons': false
+        }
+      },
+      'plugins': ['types', 'wholerow', 'state'],
+      'state': {
+        'key': 'jstree_tree_state',
+        'events': 'changed.jstree open_node.jstree close_node.jstree'
+      }
+    });
+
+    $('#team-tree-container').off('select_node.jstree');
+    $('#team-tree-container').off('ready.jstree');
+    $('#team-tree-container').off('open_node.jstree');
+    $('#team-tree-container').off('close_node.jstree');
+
+    // Team node switches dashboard team; member node opens individual dashboard.
+    $('#team-tree-container').on('select_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        var teamId = String(data.node.data.team_id);
+        highlightActiveTeamNode();
+        if (teamId === currentTeamId) {
+          setTreeSidebarCollapsed(true);
+          return;
+        }
+
+        var targetUrl = new URL(teamDashboardBaseUrl, window.location.origin);
+        targetUrl.searchParams.set('team_id', teamId);
+        window.location.assign(targetUrl.toString());
+        return;
+      }
+
+      if (data.node.data && data.node.data.user_id) {
+        var userId = data.node.data.user_id;
+        var url = '<%= my_time_path %>' + '?user_id=' + userId + '&<%= @member_dashboard_query %>';
+        window.open(url, '_blank');
+      }
+    });
+
+    // Save node state when expanding/collapsing
+    $('#team-tree-container').on('open_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        saveTreeNodeState(data.node.id, true);
+      }
+    });
+
+    $('#team-tree-container').on('close_node.jstree', function (e, data) {
+      if (data.node.data && data.node.data.team_id) {
+        saveTreeNodeState(data.node.id, false);
+      }
+    });
+
+    $('#team-tree-container').on('ready.jstree', function () {
+      highlightActiveTeamNode();
+    });
+
+    setTimeout(highlightActiveTeamNode, 0);
+  }
+
+  // Get saved tree node states from localStorage
+  function getSavedTreeNodeStates() {
+    try {
+      const saved = localStorage.getItem('team_tree_node_states');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  // Save tree node state to localStorage
+  function saveTreeNodeState(nodeId, isOpen) {
+    try {
+      const states = getSavedTreeNodeStates();
+      states[nodeId] = isOpen;
+      localStorage.setItem('team_tree_node_states', JSON.stringify(states));
+    } catch (error) {
+      // Ignore storage failures
+    }
+  }
+
+  // Merge saved node state with tree data recursively
+  function mergeNodeState(node, savedStates) {
+    if (node.data && node.data.team_id) {
+      const nodeId = node.id;
+      const isSaved = savedStates[nodeId];
+      
+      // If there's a saved state, use it; otherwise keep the default
+      if (isSaved !== undefined) {
+        node.state = node.state || {};
+        node.state.opened = isSaved;
+      }
+    }
+    
+    // Recursively process children
+    if (node.children && node.children.length > 0) {
+      node.children = node.children.map(function(child) {
+        return mergeNodeState(child, savedStates);
+      });
+    }
+    
+    return node;
+  }
+  
+  $(document).ready(function() {
+    // Restore saved sidebar state on page load
+    const savedSidebarState = getTreeSidebarState();
+    const isCollapsed = savedSidebarState === 'collapsed';
+    setTreeSidebarCollapsed(isCollapsed, { persist: false });
+  });
+</script>
+
+<div class="team-dashboard-shell">
+  <aside id="team-tree-sidebar" class="team-tree-sidebar is-expanded" aria-label="Team hierarchy sidebar">
+    <div class="team-tree-sidebar__panel">
+      <div class="team-tree-sidebar__toggle-row">
+        <button type="button" class="tree-view-toggle-btn team-tree-sidebar-toggle" data-tree-sidebar-toggle onclick="toggleTreeSidebar()" aria-label="Collapse team hierarchy" title="Collapse team hierarchy">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+      </div>
+      <div class="tree-view-content">
+        <div id="team-tree-container">
+          <p style="text-align: center; color: #999; padding: 20px;">Loading team structure...</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="team-dashboard-main">
+<div class="flex items-start justify-between mb-6 flex-wrap gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 mb-1">
+        <%= @selected_team&.name || l(:label_team_dashboard) || "Team Dashboard" %>
+      </h1>
+    <p class="text-sm text-gray-500">
+      <%= "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" %>
+    </p>
+  </div>
+
+  <div class="flex items-center justify-end gap-3 flex-wrap">
+    <div id="filters" class="m-0">
+      <%= render(partial: 'team_analytics/filters_panel') %>
+    </div>
+
+    <%= link_to team_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id)),
+        method: :post,
+        style: 'background-color: #3b82f6 !important; color: white !important;',
+        class: 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors' do %>
+      <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"/>
+      </svg>
+      <%= l(:label_export_csv) %>
+    <% end %>
+  </div>
+</div>
+
+<div class="ts-summary-cards-row mb-6">
+  <div class="ts-summary-card ts-summary-card--total flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z"></path>
+      </svg>
+    </div>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label">Total Hours</p>
+      <p class="ts-summary-card-value"><%= format_hours(@total_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+    </div>
+  </div>
+  <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M8 7V3m8 4V3M4 10h16M6 5h12a2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2z"></path>
+      </svg>
+    </div>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label"><%= l(:label_working_days) %></p>
+      <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
+    </div>
+  </div>
+
+  <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M4 19h16M7 16v-4m5 4V8m5 8v-6"></path>
+      </svg>
+    </div>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label"><%= max_label_for_grouping(@grouping) %></p>
+      <p class="ts-summary-card-value"><%= format_hours(@max_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+    </div>
+  </div>
+
+  <div class="ts-summary-card ts-summary-card--issues flex items-center gap-4">
+    <div class="ts-summary-card-icon">
+      <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" d="M9 5h6M8 3h8a2 2 0 012 2v14a2 2 0 01-2 2H8a2 2 0 01-2-2V5a2 2 0 012-2zm2 7h6m-6 4h4"></path>
+      </svg>
+    </div>
+    <div class="ts-summary-card-content">
+      <p class="ts-summary-card-label"><%= min_label_for_grouping(@grouping) %></p>
+      <p class="ts-summary-card-value"><%= format_hours(@min_period_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+    </div>
+  </div>
+</div>
+
+<%# Dashboard Analytics Section - Summary, Time Overview, and Visualization %>
+<div class="analytics-section">
+
+  <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
+  <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
+    <div class="box time-overview-box">
+      <h3 class="text-base font-semibold text-gray-900 mb-3 text-center"><%= time_overview_header(@grouping) %></h3>
+      <% if @effective_time_error_message.present? %>
+        <div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Effective Time data unavailable: <%= h(@effective_time_error_message) %>
+        </div>
+      <% end %>
+      
+      <div class="relative team-overview-table-wrap">
+        <table class="w-full table-auto text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3">
+                <%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %>
+              </th>
+              <th scope="col" class="px-6 py-3 text-center">Team Size</th>
+              <th scope="col" class="px-6 py-3 text-right"><%= l(:label_hours) %></th>
+              <th scope="col" class="px-6 py-3 text-right">Average</th>
+              <% if @show_effective_time_column %>
+                <th scope="col" class="px-6 py-3 text-right">Support Hours</th>
+                <th scope="col" class="px-6 py-3 text-right"><%= l(:label_effective_time) %></th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
+                <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
+                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
+                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
+                <% if @show_effective_time_column %>
+                  <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="px-6 py-4 text-right font-mono text-gray-900">
+                    <% if entry.effective_time_available %>
+                      <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
+                    <% else %>
+                      N/A
+                    <% end %>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <%# Pagination %>
+      <div class="pagination-wrapper">
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state) %>
+        <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info">
+          (<%= @overview_offset + 1 %>-<%= [@overview_offset + @overview_limit, @time_overview_data.count].min %>/<%= @time_overview_data.count %>)
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Visualization Section (Right Side) %>
+  <div class="box visualization-section">
+    <h3 style="display: flex; justify-content: flex-end;">
+      <div class="visualization-controls">
+        <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
+          <% chart_type = %w[line bar].include?(params[:chart_type]) ? params[:chart_type] : 'line' %>
+          <div class="inline-flex gap-2">
+            <button type="button"
+                    onclick="switchTeamChartType('line')"
+                    style="<%= chart_type == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                    class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              Trend
+            </button>
+            <button type="button"
+                    onclick="switchTeamChartType('bar')"
+                    style="<%= chart_type == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                    class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+              Stacked
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </h3>
+    
+    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @chart_data.present? && @entry_count > 0 %>
+      <div id="chart-container" style="display: block;">
+        <div class="chart-wrapper">
+          <canvas id="time-chart" class="chart" 
+                  data-chart='<%= @chart_data %>' 
+                  data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
+        </div>
+      </div>
+    <% else %>
+      <div id="chart-container" style="display: block;">
+        <div class="chart-wrapper">
+          <div class="h-80 flex items-center justify-center">
+            <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= render(partial: 'team_analytics/view_togglers') %>
+<% summary_chart_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'] %>
+
+<%# Additional View-Specific Content %>
+<% if @view_mode == 'activity' %>
+  <%# Activity Analysis Tables - Show pivot table for Activity × Time Period %>
+  <% if @activities&.any? %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Time by Activity</h3>
+              <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" id="show-summary-btn-activity" 
+                        onclick="showSummaryView('activity');" 
+                        style="<%= @activity_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
+                  Summary
+                </button>
+                <button type="button" id="show-detailed-btn-activity" 
+                        onclick="showDetailedView('activity');" 
+                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
+                  Detailed
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
+              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
+            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()',
+                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+      <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
+      <div id="team-activity-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @activities.each do |activity| %>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
+              <% end %>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                <% @activities.each do |activity| %>
+                  <td class="px-6 py-4 text-center text-gray-900">
+                    <% hours = @matrix_data[period_key][activity] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
+                  </td>
+                <% end %>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Activity Table (Hidden by default) %>
+      <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Pagination for Activity view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="team-activity-pagination-info"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
+             data-summary-count="<%= @activity_totals&.count || 0 %>">
+          (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
+        </div>
+      </div>
+      </div>
+
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="relative h-80 flex items-center justify-center">
+          <canvas id="team-donut-chart" class="chart"></canvas>
+          <div id="team-donut-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-3xl font-bold text-gray-900" id="team-total-hours-display">0.00</span>
+            <span class="text-xs text-gray-500">Total Hours</span>
+          </div>
+        </div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+      </div>
+    </div>
+  <% else %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% elsif @view_mode == 'project' %>
+  <%# Project Analysis Tables - Show pivot table for Project × Time Period %>
+  <% if @projects&.any? %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Time by Project</h3>
+              <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" id="show-summary-btn-project" 
+                        onclick="showSummaryView('project');" 
+                        style="<%= @project_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @project_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
+                  Summary
+                </button>
+                <button type="button" id="show-detailed-btn-project" 
+                        onclick="showDetailedView('project');" 
+                        style="<%= (@project_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@project_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
+                  Detailed
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
+              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
+            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()',
+                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+      <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
+      <div id="team-project-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @projects.each do |project| %>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
+              <% end %>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                <% @projects.each do |project| %>
+                  <td class="px-6 py-4 text-center text-gray-900">
+                    <% hours = @matrix_data[period_key][project] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
+                  </td>
+                <% end %>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Project Table (Hidden by default) %>
+      <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Pagination for Project view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="team-project-pagination-info"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
+             data-summary-count="<%= @project_totals&.count || 0 %>">
+          (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
+        </div>
+      </div>
+      </div>
+
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="relative h-80 flex items-center justify-center">
+          <canvas id="team-donut-chart" class="chart"></canvas>
+          <div id="team-donut-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-3xl font-bold text-gray-900" id="team-total-hours-display">0.00</span>
+            <span class="text-xs text-gray-500">Total Hours</span>
+          </div>
+        </div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+      </div>
+    </div>
+  <% else %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% elsif @view_mode == 'members' %>
+  <%# Member Analysis Tables - Show pivot table for Member × Time Period %>
+  <% if @members&.any? %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <h3 class="text-lg font-semibold text-gray-900 whitespace-nowrap">Time by Members</h3>
+              <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" id="show-summary-btn-member" 
+                        onclick="showSummaryView('member');" 
+                        style="<%= @member_view_state == 'summary' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg order-1 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @member_view_state == 'summary' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
+                  Summary
+                </button>
+                <button type="button" id="show-detailed-btn-member" 
+                        onclick="showDetailedView('member');" 
+                        style="<%= (@member_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@member_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
+                  Detailed
+                </button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
+              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
+            <%= hidden_field_tag :filter, params[:filter] %>
+            <%= hidden_field_tag :from, params[:from] %>
+            <%= hidden_field_tag :to, params[:to] %>
+            <%= hidden_field_tag :grouping, params[:grouping] %>
+            <%= hidden_field_tag :chart_type, params[:chart_type] %>
+            <%= hidden_field_tag :view_mode, @view_mode %>
+            <%= hidden_field_tag :team_id, params[:team_id] %>
+            <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' %>
+            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
+            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
+                onchange: 'this.form.submit()',
+                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+      <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
+      <div id="team-member-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+        <table class="w-full text-sm text-left text-gray-500">
+          <thead class="text-sm text-gray-700 bg-gray-50">
+            <tr>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <% @members.each do |member| %>
+                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
+                  <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                </th>
+              <% end %>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @paginated_periods.each_with_index do |period_display, index| %>
+              <% period_key = @member_pivot_data[:raw_periods][(@offset + index)] %>
+              <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                <% @members.each do |member| %>
+                  <td class="px-6 py-4 text-center text-gray-900">
+                    <% hours = @matrix_data[period_key][member[:name]] || 0 %>
+                    <%= hours > 0 ? format_hours(hours) : '—' %>
+                  </td>
+                <% end %>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <%# Summary View: Simple Member Table (Hidden by default) %>
+      <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="space-y-6 px-2">
+          <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
+            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
+            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
+            <% member = @members.find { |m| m[:name] == member_name } %>
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-900">
+                  <% if member %>
+                    <%= link_to member_name, my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
+                  <% else %>
+                    <%= member_name %>
+                  <% end %>
+                </h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
+                  <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Pagination for Member view %>
+      <div class="pagination-wrapper">
+        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state) %>
+        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        
+        <div class="pagination-info" id="team-member-pagination-info"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
+             data-summary-count="<%= @member_totals&.count || 0 %>">
+          (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
+        </div>
+      </div>
+      </div>
+
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="relative h-80 flex items-center justify-center">
+          <canvas id="team-donut-chart" class="chart"></canvas>
+          <div id="team-donut-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-3xl font-bold text-gray-900" id="team-total-hours-display">0.00</span>
+            <span class="text-xs text-gray-500">Total Hours</span>
+          </div>
+        </div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+      </div>
+    </div>
+  <% else %>
+    <div class="ta-analysis-layout flex gap-6 mb-6">
+      <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
+        <div class="px-6 py-8 text-center">
+          <p class="text-sm text-gray-500"><%= no_table_data_message %></p>
+        </div>
+      </div>
+      <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
+        <div class="h-80 flex items-center justify-center">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_chart_data_message %></p>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+  // Auto-submit team selector on change
+  function switchTeamChartType(chartType) {
+    const hiddenField = document.getElementById('chart_type_hidden');
+    const form = document.getElementById('team-analytics-form');
+    if (hiddenField && form) {
+      hiddenField.value = chartType;
+      form.submit();
+    }
+  }
+
+  function scrollTeamTableIntoView() {
+    var tableElement = document.querySelector('.ta-analysis-table');
+    if (!tableElement) return;
+    tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize chart
+    initChart();
+    initTeamDonutChart();
+
+    // Persist scroll intent for Team tab navigation, matching My Time behavior.
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('a[data-team-tab-nav="true"]')) {
+        sessionStorage.setItem('teamScrollPosition', String(window.pageYOffset || document.documentElement.scrollTop || 0));
+        sessionStorage.setItem('scrollToTeamTable', 'true');
+      }
+    });
+    
+    // Restore activity view state
+    restoreActivityViewState();
+    
+    // Restore project view state
+    restoreProjectViewState();
+    
+    // Restore member view state
+    restoreMemberViewState();
+  });
+
+  window.addEventListener('load', function() {
+    if (sessionStorage.getItem('scrollToTeamTable') === 'true') {
+      sessionStorage.removeItem('scrollToTeamTable');
+      sessionStorage.removeItem('teamScrollPosition');
+      requestAnimationFrame(function() {
+        requestAnimationFrame(scrollTeamTableIntoView);
+      });
+      return;
+    }
+
+    var savedScrollPosition = sessionStorage.getItem('teamScrollPosition');
+    if (savedScrollPosition !== null) {
+      sessionStorage.removeItem('teamScrollPosition');
+      window.scrollTo(0, parseInt(savedScrollPosition, 10) || 0);
+    }
+  });
+
+  var teamDonutChart = null;
+  var TEAM_TABLEAU10 = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+  var noChartDataMessage = '<%= j no_chart_data_message %>';
+
+  function renderTeamEmptyState(container, message) {
+    if (!container) return;
+    container.innerHTML = '<div class="h-80 flex items-center justify-center"><p class="text-center text-gray-500 text-sm px-4">' + message + '</p></div>';
+  }
+
+  function formatTeamHours(hours) {
+    var value = parseFloat(hours || 0);
+    var timespanFormat = '<%= Setting.timespan_format %>';
+
+    if (timespanFormat === 'minutes') {
+      var h = Math.floor(value);
+      var m = Math.round((value - h) * 60);
+      return h + ':' + (m < 10 ? '0' : '') + m;
+    }
+    return value.toFixed(2);
+  }
+
+  function initTeamDonutChart() {
+    var donutCanvas = document.getElementById('team-donut-chart');
+    if (!donutCanvas) return;
+
+    if (teamDonutChart) {
+      teamDonutChart.destroy();
+      teamDonutChart = null;
+    }
+
+    var labels = [];
+    var values = [];
+    <% if @view_mode == 'activity' && @activity_totals.present? %>
+      <% @activity_totals.sort_by { |_, hours| -hours }.each do |activity, hours| %>
+        labels.push('<%= j activity %>');
+        values.push(<%= hours.to_f %>);
+      <% end %>
+    <% elsif @view_mode == 'project' && @project_totals.present? %>
+      <% @project_totals.sort_by { |_, hours| -hours }.each do |project, hours| %>
+        labels.push('<%= j project %>');
+        values.push(<%= hours.to_f %>);
+      <% end %>
+    <% elsif @view_mode == 'members' && @member_totals.present? %>
+      <% @member_totals.sort_by { |_, hours| -hours }.each do |member_name, hours| %>
+        labels.push('<%= j member_name %>');
+        values.push(<%= hours.to_f %>);
+      <% end %>
+    <% end %>
+
+    if (!labels.length || !values.length) return;
+
+    var total = values.reduce(function(sum, val) { return sum + val; }, 0);
+    var totalDisplay = document.getElementById('team-total-hours-display');
+    if (totalDisplay) totalDisplay.textContent = formatTeamHours(total);
+
+    var colors = labels.map(function(_, index) { return TEAM_TABLEAU10[index % TEAM_TABLEAU10.length]; });
+    teamDonutChart = new Chart(donutCanvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutoutPercentage: 65,
+        legend: { display: false },
+        tooltips: {
+          callbacks: {
+            label: function(tooltipItem, data) {
+              var label = data.labels[tooltipItem.index] || '';
+              var value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index] || 0;
+              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              return label + ': ' + formatTeamHours(value) + ' (' + percentage + '%)';
+            }
+          }
+        }
+      }
+    });
+
+    var legend = document.getElementById('team-donut-legend');
+    if (!legend) return;
+    legend.innerHTML = '';
+
+    labels.forEach(function(label, index) {
+      var value = values[index];
+      var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+      var item = document.createElement('div');
+      item.className = 'flex items-center justify-between text-xs';
+      item.innerHTML = '<div class="flex items-center gap-1.5 flex-1 min-w-0">' +
+        '<div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background-color: ' + colors[index] + '"></div>' +
+        '<span class="text-gray-700 truncate">' + label + '</span>' +
+        '</div>' +
+        '<div class="flex items-center gap-1.5 ml-2 flex-shrink-0">' +
+        '<span class="font-semibold text-gray-900">' + formatTeamHours(value) + '</span>' +
+        '<span class="text-gray-500">(' + percentage + '%)</span>' +
+        '</div>';
+      legend.appendChild(item);
+    });
+  }
+
+  // Chart initialization
+  var teamChart = null;
+
+  function initChart() {
+    var chartElement = document.getElementById('time-chart');
+    if (!chartElement) {
+      console.log('Chart element not found');
+      return;
+    }
+
+    // Prevent multiple chart creation
+    if (teamChart) {
+      teamChart.destroy();
+      teamChart = null;
+    }
+
+    try {
+      var chartData = chartElement.getAttribute('data-chart');
+      if (!chartData || chartData === 'null' || chartData === '') {
+        console.log('No chart data available');
+        return;
+      }
+
+      var config = JSON.parse(chartData);
+
+      var hasDatasets = config && config.data && Array.isArray(config.data.datasets) && config.data.datasets.length > 0;
+      var hasLabels = config && config.data && Array.isArray(config.data.labels) && config.data.labels.length > 0;
+      var allValuesZero = hasDatasets && config.data.datasets.every(function(dataset) {
+        if (!dataset || !Array.isArray(dataset.data) || dataset.data.length === 0) return true;
+        return dataset.data.every(function(value) {
+          var numeric = parseFloat(value || 0);
+          return isNaN(numeric) || numeric === 0;
+        });
+      });
+
+      if (config.empty || !hasDatasets || !hasLabels || allValuesZero) {
+        renderTeamEmptyState(chartElement.parentElement, noChartDataMessage);
+        return;
+      }
+      
+      // Ensure responsive configuration
+      if (!config.options) {
+        config.options = {};
+      }
+      config.options.responsive = true;
+      config.options.maintainAspectRatio = false;
+
+      // Match My Time chart tooltip behavior (Chart.js v2)
+      if (!config.options.tooltips) config.options.tooltips = {};
+      if (!config.options.tooltips.callbacks) config.options.tooltips.callbacks = {};
+
+      config.options.tooltips.filter = function(tooltipItem, data) {
+        if (!tooltipItem || !data || !data.datasets) return false;
+        var dataset = data.datasets[tooltipItem.datasetIndex];
+        if (!dataset || !dataset.data) return false;
+        var value = dataset.data[tooltipItem.index];
+        return value !== 0 && value !== '0.00';
+      };
+
+      config.options.tooltips.callbacks.title = function(tooltipItems, data) {
+        if (!tooltipItems || tooltipItems.length === 0 || !tooltipItems[0]) return '';
+        var index = tooltipItems[0].index;
+        if (index === undefined || index === null) return '';
+
+        var dataset = data && data.datasets ? data.datasets[0] : null;
+        if (dataset && dataset.tooltipLabels && dataset.tooltipLabels[index]) {
+          return dataset.tooltipLabels[index];
+        }
+
+        if (data && data.labels && data.labels[index] !== undefined) {
+          return data.labels[index];
+        }
+        return '';
+      };
+
+      config.options.tooltips.callbacks.label = function(tooltipItem, data) {
+        if (!tooltipItem || !data || !data.datasets) return '';
+        var dataset = data.datasets[tooltipItem.datasetIndex];
+        if (!dataset) return '';
+
+        var label = dataset.label || '';
+        if (dataset.formattedHours && dataset.formattedHours[tooltipItem.index]) {
+          return label + ': ' + dataset.formattedHours[tooltipItem.index];
+        }
+
+        var value = tooltipItem.yLabel !== undefined ? tooltipItem.yLabel : (dataset.data && dataset.data[tooltipItem.index]);
+        if (value !== undefined && typeof value === 'number') {
+          return label + ': ' + formatTeamHours(value);
+        }
+        return label;
+      }
+
+      console.log('Creating chart with config:', config);
+      teamChart = new Chart(chartElement, config);
+      console.log('Chart created successfully');
+      
+    } catch (error) {
+      console.error('Error creating chart:', error);
+    }
+  }
+
+  var TEAM_VIEW_CONFIG = {
+    activity: {
+      prefix: 'team-activity',
+      storageKey: 'team_activity_view_mode',
+      hiddenFieldId: 'activity_view_state_field',
+      paginationInfoId: 'team-activity-pagination-info'
+    },
+    project: {
+      prefix: 'team-project',
+      storageKey: 'team_project_view_mode',
+      hiddenFieldId: 'project_view_state_field',
+      paginationInfoId: 'team-project-pagination-info'
+    },
+    member: {
+      prefix: 'team-member',
+      storageKey: 'team_member_view_mode',
+      hiddenFieldId: 'member_view_state_field',
+      paginationInfoId: 'team-member-pagination-info'
+    }
+  };
+
+  function updateTeamToggleButtons(viewType, isSummary) {
+    var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
+    var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
+    if (!detailBtn || !summaryBtn) return;
+
+    if (isSummary) {
+      summaryBtn.style.backgroundColor = '#3b82f6';
+      summaryBtn.style.color = 'white';
+      summaryBtn.className = summaryBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+
+      detailBtn.style.backgroundColor = '';
+      detailBtn.style.color = '';
+      detailBtn.className = detailBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
+    } else {
+      detailBtn.style.backgroundColor = '#3b82f6';
+      detailBtn.style.color = 'white';
+      detailBtn.className = detailBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+
+      summaryBtn.style.backgroundColor = '';
+      summaryBtn.style.color = '';
+      summaryBtn.className = summaryBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
+    }
+  }
+
+  function updateTeamPaginationInfo(viewType, viewState) {
+    var config = TEAM_VIEW_CONFIG[viewType];
+    if (!config) return;
+    var paginationInfo = document.getElementById(config.paginationInfoId);
+    if (!paginationInfo) return;
+
+    if (viewState === 'detailed') {
+      paginationInfo.textContent = paginationInfo.getAttribute('data-detailed-text') || '';
+      return;
+    }
+
+    var count = parseInt(paginationInfo.getAttribute('data-summary-count')) || 0;
+    paginationInfo.textContent = '(1-' + count + '/' + count + ')';
+  }
+
+  function showDetailedView(viewType, options) {
+    var config = TEAM_VIEW_CONFIG[viewType];
+    if (!config) return;
+
+    var detailedView = document.getElementById(config.prefix + '-detailed-view');
+    var summaryView = document.getElementById(config.prefix + '-summary-view');
+    if (!detailedView || !summaryView) return;
+
+    detailedView.style.display = 'block';
+    summaryView.style.display = 'none';
+    updateTeamToggleButtons(viewType, false);
+    updateTeamPaginationInfo(viewType, 'detailed');
+
+    var hiddenField = document.getElementById(config.hiddenFieldId);
+    if (hiddenField) hiddenField.value = 'detailed';
+
+    if (!(options && options.persist === false)) {
+      localStorage.setItem(config.storageKey, 'detailed');
+    }
+  }
+
+  function showSummaryView(viewType, options) {
+    var config = TEAM_VIEW_CONFIG[viewType];
+    if (!config) return;
+
+    var detailedView = document.getElementById(config.prefix + '-detailed-view');
+    var summaryView = document.getElementById(config.prefix + '-summary-view');
+    if (!detailedView || !summaryView) return;
+
+    detailedView.style.display = 'none';
+    summaryView.style.display = 'block';
+    updateTeamToggleButtons(viewType, true);
+    updateTeamPaginationInfo(viewType, 'summary');
+
+    var hiddenField = document.getElementById(config.hiddenFieldId);
+    if (hiddenField) hiddenField.value = 'summary';
+
+    if (!(options && options.persist === false)) {
+      localStorage.setItem(config.storageKey, 'summary');
+    }
+  }
+
+  // Restore activity view preference
+  function restoreActivityViewState() {
+    restoreTeamViewState('activity');
+  }
+
+  // Restore project view preference
+  function restoreProjectViewState() {
+    restoreTeamViewState('project');
+  }
+
+  // Restore member view preference
+  function restoreMemberViewState() {
+    restoreTeamViewState('member');
+  }
+
+  function restoreTeamViewState(viewType) {
+    var config = TEAM_VIEW_CONFIG[viewType];
+    if (!config) return;
+    var detailedView = document.getElementById(config.prefix + '-detailed-view');
+    var summaryView = document.getElementById(config.prefix + '-summary-view');
+    if (!detailedView || !summaryView) return;
+
+    var hiddenField = document.getElementById(config.hiddenFieldId);
+    var serverMode = hiddenField ? hiddenField.value : null;
+    var savedMode = localStorage.getItem(config.storageKey);
+    var currentMode = savedMode || serverMode || 'detailed';
+
+    if (currentMode === 'summary') {
+      showSummaryView(viewType, { reload: false, persist: false });
+    } else {
+      showDetailedView(viewType, { reload: false, persist: false });
+    }
+  }
+
+</script>
+  </div>
+</div>

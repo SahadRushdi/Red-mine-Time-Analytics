@@ -1,0 +1,1096 @@
+.ta-team-item {
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--ta-team-item-color, #e5e7eb);
+  border-radius: 0.75rem;
+  background: var(--ta-team-item-bg, #ffffff);
+  padding: 0.75rem;
+  min-height: 56px;
+  contain: layout;
+  /* transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; */
+}
+
+.ta-team-item:hover {
+  border-color: var(--ta-team-item-border-dark, #dadbdd);
+  background: var(--ta-team-item-bg-hover, #f9fafb);
+  box-shadow: 0 4px 12px var(--ta-team-item-shadow, rgba(59, 130, 246, 0.08));
+  /* transform: translateY(-1px); */
+}
+
+.ta-stable-scroll {
+  scrollbar-gutter: stable;
+}
+
+#ta-team-split-layout {
+  align-items: stretch;
+}
+
+#ta-team-splitter-controls {
+  position: relative;
+  align-items: stretch;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ta-team-splitter-handle {
+  width: 4px;
+  height: 100%;
+  border-radius: 999px;
+  background: #d1d5db;
+  transition: background-color 0.15s ease;
+}
+
+#ta-team-splitter-controls:hover .ta-team-splitter-handle {
+  background: #9ca3af;
+}
+
+#ta-team-splitter-controls.is-dragging .ta-team-splitter-handle {
+  background: #3b82f6;
+}
+
+body.ta-team-split-dragging {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+@media (min-width: 1280px) {
+  #ta-team-split-layout {
+    display: flex;
+    gap: 1rem;
+  }
+
+  #ta-team-main-column {
+    flex: 0 0 64%;
+    min-width: 0;
+    transition: flex-basis 0.1s ease;
+  }
+
+  #ta-team-sidebar-column {
+    flex: 1 1 auto;
+    min-width: 0;
+    transition: flex-basis 0.2s ease;
+  }
+
+  #ta-team-splitter-controls {
+    flex: 0 0 10px;
+    align-self: stretch;
+  }
+}
+
+.ta-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 40px;
+}
+
+.ta-team-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.ta-team-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  min-width: 420px;
+}
+
+.ta-team-item.level-1 { margin-left: 1rem; }
+.ta-team-item.level-2 { margin-left: 2rem; }
+.ta-team-item.level-3 { margin-left: 3rem; }
+
+.ta-team-children {
+  margin-left: 0.75rem;
+  padding-left: 1rem;
+  border-left: 4px solid var(--ta-team-branch-color, #93c5fd);
+}
+
+.ta-team-children.level-2,
+.ta-team-children.level-3,
+.ta-team-children.level-4 {
+  margin-top: 0.5rem;
+}
+
+.ta-team-name {
+  margin-right: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ta-team-count-badge {
+  border-radius: 9999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+
+.ta-team-hiring-badge {
+  border-radius: 9999px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+
+.ta-team-action {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+button.ta-team-action.ta-team-action-members,
+button.ta-team-action.ta-team-action-members:hover,
+button.ta-team-action.ta-team-action-members:focus,
+button.ta-team-action.ta-team-action-members:focus-visible,
+button.ta-team-action.ta-team-action-members:active {
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: inherit !important;
+  cursor: pointer !important;
+  color: #2563eb !important;
+}
+
+.ta-team-action-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.ta-team-icon { width: 0.95rem; height: 0.95rem; stroke-width: 2; }
+.ta-team-action:hover { text-decoration: underline; }
+
+.ta-team-member-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #374151;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ta-team-member-toggle,
+.ta-team-member-toggle:hover,
+.ta-team-member-toggle:active,
+.ta-team-member-toggle:focus,
+.ta-team-member-toggle:focus-visible {
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  background-image: none !important;
+  color: #374151 !important;
+  text-shadow: none !important;
+}
+
+.ta-team-member-toggle:hover {
+  background: #f9fafb !important;
+}
+
+.ta-team-member-toggle-icon {
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+}
+
+.ta-team-members-panel {
+  margin-top: 0.5rem;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 0.75rem;
+}
+
+.ta-team-members-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ta-team-member-chip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.ta-team-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ta-team-member-chip,
+.ta-team-member-chip:hover,
+.ta-team-member-chip:active,
+.ta-team-member-chip:focus,
+.ta-team-member-chip:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  text-shadow: none !important;
+}
+
+.ta-team-member-chip--lead {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ta-team-member-chip--lead,
+.ta-team-member-chip--lead:hover,
+.ta-team-member-chip--lead:active,
+.ta-team-member-chip--lead:focus,
+.ta-team-member-chip--lead:focus-visible {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.ta-team-member-chip--member {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.ta-team-member-chip--member,
+.ta-team-member-chip--member:hover,
+.ta-team-member-chip--member:active,
+.ta-team-member-chip--member:focus,
+.ta-team-member-chip--member:focus-visible {
+  border-color: #d1d5db !important;
+  background: #f9fafb !important;
+  color: #374151 !important;
+}
+
+.ta-team-member-initials {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.ta-team-member-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ta-team-member-lead-icon {
+  display: inline-flex;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #f59e0b;
+}
+
+.ta-team-member-tooltip {
+  max-width: 190px;
+  border-radius: 0.5rem;
+  background: #020617;
+  padding: 0.375rem 0.5rem;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(2, 6, 23, 0.35);
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 80;
+}
+
+.ta-team-member-tooltip-content {
+  line-height: 1.05rem;
+}
+
+.ta-team-member-tooltip-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ta-team-member-tooltip-email {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ta-team-member-tooltip-role {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #93c5fd;
+}
+
+/* Match My Time dropdown fix: remove blue borders on dropdown option buttons */
+[id^="assign-team-dropdown-"] button,
+[id^="assign-team-dropdown-"] button:hover,
+[id^="assign-team-dropdown-"] button:focus,
+[id^="assign-team-dropdown-"] button:active,
+[id^="assign-role-dropdown-"] button,
+[id^="assign-role-dropdown-"] button:hover,
+[id^="assign-role-dropdown-"] button:focus,
+[id^="assign-role-dropdown-"] button:active,
+#hiring-team-dropdown button,
+#hiring-team-dropdown button:hover,
+#hiring-team-dropdown button:focus,
+#hiring-team-dropdown button:active,
+#hiring-priority-dropdown button,
+#hiring-priority-dropdown button:hover,
+#hiring-priority-dropdown button:focus,
+#hiring-priority-dropdown button:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[id^="assign-team-dropdown-"] button:hover,
+[id^="assign-role-dropdown-"] button:hover,
+[id^="assign-team-dropdown-"] button:active:hover,
+[id^="assign-role-dropdown-"] button:active:hover,
+[id^="assign-team-dropdown-"] button:hover:active,
+[id^="assign-role-dropdown-"] button:hover:active,
+[id^="assign-team-dropdown-"] button:focus:hover,
+[id^="assign-role-dropdown-"] button:focus:hover,
+[id^="assign-team-dropdown-"] button[aria-selected="true"],
+[id^="assign-role-dropdown-"] button[aria-selected="true"],
+[id^="assign-team-dropdown-"] button:focus-visible,
+[id^="assign-role-dropdown-"] button:focus-visible,
+[id^="assign-team-dropdown-"] button:focus,
+[id^="assign-role-dropdown-"] button:focus,
+#hiring-team-dropdown button:hover,
+#hiring-priority-dropdown button:hover,
+#hiring-team-dropdown button:focus-visible,
+#hiring-priority-dropdown button:focus-visible,
+#hiring-team-dropdown button:focus,
+#hiring-priority-dropdown button:focus {
+  border-color: transparent !important;
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+[id^="assign-team-dropdown-"] button::-moz-focus-inner,
+[id^="assign-role-dropdown-"] button::-moz-focus-inner,
+#hiring-team-dropdown button::-moz-focus-inner,
+#hiring-priority-dropdown button::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-hiring-submit-btn {
+  border-radius: 0.5rem !important;
+}
+
+.ta-unallocated-member-card {
+  cursor: grab;
+}
+
+.ta-unallocated-member-card:active {
+  cursor: grabbing;
+}
+
+.ta-unallocated-member-card.ta-dragging {
+  opacity: 0.6;
+}
+
+.ta-member-card-toggle,
+.ta-member-card-toggle:hover,
+.ta-member-card-toggle:active,
+.ta-member-card-toggle:focus,
+.ta-member-card-toggle:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+.ta-member-card-toggle::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-team-dropzone.ta-dropzone-hover {
+  border-color: #3b82f6 !important;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+  background-color: #eff6ff;
+}
+
+.ta-team-history-tabs-header {
+  margin-bottom: -1px;
+}
+
+#ta-team-form .ta-team-form-control,
+#ta-team-form .ta-team-select,
+#ta-team-form .ta-team-textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  text-shadow: none !important;
+  outline: none !important;
+}
+
+#ta-team-form input.ta-team-form-control:focus,
+#ta-team-form input.ta-team-form-control:focus-visible,
+#ta-team-form textarea.ta-team-textarea:focus,
+#ta-team-form textarea.ta-team-textarea:focus-visible,
+#ta-team-form select.ta-team-select:focus,
+#ta-team-form select.ta-team-select:focus-visible {
+  outline: none !important;
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+#ta-team-form .ta-team-form-control:hover,
+#ta-team-form .ta-team-select:hover,
+#ta-team-form .ta-team-textarea:hover {
+  border-color: #9ca3af !important;
+}
+
+#ta-team-form .ta-team-form-control {
+  min-height: 43px !important;
+  height: 43px !important;
+}
+
+.ta-team-select {
+  height: 44px !important;
+  padding-right: 2rem !important;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E") !important;
+  background-position: right 0.5rem center !important;
+  background-repeat: no-repeat !important;
+  background-size: 1.25rem 1.25rem !important;
+}
+
+.ta-team-select option {
+  color: #111827;
+  background: #ffffff;
+}
+
+.ta-team-textarea {
+  min-height: 110px !important;
+  resize: vertical;
+}
+
+.ta-btn-primary,
+.ta-btn-primary[type="submit"],
+input.ta-btn-primary,
+button.ta-btn-primary,
+.ta-btn-primary:hover,
+.ta-btn-primary:focus,
+.ta-btn-primary:focus-visible,
+.ta-btn-primary:active {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border: 1px solid #3b82f6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-primary:hover { background-color: #2563eb !important; border-color: #2563eb !important; }
+
+.ta-btn-save-primary,
+.ta-btn-save-primary[type="submit"],
+input.ta-btn-save-primary,
+button.ta-btn-save-primary,
+.ta-btn-save-primary:hover,
+.ta-btn-save-primary:focus,
+.ta-btn-save-primary:focus-visible,
+.ta-btn-save-primary:active {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border: 1px solid #3b82f6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-save-primary:hover {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.ta-team-footer-btn {
+  min-width: 76px;
+  border-radius: 0.5rem !important;
+}
+
+.ta-btn-secondary,
+.ta-btn-secondary[type="submit"],
+input.ta-btn-secondary,
+button.ta-btn-secondary,
+.ta-btn-secondary:hover,
+.ta-btn-secondary:focus,
+.ta-btn-secondary:focus-visible,
+.ta-btn-secondary:active {
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-secondary:hover { background-color: #f9fafb !important; }
+
+.ta-btn-success,
+.ta-btn-success[type="submit"],
+input.ta-btn-success,
+button.ta-btn-success,
+.ta-btn-success:hover,
+.ta-btn-success:focus,
+.ta-btn-success:focus-visible,
+.ta-btn-success:active {
+  background-color: #16a34a !important;
+  color: #ffffff !important;
+  border: 1px solid #16a34a !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-success:hover { background-color: #15803d !important; border-color: #15803d !important; }
+
+.ta-btn-danger,
+.ta-btn-danger[type="submit"],
+input.ta-btn-danger,
+button.ta-btn-danger,
+.ta-btn-danger:hover,
+.ta-btn-danger:focus,
+.ta-btn-danger:focus-visible,
+.ta-btn-danger:active {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-btn-danger:hover { background-color: #b91c1c !important; border-color: #b91c1c !important; }
+
+.ta-btn-primary,
+.ta-btn-secondary,
+.ta-btn-save-primary,
+.ta-btn-success,
+.ta-btn-danger {
+  cursor: pointer;
+  background-image: none !important;
+}
+
+.ta-inline-icon-btn,
+.ta-inline-icon-btn:hover,
+.ta-inline-icon-btn:focus,
+.ta-inline-icon-btn:focus-visible,
+.ta-inline-icon-btn:active {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  border: 0 !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+  opacity: 1 !important;
+  color: #60a5fa !important;
+}
+
+.ta-inline-icon-btn--danger,
+.ta-inline-icon-btn--danger:hover,
+.ta-inline-icon-btn--danger:focus,
+.ta-inline-icon-btn--danger:focus-visible,
+.ta-inline-icon-btn--danger:active {
+  color: #f87171 !important;
+}
+
+.ta-inline-icon-btn:hover,
+.ta-inline-icon-btn:focus,
+.ta-inline-icon-btn:focus-visible,
+.ta-inline-icon-btn:active {
+  color: #2563eb !important;
+}
+
+.ta-inline-icon-btn--danger:hover,
+.ta-inline-icon-btn--danger:focus,
+.ta-inline-icon-btn--danger:focus-visible,
+.ta-inline-icon-btn--danger:active {
+  color: #dc2626 !important;
+}
+
+.ta-inline-icon-btn--success,
+.ta-inline-icon-btn--success:hover,
+.ta-inline-icon-btn--success:focus,
+.ta-inline-icon-btn--success:focus-visible,
+.ta-inline-icon-btn--success:active {
+  color: #16a34a !important;
+}
+
+.ta-inline-material-icon {
+  font-size: 16px;
+  line-height: 1;
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.ta-member-details-btn,
+.ta-member-details-btn:hover,
+.ta-member-details-btn:focus,
+.ta-member-details-btn:focus-visible,
+.ta-member-details-btn:active {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+  color: #4b5563 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.375rem 0.625rem !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-team-member-view {
+  min-height: 1.75rem;
+}
+
+.ta-team-member-edit {
+  min-height: 1.75rem;
+}
+
+.ta-team-inline-control {
+  min-width: 9rem;
+}
+
+.ta-team-role-button {
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 0.75rem !important;
+}
+
+.ta-team-role-dropdown {
+  min-width: 180px;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+.ta-url-action-button,
+.ta-url-action-button:hover,
+.ta-url-action-button:focus,
+.ta-url-action-button:focus-visible,
+.ta-url-action-button:active {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+#taTeamMembersAddModal button,
+#taTeamMembersAddModal button:hover,
+#taTeamMembersAddModal button:focus,
+#taTeamMembersAddModal button:active,
+#taTeamProjectsAddModal button,
+#taTeamProjectsAddModal button:hover,
+#taTeamProjectsAddModal button:focus,
+#taTeamProjectsAddModal button:active,
+#taTeamMembersDeleteModal button,
+#taTeamMembersDeleteModal button:hover,
+#taTeamMembersDeleteModal button:focus,
+#taTeamMembersDeleteModal button:active,
+#taTeamDeleteModal button,
+#taTeamDeleteModal button:hover,
+#taTeamDeleteModal button:focus,
+#taTeamDeleteModal button:active,
+#taTeamProjectsDeleteModal button,
+#taTeamProjectsDeleteModal button:hover,
+#taTeamProjectsDeleteModal button:focus,
+#taTeamProjectsDeleteModal button:active,
+#taHiringCreateModal button,
+#taHiringCreateModal button:hover,
+#taHiringCreateModal button:focus,
+#taHiringCreateModal button:active,
+#taHiringDeleteModal button,
+#taHiringDeleteModal button:hover,
+#taHiringDeleteModal button:focus,
+#taHiringDeleteModal button:active,
+#taHiringTitleDeleteModal button,
+#taHiringTitleDeleteModal button:hover,
+#taHiringTitleDeleteModal button:focus,
+#taHiringTitleDeleteModal button:active,
+.ta-member-history-modal button,
+.ta-member-history-modal button:hover,
+.ta-member-history-modal button:focus,
+.ta-member-history-modal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#taTeamMembersAddModal .tep-delete-close,
+#taTeamProjectsAddModal .tep-delete-close,
+#taTeamMembersDeleteModal .tep-delete-close,
+#taTeamDeleteModal .tep-delete-close,
+#taTeamProjectsDeleteModal .tep-delete-close,
+#taHiringCreateModal .tep-delete-close,
+#taHiringDeleteModal .tep-delete-close,
+#taHiringTitleDeleteModal .tep-delete-close,
+.ta-member-history-modal .tep-delete-close {
+  border: none !important;
+}
+
+#taTeamMembersAddModal .tep-delete-close:hover,
+#taTeamProjectsAddModal .tep-delete-close:hover,
+#taTeamMembersDeleteModal .tep-delete-close:hover,
+#taTeamDeleteModal .tep-delete-close:hover,
+#taTeamProjectsDeleteModal .tep-delete-close:hover,
+#taHiringCreateModal .tep-delete-close:hover,
+#taHiringDeleteModal .tep-delete-close:hover,
+#taHiringTitleDeleteModal .tep-delete-close:hover,
+.ta-member-history-modal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#taTeamMembersAddModal .datepicker,
+#taTeamProjectsAddModal .datepicker,
+#taTeamMembersAddModal .datepicker-dropdown,
+#taTeamProjectsAddModal .datepicker-dropdown,
+#taTeamProjectsAddModal .datepicker-picker,
+#taTeamMembersAddModal .datepicker-picker {
+  z-index: 12000 !important;
+}
+
+[id^="ta-team-project-source-button-"],
+[id^="ta-team-project-source-button-"]:hover,
+[id^="ta-team-project-source-button-"]:focus,
+[id^="ta-team-project-source-button-"]:focus-visible,
+[id^="ta-team-project-source-button-"]:active,
+[id^="ta-team-project-project-button-"],
+[id^="ta-team-project-project-button-"]:hover,
+[id^="ta-team-project-project-button-"]:focus,
+[id^="ta-team-project-project-button-"]:focus-visible,
+[id^="ta-team-project-project-button-"]:active {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[id^="ta-team-project-project-button-"]:hover,
+[id^="ta-team-project-source-button-"]:hover {
+  background-color: #f9fafb !important;
+}
+
+[id^="ta-team-project-source-list-"] button,
+[id^="ta-team-project-source-list-"] button:hover,
+[id^="ta-team-project-source-list-"] button:focus,
+[id^="ta-team-project-source-list-"] button:focus-visible,
+[id^="ta-team-project-source-list-"] button:active,
+[id^="ta-team-project-project-list-"] button,
+[id^="ta-team-project-project-list-"] button:hover,
+[id^="ta-team-project-project-list-"] button:focus,
+[id^="ta-team-project-project-list-"] button:focus-visible,
+[id^="ta-team-project-project-list-"] button:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  color: #374151 !important;
+}
+
+[id^="ta-team-project-source-list-"] button:hover,
+[id^="ta-team-project-source-list-"] button:focus,
+[id^="ta-team-project-source-list-"] button:focus-visible,
+[id^="ta-team-project-project-list-"] button:hover,
+[id^="ta-team-project-project-list-"] button:focus,
+[id^="ta-team-project-project-list-"] button:focus-visible {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#taTeamMembersDeleteModal .tep-delete-cancel,
+#taTeamMembersDeleteModal .tep-delete-cancel:hover,
+#taTeamMembersDeleteModal .tep-delete-cancel:focus,
+#taTeamMembersDeleteModal .tep-delete-cancel:active,
+#taTeamDeleteModal .tep-delete-cancel,
+#taTeamDeleteModal .tep-delete-cancel:hover,
+#taTeamDeleteModal .tep-delete-cancel:focus,
+#taTeamDeleteModal .tep-delete-cancel:active,
+#taTeamProjectsDeleteModal .tep-delete-cancel,
+#taTeamProjectsDeleteModal .tep-delete-cancel:hover,
+#taTeamProjectsDeleteModal .tep-delete-cancel:focus,
+#taTeamProjectsDeleteModal .tep-delete-cancel:active,
+#taHiringDeleteModal .tep-delete-cancel,
+#taHiringDeleteModal .tep-delete-cancel:hover,
+#taHiringDeleteModal .tep-delete-cancel:focus,
+#taHiringDeleteModal .tep-delete-cancel:active,
+#taHiringTitleDeleteModal .tep-delete-cancel,
+#taHiringTitleDeleteModal .tep-delete-cancel:hover,
+#taHiringTitleDeleteModal .tep-delete-cancel:focus,
+#taHiringTitleDeleteModal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#taTeamMembersDeleteModal .tep-delete-confirm,
+#taTeamMembersDeleteModal .tep-delete-confirm:hover,
+#taTeamMembersDeleteModal .tep-delete-confirm:focus,
+#taTeamMembersDeleteModal .tep-delete-confirm:active,
+#taTeamDeleteModal .tep-delete-confirm,
+#taTeamDeleteModal .tep-delete-confirm:hover,
+#taTeamDeleteModal .tep-delete-confirm:focus,
+#taTeamDeleteModal .tep-delete-confirm:active,
+#taTeamProjectsDeleteModal .tep-delete-confirm,
+#taTeamProjectsDeleteModal .tep-delete-confirm:hover,
+#taTeamProjectsDeleteModal .tep-delete-confirm:focus,
+#taTeamProjectsDeleteModal .tep-delete-confirm:active,
+#taHiringDeleteModal .tep-delete-confirm,
+#taHiringDeleteModal .tep-delete-confirm:hover,
+#taHiringDeleteModal .tep-delete-confirm:focus,
+#taHiringDeleteModal .tep-delete-confirm:active,
+#taHiringTitleDeleteModal .tep-delete-confirm,
+#taHiringTitleDeleteModal .tep-delete-confirm:hover,
+#taHiringTitleDeleteModal .tep-delete-confirm:focus,
+#taHiringTitleDeleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
+
+[data-ta-hiring-inline-toggle],
+[data-ta-hiring-inline-toggle]:hover,
+[data-ta-hiring-inline-toggle]:focus,
+[data-ta-hiring-inline-toggle]:focus-visible,
+[data-ta-hiring-inline-toggle]:active {
+  border: 1px solid #d1d5db !important;
+  background-color: #ffffff !important;
+  color: #374151 !important;
+  background-image: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+
+[data-ta-hiring-inline-toggle]:hover {
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+[data-ta-hiring-inline-menu] button,
+[data-ta-hiring-inline-menu] button:hover,
+[data-ta-hiring-inline-menu] button:focus,
+[data-ta-hiring-inline-menu] button:focus-visible,
+[data-ta-hiring-inline-menu] button:active {
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #374151 !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+[data-ta-hiring-inline-menu] button:hover,
+[data-ta-hiring-inline-menu] button:focus,
+[data-ta-hiring-inline-menu] button:focus-visible,
+[data-ta-hiring-inline-menu] button:active {
+  background-color: #f3f4f6 !important;
+}
+
+#taTeamSettingsDeleteModal button,
+#taTeamSettingsDeleteModal button:hover,
+#taTeamSettingsDeleteModal button:focus,
+#taTeamSettingsDeleteModal button:active {
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-close {
+  border: none !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-close:hover {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-cancel,
+#taTeamSettingsDeleteModal .tep-delete-cancel:hover,
+#taTeamSettingsDeleteModal .tep-delete-cancel:focus,
+#taTeamSettingsDeleteModal .tep-delete-cancel:active {
+  color: #6b7280 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+#taTeamSettingsDeleteModal .tep-delete-confirm,
+#taTeamSettingsDeleteModal .tep-delete-confirm:hover,
+#taTeamSettingsDeleteModal .tep-delete-confirm:focus,
+#taTeamSettingsDeleteModal .tep-delete-confirm:active {
+  color: #ffffff !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #dc2626 !important;
+}
+
+.ta-team-settings-member-input,
+.ta-team-settings-member-input:hover,
+.ta-team-settings-member-input:focus,
+.ta-team-settings-member-input:active,
+.ta-team-settings-member-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  line-height: 1 !important;
+  border-radius: 0.5rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.ta-team-settings-member-input:focus,
+.ta-team-settings-member-input:focus-visible {
+  border-color: #9ca3af !important;
+}
+
+#team-main-panel-members .ts-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#team-main-panel-members .ta-member-history-group-row.ta-member-history-last-visible-row td {
+  padding-bottom: 1.75rem !important;
+}
+
+#team-main-panel-members .ta-member-history-group-row.ta-member-history-last-visible-row td:last-child {
+  padding-bottom: 2rem !important;
+}
+
+#ta-add-team-member-start-date,
+#ta-add-team-member-start-date:hover,
+#ta-add-team-member-start-date:focus,
+#ta-add-team-member-start-date:active,
+#ta-add-team-member-end-date,
+#ta-add-team-member-end-date:hover,
+#ta-add-team-member-end-date:focus,
+#ta-add-team-member-end-date:active,
+#ta-add-team-project-start-date,
+#ta-add-team-project-start-date:hover,
+#ta-add-team-project-start-date:focus,
+#ta-add-team-project-start-date:active,
+#ta-add-team-project-end-date,
+#ta-add-team-project-end-date:hover,
+#ta-add-team-project-end-date:focus,
+#ta-add-team-project-end-date:active {
+  border: 1px solid #d1d5db !important;
+  border-bottom-width: 1px !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background-image: none !important;
+}
+
+#ta-add-team-member-start-date:focus,
+#ta-add-team-member-end-date:focus,
+#ta-add-team-project-start-date:focus,
+#ta-add-team-project-end-date:focus {
+  border-color: #3b82f6 !important;
+}
+
+/* Custom Height Utilities for Team Management */
+@media (min-width: 1280px) {
+  .ta-team-xl-h-780 {
+    height: 780px !important;
+  }
+  .ta-team-xl-max-h-760 {
+    max-height: 760px !important;
+  }
+}
+
+.ta-team-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+}
+.ta-team-sidebar-panel.hidden {
+  display: none !important;
+}
+
+#ta-team-settings-search-input.ts-search-input {
+  min-height: 42px;
+  font-size: 15px !important;
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
+}
+
+@media (max-width: 1024px) {
+  .ta-team-row { align-items: flex-start; flex-direction: column; }
+  .ta-team-right { justify-content: flex-start; gap: 0.75rem; min-width: 0; flex-wrap: wrap; }
+  .ta-inline-assignment-form {
+    grid-template-columns: 1fr;
+  }
+}

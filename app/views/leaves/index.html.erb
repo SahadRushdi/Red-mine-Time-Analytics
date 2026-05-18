@@ -1,0 +1,1261 @@
+<% html_title l(:label_leaves) %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<% selected_user_label = @selected_user ? h(@selected_user.name) : l(:label_all_users) %>
+<% selected_status_label =
+     case @filter_status
+     when 'confirmed' then l(:label_confirmed)
+     when 'flagged' then l(:label_flagged)
+     else l(:label_all_statuses)
+     end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leaves) %></h2>
+      <p class="text-sm text-gray-500"><%= l(:text_leaves_admin_description) %></p>
+    </div>
+
+    <div class="flex flex-col gap-3 xl:items-end">
+      <div class="flex flex-wrap items-end justify-end gap-3">
+        <div>
+          <div id="leaves-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
+            <span class="text-sm text-gray-600">From:</span>
+            <%= text_field_tag :from, @default_from.strftime('%m/%d/%Y'), id: 'leaves-filter-from', autocomplete: 'off', placeholder: 'Select date start', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+            <span class="text-sm text-gray-600">To:</span>
+            <%= text_field_tag :to, @default_to.strftime('%m/%d/%Y'), id: 'leaves-filter-to', autocomplete: 'off', placeholder: 'Select date end', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+          </div>
+        </div>
+
+        <div class="relative">
+          <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
+          <button type="button" id="leaves-user-dropdown-button" class="inline-flex h-[43px] min-w-[220px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
+            <span id="leaves-user-dropdown-label" class="truncate"><%= selected_user_label %></span>
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <input type="hidden" id="leaves-filter-user" value="<%= @filter_user_id %>">
+          <div id="leaves-user-dropdown" class="hidden absolute right-0 z-20 mt-1 max-h-80 min-w-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="leaves-dropdown-option leaves-dropdown-option--active w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-label="<%= j l(:label_all_users) %>"><%= l(:label_all_users) %></button>
+            <% @users.each do |user| %>
+              <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="relative">
+          <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_status) %></label>
+          <button type="button" id="leaves-status-dropdown-button" class="inline-flex h-[43px] min-w-[160px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
+            <span id="leaves-status-dropdown-label" class="truncate"><%= selected_status_label %></span>
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <input type="hidden" id="leaves-filter-status" value="<%= @filter_status %>">
+          <div id="leaves-status-dropdown" class="hidden absolute right-0 z-20 mt-1 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="leaves-dropdown-option leaves-dropdown-option--active w-full px-4 py-2 text-left text-sm text-gray-700" data-status="" data-status-label="<%= j l(:label_all_statuses) %>"><%= l(:label_all_statuses) %></button>
+            <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-status="confirmed" data-status-label="<%= j l(:label_confirmed) %>"><%= l(:label_confirmed) %></button>
+            <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-status="flagged" data-status-label="<%= j l(:label_flagged) %>"><%= l(:label_flagged) %></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="ts-summary-card ts-summary-card--total flex items-center gap-4">
+      <div class="ts-summary-card-icon">
+        <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+      </div>
+      <div class="ts-summary-card-content">
+        <p class="ts-summary-card-label"><%= l(:label_overall_leave_days) %></p>
+        <p id="leaves-card-overall" class="ts-summary-card-value">0</p>
+      </div>
+    </div>
+    <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
+      <div class="ts-summary-card-icon">
+        <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-5-3.87M9 20H4v-2a4 4 0 015-3.87m5-4a4 4 0 100-8 4 4 0 000 8zm-7 0a4 4 0 100-8 4 4 0 000 8zm9 8v-2a4 4 0 00-3-3.87M7 20v-2a4 4 0 013-3.87"></path>
+        </svg>
+      </div>
+      <div class="ts-summary-card-content">
+        <p class="ts-summary-card-label"><%= l(:label_total_records) %></p>
+        <p id="leaves-card-records" class="ts-summary-card-value">0</p>
+      </div>
+    </div>
+    <div class="ts-summary-card ts-summary-card--average flex items-center gap-4">
+      <div class="ts-summary-card-icon">
+        <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.4 14.5A2 2 0 003.62 21h16.76a2 2 0 001.73-2.64l-8.4-14.5a2 2 0 00-3.44 0z"></path>
+        </svg>
+      </div>
+      <div class="ts-summary-card-content">
+        <p class="ts-summary-card-label"><%= l(:label_flagged_records) %></p>
+        <p id="leaves-card-flagged" class="ts-summary-card-value">0</p>
+      </div>
+    </div>
+    <div class="ts-summary-card ts-summary-card--issues flex items-center gap-4">
+      <div class="ts-summary-card-icon">
+        <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 012-2z"></path>
+        </svg>
+      </div>
+      <div class="ts-summary-card-content">
+        <p class="ts-summary-card-label"><%= l(:label_users_with_leave) %></p>
+        <p id="leaves-card-users" class="ts-summary-card-value">0</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="border-b border-gray-200 bg-white px-4 py-3">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <ul class="-mb-px flex flex-wrap gap-2 text-sm font-medium text-center">
+          <li>
+            <button type="button" id="leaves-tab-daily" class="leaves-tab leaves-tab-active inline-flex items-center rounded-t-lg px-4 py-3 text-sm font-medium text-gray-500">
+              <%= l(:label_daily_leaves) %>
+            </button>
+          </li>
+          <li>
+            <button type="button" id="leaves-tab-summary" class="leaves-tab inline-flex items-center rounded-t-lg px-4 py-3 text-sm font-medium text-gray-500">
+              <%= l(:label_period_summary) %>
+            </button>
+          </li>
+        </ul>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative w-full lg:w-[320px]">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/></svg>
+            </div>
+            <input type="search" id="ts-search-input" class="ts-search-input block w-80 text-base border border-gray-300" placeholder="<%= l(:label_search) %> users">
+          </div>
+          <div class="relative">
+            <button type="button" id="leaves-per-page-dropdown-button" class="inline-flex h-[43px] min-w-[100px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
+              <span id="leaves-per-page-label">10</span>
+              <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div id="leaves-per-page-dropdown" class="hidden absolute right-0 z-20 mt-1 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+              <% [10, 25, 50, 100].each do |value| %>
+                <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-per-page="<%= value %>"><%= value %></button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4">
+      <div id="leaves-daily-panel">
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-3">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="leave_date" data-sort-label="<%= j l(:label_date) %>">
+                    <span><%= l(:label_date) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="user_name" data-sort-label="<%= j l(:label_user) %>">
+                    <span><%= l(:label_user) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="leave_type" data-sort-label="<%= j l(:label_leave_type) %>">
+                    <span><%= l(:label_leave_type) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3 text-right">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="leave_fraction" data-sort-label="<%= j l(:label_total) %>">
+                    <span><%= l(:label_total) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="status" data-sort-label="<%= j l(:label_status) %>">
+                    <span><%= l(:label_status) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3"><%= l(:label_actions) %></th>
+              </tr>
+            </thead>
+            <tbody id="leaves-daily-tbody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <span id="leaves-daily-pagination-info" class="text-sm text-gray-500"></span>
+          <nav id="leaves-daily-pagination" class="hidden" aria-label="Daily leaves pagination">
+            <ul id="leaves-daily-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
+          </nav>
+        </div>
+      </div>
+
+      <div id="leaves-summary-panel" class="hidden">
+        <div class="overflow-x-auto rounded-xl border border-gray-200">
+          <table class="w-full text-left text-sm text-gray-600">
+            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-3">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="user_name" data-sort-label="<%= j l(:label_user) %>">
+                    <span><%= l(:label_user) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+                <th class="px-4 py-3 text-right">
+                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="total_leave_days" data-sort-label="<%= j l(:label_total_leave_days) %>">
+                    <span><%= l(:label_total_leave_days) %></span>
+                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="leaves-summary-tbody" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <span id="leaves-summary-pagination-info" class="text-sm text-gray-500"></span>
+          <nav id="leaves-summary-pagination" class="hidden" aria-label="Summary pagination">
+            <ul id="leaves-summary-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="leaves-delete-modal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] items-center justify-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center !border-0 !outline-none !shadow-none !ring-0"
+              data-modal-hide="leaves-delete-modal">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
+        <button type="button" id="leaves-delete-cancel" data-modal-hide="leaves-delete-modal" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var csrfToken = '<%= form_authenticity_token %>';
+    var initialFilters = <%= {
+      from: @default_from.strftime('%m/%d/%Y'),
+      to: @default_to.strftime('%m/%d/%Y'),
+      user_id: @filter_user_id.to_s,
+      status: @filter_status.to_s
+    }.to_json.html_safe %>;
+
+    var state = {
+      activeTab: 'daily',
+      perPage: 10,
+      search: '',
+      dailyPage: 1,
+      summaryPage: 1,
+      dailySort: 'leave_date',
+      dailyDirection: 'desc',
+      summarySort: 'total_leave_days',
+      summaryDirection: 'desc',
+      dailyRecords: [],
+      summaryRecords: []
+    };
+
+    var elements = {
+      from: document.getElementById('leaves-filter-from'),
+      to: document.getElementById('leaves-filter-to'),
+      userButton: document.getElementById('leaves-user-dropdown-button'),
+      userLabel: document.getElementById('leaves-user-dropdown-label'),
+      userMenu: document.getElementById('leaves-user-dropdown'),
+      userInput: document.getElementById('leaves-filter-user'),
+      statusButton: document.getElementById('leaves-status-dropdown-button'),
+      statusLabel: document.getElementById('leaves-status-dropdown-label'),
+      statusMenu: document.getElementById('leaves-status-dropdown'),
+      statusInput: document.getElementById('leaves-filter-status'),
+      perPageButton: document.getElementById('leaves-per-page-dropdown-button'),
+      perPageLabel: document.getElementById('leaves-per-page-label'),
+      perPageMenu: document.getElementById('leaves-per-page-dropdown'),
+      search: document.getElementById('ts-search-input'),
+      dailyTab: document.getElementById('leaves-tab-daily'),
+      summaryTab: document.getElementById('leaves-tab-summary'),
+      dailyPanel: document.getElementById('leaves-daily-panel'),
+      summaryPanel: document.getElementById('leaves-summary-panel'),
+      dailyBody: document.getElementById('leaves-daily-tbody'),
+      summaryBody: document.getElementById('leaves-summary-tbody'),
+      dailyInfo: document.getElementById('leaves-daily-pagination-info'),
+      summaryInfo: document.getElementById('leaves-summary-pagination-info'),
+      dailyPagination: document.getElementById('leaves-daily-pagination'),
+      summaryPagination: document.getElementById('leaves-summary-pagination'),
+      dailyLinks: document.getElementById('leaves-daily-pagination-links'),
+      summaryLinks: document.getElementById('leaves-summary-pagination-links')
+    };
+
+    var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
+    var deleteState = { id: null };
+
+    function closeDropdowns(exceptId) {
+      dropdownIds.forEach(function (id) {
+        if (id !== exceptId) {
+          var menu = document.getElementById(id);
+          if (menu) menu.classList.add('hidden');
+        }
+      });
+    }
+
+    function toggleDropdown(menuId) {
+      var menu = document.getElementById(menuId);
+      if (!menu) return;
+      var shouldOpen = menu.classList.contains('hidden');
+      closeDropdowns(menuId);
+      menu.classList.toggle('hidden', !shouldOpen);
+      if (shouldOpen) {
+        syncDropdownWidth(menuId);
+        var firstOption = menu.querySelector('.leaves-dropdown-option:not([disabled])');
+        if (firstOption) firstOption.focus();
+      }
+    }
+
+    function openDropdown(menuId) {
+      var menu = document.getElementById(menuId);
+      if (!menu) return;
+      closeDropdowns(menuId);
+      menu.classList.remove('hidden');
+      syncDropdownWidth(menuId);
+      var firstOption = menu.querySelector('.leaves-dropdown-option:not([disabled])');
+      if (firstOption) firstOption.focus();
+    }
+
+    function syncDropdownWidth(menuId) {
+      var menu = document.getElementById(menuId);
+      if (!menu) return;
+      var buttonId = menuId.replace('-dropdown', '-dropdown-button');
+      var button = document.getElementById(buttonId);
+      if (!button) return;
+      var width = Math.max(button.offsetWidth, button.getBoundingClientRect().width);
+      if (menuId === 'leaves-user-dropdown') {
+        width = Math.max(width, 300);
+      }
+      menu.style.width = width + 'px';
+      menu.style.minWidth = width + 'px';
+    }
+
+    function closeDeleteModal() {
+      var modal = document.getElementById('leaves-delete-modal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function openDeleteModal(id) {
+      deleteState.id = id;
+      var modal = document.getElementById('leaves-delete-modal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function confirmDelete() {
+      if (!deleteState.id) return;
+      var id = deleteState.id;
+      deleteState.id = null;
+      closeDeleteModal();
+      fetch('/leaves/' + id, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        }
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          loadData();
+        })
+        .catch(function (error) { alert(error.message); });
+    }
+
+    function typeaheadFocus(menu, query, attrName) {
+      if (!menu) return;
+      var options = Array.from(menu.querySelectorAll('.leaves-dropdown-option'))
+        .filter(function (btn) { return btn.style.display !== 'none'; });
+      if (!options.length) return;
+      var normalized = normalize(query);
+      var match = options.find(function (btn) {
+        var label = normalize(btn.getAttribute(attrName) || btn.textContent || '');
+        return label.indexOf(normalized) === 0;
+      });
+      if (match) {
+        match.focus();
+        return;
+      }
+      var fallback = options.find(function (btn) {
+        var label = normalize(btn.getAttribute(attrName) || btn.textContent || '');
+        return label.indexOf(normalized) !== -1;
+      });
+      if (fallback) fallback.focus();
+    }
+
+    function bindDropdownKeyboard(menuId, attrName, selectFn) {
+      var menu = document.getElementById(menuId);
+      if (!menu) return;
+
+      menu.addEventListener('keydown', function (event) {
+        var target = event.target.closest('.leaves-dropdown-option');
+        var options = Array.from(menu.querySelectorAll('.leaves-dropdown-option')).filter(function (btn) {
+          return btn.style.display !== 'none';
+        });
+        if (!options.length) return;
+
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeDropdowns();
+          return;
+        }
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          var currentIndex = Math.max(0, options.indexOf(target));
+          var nextIndex = event.key === 'ArrowDown' ? Math.min(options.length - 1, currentIndex + 1) : Math.max(0, currentIndex - 1);
+          (options[nextIndex] || options[0]).focus();
+          return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (target) target.click();
+          return;
+        }
+
+        if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          event.preventDefault();
+          typeaheadFocus(menu, event.key, attrName);
+        }
+      });
+
+      menu.querySelectorAll('.leaves-dropdown-option').forEach(function (button) {
+        button.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            button.click();
+          }
+        });
+        button.addEventListener('click', function () {
+          selectFn(button);
+        });
+      });
+    }
+
+    function syncDropdownActiveState(menuId, attrName, currentValue) {
+      var menu = document.getElementById(menuId);
+      if (!menu) return;
+      menu.querySelectorAll('.leaves-dropdown-option').forEach(function (button) {
+        var optionValue = button.getAttribute(attrName) || '';
+        button.classList.toggle('leaves-dropdown-option--active', String(optionValue) === String(currentValue || ''));
+      });
+    }
+
+    function handleDropdownButtonKeydown(event, menuId, attrName) {
+      if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        openDropdown(menuId);
+        return;
+      }
+      if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        openDropdown(menuId);
+        typeaheadFocus(document.getElementById(menuId), event.key, attrName);
+      }
+    }
+
+    function setTab(tab) {
+      state.activeTab = tab;
+      var dailyActive = tab === 'daily';
+      elements.dailyPanel.classList.toggle('hidden', !dailyActive);
+      elements.summaryPanel.classList.toggle('hidden', dailyActive);
+      elements.dailyTab.classList.toggle('leaves-tab-active', dailyActive);
+      elements.summaryTab.classList.toggle('leaves-tab-active', !dailyActive);
+    }
+
+    function selectedText(value, fallback) {
+      return value && value.length ? value : fallback;
+    }
+
+    function normalize(value) {
+      return String(value || '').toLowerCase().trim();
+    }
+
+    function formatNumber(value) {
+      var numeric = Number(value) || 0;
+      return numeric % 1 === 0 ? String(numeric.toFixed(0)) : numeric.toFixed(1).replace(/\.0$/, '');
+    }
+
+    function matchesSearch(record, query) {
+      if (!query) return true;
+      var haystack = [
+        record.user_name,
+        record.sender_email,
+        record.leave_type,
+        record.status,
+        record.flagged_reason,
+        record.leave_date,
+        record.subject
+      ].join(' ').toLowerCase();
+      return haystack.indexOf(query) !== -1;
+    }
+
+    function sortValue(record, sortKey) {
+      switch (sortKey) {
+        case 'leave_date':
+          return record.leave_date || '';
+        case 'user_name':
+          return record.user_name || '';
+        case 'leave_type':
+          return record.leave_type || '';
+        case 'leave_fraction':
+          return Number(record.leave_fraction) || 0;
+        case 'status':
+          return record.status || '';
+        case 'total_leave_days':
+          return Number(record.total_leave_days) || 0;
+        default:
+          return record[sortKey];
+      }
+    }
+
+    function compareRecords(a, b, sortKey, direction) {
+      var av = sortValue(a, sortKey);
+      var bv = sortValue(b, sortKey);
+      var result = 0;
+
+      if (typeof av === 'number' && typeof bv === 'number') {
+        result = av - bv;
+      } else {
+        result = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+      }
+
+      return direction === 'asc' ? result : -result;
+    }
+
+    function paginate(items, page, perPage) {
+      var totalPages = Math.max(1, Math.ceil(items.length / perPage));
+      var currentPage = Math.min(Math.max(page, 1), totalPages);
+      var start = (currentPage - 1) * perPage;
+      var end = start + perPage;
+      return {
+        currentPage: currentPage,
+        totalPages: totalPages,
+        items: items.slice(start, end),
+        startIndex: items.length ? start + 1 : 0,
+        endIndex: items.length ? Math.min(end, items.length) : 0
+      };
+    }
+
+    function paginationButton(label, className, disabled, onClick, ariaLabel) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = className;
+      button.textContent = label;
+      if (ariaLabel) button.setAttribute('aria-label', ariaLabel);
+      if (disabled) {
+        button.disabled = true;
+      } else {
+        button.addEventListener('click', onClick);
+      }
+      return button;
+    }
+
+    function renderPagination(target, linksTarget, infoTarget, currentPage, totalPages, totalItems, startIndex, endIndex, onChange) {
+      if (!target || !linksTarget || !infoTarget) return;
+
+      if (totalItems === 0) {
+        target.classList.add('hidden');
+        linksTarget.innerHTML = '';
+        infoTarget.textContent = '<%= j l(:label_no_data) %>';
+        return;
+      }
+
+      target.classList.remove('hidden');
+      infoTarget.textContent = startIndex + '-' + endIndex + ' of ' + totalItems + ' leaves';
+      linksTarget.innerHTML = '';
+
+      linksTarget.appendChild(paginationButton(
+        'Previous',
+        'flex h-8 items-center justify-center rounded-l-lg border border-gray-300 bg-white px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+        currentPage === 1,
+        function () { onChange(currentPage - 1); },
+        'Previous page'
+      ));
+
+      for (var page = 1; page <= totalPages; page += 1) {
+        (function (pageNumber) {
+          var isCurrent = pageNumber === currentPage;
+          var className = 'flex h-8 items-center justify-center border border-gray-300 px-3 leading-tight ' +
+            (isCurrent ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700' : 'bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700');
+          linksTarget.appendChild(paginationButton(
+            String(pageNumber),
+            className,
+            false,
+            function () { onChange(pageNumber); },
+            'Page ' + pageNumber
+          ));
+        })(page);
+      }
+
+      linksTarget.appendChild(paginationButton(
+        'Next',
+        'flex h-8 items-center justify-center rounded-r-lg border border-gray-300 bg-white px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+        currentPage === totalPages,
+        function () { onChange(currentPage + 1); },
+        'Next page'
+      ));
+    }
+
+    function updateSortIndicators() {
+      document.querySelectorAll('[data-table-sort]').forEach(function (button) {
+        var table = button.getAttribute('data-table-sort');
+        var sortKey = button.getAttribute('data-sort-key');
+        var indicator = button.querySelector('.leaves-sort-indicator');
+        var isActive = state[table + 'Sort'] === sortKey;
+        var direction = state[table + 'Direction'];
+        button.classList.toggle('text-gray-900', isActive);
+        button.classList.toggle('text-gray-700', !isActive);
+        if (indicator) {
+          indicator.textContent = isActive ? (direction === 'asc' ? '▲' : '▼') : '';
+          indicator.classList.toggle('text-gray-500', isActive);
+        }
+      });
+    }
+
+    function scheduleLoadData() {
+      window.clearTimeout(scheduleLoadData.timer);
+      scheduleLoadData.timer = window.setTimeout(function () {
+        loadData();
+      }, 80);
+    }
+
+    function renderDailyRows() {
+      var query = normalize(elements.search.value);
+      var filtered = state.dailyRecords.filter(function (record) { return matchesSearch(record, query); });
+      filtered.sort(function (a, b) { return compareRecords(a, b, state.dailySort, state.dailyDirection); });
+
+      var page = paginate(filtered, state.dailyPage, state.perPage);
+      state.dailyPage = page.currentPage;
+
+      var html = '';
+      if (!page.items.length) {
+        html = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        page.items.forEach(function (record) {
+          var leaveDateValue = formatLeaveDateForInput(record.leave_date);
+          var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
+          var actionHtml = '<div class="inline-flex items-center gap-2">' +
+            '<button type="button" title="<%= j l(:button_edit) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--edit inline-flex h-8 w-8 items-center justify-center" data-edit-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4h2M4 20h16M6 16l10.5-10.5a1.5 1.5 0 112.12 2.12L8.12 18.12 4 20l1.88-4.12z"></path></svg>' +
+            '</button>';
+
+          if (record.status === 'flagged' && record.can_unflag) {
+            actionHtml += '<button type="button" title="<%= j l(:button_unflag) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--confirm inline-flex h-8 w-8 items-center justify-center" data-unflag-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' +
+            '</button>' +
+            '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
+            '</button>';
+          } else if (record.status === 'flagged') {
+            actionHtml += '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
+            '</button>' +
+            '<span class="text-xs text-amber-700"><%= j l(:text_unmapped_sender_cannot_unflag) %></span>';
+          } else if (record.can_delete) {
+            actionHtml += '<button type="button" title="<%= j l(:button_delete) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-8 w-8 items-center justify-center" data-delete-id="' + record.id + '">' +
+              '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path></svg>' +
+            '</button>';
+          }
+          actionHtml += '</div>';
+
+          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
+            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
+            '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
+            '<td id="leaves-type-value-' + record.id + '" class="px-4 py-3 text-gray-700">' + (record.leave_type || leaveTypeForFraction(record.leave_fraction)) + '</td>' +
+            '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
+            '<td class="px-4 py-3">' + actionHtml + '</td>' +
+          '</tr>';
+          html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
+            '<td colspan="6" class="px-4 py-4">' +
+              '<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">' +
+                '<div class="flex flex-col gap-4 sm:flex-row sm:items-end">' +
+                  '<div class="w-full sm:w-48">' +
+                    '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_date) %></label>' +
+                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[43px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
+                  '</div>' +
+                  '<div class="relative w-full sm:w-40" id="leaves-fraction-wrapper-' + record.id + '">' +
+                    '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_total) %></label>' +
+                    '<button type="button" class="tep-field flex h-[40px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
+                      '<span data-leaves-fraction-label="' + record.id + '" class="text-gray-700 truncate flex-1">' + leaveFractionValue + '</span>' +
+                      '<svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>' +
+                      '</svg>' +
+                    '</button>' +
+                    '<input type="hidden" value="' + leaveFractionValue + '" data-leaves-fraction-input="' + record.id + '">' +
+                    '<div id="leaves-fraction-menu-' + record.id + '" data-leaves-fraction-menu="' + record.id + '" class="tep-activity-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto" style="min-width: 128px; max-height: 360px; top: calc(100% + 2px);">' +
+                      '<button type="button" class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900' + (leaveFractionValue === '0.5' ? ' !font-semibold !bg-blue-50' : '') + '" data-leaves-fraction-option="' + record.id + '" data-fraction-value="0.5" data-fraction-label="0.5">0.5</button>' +
+                      '<button type="button" class="tep-activity-option tep-entry-act-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900' + (leaveFractionValue === '1' ? ' !font-semibold !bg-blue-50' : '') + '" data-leaves-fraction-option="' + record.id + '" data-fraction-value="1" data-fraction-label="1">1</button>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="rounded-lg border border-blue-100 bg-blue-100/60 px-3 py-2 text-sm text-blue-800">' +
+                    '<span class="font-medium"><%= j l(:label_leave_type) %>:</span> ' +
+                    '<span data-leaves-type-preview="' + record.id + '">' + (record.leave_type || leaveTypeForFraction(record.leave_fraction)) + '</span>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2">' +
+                  '<button type="button" class="inline-flex items-center rounded-lg bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]" data-leaves-save-id="' + record.id + '"><%= j l(:button_save) %></button>' +
+                  '<button type="button" class="tep-entry-cancel-btn px-4 py-2 text-sm font-medium !text-gray-600 !bg-white rounded-lg" data-leaves-cancel-id="' + record.id + '">Cancel</button>' +
+                '</div>' +
+              '</div>' +
+            '</td>' +
+          '</tr>';
+        });
+      }
+
+      elements.dailyBody.innerHTML = html;
+      renderPagination(
+        elements.dailyPagination,
+        elements.dailyLinks,
+        elements.dailyInfo,
+        page.currentPage,
+        page.totalPages,
+        filtered.length,
+        page.startIndex,
+        page.endIndex,
+        function (nextPage) {
+          state.dailyPage = nextPage;
+          renderDailyRows();
+        }
+      );
+    }
+
+    function renderSummaryRows() {
+      var query = normalize(elements.search.value);
+      var filtered = state.summaryRecords.filter(function (record) { return matchesSearch({ user_name: record.user_name }, query); });
+      filtered.sort(function (a, b) { return compareRecords(a, b, state.summarySort, state.summaryDirection); });
+
+      var page = paginate(filtered, state.summaryPage, state.perPage);
+      state.summaryPage = page.currentPage;
+
+      var html = '';
+      if (!page.items.length) {
+        html = '<tr><td colspan="2" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        page.items.forEach(function (record) {
+          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50">' +
+            '<td class="px-4 py-3 text-gray-700">' + record.user_name + '</td>' +
+            '<td class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.total_leave_days) + '</td>' +
+          '</tr>';
+        });
+      }
+
+      elements.summaryBody.innerHTML = html;
+      renderPagination(
+        elements.summaryPagination,
+        elements.summaryLinks,
+        elements.summaryInfo,
+        page.currentPage,
+        page.totalPages,
+        filtered.length,
+        page.startIndex,
+        page.endIndex,
+        function (nextPage) {
+          state.summaryPage = nextPage;
+          renderSummaryRows();
+        }
+      );
+    }
+
+    function renderTables() {
+      updateSortIndicators();
+      renderDailyRows();
+      renderSummaryRows();
+    }
+
+    function flattenDailyGroups(groups) {
+      var rows = [];
+      (groups || []).forEach(function (group) {
+        (group.records || []).forEach(function (record) {
+          rows.push(record);
+        });
+      });
+      return rows;
+    }
+
+    function updateHistory() {
+      var params = new URLSearchParams();
+      if (elements.from.value) params.set('from', elements.from.value);
+      if (elements.to.value) params.set('to', elements.to.value);
+      if (elements.userInput.value) params.set('user_id', elements.userInput.value);
+      if (elements.statusInput.value) params.set('status', elements.statusInput.value);
+      var query = params.toString();
+      var url = window.location.pathname + (query ? '?' + query : '');
+      window.history.replaceState({}, '', url);
+    }
+
+    function loadData() {
+      var params = new URLSearchParams({
+        from: elements.from.value,
+        to: elements.to.value,
+        user_id: elements.userInput.value,
+        status: elements.statusInput.value
+      });
+
+      return fetch('<%= leaves_data_path %>?' + params.toString(), { headers: { Accept: 'application/json' } })
+        .then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          state.dailyRecords = flattenDailyGroups(payload.daily_groups || []);
+          state.summaryRecords = payload.user_summary || [];
+          state.dailyPage = 1;
+          state.summaryPage = 1;
+          updateHistory();
+          renderTables();
+          document.getElementById('leaves-card-overall').textContent = formatNumber((payload.totals && payload.totals.overall_leave_days) || 0);
+          document.getElementById('leaves-card-users').textContent = formatNumber((payload.totals && payload.totals.users_with_leave) || 0);
+          document.getElementById('leaves-card-flagged').textContent = formatNumber((payload.totals && payload.totals.flagged_records) || 0);
+          document.getElementById('leaves-card-records').textContent = formatNumber((payload.totals && payload.totals.total_records) || 0);
+        })
+        .catch(function (error) {
+          elements.dailyBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+          elements.summaryBody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+        });
+    }
+
+    function hideDatePickers() {
+      [elements.from, elements.to].forEach(function (input) {
+        if (!input) return;
+        if (input.datepicker && typeof input.datepicker.hide === 'function') {
+          input.datepicker.hide();
+        }
+        input.blur();
+      });
+    }
+
+    function deferHideDatePickers() {
+      window.setTimeout(hideDatePickers, 0);
+      window.setTimeout(hideDatePickers, 120);
+    }
+
+    function statusBadge(status, flaggedReason, aiAnalyzed) {
+      if (status === 'confirmed') {
+        var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>' + analyzedHtml + '</div>';
+      }
+      var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
+      var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + analyzedHtml + '</div>';
+    }
+
+    function leaveTypeForFraction(fraction) {
+      var value = Number(fraction) || 0;
+      if (value >= 1) return 'Full Day';
+      if (value >= 0.5) return 'Half Day';
+      return 'Unknown';
+    }
+
+    function formatLeaveDateForInput(value) {
+      var text = String(value || '');
+      if (!text) return '';
+      if (text.indexOf('/') !== -1) return text;
+      var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (parts) return parts[2] + '/' + parts[3] + '/' + parts[1];
+      return text;
+    }
+
+    function leaveFractionLabel(fraction) {
+      return Number(fraction) >= 1 ? '1' : '0.5';
+    }
+
+    function closeFractionDropdowns(exceptId) {
+      document.querySelectorAll('[data-leaves-fraction-menu]').forEach(function (menu) {
+        if (exceptId && menu.getAttribute('data-leaves-fraction-menu') === String(exceptId)) return;
+        menu.classList.add('hidden');
+      });
+    }
+
+    function syncFractionLabel(recordId, fraction) {
+      var label = document.querySelector('[data-leaves-fraction-label="' + recordId + '"]');
+      var typeCell = document.getElementById('leaves-type-value-' + recordId);
+      var typePreview = document.querySelector('[data-leaves-type-preview="' + recordId + '"]');
+      var leaveType = leaveTypeForFraction(fraction);
+
+      if (label) label.textContent = leaveFractionLabel(fraction);
+      if (typeCell) typeCell.textContent = leaveType;
+      if (typePreview) typePreview.textContent = leaveType;
+    }
+
+    function toggleFractionDropdown(recordId) {
+      var menu = document.getElementById('leaves-fraction-menu-' + recordId);
+      if (!menu) return;
+      var shouldOpen = menu.classList.contains('hidden');
+      closeFractionDropdowns(recordId);
+      menu.classList.toggle('hidden', !shouldOpen);
+    }
+
+    function selectFraction(recordId, fraction) {
+      var input = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      if (input) input.value = fraction;
+      syncFractionLabel(recordId, fraction);
+      closeFractionDropdowns();
+    }
+
+    function initLeavesEditDatepicker(recordId) {
+      var input = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      if (!input) return;
+      var picker = input.datepicker || input._leavesDatepicker || null;
+
+      if (picker && picker.setOptions) {
+          picker.setOptions({
+          todayHighlight: true,
+          showOnFocus: false,
+          showOnClick: true,
+          autohide: true
+        });
+      } else if (window.Datepicker && !input._leavesDatepicker) {
+        input._leavesDatepicker = new window.Datepicker(input, {
+          format: 'mm/dd/yyyy',
+          autohide: true,
+          showOnFocus: false,
+          showOnClick: true
+        });
+        picker = input.datepicker || input._leavesDatepicker;
+      }
+
+      if (!input.dataset.leavesDatepickerBound) {
+        input.addEventListener('keydown', function (event) {
+          var activePicker = input.datepicker || input._leavesDatepicker;
+          if (event.key === 'Escape' && activePicker && activePicker.hide) {
+            activePicker.hide();
+            input.blur();
+          }
+        });
+        input.dataset.leavesDatepickerBound = '1';
+      }
+    }
+
+    function closeAllEditRows(exceptId) {
+      document.querySelectorAll('[data-leaves-edit-row]').forEach(function (row) {
+        if (exceptId && row.getAttribute('data-leaves-edit-row') === String(exceptId)) return;
+        resetRowPreview(row.getAttribute('data-leaves-edit-row'));
+        row.classList.add('hidden');
+      });
+    }
+
+    function resetRowPreview(recordId) {
+      if (!recordId) return;
+      var row = document.querySelector('[data-leaves-edit-row="' + recordId + '"]');
+      if (!row) return;
+
+      var originalDate = row.getAttribute('data-original-leave-date') || '';
+      var originalFraction = row.getAttribute('data-original-leave-fraction') || '';
+      var dateCell = document.getElementById('leaves-date-value-' + recordId);
+      var fractionCell = document.getElementById('leaves-fraction-value-' + recordId);
+      var typeCell = document.getElementById('leaves-type-value-' + recordId);
+      var typePreview = document.querySelector('[data-leaves-type-preview="' + recordId + '"]');
+      var fractionInput = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      var fractionLabel = document.querySelector('[data-leaves-fraction-label="' + recordId + '"]');
+      var fractionValue = originalFraction || '0';
+      var leaveType = leaveTypeForFraction(fractionValue);
+
+      if (dateCell && originalDate) {
+        dateCell.textContent = originalDate;
+      }
+      if (fractionCell && originalFraction) {
+        fractionCell.textContent = formatNumber(originalFraction);
+      }
+      if (fractionInput && originalFraction) {
+        fractionInput.value = originalFraction;
+      }
+      if (fractionLabel && originalFraction) {
+        fractionLabel.textContent = originalFraction;
+      }
+      if (typeCell) {
+        typeCell.textContent = leaveType;
+      }
+      if (typePreview) {
+        typePreview.textContent = leaveType;
+      }
+    }
+
+    function updateRowPreview(recordId) {
+      var dateInput = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      var fractionSelect = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      var dateCell = document.getElementById('leaves-date-value-' + recordId);
+      var fractionCell = document.getElementById('leaves-fraction-value-' + recordId);
+      if (!fractionSelect || !dateInput) return;
+
+      var leaveFraction = Number(fractionSelect.value) || 0;
+      var leaveDate = dateInput.value || '';
+      if (dateCell && leaveDate) {
+        dateCell.textContent = leaveDate;
+      }
+      if (fractionCell) {
+        fractionCell.textContent = formatNumber(leaveFraction);
+      }
+      syncFractionLabel(recordId, leaveFraction);
+    }
+
+    function toggleEditRow(recordId) {
+      var row = document.getElementById('leaves-edit-row-' + recordId);
+      if (!row) return;
+      if (row.classList.contains('hidden')) {
+        closeAllEditRows(recordId);
+        closeFractionDropdowns(recordId);
+        row.classList.remove('hidden');
+        initLeavesEditDatepicker(recordId);
+        return;
+      }
+
+      resetRowPreview(recordId);
+      row.classList.add('hidden');
+      closeFractionDropdowns();
+    }
+
+    function saveEditRow(recordId) {
+      var dateInput = document.querySelector('[data-leaves-date-input="' + recordId + '"]');
+      var fractionSelect = document.querySelector('[data-leaves-fraction-input="' + recordId + '"]');
+      if (!dateInput || !fractionSelect) return;
+
+      fetch('/leaves/' + recordId, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          leave_date: dateInput.value,
+          leave_fraction: fractionSelect.value
+        })
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          loadData();
+        })
+        .catch(function (error) { alert(error.message); });
+    }
+
+    function setUserFilter(userId, userLabel) {
+      elements.userInput.value = userId || '';
+      elements.userLabel.textContent = selectedText(userLabel, '<%= j l(:label_all_users) %>');
+      syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
+      closeDropdowns();
+      loadData();
+    }
+
+    function setStatusFilter(status, statusLabel) {
+      elements.statusInput.value = status || '';
+      elements.statusLabel.textContent = selectedText(statusLabel, '<%= j l(:label_all_statuses) %>');
+      syncDropdownActiveState('leaves-status-dropdown', 'data-status', elements.statusInput.value);
+      closeDropdowns();
+      loadData();
+    }
+
+    function setPerPage(value) {
+      state.perPage = parseInt(value, 10) || 10;
+      elements.perPageLabel.textContent = String(state.perPage);
+      syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
+      closeDropdowns();
+      state.dailyPage = 1;
+      state.summaryPage = 1;
+      renderTables();
+    }
+
+    function handleSortClick(event) {
+      var button = event.currentTarget;
+      var table = button.getAttribute('data-table-sort');
+      var sortKey = button.getAttribute('data-sort-key');
+      if (state[table + 'Sort'] === sortKey) {
+        state[table + 'Direction'] = state[table + 'Direction'] === 'asc' ? 'desc' : 'asc';
+      } else {
+        state[table + 'Sort'] = sortKey;
+        state[table + 'Direction'] = 'asc';
+      }
+      renderTables();
+    }
+
+    elements.dailyTab.addEventListener('click', function () { setTab('daily'); });
+    elements.summaryTab.addEventListener('click', function () { setTab('summary'); });
+    elements.userButton.addEventListener('click', function () { toggleDropdown('leaves-user-dropdown'); });
+    elements.statusButton.addEventListener('click', function () { toggleDropdown('leaves-status-dropdown'); });
+    elements.perPageButton.addEventListener('click', function () { toggleDropdown('leaves-per-page-dropdown'); });
+    elements.userButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-user-dropdown', 'data-user-label'); });
+    elements.statusButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-status-dropdown', 'data-status-label'); });
+    elements.perPageButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-per-page-dropdown', 'data-per-page'); });
+
+    bindDropdownKeyboard('leaves-user-dropdown', 'data-user-label', function (button) {
+      setUserFilter(button.getAttribute('data-user-id'), button.getAttribute('data-user-label'));
+    });
+    bindDropdownKeyboard('leaves-status-dropdown', 'data-status-label', function (button) {
+      setStatusFilter(button.getAttribute('data-status'), button.getAttribute('data-status-label'));
+    });
+    bindDropdownKeyboard('leaves-per-page-dropdown', 'data-per-page', function (button) {
+      setPerPage(button.getAttribute('data-per-page'));
+    });
+
+    document.querySelectorAll('[data-table-sort]').forEach(function (button) {
+      button.addEventListener('click', handleSortClick);
+    });
+
+    function bindDateAutoReload(input) {
+      input.addEventListener('change', scheduleLoadData);
+      input.addEventListener('changeDate', function () {
+        scheduleLoadData();
+        hideDatePickers();
+      });
+    }
+
+    bindDateAutoReload(elements.from);
+    bindDateAutoReload(elements.to);
+
+    window.addEventListener('pageshow', deferHideDatePickers);
+
+    elements.search.addEventListener('input', function () {
+      state.dailyPage = 1;
+      state.summaryPage = 1;
+      renderTables();
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('#leaves-user-dropdown-button') && !event.target.closest('#leaves-user-dropdown') &&
+          !event.target.closest('#leaves-status-dropdown-button') && !event.target.closest('#leaves-status-dropdown') &&
+          !event.target.closest('#leaves-per-page-dropdown-button') && !event.target.closest('#leaves-per-page-dropdown')) {
+        closeDropdowns();
+      }
+      if (!event.target.closest('[data-leaves-fraction-toggle]') &&
+          !event.target.closest('[data-leaves-fraction-menu]')) {
+        closeFractionDropdowns();
+      }
+    });
+
+    document.getElementById('leaves-daily-tbody').addEventListener('click', function (event) {
+      var editButton = event.target.closest('[data-edit-id]');
+      var fractionToggle = event.target.closest('[data-leaves-fraction-toggle]');
+      var fractionOption = event.target.closest('[data-leaves-fraction-option]');
+      var unflagButton = event.target.closest('[data-unflag-id]');
+      var deleteButton = event.target.closest('[data-delete-id]');
+      var saveButton = event.target.closest('[data-leaves-save-id]');
+      var cancelButton = event.target.closest('[data-leaves-cancel-id]');
+
+      if (editButton) {
+        toggleEditRow(editButton.getAttribute('data-edit-id'));
+      }
+      if (fractionToggle) {
+        toggleFractionDropdown(fractionToggle.getAttribute('data-leaves-fraction-toggle'));
+      }
+      if (fractionOption) {
+        selectFraction(
+          fractionOption.getAttribute('data-leaves-fraction-option'),
+          fractionOption.getAttribute('data-fraction-value')
+        );
+      }
+      if (unflagButton) {
+        fetch('/leaves/' + unflagButton.getAttribute('data-unflag-id') + '/status', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({ status: 'confirmed' })
+        }).then(function (response) { return response.json(); })
+          .then(function (payload) {
+            if (payload.error) throw new Error(payload.error);
+            loadData();
+          })
+          .catch(function (error) { alert(error.message); });
+      }
+      if (deleteButton) {
+        openDeleteModal(deleteButton.getAttribute('data-delete-id'));
+      }
+      if (saveButton) {
+        saveEditRow(saveButton.getAttribute('data-leaves-save-id'));
+      }
+      if (cancelButton) {
+        resetRowPreview(cancelButton.getAttribute('data-leaves-cancel-id'));
+        var cancelRow = document.getElementById('leaves-edit-row-' + cancelButton.getAttribute('data-leaves-cancel-id'));
+        if (cancelRow) cancelRow.classList.add('hidden');
+        closeFractionDropdowns();
+      }
+    });
+
+    document.getElementById('leaves-daily-tbody').addEventListener('change', function (event) {
+      var fractionInput = event.target.closest('[data-leaves-fraction-input]');
+      var dateInput = event.target.closest('[data-leaves-date-input]');
+      var recordId = null;
+      if (fractionInput) {
+        recordId = fractionInput.getAttribute('data-leaves-fraction-input');
+      } else if (dateInput) {
+        recordId = dateInput.getAttribute('data-leaves-date-input');
+      }
+      if (!recordId) return;
+      updateRowPreview(recordId);
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('[data-leaves-fraction-toggle]') &&
+          !event.target.closest('[data-leaves-fraction-menu]')) {
+        closeFractionDropdowns();
+      }
+    });
+
+    var deleteConfirmButton = document.getElementById('leaves-delete-confirm');
+    var deleteCancelButton = document.getElementById('leaves-delete-cancel');
+    var deleteCloseButtons = document.querySelectorAll('[data-modal-hide="leaves-delete-modal"]');
+    if (deleteConfirmButton) deleteConfirmButton.addEventListener('click', confirmDelete);
+    if (deleteCancelButton) deleteCancelButton.addEventListener('click', closeDeleteModal);
+    deleteCloseButtons.forEach(function (button) {
+      button.addEventListener('click', closeDeleteModal);
+    });
+
+    elements.from.value = initialFilters.from;
+    elements.to.value = initialFilters.to;
+    elements.userInput.value = initialFilters.user_id;
+    elements.statusInput.value = initialFilters.status;
+    elements.userLabel.textContent = initialFilters.user_id ? elements.userLabel.textContent : '<%= j l(:label_all_users) %>';
+    elements.statusLabel.textContent = initialFilters.status === 'confirmed' ? '<%= j l(:label_confirmed) %>' : (initialFilters.status === 'flagged' ? '<%= j l(:label_flagged) %>' : '<%= j l(:label_all_statuses) %>');
+    elements.perPageLabel.textContent = String(state.perPage);
+    syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
+    syncDropdownActiveState('leaves-status-dropdown', 'data-status', elements.statusInput.value);
+    syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
+    updateSortIndicators();
+    setTab('daily');
+    deferHideDatePickers();
+    loadData();
+  });
+</script>

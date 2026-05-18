@@ -1,0 +1,740 @@
+<% html_title "Team Analytics Settings" %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Team Analytics Settings</h2>
+      <p class="text-sm text-gray-500">Configure users excluded from analytics and global super-user access.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900">Support Redmine Integration</h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Configure global external Redmine credentials for Effective Time calculation.
+        <% if @support_redmine_configured %>
+          <span class="text-emerald-600 font-medium">Configured</span>
+        <% else %>
+          <span class="text-amber-600 font-medium">Not configured</span>
+        <% end %>
+      </p>
+    </div>
+    <div class="px-6 py-4">
+      <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-4 md:grid-cols-2' do %>
+        <%= hidden_field_tag :setting_type, 'support_redmine' %>
+        <div class="md:col-span-1">
+          <%= label_tag :support_redmine_base_url, 'Support Redmine Base URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= text_field_tag :support_redmine_base_url,
+                             @support_redmine_settings[:base_url],
+                             required: true,
+                             placeholder: 'https://support.example.com',
+                             class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-1">
+          <%= label_tag :support_redmine_api_key, 'Support Redmine API Key', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= password_field_tag :support_redmine_api_key,
+                                 '',
+                                 placeholder: @support_redmine_settings[:api_key].present? ? 'Saved (leave blank to keep existing key)' : 'Enter API key',
+                                 class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+        </div>
+        <div class="md:col-span-2 flex justify-end">
+          <%= button_tag 'Save Support Redmine Settings', type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex items-end justify-between px-6 pt-2 pb-0 border-b border-gray-200 flex-wrap gap-3" style="margin-bottom: -1px;">
+      <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
+        <li class="me-2">
+          <button type="button" id="tab-exclusions" onclick="switchTeamSettingsTab('exclusions')"
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 ta-view-tab-active">
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414-1.414L12 9.172 7.05 4.222 5.636 5.636 10.586 10.586 5.636 15.536l1.414 1.414L12 12l4.95 4.95 1.414-1.414-4.95-4.95z"></path>
+              </svg>
+              Exclusion List
+              <span class="ts-tab-badge"><%= @excluded_settings.count %></span>
+            </span>
+          </button>
+        </li>
+        <li class="me-2">
+          <button type="button" id="tab-super-users" onclick="switchTeamSettingsTab('super-users')"
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+            <span class="inline-flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-4a4 4 0 00-8 0v4m8 0H7m8-13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Super Users
+              <span class="ts-tab-badge"><%= @super_users.count %></span>
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="relative">
+        <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+          <svg class="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"/>
+          </svg>
+        </div>
+        <input type="search" id="ta-team-settings-search-input" placeholder="Search users..."
+               class="ts-search-input block w-80 text-base border border-gray-300"
+               oninput="filterTeamSettingsRows()">
+      </div>
+    </div>
+
+    <div id="panel-exclusions">
+      <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
+        <span>Users in this list are excluded from team analytics reports for the selected date range.</span>
+      </div>
+
+      <div class="px-6 py-4 border-b border-gray-100">
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-end' do %>
+          <%= hidden_field_tag :setting_type, 'exclusion' %>
+          <div class="min-w-0">
+            <%= label_tag 'ta-team-settings-user-search-exclusion', 'Add user to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-exclusion">
+              <input type="text"
+                     id="ta-team-settings-user-search-exclusion"
+                     placeholder="🔍 Search member... *"
+                     autocomplete="off"
+                     onclick="openTeamSettingsMemberDropdown('exclusion')"
+                     oninput="filterTeamSettingsMembers('exclusion')"
+                     onkeydown="handleTeamSettingsMemberKey(event, 'exclusion')"
+                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+              <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
+              <div id="ta-team-settings-user-list-exclusion"
+                    class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                     style="min-width: 300px; max-width: 100%; max-height: 220px; top: calc(100% + 2px);">
+                <% @available_users.each do |user| %>
+                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                       tabindex="0"
+                       data-id="<%= user.id %>"
+                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
+                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                       onclick="selectTeamSettingsMember('exclusion', '<%= user.id %>', this.getAttribute('data-text'))"
+                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'exclusion', '<%= user.id %>', this.getAttribute('data-text'))">
+                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <div class="min-w-0">
+            <%= label_tag :start_date, 'Start Date', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+            <%= text_field_tag :start_date,
+                               Date.current.strftime('%m/%d/%Y'),
+                               autocomplete: 'off',
+                               required: true,
+                               placeholder: 'Select start date',
+                               class: 'ts-search-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]',
+                               'datepicker' => true,
+                               'datepicker-format' => 'mm/dd/yyyy',
+                               'datepicker-show-on-focus' => 'false',
+                               'datepicker-autohide' => 'true' %>
+          </div>
+          <div class="min-w-0">
+            <%= label_tag :end_date, 'End Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= text_field_tag :end_date,
+                               '',
+                               autocomplete: 'off',
+                               placeholder: 'Optional end date',
+                               class: 'ts-search-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-none focus:outline-none focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6]',
+                               'datepicker' => true,
+                               'datepicker-format' => 'mm/dd/yyyy',
+                               'datepicker-show-on-focus' => 'false',
+                               'datepicker-autohide' => 'true' %>
+          </div>
+          <div class="lg:self-end">
+            <%= button_tag 'Add to Exclusion List', type: 'submit', class: 'tep-action-btn w-full lg:w-auto flex-shrink-0 inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @excluded_settings.any? %>
+        <div class="overflow-x-auto">
+          <table class="ts-table w-full text-sm text-left">
+            <thead class="bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'user'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'user'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>User</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-user" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'email'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'email'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>Email</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-email" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @excluded_settings.each do |setting| %>
+                <% user = setting.user %>
+                <% next unless user %>
+                <% setting_id = setting.id %>
+                <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "#{user.name} #{user.mail} #{setting.start_date} #{setting.end_date}".downcase %>"
+                    data-user-sort="<%= user.name.to_s.downcase %>"
+                    data-email-sort="<%= user.mail.to_s.downcase %>">
+                  <td class="px-4 py-3">
+                    <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(user.mail) %></td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(setting.start_date.strftime('%Y-%m-%d')) %></td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(setting.end_date.present? ? setting.end_date.strftime('%Y-%m-%d') : 'Ongoing') %></td>
+                  <td class="px-4 py-3 text-right">
+                    <% if setting_id.present? %>
+                      <button type="button"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                              title="Delete"
+                              aria-label="Delete exclusion">
+                        <span class="material-icons" style="font-size:18px;line-height:1;">delete</span>
+                      </button>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <nav id="ta-team-settings-pagination-exclusions" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Exclusion list pagination">
+          <span id="ta-team-settings-pagination-info-exclusions" class="text-sm text-gray-700"></span>
+          <ul id="ta-team-settings-pagination-links-exclusions" class="inline-flex -space-x-px text-sm h-8"></ul>
+        </nav>
+      <% else %>
+        <div class="px-6 py-10 text-center text-sm text-gray-500">No users in exclusion list.</div>
+      <% end %>
+    </div>
+
+    <div id="panel-super-users" class="hidden">
+      <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
+        <span>Super users can access analytics across all teams, regardless of membership.</span>
+      </div>
+
+      <div class="px-6 py-4 border-b border-gray-100">
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
+          <%= hidden_field_tag :setting_type, 'super_user' %>
+          <div>
+            <%= label_tag 'ta-team-settings-user-search-super-user', 'Add super user', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-super-user">
+              <input type="text"
+                     id="ta-team-settings-user-search-super-user"
+                     placeholder="🔍 Search member... *"
+                     autocomplete="off"
+                     onclick="openTeamSettingsMemberDropdown('super-user')"
+                     oninput="filterTeamSettingsMembers('super-user')"
+                     onkeydown="handleTeamSettingsMemberKey(event, 'super-user')"
+                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+              <input type="hidden" name="user_id" id="ta-team-settings-user-id-super-user">
+              <div id="ta-team-settings-user-list-super-user"
+                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                    style="min-width: 420px; max-height: 220px; top: calc(100% + 2px);">
+                <% @available_users.each do |user| %>
+                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                       tabindex="0"
+                       data-id="<%= user.id %>"
+                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
+                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                       onclick="selectTeamSettingsMember('super-user', '<%= user.id %>', this.getAttribute('data-text'))"
+                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'super-user', '<%= user.id %>', this.getAttribute('data-text'))">
+                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+          <%= button_tag 'Add as Super User', type: 'submit', class: 'tep-action-btn flex-shrink-0 inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+        <% end %>
+      </div>
+
+      <% if @super_users.any? %>
+        <div class="overflow-x-auto">
+          <table class="ts-table w-full text-sm text-left">
+            <thead class="bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('super-users', 'user'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('super-users', 'user'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>User</span>
+                    <span id="ta-team-settings-sort-icon-super-users-user" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('super-users', 'email'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('super-users', 'email'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>Email</span>
+                    <span id="ta-team-settings-sort-icon-super-users-email" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @super_users.each do |user| %>
+                <% setting_id = @super_user_settings_by_user_id[user.id] %>
+                <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                    data-search-text="<%= "#{user.name} #{user.mail}".downcase %>"
+                    data-user-sort="<%= user.name.to_s.downcase %>"
+                    data-email-sort="<%= user.mail.to_s.downcase %>">
+                  <td class="px-4 py-3">
+                    <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  </td>
+                  <td class="px-4 py-3 text-gray-600"><%= h(user.mail) %></td>
+                  <td class="px-4 py-3 text-right">
+                    <% if setting_id.present? %>
+                      <button type="button"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                              title="Delete"
+                              aria-label="Delete super user">
+                        <span class="material-icons" style="font-size:18px;line-height:1;">delete</span>
+                      </button>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+        <nav id="ta-team-settings-pagination-super-users" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Super users pagination">
+          <span id="ta-team-settings-pagination-info-super-users" class="text-sm text-gray-700"></span>
+          <ul id="ta-team-settings-pagination-links-super-users" class="inline-flex -space-x-px text-sm h-8"></ul>
+        </nav>
+      <% else %>
+        <div class="px-6 py-10 text-center text-sm text-gray-500">No super users configured.</div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<button id="teamSettingsDeleteButton" data-modal-target="taTeamSettingsDeleteModal" data-modal-toggle="taTeamSettingsDeleteModal" type="button" class="hidden"></button>
+
+<div id="taTeamSettingsDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              onclick="teamSettingsCloseDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500">Are you sure you want to remove this setting?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="teamSettingsConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+          Delete
+        </button>
+        <button type="button"
+                onclick="teamSettingsCloseDeleteModal()"
+                class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTeamSettingsTab(tabName) {
+    ['exclusions', 'super-users'].forEach(function(tab) {
+      var panel = document.getElementById('panel-' + tab);
+      var tabButton = document.getElementById('tab-' + tab);
+      if (!panel || !tabButton) return;
+      if (tab === tabName) {
+        panel.classList.remove('hidden');
+        tabButton.classList.add('ta-view-tab-active');
+      } else {
+        panel.classList.add('hidden');
+        tabButton.classList.remove('ta-view-tab-active');
+      }
+    });
+    filterTeamSettingsRows();
+  }
+
+  function filterTeamSettingsRows() {
+    var activePanel = document.querySelector('#panel-exclusions:not(.hidden), #panel-super-users:not(.hidden)');
+    if (!activePanel) return;
+    var tabType = activePanel.id === 'panel-exclusions' ? 'exclusions' : 'super-users';
+    applyTeamSettingsPagination(tabType, false);
+  }
+
+  var teamSettingsPagination = {
+    'exclusions': { currentPage: 1, perPage: 10 },
+    'super-users': { currentPage: 1, perPage: 10 }
+  };
+
+  function getTeamSettingsRows(tabType) {
+    var panel = document.getElementById('panel-' + tabType);
+    if (!panel) return [];
+    return Array.from(panel.querySelectorAll('table.ts-table tbody tr.ta-team-settings-row'));
+  }
+
+  function createTeamSettingsPageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
+
+  function renderTeamSettingsPaginationControls(tabType, totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('ta-team-settings-pagination-' + tabType);
+    var info = document.getElementById('ta-team-settings-pagination-info-' + tabType);
+    var links = document.getElementById('ta-team-settings-pagination-links-' + tabType);
+    if (!nav || !info || !links) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    var state = teamSettingsPagination[tabType];
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + ' users';
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (state.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamSettingsPageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: state.currentPage === 1,
+      onClick: function() {
+        state.currentPage -= 1;
+        applyTeamSettingsPagination(tabType, true);
+      }
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === state.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(createTeamSettingsPageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            state.currentPage = pageNumber;
+            applyTeamSettingsPagination(tabType, true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (state.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamSettingsPageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: state.currentPage === totalPages,
+      onClick: function() {
+        state.currentPage += 1;
+        applyTeamSettingsPagination(tabType, true);
+      }
+    }));
+  }
+
+  function teamSettingsSortIconId(tabType, column) {
+    return 'ta-team-settings-sort-icon-' + tabType + '-' + column;
+  }
+
+  function setTeamSettingsSortIconState(icon, order) {
+    if (!icon) return;
+    icon.dataset.order = order;
+    icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+  }
+
+  function toggleTeamSettingsSort(tabType, column) {
+    var panel = document.getElementById('panel-' + tabType);
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = getTeamSettingsRows(tabType);
+    var icon = document.getElementById(teamSettingsSortIconId(tabType, column));
+    var currentOrder = icon && icon.dataset.order ? icon.dataset.order : 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+
+    rows.sort(function(a, b) {
+      var attr = 'data-' + column + '-sort';
+      var aValue = (a.getAttribute(attr) || '').toLowerCase();
+      var bValue = (b.getAttribute(attr) || '').toLowerCase();
+      var cmp = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? cmp : -cmp;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    ['user', 'email'].forEach(function(col) {
+      if (col === column) return;
+      setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, col)), 'desc');
+    });
+    setTeamSettingsSortIconState(icon, nextOrder);
+
+    applyTeamSettingsPagination(tabType, true);
+  }
+
+  function applyTeamSettingsPagination(tabType, preservePage) {
+    var searchInput = document.getElementById('ta-team-settings-search-input');
+    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var rows = getTeamSettingsRows(tabType);
+    var state = teamSettingsPagination[tabType];
+    if (!state) return;
+
+    var matchedRows = rows.filter(function(row) {
+      var text = (row.getAttribute('data-search-text') || '').toLowerCase();
+      return !query || text.indexOf(query) >= 0;
+    });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / state.perPage));
+    if (!preservePage) {
+      state.currentPage = 1;
+    } else if (state.currentPage > totalPages) {
+      state.currentPage = totalPages;
+    }
+
+    var start = (state.currentPage - 1) * state.perPage;
+    var end = start + state.perPage;
+    var currentRows = matchedRows.slice(start, end);
+    var visibleSet = new Set(currentRows);
+
+    rows.forEach(function(row) {
+      row.style.display = visibleSet.has(row) ? '' : 'none';
+    });
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    renderTeamSettingsPaginationControls(tabType, matchedRows.length, totalPages, startIndex, endIndex);
+  }
+
+  function teamSettingsMemberElements(type) {
+    return {
+      wrapper: document.getElementById('ta-team-settings-user-wrapper-' + type),
+      search: document.getElementById('ta-team-settings-user-search-' + type),
+      hidden: document.getElementById('ta-team-settings-user-id-' + type),
+      list: document.getElementById('ta-team-settings-user-list-' + type)
+    };
+  }
+
+  function openTeamSettingsMemberDropdown(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
+  }
+
+  function closeTeamSettingsMemberDropdown(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function filterTeamSettingsMembers(type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function selectTeamSettingsMember(type, userId, displayText) {
+    var els = teamSettingsMemberElements(type);
+    if (els.hidden) els.hidden.value = userId;
+    if (els.search) els.search.value = displayText;
+    closeTeamSettingsMemberDropdown(type);
+  }
+
+  function handleTeamSettingsMemberKey(event, type) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      closeTeamSettingsMemberDropdown(type);
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function handleTeamSettingsMemberOptionKey(event, type, userId, displayText) {
+    var els = teamSettingsMemberElements(type);
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      selectTeamSettingsMember(type, userId, displayText);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      closeTeamSettingsMemberDropdown(type);
+      if (els.search) els.search.focus();
+    }
+  }
+
+  document.addEventListener('click', function(event) {
+    ['exclusion', 'super-user'].forEach(function(type) {
+      var els = teamSettingsMemberElements(type);
+      var clickedInsideList = !!(els.list && els.list.contains(event.target));
+      if (els.wrapper && !els.wrapper.contains(event.target) && !clickedInsideList) {
+        closeTeamSettingsMemberDropdown(type);
+      }
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    closeTeamSettingsMemberDropdown('exclusion');
+    closeTeamSettingsMemberDropdown('super-user');
+    ['exclusions', 'super-users'].forEach(function(tabType) {
+      ['user', 'email'].forEach(function(column) {
+        setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, column)), 'desc');
+      });
+    });
+    applyTeamSettingsPagination('exclusions', false);
+    applyTeamSettingsPagination('super-users', false);
+  });
+
+  var teamSettingsPendingDelete = null;
+
+  function teamSettingsOpenDeleteModal() {
+    var modal = document.getElementById('taTeamSettingsDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamSettingsCloseDeleteModal() {
+    var modal = document.getElementById('taTeamSettingsDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamSettingsDelete(settingId, url, token) {
+    teamSettingsPendingDelete = { settingId: settingId, url: url, token: token };
+    var trigger = document.getElementById('teamSettingsDeleteButton');
+    if (trigger) {
+      trigger.click();
+      setTimeout(function() {
+        var modal = document.getElementById('taTeamSettingsDeleteModal');
+        if (modal && modal.classList.contains('hidden')) teamSettingsOpenDeleteModal();
+      }, 0);
+    } else {
+      teamSettingsOpenDeleteModal();
+    }
+  }
+
+  function teamSettingsConfirmDelete() {
+    if (!teamSettingsPendingDelete) return;
+    var url = teamSettingsPendingDelete.url;
+    var token = teamSettingsPendingDelete.token;
+    teamSettingsCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    [['_method', 'DELETE'], ['authenticity_token', token]].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function teamSettingsCloseDeleteModalIfBackdrop(event) {
+    var modal = document.getElementById('taTeamSettingsDeleteModal');
+    if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+      teamSettingsCloseDeleteModal();
+    }
+  }
+
+  if (!window.__teamSettingsDeleteModalListenersBound) {
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        teamSettingsCloseDeleteModal();
+      }
+    });
+    document.addEventListener('click', teamSettingsCloseDeleteModalIfBackdrop);
+    window.__teamSettingsDeleteModalListenersBound = true;
+  }
+</script>

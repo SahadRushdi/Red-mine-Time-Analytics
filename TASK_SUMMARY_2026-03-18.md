@@ -1,0 +1,118 @@
+## Overview
+Modernized the **Administration → Team Management** panel using Flowbite/Tailwind components and added a complete hiring-needs workflow with historical tracking.
+
+## Code Changes
+- Rebuilt `app/views/admin_ta_teams/index.html.erb` into a modern dashboard layout aligned with existing Individual Dashboard component style:
+  - header + action buttons
+  - KPI summary cards
+  - highlighted **Unallocated Members** section with inline **Add to Team**
+  - main **Organizational Hierarchy** panel
+  - right sidebar with **Global Member List** and **Vacancy List**
+  - bottom inline **Add Hiring Need** panel
+  - **Hiring Need History** table with status and fill date
+- Extended `app/controllers/admin_ta_teams_controller.rb`:
+  - enriched `index` data for members, unallocated users, vacancies, and history
+  - added `assign_member` action for direct assignment from unallocated list
+  - added `create_hiring_need` action using strong params
+- Added hiring-need persistence:
+  - new model: `app/models/ta_hiring_need.rb`
+  - new migration: `db/migrate/20260330071000_create_ta_hiring_needs.rb`
+  - association in `app/models/ta_team.rb` (`has_many :ta_hiring_needs`)
+- Added status transition endpoint/controller:
+  - controller: `app/controllers/admin_ta_hiring_needs_controller.rb`
+  - route: `PATCH /admin/ta_hiring_needs/:id/mark_filled`
+- Updated routes in `config/routes.rb` for:
+  - `assign_member_admin_ta_teams_path`
+  - `create_hiring_need_admin_ta_teams_path`
+  - `mark_filled_admin_ta_hiring_need_path`
+- Rebuilt Tailwind output: `assets/stylesheets/tailwind.output.css`.
+- UI refinement pass based on latest screenshots:
+  - Removed the top 3 summary cards.
+  - Moved **Unallocated Members** into the **Global Member List** sidebar (with highlight block and inline assign cards).
+  - Updated unallocated-member assignment controls to custom Flowbite-style dropdown buttons (same interaction style as My Time grouping dropdown).
+  - Updated **Add Hiring Need** form dropdowns (`Team`, `Priority`) to the same custom dropdown style to avoid cutoff/clipping issues.
+  - Updated organizational hierarchy row layout so actions appear on the right side and visually align with the Figma direction.
+  - Added hiring badges per team row (`N hiring`) using open hiring-need counts.
+- UI refinement pass for dropdown stability + sidebar tabs:
+  - Applied shared custom dropdown CSS pattern for Team Management controls to mirror the stabilized My Time dropdown behavior and avoid Redmine theme collisions.
+  - Updated unallocated member cards so assignment controls stay in one horizontal row:
+    - `Select team` dropdown
+    - `Team Member/Lead` dropdown
+    - `Add to Team` button
+  - Converted right sidebar to tabbed layout with My Time tab styling:
+    - `Members` tab (default)
+    - `Vacancy List` tab (second tab)
+  - Expanded member tab content area to use the full sidebar panel, with vacancy list moved behind the second tab panel.
+- Final UI polish pass from latest screenshots:
+  - Replaced temporary emoji-style hierarchy action icons with inline SVG action icons matching the target style direction.
+  - Made the **Members** tab content scroll from the top of the panel (single scrollable container) so unallocated + allocated lists stay within fixed sidebar height.
+  - Stabilized tab active-state rendering on first click and initialization so blue active styling remains consistent against Redmine CSS overrides.
+  - Kept Team Management dropdowns aligned with the resilient My Time dropdown approach (custom button/menu classes and explicit state handling).
+  - Increased Add Hiring Need dropdown control height for better alignment.
+  - Removed visible `Role` field from Add Hiring Need form; backend now defaults role to `Team Member` when absent.
+- My Time parity fix for tab/dropdown override issues:
+  - Included `time_analytics.css` in Team Management page header so existing `ta-view-tab` and `ta-view-tab-active` override rules are reused exactly.
+  - Replaced Team Management custom dropdown button/menu classes with the same utility-class pattern used by My Time grouping dropdown:
+    - button: `!text-*`, `!bg-*`, hover/focus ring classes
+    - menu/options: `hidden absolute ...` + `hover:!bg-*` option rows
+  - Removed duplicated local tab/dropdown CSS rules that were conflicting with shared My Time tab behavior.
+  - Increased `Position Title` input height to align with dropdown control heights in Add Hiring Need panel.
+- Final dropdown artifact + layout pass:
+  - Added targeted CSS overrides for Team Management dropdown option buttons (team/role/hiring dropdown menus) to remove blue per-option borders/outlines/shadows, matching the My Time grouping dropdown fix behavior.
+  - Reworked Add Hiring Need inline panel layout to a balanced 3-column row (`Position Title`, `Team`, `Priority`) with aligned control heights and a right-aligned action button.
+- Performance + CLS optimization pass:
+  - Removed N+1 hierarchy rendering queries by precomputing and passing:
+    - team children map
+    - active member counts by team
+    - open hiring need counts by team
+  - Updated `ta_team_tree` helper to render from precomputed in-memory maps instead of querying per node.
+  - Added layout-stability CSS (`min-height`, reduced wrapping in hierarchy action row) to reduce layout shift in hierarchy cards.
+  - Added stronger dropdown selected/focus visual overrides for team-member dropdown options to prevent undesired blue selected styling.
+- Team dropdown UX polish:
+  - Further hardened dropdown option state overrides (`focus`, `active:hover`, `:focus:hover`, and Firefox inner-focus handling) to prevent blue hover/selection artifacts after selecting an option.
+  - Widened unallocated-member **Select Team** control (`flex-[2]`, `min-w-[240px]`) and constrained dropdown to vertical scrolling only (`overflow-x-hidden`) to reduce horizontal clipping/scroll needs for long team names.
+- Overflow + input sizing fix:
+  - Updated unallocated-member assignment row to a stable 3-column grid (`team`, `role`, `button`) so the **Add to Team** button remains inside each card without horizontal scrolling.
+  - Added truncation handling on selected team label inside the button for long names.
+  - Increased Add Hiring Need `Position Title` field height to match dropdown control height (`48px`) and aligned both dropdown trigger heights to the same value.
+- Additional Team Management performance/CLS pass:
+  - Reduced JS listener overhead by replacing multiple per-element dropdown/form listeners with delegated document-level handlers.
+  - Added stable scroll behavior (`overflow-y-scroll` + `scrollbar-gutter: stable`) for hierarchy and sidebar scroll containers to avoid late scrollbar-induced layout shifts.
+  - Kept hierarchy card sizing stable with existing min-height containment and reduced dynamic width shifts.
+- Accessibility + CLS follow-up:
+  - Fixed label association warnings by wiring Add Hiring Need custom dropdown labels with explicit `label_tag` targets:
+    - `for="hiring-team-button"`
+    - `for="hiring-priority-button"`
+  - Added critical early inline styles for hierarchy cards/rows to stabilize first paint and reduce layout jumps before the full stylesheet cascade.
+  - Reduced post-load layout mutation by keeping initial tab state from server render (removed forced JS re-init switch call).
+  - Added title truncation safeguards for team names in hierarchy rows to avoid width-based reflow.
+
+## Verification Notes
+- Ran `npm run build` successfully.
+- Ran `ruby test/test_working_days.rb` successfully.
+- Ran Ruby syntax checks successfully for all newly added/changed Ruby files:
+  - `app/controllers/admin_ta_teams_controller.rb`
+  - `app/controllers/admin_ta_hiring_needs_controller.rb`
+  - `app/models/ta_hiring_need.rb`
+  - `db/migrate/20260330071000_create_ta_hiring_needs.rb`
+- Re-ran after UI refinement:
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after dropdown/tab refactor:
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after final polish:
+  - Ruby syntax checks passed for `app/helpers/ta_teams_helper.rb` and `app/controllers/admin_ta_teams_controller.rb`
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+- Re-ran after My Time parity fix:
+  - `npm run build` successful
+  - `ruby test/test_working_days.rb` successful
+
+## Next Steps
+- Run plugin migration from Redmine root:
+  - `bundle exec rake redmine:plugins:migrate NAME=redmine_time_analytics RAILS_ENV=production`
+- Verify the Team Management page in browser against your Figma screenshots, especially:
+  - sidebar at-a-glance lists
+  - unallocated-member add flow
+  - mark vacancy as filled and confirm history row retention

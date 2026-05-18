@@ -11,11 +11,23 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def individual_dashboard
-    @user = User.current
+    # Allow team leads to view their team members' dashboards
+    if params[:user_id].present?
+      @user = User.find_by(id: params[:user_id])
+      
+      # Verify access: user must be a team lead of the viewed user or an admin
+      unless user_can_view_member_dashboard?(@user)
+        render_403
+        return
+      end
+    else
+      @user = User.current
+    end
+    
     # Default to issue view
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
     
-    # Get time entries for the current user with project visibility check
+    # Get time entries for the user with project visibility check
     @time_entries = TimeEntry.joins(:project)
                              .where(user: @user)
                              .where(spent_on: @from..@to)
@@ -37,8 +49,9 @@ class TimeAnalyticsController < ApplicationController
     
     # Summary card metrics
     @issues_worked_count = @time_entries.where.not(issue_id: nil).distinct.count(:issue_id)
-    # Keep Active Days aligned with Daily Average denominator (working days in selected range)
-    @active_days_count = calculate_working_days_count
+    @working_days_count = calculate_working_days_count
+    @leave_days_count = calculate_leave_days_count(@from, @to)
+    @active_days_count = [@working_days_count - @leave_days_count, 0].max.round(2)
 
     # Calculate summary statistics based on grouping
     case @grouping
@@ -209,18 +222,25 @@ class TimeAnalyticsController < ApplicationController
     end
   end
 
-  def team_dashboard
-    # Placeholder for future implementation
-    render plain: "Team Dashboard - Coming Soon"
-  end
-
   def custom_dashboard
     # Placeholder for future implementation
     render plain: "Custom Dashboard - Coming Soon"
   end
 
   def export_csv
-    @user = User.current
+    # Allow team leads to export their team members' data
+    if params[:user_id].present?
+      @user = User.find_by(id: params[:user_id])
+      
+      # Verify access: user must be a team lead of the viewed user or an admin
+      unless user_can_view_member_dashboard?(@user)
+        render_403
+        return
+      end
+    else
+      @user = User.current
+    end
+    
     # Use same logic as individual_dashboard for consistency
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'time_entries'
     
@@ -311,11 +331,10 @@ class TimeAnalyticsController < ApplicationController
   def calculate_avg_hours_per_day
     return 0 if @time_entries.empty?
     
-    # Calculate working days in the date range (excluding weekends and Sri Lankan holidays)
-    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
-    return 0 if working_days.zero?
+    active_days = calculate_active_days(@from, @to)
+    return 0 if active_days.zero?
     
-    (@total_hours / working_days).round(2)
+    (@total_hours / active_days).round(2)
   end
 
   def calculate_max_daily_hours
@@ -342,8 +361,14 @@ class TimeAnalyticsController < ApplicationController
     # Fill missing weeks to include 0.00 weeks in average calculation
     weekly_totals = fill_missing_weeks(weekly_totals, @from, @to)
     return 0 if weekly_totals.empty?
+
+    effective_weeks = weekly_totals.keys.sum do |week_start|
+      week_end = week_start + 6.days
+      effective_period_weight([week_start, @from].max, [week_end, @to].min)
+    end
+    return 0 if effective_weeks.zero?
     
-    (weekly_totals.values.sum / weekly_totals.count).round(2)
+    (weekly_totals.values.sum / effective_weeks).round(2)
   end
 
   def calculate_max_weekly_hours
@@ -380,8 +405,14 @@ class TimeAnalyticsController < ApplicationController
     # Fill missing months to include 0.00 months in average calculation
     monthly_totals = fill_missing_months(monthly_totals, @from, @to)
     return 0 if monthly_totals.empty?
+
+    effective_months = monthly_totals.keys.sum do |month_start|
+      month_end = month_start.end_of_month
+      effective_period_weight([month_start, @from].max, [month_end, @to].min)
+    end
+    return 0 if effective_months.zero?
     
-    (monthly_totals.values.sum / monthly_totals.count).round(2)
+    (monthly_totals.values.sum / effective_months).round(2)
   end
 
   def calculate_max_monthly_hours
@@ -416,8 +447,14 @@ class TimeAnalyticsController < ApplicationController
     
     yearly_totals = get_yearly_totals(@time_entries)
     return 0 if yearly_totals.empty?
-    
-    (yearly_totals.values.sum / yearly_totals.count).round(2)
+
+    effective_years = yearly_totals.keys.sum do |year_start|
+      year_end = year_start.end_of_year
+      effective_period_weight([year_start, @from].max, [year_end, @to].min)
+    end
+    return 0 if effective_years.zero?
+
+    (yearly_totals.values.sum / effective_years).round(2)
   end
 
   def calculate_max_yearly_hours
@@ -447,6 +484,28 @@ class TimeAnalyticsController < ApplicationController
   # Period count calculations for summary display
   def calculate_working_days_count
     RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+  end
+
+  def calculate_leave_days_count(from_date, to_date)
+    TaLeaveRecord.total_leave_days_for_user(
+      user_id: @user.id,
+      from_date: from_date,
+      to_date: to_date
+    ).round(2)
+  end
+
+  def calculate_active_days(from_date, to_date)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
+    leave_days = calculate_leave_days_count(from_date, to_date)
+    [working_days - leave_days, 0].max
+  end
+
+  def effective_period_weight(from_date, to_date)
+    working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
+    return 0 if working_days.zero?
+
+    active_days = calculate_active_days(from_date, to_date)
+    active_days / working_days.to_f
   end
 
   def calculate_week_count
@@ -759,7 +818,7 @@ class TimeAnalyticsController < ApplicationController
       result
     end
   end
-  
+
   def lighten_color(hex_color, percent)
     # Convert hex to RGB
     hex = hex_color.gsub('#', '')
@@ -1386,6 +1445,28 @@ class TimeAnalyticsController < ApplicationController
   end
 
   def generate_activity_pivot_chart_data(pivot_data, chart_type, activity_view_state = 'detailed')
+    # Determine what data to use based on view state
+    if activity_view_state == 'summary'
+      # Summary view: group by activity, sorted by hours (descending)
+      sorted_activities = pivot_data[:activities].sort_by { |activity| -(pivot_data[:activity_totals][activity] || 0) }
+      labels = sorted_activities
+      data_values = sorted_activities.map { |activity| pivot_data[:activity_totals][activity] || 0 }
+      raw_keys = nil  # No raw keys for activity names
+    else
+      # Detailed view: group by time period, sorted by hours (descending)
+      combined = pivot_data[:raw_periods].map do |period|
+        {
+          raw_key: period,
+          label: pivot_data[:periods][pivot_data[:raw_periods].index(period)],
+          value: pivot_data[:period_totals][period] || 0
+        }
+      end
+      sorted_combined = combined.sort_by { |item| -item[:value] }
+      
+      labels = sorted_combined.map { |item| item[:label] }
+      data_values = sorted_combined.map { |item| item[:value] }
+      raw_keys = sorted_combined.map { |item| item[:raw_key] }
+    end
     # Get time period data and activity breakdown
     raw_keys = pivot_data[:raw_periods]
     activities = pivot_data[:activities]
@@ -1478,6 +1559,82 @@ class TimeAnalyticsController < ApplicationController
     else
       # Bar chart shows stacked projects per period (colorful breakdown)
       generate_stacked_bar_chart_by_project(raw_keys, projects, matrix_data)
+    end
+  end
+
+  def generate_member_pivot_table(time_entries, grouping)
+    Rails.logger.info "Generating member pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
+    
+    # Get all time entries with their details
+    entries_with_details = time_entries.includes(:user).map do |entry|
+      period_key = get_activity_period_key(entry.spent_on, grouping)
+      member_name = entry.user&.name || 'Unknown User'
+      {
+        period_key: period_key,
+        member_name: member_name,
+        hours: entry.hours
+      }
+    end
+    
+    # Get unique periods and members
+    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
+    members = entries_with_details.map { |e| e[:member_name] }.uniq.sort
+    
+    # Initialize matrix with zeros
+    matrix_data = {}
+    periods.each { |period| matrix_data[period] = {} }
+    
+    # Populate matrix data
+    entries_with_details.each do |entry|
+      period = entry[:period_key]
+      member = entry[:member_name]
+      matrix_data[period][member] ||= 0
+      matrix_data[period][member] += entry[:hours]
+    end
+    
+    # Calculate totals
+    period_totals = {}
+    member_totals = {}
+    grand_total = 0
+    
+    periods.each do |period|
+      period_totals[period] = members.sum { |member| matrix_data[period][member] || 0 }
+      grand_total += period_totals[period]
+    end
+    
+    members.each do |member|
+      member_totals[member] = periods.sum { |period| matrix_data[period][member] || 0 }
+    end
+    
+    {
+      periods: periods.map { |p| format_activity_period_display(p, grouping) },
+      members: members,
+      matrix: matrix_data,
+      period_totals: period_totals,
+      member_totals: member_totals,
+      grand_total: grand_total,
+      raw_periods: periods
+    }
+  end
+
+  def generate_member_pivot_chart_data(pivot_data, chart_type, member_view_state = 'detailed')
+    if member_view_state == 'summary'
+      # Summary view: group by member
+      labels = pivot_data[:members]
+      data_values = pivot_data[:members].map { |member| pivot_data[:member_totals][member] || 0 }
+      raw_keys = nil
+    else
+      # Detailed view: group by time period
+      labels = pivot_data[:periods]
+      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
+      raw_keys = pivot_data[:raw_periods]
+    end
+    
+    case chart_type
+    when 'line'
+      generate_line_chart_from_data(labels, data_values, raw_keys, @grouping)
+    else
+      generate_bar_chart_from_data(labels, data_values, raw_keys, @grouping)
     end
   end
 
@@ -1713,5 +1870,26 @@ class TimeAnalyticsController < ApplicationController
     end
     
     all_months
+  end
+  
+  # Check if current user can view another user's dashboard
+  def user_can_view_member_dashboard?(target_user)
+    return false unless target_user
+    
+    # User can always view their own dashboard
+    return true if target_user.id == User.current.id
+    
+    # Admins can view any dashboard
+    return true if User.current.admin?
+
+    # Super users can view any dashboard
+    return true if TaTeamSetting.user_super?(User.current.id)
+    
+    # Team leads can view dashboards for members in led teams and all descendant teams
+    led_teams = User.current.led_teams
+    return false if led_teams.empty?
+
+    accessible_team_ids = led_teams.flat_map { |team| [team.id] + team.all_descendants.map(&:id) }.uniq
+    TaTeamMembership.where(team_id: accessible_team_ids, user_id: target_user.id).exists?
   end
 end

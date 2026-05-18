@@ -1,0 +1,1959 @@
+<% html_title 'Teams' %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900">Teams</h2>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'New Team', new_admin_ta_team_path, class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <%= link_to 'Settings', admin_ta_team_settings_path, class: 'inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50' %>
+    </div>
+  </div>
+
+  <div id="ta-team-split-layout" class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div id="ta-team-main-column" class="space-y-6 xl:col-span-2">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm xl:flex ta-team-xl-h-780 xl:flex-col">
+        <div class="border-b border-gray-200 px-4 pt-2">
+          <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
+            <li class="me-2">
+              <button type="button"
+                      id="team-main-tab-structure"
+                      data-team-main-tab-target="team-main-panel-structure"
+                      class="ta-view-tab inline-block rounded-t-lg p-4 <%= @active_main_tab == 'structure' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50' %>">
+                <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="5" r="2"></circle>
+                    <circle cx="6" cy="19" r="2"></circle>
+                    <circle cx="18" cy="19" r="2"></circle>
+                    <path d="M12 7v8M12 13H7.5M12 13H16.5"></path>
+                  </svg>
+                  <span>Team Structure</span>
+                </span>
+              </button>
+            </li>
+            <li class="me-2">
+              <button type="button"
+                      id="team-main-tab-members"
+                      data-team-main-tab-target="team-main-panel-members"
+                      class="ta-view-tab inline-block rounded-t-lg p-4 <%= @active_main_tab == 'members' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50' %>">
+                <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M17 20a4 4 0 0 0-8 0"></path>
+                    <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"></path>
+                    <path d="M19 20a6 6 0 0 0-2-4.47"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span>Members</span>
+                  <span class="ts-tab-badge"><%= @member_history_groups.size %></span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div id="team-main-panel-structure" class="ta-team-sidebar-panel <%= 'hidden' unless @active_main_tab == 'structure' %> max-h-[570px] ta-team-xl-max-h-760 overflow-y-scroll overflow-x-hidden p-4 ta-stable-scroll xl:flex-1 xl:min-h-0">
+          <% if @all_teams.empty? %>
+            <p class="text-sm text-gray-500">No teams found.</p>
+          <% else %>
+            <%= ta_team_tree(@root_teams, 0, @team_children_map, @team_active_member_counts, @team_open_hiring_counts, @team_active_memberships_map) %>
+          <% end %>
+        </div>
+
+        <div id="team-main-panel-members" class="ta-team-sidebar-panel <%= 'hidden' unless @active_main_tab == 'members' %> xl:flex-1 xl:min-h-0">
+          <div class="px-4 py-3 text-sm text-gray-500 flex items-center justify-between border-b border-gray-100">
+            <span><%= @member_history_groups.size %> members with team assignments</span>
+            <div class="relative w-full max-w-md">
+              <input type="text" id="ta-member-history-search" placeholder="Search member, team, or role..."
+                     class="ts-search-input !block !w-full !h-[44px] !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+                     oninput="filterMemberHistoryRows()">
+            </div>
+          </div>
+
+          <% if @member_history_groups.any? %>
+            <div class="overflow-x-auto overflow-y-auto pb-4 xl:flex-1 xl:min-h-0">
+              <table class="ts-table w-full text-sm text-left">
+                <thead class="bg-gray-50">
+                  <tr class="border-b border-gray-200">
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                      <span role="button" tabindex="0" onclick="toggleMemberHistorySort('name'); this.blur();"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleMemberHistorySort('name'); }"
+                            class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                        <span>Members</span>
+                        <span id="ta-member-history-sort-icon-name" class="sort desc icon icon-sorted-asc"></span>
+                      </span>
+                    </th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                      <span role="button" tabindex="0" onclick="toggleMemberHistorySort('team'); this.blur();"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleMemberHistorySort('team'); }"
+                            class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                        <span>Team</span>
+                        <span id="ta-member-history-sort-icon-team" class="sort desc icon icon-sorted-asc"></span>
+                      </span>
+                    </th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                      <span role="button" tabindex="0" onclick="toggleMemberHistorySort('start-date'); this.blur();"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleMemberHistorySort('start-date'); }"
+                            class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                        <span>Start Date</span>
+                        <span id="ta-member-history-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                      </span>
+                    </th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                      <span role="button" tabindex="0" onclick="toggleMemberHistorySort('last-updated'); this.blur();"
+                            onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleMemberHistorySort('last-updated'); }"
+                            class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                        <span>Last Updated</span>
+                        <span id="ta-member-history-sort-icon-last-updated" class="sort desc icon icon-sorted-asc"></span>
+                      </span>
+                    </th>
+                    <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @member_history_groups.each_with_index do |group, idx| %>
+                    <% user = group[:user] %>
+                    <% latest_active_membership = group[:memberships].select(&:active?).max_by(&:start_date) %>
+                    <% latest_any_membership = group[:memberships].max_by(&:start_date) %>
+                    <% current_membership = latest_active_membership || latest_any_membership %>
+                    <% current_role = current_membership&.role %>
+                    <% current_team = current_membership&.team %>
+                    <% member_start_date = current_membership&.start_date %>
+                    <% role_label = current_role == 'lead' ? 'Team Lead' : 'Team Member' %>
+                    <% role_classes = current_role == 'lead' ? 'border-indigo-200 bg-indigo-100 text-indigo-700' : 'border-slate-200 bg-slate-100 text-slate-700' %>
+                    <% search_text = [
+                      user.name,
+                      group[:memberships].map { |m| m.team&.name.to_s }.join(' '),
+                      group[:memberships].map(&:role).join(' ')
+                    ].join(' ').downcase %>
+                    <% modal_id = "ta-member-history-modal-#{idx}" %>
+                    <% form_id = current_membership ? "ta-member-history-form-#{current_membership.id}" : nil %>
+                    <% last_updated_on = group[:last_updated_on] %>
+                    <tr class="ts-issue-row ta-member-history-group-row border-b border-gray-100 hover:bg-gray-50"
+                        data-search-text="<%= h(search_text) %>"
+                        data-membership-id="<%= current_membership&.id %>"
+                        data-sort-name="<%= user.name.to_s.downcase %>"
+                        data-sort-team="<%= current_team&.name.to_s.downcase %>"
+                        data-sort-start-date="<%= member_start_date ? member_start_date.to_time.to_i : 0 %>"
+                        data-sort-last-updated="<%= last_updated_on ? last_updated_on.to_i : 0 %>">
+                      <td class="px-4 py-3">
+                        <div class="ta-team-member-view flex items-center gap-2">
+                          <span class="text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+                          <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium <%= role_classes %>"><%= role_label %></span>
+                        </div>
+                        <% if current_membership %>
+                          <div class="ta-team-member-edit hidden tep-inline-form">
+                            <div class="relative inline-flex w-full max-w-[11rem]" id="ta-team-member-role-wrapper-<%= current_membership.id %>">
+                              <button type="button"
+                                      id="ta-team-member-role-btn-<%= current_membership.id %>"
+                                      onclick="toggleTeamMemberRoleDropdown(<%= current_membership.id %>)"
+                                      class="tep-field ta-team-role-button flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                                <span id="ta-team-member-role-text-<%= current_membership.id %>" class="text-gray-700 truncate flex-1"><%= current_membership.lead? ? 'Team Lead' : 'Team Member' %></span>
+                                <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                              </button>
+                              <input type="hidden"
+                                     name="ta_team_membership[role]"
+                                     id="ta-team-member-role-<%= current_membership.id %>"
+                                     value="<%= current_membership.role %>"
+                                     form="<%= form_id %>">
+                              <div id="ta-team-member-role-list-<%= current_membership.id %>"
+                                   class="tep-activity-dropdown ta-team-role-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl"
+                                   style="top: calc(100% + 2px);">
+                                <button type="button"
+                                        class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                        onclick="teamMembersSelectRole(<%= current_membership.id %>, 'member', 'Team Member')">
+                                  Team Member
+                                </button>
+                                <button type="button"
+                                        class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                        onclick="teamMembersSelectRole(<%= current_membership.id %>, 'lead', 'Team Lead')">
+                                  Team Lead
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        <% end %>
+                      </td>
+                      <td class="px-4 py-3 text-gray-600"><%= current_team ? h(current_team.name) : '—' %></td>
+                      <td class="px-4 py-3 text-gray-600">
+                        <div class="ta-team-member-view"><%= member_start_date ? format_date(member_start_date) : '—' %></div>
+                        <% if current_membership %>
+                          <div class="ta-team-member-edit hidden tep-inline-form">
+                            <input type="text"
+                                   id="ta-team-member-start-date-<%= current_membership.id %>"
+                                   name="ta_team_membership[start_date]"
+                                   form="<%= form_id %>"
+                                   value="<%= member_start_date ? member_start_date.strftime('%m/%d/%Y') : '' %>"
+                                   autocomplete="off"
+                                   placeholder="mm/dd/yyyy"
+                                   datepicker
+                                   datepicker-format="mm/dd/yyyy"
+                                   datepicker-autohide
+                                   class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                          </div>
+                        <% end %>
+                      </td>
+                      <td class="px-4 py-3 text-gray-500 text-sm"><%= last_updated_on ? "#{time_ago_in_words(last_updated_on)} ago" : '—' %></td>
+                      <td class="px-4 py-3 text-right">
+                        <div class="ta-team-member-view inline-flex items-center justify-end gap-1">
+                          <button type="button"
+                                  data-modal-target="<%= modal_id %>"
+                                  data-modal-toggle="<%= modal_id %>"
+                                  class="ta-member-details-btn"
+                                  title="View history"
+                                  aria-label="View history">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7S3.732 16.057 2.458 12z"></path>
+                            </svg>
+                          </button>
+                          <% if current_membership && current_team %>
+                            <button type="button"
+                                    onclick="event.stopPropagation(); this.blur(); toggleTeamMemberInlineEdit(<%= current_membership.id %>)"
+                                    class="ta-inline-icon-btn"
+                                    title="Edit"
+                                    aria-label="Edit member">
+                              <span class="material-icons ta-inline-material-icon">edit</span>
+                            </button>
+                            <button type="button"
+                                    onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= current_membership.id %>, '<%= admin_ta_team_membership_path(current_team, current_membership) %>', '<%= form_authenticity_token %>')"
+                                    class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                                    title="Delete"
+                                    aria-label="Delete member">
+                              <span class="material-icons ta-inline-material-icon">delete</span>
+                            </button>
+                          <% end %>
+                        </div>
+                        <% if current_membership %>
+                          <div class="ta-team-member-edit hidden inline-flex items-center justify-end gap-2">
+                            <button type="submit"
+                                    form="<%= form_id %>"
+                                    class="ta-btn-primary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium">Save</button>
+                            <button type="button"
+                                    onclick="event.stopPropagation(); this.blur(); toggleTeamMemberInlineEdit(<%= current_membership.id %>)"
+                                    class="ta-btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium">Cancel</button>
+                          </div>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <div class="hidden">
+              <% @member_history_groups.each do |group| %>
+                <% current_membership = group[:memberships].select(&:active?).max_by(&:start_date) || group[:memberships].max_by(&:start_date) %>
+                <% next unless current_membership && current_membership.team %>
+                <% form_id = "ta-member-history-form-#{current_membership.id}" %>
+                <%= form_tag admin_ta_team_membership_path(current_membership.team, current_membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{current_membership.id})" do %>
+                <% end %>
+              <% end %>
+            </div>
+            <nav id="team-history-member-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Members pagination">
+              <span id="team-history-member-pagination-info" class="text-sm text-gray-700"></span>
+              <ul id="team-history-member-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
+            </nav>
+          <% else %>
+            <div class="px-6 py-10 text-center text-sm text-gray-500">
+              No member assignment history available.
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @member_history_groups.any? %>
+        <% @member_history_groups.each_with_index do |group, idx| %>
+          <% user = group[:user] %>
+          <% modal_id = "ta-member-history-modal-#{idx}" %>
+          <div id="<%= modal_id %>" tabindex="-1" aria-hidden="true" class="ta-member-history-modal hidden fixed top-0 right-0 left-0 z-[9999] flex justify-center items-center w-full h-full bg-gray-900/50">
+            <div class="relative p-4 w-full max-w-3xl max-h-full">
+              <div class="relative bg-white rounded-lg shadow">
+                <div class="flex items-start justify-between p-4 border-b rounded-t">
+                  <h3 class="text-lg font-semibold text-gray-900"><%= h(user.name) %> · Team Assignment History</h3>
+                  <button type="button"
+                          data-modal-hide="<%= modal_id %>"
+                          class="tep-delete-close text-gray-400 bg-transparent rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                    <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="sr-only">Close modal</span>
+                  </button>
+                </div>
+                <div class="p-4 max-h-[70vh] overflow-y-auto">
+                  <table class="ts-table w-full text-sm text-left">
+                    <thead class="bg-gray-50">
+                      <tr class="border-b border-gray-200">
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Team</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Role</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Start Date</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">End Date</th>
+                        <th class="px-3 py-2 text-xs font-semibold text-gray-500 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% group[:memberships].each do |membership| %>
+                        <% history_team_name = membership.team&.name.presence || 'Deleted Team' %>
+                        <tr class="border-b border-gray-100 last:border-0">
+                          <td class="px-3 py-2.5 text-gray-800"><%= h(history_team_name) %></td>
+                          <td class="px-3 py-2.5">
+                            <% if membership.lead? %>
+                              <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                            <% else %>
+                              <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                            <% end %>
+                          </td>
+                          <td class="px-3 py-2.5 text-gray-600"><%= membership.start_date ? format_date(membership.start_date) : '—' %></td>
+                          <td class="px-3 py-2.5 text-gray-600"><%= membership.end_date ? format_date(membership.end_date) : '—' %></td>
+                          <td class="px-3 py-2.5">
+                            <% if membership.active? %>
+                              <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                            <% else %>
+                              <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                            <% end %>
+                          </td>
+                        </tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+
+      <% selected_add_member_team = @all_teams.find { |team| team.id.to_s == @selected_add_member_team_id.to_s } %>
+      <div id="taTeamMembersAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
+        <div class="relative p-4 w-full max-w-3xl max-h-full">
+          <div class="relative bg-white rounded-lg shadow">
+            <div class="flex items-start justify-between p-4 border-b rounded-t">
+              <div>
+                <h3 class="text-xl font-semibold text-gray-900">Add Team Member</h3>
+                <p id="ta-add-team-member-team-hint" class="text-xs text-gray-500 mt-1">Select a team and member to create the assignment.</p>
+              </div>
+              <button type="button"
+                      onclick="teamMembersCloseAddModal()"
+                      class="tep-delete-close text-gray-400 bg-transparent rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                </svg>
+                <span class="sr-only">Close modal</span>
+              </button>
+            </div>
+
+            <div class="p-4 md:p-6 overflow-visible">
+              <form id="ta-team-member-modal-form"
+                    action=""
+                    method="post"
+                    class="space-y-6"
+                    data-create-path-base="<%= admin_ta_team_memberships_path(0) %>"
+                    onsubmit="return submitTeamMemberAddForm()">
+                <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+
+                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div class="md:col-span-2">
+                    <%= label_tag :ta_add_team_member_team_search, 'Team', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+                    <div class="relative min-w-0" id="ta-add-team-member-team-wrapper">
+                      <input type="text"
+                             id="ta-add-team-member-team-search"
+                             value="<%= selected_add_member_team ? h(selected_add_member_team.name) : '' %>"
+                             placeholder="Select team... *"
+                             autocomplete="off"
+                             onclick="teamMembersOpenAddTeamDropdown()"
+                             oninput="teamMembersFilterAddTeams()"
+                             onkeydown="teamMembersHandleAddTeamKey(event)"
+                             class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                             required>
+                      <%= hidden_field_tag 'ta_team_membership[team_id]', @selected_add_member_team_id, id: 'ta-add-team-member-team-id' %>
+                      <div id="ta-add-team-member-team-list"
+                           class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                           style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                        <% @all_teams.each do |team| %>
+                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                          <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                               tabindex="0"
+                               data-id="<%= team.id %>"
+                               data-text="<%= h(team.name) %>"
+                               data-search="<%= team.name.downcase %>"
+                               onclick="teamMembersSelectAddTeam('<%= team.id %>', '<%= j(team.name) %>')"
+                               onkeydown="teamMembersHandleAddTeamOptionKey(event, '<%= team.id %>', '<%= j(team.name) %>')">
+                            <span class="text-gray-700 leading-relaxed"><%= indent.html_safe %><%= h(team.name) %></span>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="md:col-span-2">
+                    <%= label_tag :ta_team_membership_user_search_modal, 'User', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+                    <div class="relative min-w-0" id="ta-add-team-member-user-wrapper">
+                      <input type="text"
+                             id="ta-add-team-member-user-search"
+                             placeholder="Search member... *"
+                             autocomplete="off"
+                             onclick="teamMembersOpenAddUserDropdown()"
+                             oninput="teamMembersFilterAddUsers()"
+                             onkeydown="teamMembersHandleAddUserKey(event)"
+                             class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                             required>
+                      <%= hidden_field_tag 'ta_team_membership[user_id]', nil, id: 'ta-add-team-member-user-id' %>
+                      <div id="ta-add-team-member-user-list"
+                           class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
+                           style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
+                        <% @add_member_available_users.each do |user| %>
+                          <% user_text = "#{user.name} (#{user.mail})" %>
+                          <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
+                               tabindex="0"
+                               data-id="<%= user.id %>"
+                               data-text="<%= j(user_text) %>"
+                               data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                               onclick="teamMembersSelectAddUser('<%= user.id %>', this.getAttribute('data-text'))"
+                               onkeydown="teamMembersHandleAddUserOptionKey(event, '<%= user.id %>', this.getAttribute('data-text'))">
+                            <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+                          </div>
+                        <% end %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="md:col-span-2">
+                    <%= label_tag :ta_add_team_member_role, 'Role', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+                    <div class="relative" id="ta-add-team-member-role-wrapper">
+                      <button type="button"
+                              id="ta-add-team-member-role-btn"
+                              onclick="teamMembersToggleAddRoleDropdown()"
+                              onkeydown="teamMembersHandleAddRoleTriggerKey(event)"
+                              class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                        <span id="ta-add-team-member-role-text" class="text-gray-700 truncate flex-1 text-left"><%= @add_member_membership.role == 'lead' ? 'Team Lead' : 'Team Member' %></span>
+                        <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </button>
+                      <%= hidden_field_tag 'ta_team_membership[role]', @add_member_membership.role, id: 'ta-add-team-member-role-value' %>
+                      <div id="ta-add-team-member-role-list"
+                           class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                        <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
+                          <li>
+                            <button type="button"
+                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                    onclick="teamMembersSelectAddRole('member', 'Team Member')"
+                                    onkeydown="teamMembersHandleAddRoleOptionKey(event, 'member', 'Team Member')">
+                              Team Member
+                            </button>
+                          </li>
+                          <li>
+                            <button type="button"
+                                    class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                    onclick="teamMembersSelectAddRole('lead', 'Team Lead')"
+                                    onkeydown="teamMembersHandleAddRoleOptionKey(event, 'lead', 'Team Lead')">
+                              Team Lead
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">Team leads can view team analytics.</p>
+                  </div>
+
+                  <div>
+                    <%= label_tag :ta_add_team_member_start_date, 'Start Date', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+                    <%= text_field_tag 'ta_team_membership[start_date]',
+                                       (@add_member_membership.start_date || Date.current).strftime('%m/%d/%Y'),
+                                       id: 'ta-add-team-member-start-date',
+                                       autocomplete: 'off',
+                                       placeholder: 'mm/dd/yyyy',
+                                       required: true,
+                                       datepicker: true,
+                                       'datepicker-format': 'mm/dd/yyyy',
+                                       'datepicker-autohide': true,
+                                       class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+                  </div>
+
+                  <div>
+                    <%= label_tag :ta_add_team_member_end_date, 'End Date', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+                    <%= text_field_tag 'ta_team_membership[end_date]',
+                                       '',
+                                       id: 'ta-add-team-member-end-date',
+                                       autocomplete: 'off',
+                                       placeholder: 'mm/dd/yyyy',
+                                       datepicker: true,
+                                       'datepicker-format': 'mm/dd/yyyy',
+                                       'datepicker-autohide': true,
+                                       class: 'ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]' %>
+                    <p class="mt-1 text-xs text-gray-500">Leave empty for active members.</p>
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+                  <button type="button"
+                          onclick="teamMembersCloseAddModal()"
+                          class="ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">
+                    <%= l(:button_cancel) %>
+                  </button>
+                  <button type="submit"
+                          class="ta-btn-save-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Create</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="taTeamMembersDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+        <div class="relative p-4 w-full max-w-md">
+          <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+            <button type="button"
+                    class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+                    onclick="teamMembersCloseDeleteModal()">
+              <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="sr-only">Close modal</span>
+            </button>
+            <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+            </svg>
+            <p class="mb-4 text-gray-500">Are you sure you want to delete this member assignment?</p>
+            <div class="flex justify-center items-center space-x-4">
+              <button type="button" onclick="teamMembersConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+                Delete
+              </button>
+              <button type="button"
+                      onclick="teamMembersCloseDeleteModal()"
+                      class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div id="ta-team-splitter-controls"
+         class="hidden xl:flex"
+         role="separator"
+         aria-label="Resize panel widths"
+         aria-orientation="vertical"
+         title="Drag to resize panels">
+      <span id="ta-team-splitter-handle" class="ta-team-splitter-handle" aria-hidden="true"></span>
+    </div>
+
+    <aside id="ta-team-sidebar-column">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden xl:flex ta-team-xl-h-780 xl:flex-col">
+        <div class="border-b border-gray-200 px-4 pt-2">
+          <ul class="-mb-px flex flex-wrap text-sm font-medium text-center">
+            <li class="me-2">
+              <button type="button" id="team-sidebar-members-tab" data-team-tab-target="team-sidebar-members-panel" class="ta-view-tab inline-block rounded-t-lg p-4 ta-view-tab-active">
+                <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M15 19a4 4 0 0 0-8 0"></path>
+                    <path d="M11 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z"></path>
+                    <path d="M17 8h4"></path>
+                    <path d="M19 6v4"></path>
+                  </svg>
+                  <span>Unassigned</span>
+                  <span class="ts-tab-badge"><%= @unallocated_users.size %></span>
+                </span>
+              </button>
+            </li>
+            <li class="me-2">
+              <button type="button" id="team-sidebar-vacancies-tab" data-team-tab-target="team-sidebar-vacancies-panel" class="ta-view-tab inline-block rounded-t-lg p-4 text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+                <span class="inline-flex items-center gap-2">
+                  <svg class="h-4 w-4 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 21h4"></path>
+                    <path d="M12 21v-6"></path>
+                    <path d="M7 7h10a2 2 0 0 1 2 2v7H5V9a2 2 0 0 1 2-2Z"></path>
+                    <path d="M9 7V6a3 3 0 0 1 6 0v1"></path>
+                  </svg>
+                  <span>Open Positions</span>
+                  <span class="ts-tab-badge"><%= @open_hiring_needs.size %></span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div id="team-sidebar-members-panel" class="p-4 ta-team-sidebar-panel xl:flex-1 xl:min-h-0">
+          <div class="max-h-[760px] ta-team-xl-max-h-760 space-y-3 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
+            <% if @unallocated_users.any? %>
+              <% @unallocated_users.each_with_index do |user, idx| %>
+                <div class="ta-unallocated-member-card rounded-lg border border-[#3b82f6] bg-blue-50/70 p-3"
+                      draggable="true"
+                      data-user-id="<%= user.id %>"
+                      data-user-name="<%= h(user.name) %>"
+                     data-default-role="member">
+                  <button type="button"
+                          class="ta-member-card-toggle w-full flex items-center justify-between gap-2 text-left"
+                          onclick="event.stopPropagation(); toggleMemberAssignCard('<%= idx %>')">
+                    <span class="min-w-0">
+                      <span class="block text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+                      <span class="block text-xs text-gray-500"><%= h(user.mail) %></span>
+                    </span>
+                    <svg id="ta-member-assign-chevron-<%= idx %>" class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </button>
+                  <div id="ta-member-assign-expand-<%= idx %>" class="hidden mt-2">
+                  <%= form_tag assign_member_admin_ta_teams_path, method: :post, class: 'ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2' do %>
+                    <%= hidden_field_tag :user_id, user.id %>
+                    <div class="relative min-w-0">
+                      <button type="button" id="assign-team-button-<%= idx %>" data-ta-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+                        <span class="assign-team-label truncate" data-default-text="Select team">Select team</span>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </button>
+                      <div id="assign-team-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                        <ul class="max-h-48 overflow-y-auto overflow-x-hidden py-1 text-sm text-gray-700">
+                          <% @all_teams.each do |team| %>
+                            <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                            <li>
+                              <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="assign_team_<%= idx %>" data-ta-dropdown-label-target="assign-team-button-<%= idx %>">
+                                <%= indent.html_safe %><%= h(team.name) %>
+                              </button>
+                            </li>
+                          <% end %>
+                        </ul>
+                      </div>
+                      <%= hidden_field_tag :team_id, '', id: "assign_team_#{idx}", required: true %>
+                    </div>
+
+                    <div class="relative w-full">
+                      <button type="button" id="assign-role-button-<%= idx %>" data-ta-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+                        <span class="assign-role-label" data-default-text="Team Member">Team Member</span>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      </button>
+                      <div id="assign-role-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                        <ul class="py-1 text-sm text-gray-700">
+                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="member" data-ta-dropdown-label="Team Member" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Member</button></li>
+                          <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="lead" data-ta-dropdown-label="Team Lead" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Lead</button></li>
+                        </ul>
+                      </div>
+                      <%= hidden_field_tag :role, 'member', id: "assign_role_#{idx}" %>
+                    </div>
+
+                    <%= submit_tag 'Add to Team', class: 'h-10 rounded-lg bg-blue-500 px-3 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap' %>
+                  <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="text-sm text-gray-500">No unassigned members.</p>
+            <% end %>
+          </div>
+        </div>
+
+        <div id="team-sidebar-vacancies-panel" class="hidden p-4 ta-team-sidebar-panel xl:flex-1 xl:min-h-0">
+          <div class="max-h-[760px] ta-team-xl-max-h-760 space-y-2 overflow-y-scroll overflow-x-hidden pr-1 ta-stable-scroll xl:flex-1 xl:min-h-0">
+            <% if @open_hiring_needs.any? %>
+              <% @open_hiring_needs.each do |need| %>
+                <% team_name = need.team&.name.presence || 'Deleted Team' %>
+                <div class="rounded-lg border border-gray-200 p-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-gray-900"><%= h(need.title) %></p>
+                      <p class="text-xs text-gray-500"><%= h(team_name) %></p>
+                      <p class="mt-1 text-xs font-medium text-blue-700">Priority: <%= need.priority.titleize %></p>
+                    </div>
+                    <%= button_to mark_filled_admin_ta_hiring_need_path(need), method: :patch, params: { sidebar_tab: 'vacancies' }, class: 'ta-vacancy-action-button inline-flex items-center rounded-lg bg-emerald-700 px-3 py-2 text-center text-xs font-medium text-white hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-300', form_class: 'shrink-0' do %>
+                      <svg class="mr-1.5 h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Fill Hired
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% else %>
+              <p class="text-sm text-gray-500">No open positions.</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+</div>
+
+
+<script type="text/javascript">
+  function normalizeTeamMemberDate(value) {
+    if (!value) return value;
+    var yyyymmdd = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (yyyymmdd) return value;
+    var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!mmddyyyy) return value;
+    return mmddyyyy[3] + '-' + mmddyyyy[1].padStart(2, '0') + '-' + mmddyyyy[2].padStart(2, '0');
+  }
+
+  function initTeamMemberInlineDatepickers(membershipId) {
+    var input = document.getElementById('ta-team-member-start-date-' + membershipId);
+    if (!input) return;
+    if (input.datepicker && input.datepicker.setOptions) {
+      input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+      return;
+    }
+    if (window.Datepicker) {
+      new window.Datepicker(input, {
+        format: 'mm/dd/yyyy',
+        autohide: true,
+        orientation: 'top auto'
+      });
+    }
+  }
+
+  function toggleTeamMemberInlineEdit(membershipId) {
+    var row = document.querySelector('[data-membership-id="' + membershipId + '"]');
+    if (!row) return;
+    var shouldOpen = !row.classList.contains('is-editing');
+    document.querySelectorAll('.ta-member-history-group-row.is-editing').forEach(function(editRow) {
+      editRow.classList.remove('is-editing');
+      editRow.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+        viewEl.classList.remove('hidden');
+      });
+      editRow.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+        editEl.classList.add('hidden');
+      });
+      teamMembersCloseRoleDropdownByRow(editRow);
+    });
+    if (shouldOpen) {
+      row.classList.add('is-editing');
+      row.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+        viewEl.classList.add('hidden');
+      });
+      row.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+        editEl.classList.remove('hidden');
+      });
+      initTeamMemberInlineDatepickers(membershipId);
+      var roleButton = document.getElementById('ta-team-member-role-btn-' + membershipId);
+      if (roleButton) roleButton.focus();
+    }
+  }
+
+  var teamMembersDropdownState = {};
+
+  function teamMembersEnsureDropdownState(list) {
+    if (!list || !list.id) return null;
+    if (!teamMembersDropdownState[list.id]) {
+      teamMembersDropdownState[list.id] = {
+        parent: list.parentNode,
+        nextSibling: list.nextSibling,
+        anchorId: null
+      };
+    }
+    return teamMembersDropdownState[list.id];
+  }
+
+  function teamMembersPositionFloatingDropdown(list, anchor) {
+    if (!list || !anchor) return;
+    var rect = anchor.getBoundingClientRect();
+    var minWidth = parseFloat(list.style.minWidth || '0') || 0;
+    var targetWidth = Math.max(Math.round(rect.width), Math.round(minWidth));
+    var viewportPadding = 8;
+    var preferredHeight = Math.min(list.scrollHeight || 180, 260);
+    var spaceBelow = Math.max(0, window.innerHeight - rect.bottom - viewportPadding);
+    var spaceAbove = Math.max(0, rect.top - viewportPadding);
+    var openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    var maxHeight = Math.max(100, openUp ? spaceAbove : spaceBelow);
+
+    list.style.position = 'fixed';
+    var left = Math.max(viewportPadding, rect.left);
+    if (left + targetWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - targetWidth);
+    }
+    list.style.left = left + 'px';
+    list.style.width = targetWidth + 'px';
+    list.style.maxHeight = Math.min(preferredHeight, maxHeight) + 'px';
+    list.style.top = openUp ? 'auto' : (rect.bottom + 2) + 'px';
+    list.style.bottom = openUp ? (window.innerHeight - rect.top + 2) + 'px' : 'auto';
+    list.style.zIndex = '10050';
+  }
+
+  function teamMembersOpenFloatingDropdown(list, anchor) {
+    if (!list || !anchor || !list.id || !anchor.id) return;
+    var state = teamMembersEnsureDropdownState(list);
+    if (!state) return;
+    state.anchorId = anchor.id;
+    if (list.parentNode !== document.body) {
+      document.body.appendChild(list);
+    }
+    list.classList.remove('hidden');
+    teamMembersPositionFloatingDropdown(list, anchor);
+  }
+
+  function teamMembersCloseFloatingDropdown(list) {
+    if (!list || !list.id) return;
+    var state = teamMembersDropdownState[list.id];
+    list.classList.add('hidden');
+    if (!state || !state.parent) return;
+    if (list.parentNode !== state.parent) {
+      state.parent.insertBefore(list, state.nextSibling);
+    }
+    state.anchorId = null;
+    list.style.position = '';
+    list.style.left = '';
+    list.style.top = '';
+    list.style.bottom = '';
+    list.style.width = '';
+    list.style.maxHeight = '';
+    list.style.zIndex = '';
+  }
+
+  function teamMembersSyncFloatingDropdownPositions() {
+    Object.keys(teamMembersDropdownState).forEach(function(listId) {
+      var list = document.getElementById(listId);
+      var state = teamMembersDropdownState[listId];
+      if (!list || !state || list.classList.contains('hidden') || !state.anchorId) return;
+      var anchor = document.getElementById(state.anchorId);
+      if (!anchor) {
+        teamMembersCloseFloatingDropdown(list);
+        return;
+      }
+      teamMembersPositionFloatingDropdown(list, anchor);
+    });
+  }
+
+  if (!window.__teamMembersFloatingDropdownListenersBound) {
+    window.addEventListener('resize', teamMembersSyncFloatingDropdownPositions);
+    document.addEventListener('scroll', teamMembersSyncFloatingDropdownPositions, true);
+    window.__teamMembersFloatingDropdownListenersBound = true;
+  }
+
+  function teamMembersCloseRoleDropdown(membershipId) {
+    var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+    if (list) teamMembersCloseFloatingDropdown(list);
+  }
+
+  function teamMembersCloseRoleDropdownByRow(row) {
+    if (!row) return;
+    var membershipId = row.getAttribute('data-membership-id');
+    if (membershipId) teamMembersCloseRoleDropdown(membershipId);
+  }
+
+  function teamMembersCloseAllRoleDropdowns() {
+    document.querySelectorAll('[id^="ta-team-member-role-list-"]').forEach(function(list) {
+      teamMembersCloseFloatingDropdown(list);
+    });
+  }
+
+  function toggleTeamMemberRoleDropdown(membershipId) {
+    var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+    var anchor = document.getElementById('ta-team-member-role-btn-' + membershipId);
+    if (!list || !anchor) return;
+    if (list.classList.contains('hidden')) {
+      teamMembersCloseAllRoleDropdowns();
+      teamMembersOpenFloatingDropdown(list, anchor);
+    } else {
+      teamMembersCloseFloatingDropdown(list);
+    }
+  }
+
+  function teamMembersSelectRole(membershipId, role, label) {
+    var hidden = document.getElementById('ta-team-member-role-' + membershipId);
+    var text = document.getElementById('ta-team-member-role-text-' + membershipId);
+    if (hidden) hidden.value = role;
+    if (text) {
+      text.textContent = label;
+      text.classList.remove('text-gray-400');
+      text.classList.add('text-gray-700');
+    }
+    teamMembersCloseRoleDropdown(membershipId);
+  }
+
+  function submitTeamMemberInlineEdit(membershipId) {
+    var startInput = document.getElementById('ta-team-member-start-date-' + membershipId);
+    if (startInput) startInput.value = normalizeTeamMemberDate(startInput.value);
+    return true;
+  }
+
+  var teamMembersPendingDelete = null;
+
+  function teamMembersOpenDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamMembersCloseDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamMembersDelete(membershipId, url, token) {
+    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token };
+    teamMembersOpenDeleteModal();
+  }
+
+  function teamMembersConfirmDelete() {
+    if (!teamMembersPendingDelete) return;
+    teamMembersCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = teamMembersPendingDelete.url;
+    [['authenticity_token', teamMembersPendingDelete.token], ['_method', 'DELETE']].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function teamHistoryCloseMemberEditingState() {
+    document.querySelectorAll('.ta-member-history-group-row.is-editing').forEach(function(editRow) {
+      editRow.classList.remove('is-editing');
+      editRow.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+        viewEl.classList.remove('hidden');
+      });
+      editRow.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+        editEl.classList.add('hidden');
+      });
+      teamMembersCloseRoleDropdownByRow(editRow);
+    });
+  }
+
+  function resetMemberHistorySortIcons(activeColumn) {
+    var columns = ['name', 'team', 'start-date', 'last-updated'];
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-member-history-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleMemberHistorySort(column) {
+    var tbody = document.querySelector('#team-main-panel-members table.ts-table tbody');
+    if (!tbody) return;
+
+    var rows = Array.from(tbody.querySelectorAll('tr.ta-member-history-group-row'));
+    var sortIcon = document.getElementById('ta-member-history-sort-icon-' + column);
+    if (!sortIcon || !rows.length) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numericColumns = ['start-date', 'last-updated'];
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numericColumns.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetMemberHistorySortIcons(column);
+    applyTeamHistoryPagination('member', true);
+  }
+
+  function teamManagementBuildMembershipPath(teamId) {
+    if (!teamId) return '';
+    var form = document.getElementById('ta-team-member-modal-form');
+    if (!form) return '';
+    var base = form.getAttribute('data-create-path-base') || '';
+    return base.replace('/0/memberships', '/' + teamId + '/memberships');
+  }
+
+  function teamMembersAddTeamElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-member-team-wrapper'),
+      search: document.getElementById('ta-add-team-member-team-search'),
+      hidden: document.getElementById('ta-add-team-member-team-id'),
+      list: document.getElementById('ta-add-team-member-team-list')
+    };
+  }
+
+  function teamMembersOpenAddTeamDropdown() {
+    var els = teamMembersAddTeamElements();
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
+  }
+
+  function teamMembersCloseAddTeamDropdown() {
+    var els = teamMembersAddTeamElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamMembersFilterAddTeams() {
+    var els = teamMembersAddTeamElements();
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function teamMembersSelectAddTeam(teamId, teamName) {
+    var els = teamMembersAddTeamElements();
+    if (els.hidden) els.hidden.value = teamId;
+    if (els.search) els.search.value = teamName;
+    var form = document.getElementById('ta-team-member-modal-form');
+    if (form) form.action = teamManagementBuildMembershipPath(teamId);
+    var hint = document.getElementById('ta-add-team-member-team-hint');
+    if (hint) hint.textContent = 'Adding member to ' + teamName + '.';
+    teamMembersCloseAddTeamDropdown();
+  }
+
+  function teamMembersHandleAddTeamKey(event) {
+    var els = teamMembersAddTeamElements();
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      teamMembersCloseAddTeamDropdown();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function teamMembersHandleAddTeamOptionKey(event, teamId, teamName) {
+    var els = teamMembersAddTeamElements();
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersSelectAddTeam(teamId, teamName);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddTeamDropdown();
+      if (els.search) els.search.focus();
+    }
+  }
+
+  function teamMembersAddUserElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-member-user-wrapper'),
+      search: document.getElementById('ta-add-team-member-user-search'),
+      hidden: document.getElementById('ta-add-team-member-user-id'),
+      list: document.getElementById('ta-add-team-member-user-list')
+    };
+  }
+
+  function teamMembersOpenAddUserDropdown() {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
+    els.list.classList.remove('hidden');
+  }
+
+  function teamMembersCloseAddUserDropdown() {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamMembersFilterAddUsers() {
+    var els = teamMembersAddUserElements();
+    if (!els.search || !els.list) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.list.classList.remove('hidden');
+    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
+      var text = (opt.getAttribute('data-search') || '').toLowerCase();
+      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
+    });
+    if (els.hidden) els.hidden.value = '';
+  }
+
+  function teamMembersSelectAddUser(userId, displayText) {
+    var els = teamMembersAddUserElements();
+    if (els.hidden) els.hidden.value = userId;
+    if (els.search) els.search.value = displayText;
+    teamMembersCloseAddUserDropdown();
+  }
+
+  function teamMembersHandleAddUserKey(event) {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    if (event.key === 'Escape') {
+      teamMembersCloseAddUserDropdown();
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+        return opt.style.display !== 'none';
+      });
+      if (visible.length) visible[0].focus();
+    }
+  }
+
+  function teamMembersHandleAddUserOptionKey(event, userId, displayText) {
+    var els = teamMembersAddUserElements();
+    if (!els.list) return;
+    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
+      return opt.style.display !== 'none';
+    });
+    var current = event.target;
+    var currentIdx = visible.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersSelectAddUser(userId, displayText);
+      if (els.search) els.search.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = visible[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.search) els.search.focus();
+      } else {
+        var prev = visible[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddUserDropdown();
+      if (els.search) els.search.focus();
+    }
+  }
+
+  function teamMembersAddRoleElements() {
+    return {
+      wrapper: document.getElementById('ta-add-team-member-role-wrapper'),
+      button: document.getElementById('ta-add-team-member-role-btn'),
+      label: document.getElementById('ta-add-team-member-role-text'),
+      hidden: document.getElementById('ta-add-team-member-role-value'),
+      list: document.getElementById('ta-add-team-member-role-list')
+    };
+  }
+
+  function teamMembersCloseAddRoleDropdown() {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    els.list.classList.add('hidden');
+  }
+
+  function teamMembersToggleAddRoleDropdown() {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    els.list.classList.toggle('hidden');
+  }
+
+  function teamMembersSelectAddRole(role, label) {
+    var els = teamMembersAddRoleElements();
+    if (els.hidden) els.hidden.value = role;
+    if (els.label) els.label.textContent = label;
+    teamMembersCloseAddRoleDropdown();
+  }
+
+  function teamMembersHandleAddRoleTriggerKey(event) {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersToggleAddRoleDropdown();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (els.list.classList.contains('hidden')) els.list.classList.remove('hidden');
+      var first = els.list.querySelector('.tep-activity-option');
+      if (first) first.focus();
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddRoleDropdown();
+    }
+  }
+
+  function teamMembersHandleAddRoleOptionKey(event, role, label) {
+    var els = teamMembersAddRoleElements();
+    if (!els.list) return;
+    var options = Array.from(els.list.querySelectorAll('.tep-activity-option'));
+    var current = event.target;
+    var currentIdx = options.indexOf(current);
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      teamMembersSelectAddRole(role, label);
+      if (els.button) els.button.focus();
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      var next = options[currentIdx + 1];
+      if (next) next.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (currentIdx === 0) {
+        if (els.button) els.button.focus();
+      } else {
+        var prev = options[currentIdx - 1];
+        if (prev) prev.focus();
+      }
+    } else if (event.key === 'Escape') {
+      teamMembersCloseAddRoleDropdown();
+      if (els.button) els.button.focus();
+    }
+  }
+
+  function initTeamMemberAddDatepickers() {
+    ['ta-add-team-member-start-date', 'ta-add-team-member-end-date'].forEach(function(id) {
+      var input = document.getElementById(id);
+      if (!input) return;
+      if (input.datepicker && input.datepicker.setOptions) {
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+      } else if (window.Datepicker) {
+        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+      }
+      if (!input.dataset.datepickerLayerBound) {
+        ['focus', 'click'].forEach(function(eventName) {
+          input.addEventListener(eventName, function() {
+            setTimeout(teamMembersRaiseDatepickerLayer, 0);
+          });
+        });
+        input.dataset.datepickerLayerBound = '1';
+      }
+    });
+  }
+
+  function teamMembersRaiseDatepickerLayer() {
+    document.querySelectorAll('.datepicker, .datepicker-dropdown, .datepicker-picker').forEach(function(el) {
+      el.style.zIndex = '12000';
+    });
+  }
+
+  function teamMembersOpenAddModal() {
+    var modal = document.getElementById('taTeamMembersAddModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    initTeamMemberAddDatepickers();
+    teamMembersRaiseDatepickerLayer();
+    var userSearch = document.getElementById('ta-add-team-member-user-search');
+    if (userSearch) userSearch.focus();
+  }
+
+  function teamManagementOpenAddMemberModal(teamId, teamName) {
+    teamMembersOpenAddModal();
+    if (teamId && teamName) {
+      teamMembersSelectAddTeam(String(teamId), String(teamName));
+    }
+  }
+
+  function teamMembersCloseAddModal() {
+    var modal = document.getElementById('taTeamMembersAddModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    teamMembersCloseAddTeamDropdown();
+    teamMembersCloseAddUserDropdown();
+    teamMembersCloseAddRoleDropdown();
+  }
+
+  function submitTeamMemberAddForm() {
+    var form = document.getElementById('ta-team-member-modal-form');
+    var teamField = document.getElementById('ta-add-team-member-team-id');
+    if (!form || !teamField || !teamField.value) {
+      alert('Please select a team.');
+      return false;
+    }
+    form.action = teamManagementBuildMembershipPath(teamField.value);
+    var startInput = document.getElementById('ta-add-team-member-start-date');
+    var endInput = document.getElementById('ta-add-team-member-end-date');
+    if (startInput) startInput.value = normalizeTeamMemberDate(startInput.value.trim());
+    if (endInput) endInput.value = normalizeTeamMemberDate(endInput.value.trim());
+    return true;
+  }
+
+  function teamMembersCloseDeleteModalIfBackdrop(event) {
+    var deleteModal = document.getElementById('taTeamMembersDeleteModal');
+    if (deleteModal && !deleteModal.classList.contains('hidden') && event.target === deleteModal) {
+      teamMembersCloseDeleteModal();
+    }
+    var addModal = document.getElementById('taTeamMembersAddModal');
+    if (addModal && !addModal.classList.contains('hidden') && event.target === addModal) {
+      teamMembersCloseAddModal();
+    }
+  }
+
+  function resetVacancyHistorySortIcons(activeColumn) {
+    var columns = ['position', 'team', 'priority', 'status', 'opened', 'filled', 'duration'];
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-vacancy-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleVacancyHistorySort(column) {
+    var panel = document.getElementById('team-history-panel-vacancy');
+    var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
+    if (!tbody) return;
+
+    var rows = Array.from(tbody.querySelectorAll('tr.ta-vacancy-row'));
+    var sortIcon = document.getElementById('ta-vacancy-sort-icon-' + column);
+    if (!sortIcon) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numericColumns = ['priority', 'status', 'opened', 'filled', 'duration'];
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numericColumns.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetVacancyHistorySortIcons(column);
+    applyTeamHistoryPagination('vacancy', true);
+  }
+
+  var teamHistoryPagination = {
+    vacancy: { currentPage: 1, perPage: 10 },
+    member: { currentPage: 1, perPage: 10 }
+  };
+
+  function teamHistoryCreatePageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
+
+  function teamHistoryRenderPaginationControls(type, totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('team-history-' + type + '-pagination');
+    var info = document.getElementById('team-history-' + type + '-pagination-info');
+    var links = document.getElementById('team-history-' + type + '-pagination-links');
+    if (!nav || !info || !links) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    var state = teamHistoryPagination[type];
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + (type === 'vacancy' ? ' hiring requests' : ' members');
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (state.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(teamHistoryCreatePageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: state.currentPage === 1,
+      onClick: function() {
+        state.currentPage -= 1;
+        applyTeamHistoryPagination(type, true);
+      }
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === state.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(teamHistoryCreatePageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            state.currentPage = pageNumber;
+            applyTeamHistoryPagination(type, true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (state.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(teamHistoryCreatePageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: state.currentPage === totalPages,
+      onClick: function() {
+        state.currentPage += 1;
+        applyTeamHistoryPagination(type, true);
+      }
+    }));
+  }
+
+  function teamHistoryGetRows(type) {
+    if (type === 'vacancy') {
+      return Array.from(document.querySelectorAll('#team-history-panel-vacancy .ta-vacancy-row'));
+    }
+    return Array.from(document.querySelectorAll('#team-main-panel-members .ta-member-history-group-row'));
+  }
+
+  function applyTeamHistoryPagination(type, preservePage) {
+    var state = teamHistoryPagination[type];
+    if (!state) return;
+
+    var memberHistorySearchInput = document.getElementById('ta-member-history-search');
+    var query = type === 'member'
+      ? ((memberHistorySearchInput && memberHistorySearchInput.value) || '').toLowerCase().trim()
+      : '';
+    var rows = teamHistoryGetRows(type);
+    var matchedRows = rows.filter(function(row) {
+      var text = (row.getAttribute('data-search-text') || '').toLowerCase();
+      return !query || text.indexOf(query) !== -1;
+    });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / state.perPage));
+    if (!preservePage) {
+      state.currentPage = 1;
+    } else if (state.currentPage > totalPages) {
+      state.currentPage = totalPages;
+    }
+
+    var start = (state.currentPage - 1) * state.perPage;
+    var end = start + state.perPage;
+    var currentRows = matchedRows.slice(start, end);
+    var visibleSet = new Set(currentRows);
+
+    rows.forEach(function(row) {
+      var shouldShow = visibleSet.has(row);
+      row.style.display = shouldShow ? '' : 'none';
+      row.classList.remove('ta-member-history-last-visible-row');
+      if (!shouldShow && row.classList.contains('is-editing')) {
+        teamHistoryCloseMemberEditingState();
+      }
+    });
+
+    var lastVisibleRow = currentRows[currentRows.length - 1];
+    if (lastVisibleRow) {
+      lastVisibleRow.classList.add('ta-member-history-last-visible-row');
+    }
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    teamHistoryRenderPaginationControls(type, matchedRows.length, totalPages, startIndex, endIndex);
+  }
+
+  function filterMemberHistoryRows() {
+    applyTeamHistoryPagination('member', false);
+  }
+
+  function toggleMemberAssignCard(cardId) {
+    var expand = document.getElementById('ta-member-assign-expand-' + cardId);
+    var chevron = document.getElementById('ta-member-assign-chevron-' + cardId);
+    if (!expand || !chevron) return;
+
+    var willOpen = expand.classList.contains('hidden');
+    expand.classList.toggle('hidden');
+    chevron.style.transform = willOpen ? 'rotate(90deg)' : '';
+  }
+
+  function setupTeamDragAndDrop() {
+    var memberCards = document.querySelectorAll('.ta-unallocated-member-card[data-user-id]');
+    var teamDropzones = document.querySelectorAll('.ta-team-dropzone[data-team-id]');
+
+    memberCards.forEach(function(card) {
+      card.addEventListener('dragstart', function(event) {
+        card.classList.add('ta-dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', JSON.stringify({
+          userId: card.getAttribute('data-user-id'),
+          userName: card.getAttribute('data-user-name') || '',
+          role: card.getAttribute('data-default-role') || 'member'
+        }));
+      });
+
+      card.addEventListener('dragend', function() {
+        card.classList.remove('ta-dragging');
+        document.querySelectorAll('.ta-team-dropzone.ta-dropzone-hover').forEach(function(zone) {
+          zone.classList.remove('ta-dropzone-hover');
+        });
+      });
+    });
+
+    teamDropzones.forEach(function(zone) {
+      zone.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        zone.classList.add('ta-dropzone-hover');
+      });
+
+      zone.addEventListener('dragenter', function(event) {
+        event.preventDefault();
+        zone.classList.add('ta-dropzone-hover');
+      });
+
+      zone.addEventListener('dragleave', function(event) {
+        var related = event.relatedTarget;
+        if (!related || !zone.contains(related)) {
+          zone.classList.remove('ta-dropzone-hover');
+        }
+      });
+
+      zone.addEventListener('drop', function(event) {
+        event.preventDefault();
+        zone.classList.remove('ta-dropzone-hover');
+
+        var payloadRaw = event.dataTransfer.getData('text/plain');
+        if (!payloadRaw) return;
+
+        var payload;
+        try {
+          payload = JSON.parse(payloadRaw);
+        } catch (_error) {
+          return;
+        }
+
+        var userId = payload.userId;
+        var teamId = zone.getAttribute('data-team-id');
+        var role = payload.role || 'member';
+        if (!userId || !teamId) return;
+
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.action = '<%= assign_member_admin_ta_teams_path %>';
+        form.style.display = 'none';
+
+        var tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'authenticity_token';
+        tokenInput.value = '<%= form_authenticity_token %>';
+        form.appendChild(tokenInput);
+
+        var userInput = document.createElement('input');
+        userInput.type = 'hidden';
+        userInput.name = 'user_id';
+        userInput.value = userId;
+        form.appendChild(userInput);
+
+        var teamInput = document.createElement('input');
+        teamInput.type = 'hidden';
+        teamInput.name = 'team_id';
+        teamInput.value = teamId;
+        form.appendChild(teamInput);
+
+        var roleInput = document.createElement('input');
+        roleInput.type = 'hidden';
+        roleInput.name = 'role';
+        roleInput.value = role;
+        form.appendChild(roleInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    });
+  }
+
+  function setupTeamMemberToggles() {
+    document.querySelectorAll('[data-ta-member-toggle="true"]').forEach(function(button) {
+      var targetId = button.getAttribute('data-collapse-toggle');
+      if (!targetId) return;
+
+      var target = document.getElementById(targetId);
+      var icon = button.querySelector('[data-ta-member-toggle-icon="true"]');
+      if (!target || !icon) return;
+
+      function syncState() {
+        var expanded = !target.classList.contains('hidden');
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        icon.style.transform = expanded ? 'rotate(90deg)' : '';
+      }
+
+      button.addEventListener('click', function() {
+        setTimeout(syncState, 0);
+      });
+
+      syncState();
+    });
+  }
+
+  document.addEventListener('click', function(event) {
+    var addTeamEls = teamMembersAddTeamElements();
+    if (addTeamEls.wrapper && addTeamEls.list) {
+      var clickedInsideTeamList = !!addTeamEls.list.contains(event.target);
+      if (!addTeamEls.wrapper.contains(event.target) && !clickedInsideTeamList) {
+        teamMembersCloseAddTeamDropdown();
+      }
+    }
+
+    var addUserEls = teamMembersAddUserElements();
+    if (addUserEls.wrapper && addUserEls.list) {
+      var clickedInsideAddUserList = !!addUserEls.list.contains(event.target);
+      if (!addUserEls.wrapper.contains(event.target) && !clickedInsideAddUserList) {
+        teamMembersCloseAddUserDropdown();
+      }
+    }
+
+    var addRoleEls = teamMembersAddRoleElements();
+    if (addRoleEls.wrapper && addRoleEls.list && !addRoleEls.wrapper.contains(event.target) && !addRoleEls.list.contains(event.target)) {
+      teamMembersCloseAddRoleDropdown();
+    }
+
+    document.querySelectorAll('[id^="ta-team-member-role-wrapper-"]').forEach(function(wrapper) {
+      var membershipId = wrapper.id.replace('ta-team-member-role-wrapper-', '');
+      var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+      if (!list) return;
+      if (!wrapper.contains(event.target) && !list.contains(event.target)) {
+        teamMembersCloseFloatingDropdown(list);
+      }
+    });
+
+    teamMembersCloseDeleteModalIfBackdrop(event);
+  });
+
+  if (!window.__teamManagementModalListenersBound) {
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        teamMembersCloseAddModal();
+        teamMembersCloseDeleteModal();
+      }
+    });
+    window.__teamManagementModalListenersBound = true;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    function closeAllDropdowns() {
+      document.querySelectorAll('[data-ta-dropdown-menu="true"]').forEach(function(dropdown) {
+        dropdown.classList.add('hidden');
+      });
+      document.querySelectorAll('[data-ta-hiring-team-menu="true"]').forEach(function(dropdown) {
+        dropdown.classList.add('hidden');
+      });
+    }
+
+    document.addEventListener('click', function(event) {
+      var hiringToggleButton = event.target.closest('[data-ta-hiring-team-toggle]');
+      if (hiringToggleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var hiringDropdown = document.getElementById('ta-hiring-team-dropdown');
+        if (!hiringDropdown) return;
+        var isHidden = hiringDropdown.classList.contains('hidden');
+        closeAllDropdowns();
+        if (isHidden) hiringDropdown.classList.remove('hidden');
+        return;
+      }
+
+      var hiringOptionButton = event.target.closest('[data-ta-hiring-team-value]');
+      if (hiringOptionButton) {
+        event.preventDefault();
+        var hiringValue = hiringOptionButton.getAttribute('data-ta-hiring-team-value');
+        var hiringLabel = hiringOptionButton.getAttribute('data-ta-hiring-team-label');
+        var hiringHiddenInput = document.getElementById('ta-hiring-need-team-id');
+        var hiringButtonLabel = document.getElementById('ta-hiring-team-label');
+        if (hiringHiddenInput) hiringHiddenInput.value = hiringValue;
+        if (hiringButtonLabel) hiringButtonLabel.textContent = hiringLabel;
+        closeAllDropdowns();
+        return;
+      }
+
+      var toggleButton = event.target.closest('[data-ta-dropdown-toggle]');
+      if (toggleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var dropdownId = toggleButton.getAttribute('data-ta-dropdown-toggle');
+        var dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        var isHidden = dropdown.classList.contains('hidden');
+        closeAllDropdowns();
+        if (isHidden) dropdown.classList.remove('hidden');
+        return;
+      }
+
+      var optionButton = event.target.closest('[data-ta-dropdown-target]');
+      if (optionButton) {
+        event.preventDefault();
+        var value = optionButton.getAttribute('data-ta-dropdown-value');
+        var label = optionButton.getAttribute('data-ta-dropdown-label');
+        var targetId = optionButton.getAttribute('data-ta-dropdown-target');
+        var buttonId = optionButton.getAttribute('data-ta-dropdown-label-target');
+        var hiddenInput = document.getElementById(targetId);
+        var button = document.getElementById(buttonId);
+        if (hiddenInput) hiddenInput.value = value;
+        if (button) {
+          var labelEl = button.querySelector('span');
+          if (labelEl) labelEl.textContent = label;
+        }
+        closeAllDropdowns();
+        return;
+      }
+
+      closeAllDropdowns();
+    });
+
+    document.addEventListener('submit', function(event) {
+      if (!event.target.classList.contains('ta-inline-assignment-form')) return;
+      var teamField = event.target.querySelector('input[name="team_id"]');
+      if (!teamField || !teamField.value) {
+        event.preventDefault();
+        alert('Please select a team.');
+      }
+    }, true);
+
+    function switchTeamSidebarTab(targetPanelId) {
+      var tabs = [
+        { tab: document.getElementById('team-sidebar-members-tab'), panel: document.getElementById('team-sidebar-members-panel') },
+        { tab: document.getElementById('team-sidebar-vacancies-tab'), panel: document.getElementById('team-sidebar-vacancies-panel') }
+      ];
+
+      tabs.forEach(function(item) {
+        if (!item.tab || !item.panel) return;
+        var active = item.panel.id === targetPanelId;
+        item.panel.classList.toggle('hidden', !active);
+        item.tab.classList.toggle('ta-view-tab-active', active);
+        if (active) {
+          item.tab.classList.remove('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
+        } else {
+          item.tab.classList.add('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
+        }
+      });
+      updateWorkforceOverviewCountBadge(targetPanelId);
+    }
+
+    function updateWorkforceOverviewCountBadge(activePanelId) {
+      var badge = document.getElementById('workforce-overview-count-badge');
+      if (!badge) return;
+      if (activePanelId === 'team-sidebar-vacancies-panel') {
+        badge.textContent = '<%= @open_hiring_needs.size %> open positions';
+      } else {
+        badge.textContent = '<%= @unallocated_users.size %> unallocated';
+      }
+    }
+
+    document.querySelectorAll('[data-team-tab-target]').forEach(function(tabButton) {
+      tabButton.addEventListener('click', function() {
+        switchTeamSidebarTab(tabButton.getAttribute('data-team-tab-target'));
+      });
+    });
+
+    function switchTeamMainTab(targetPanelId) {
+      var tabs = [
+        { tab: document.getElementById('team-main-tab-structure'), panel: document.getElementById('team-main-panel-structure') },
+        { tab: document.getElementById('team-main-tab-members'), panel: document.getElementById('team-main-panel-members') }
+      ];
+
+      tabs.forEach(function(item) {
+        if (!item.tab || !item.panel) return;
+        var active = item.panel.id === targetPanelId;
+        item.panel.classList.toggle('hidden', !active);
+        item.tab.classList.toggle('ta-view-tab-active', active);
+        if (active) {
+          item.tab.classList.remove('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
+        } else {
+          item.tab.classList.add('text-gray-500', 'hover:text-gray-600', 'hover:bg-gray-50');
+        }
+      });
+
+      if (targetPanelId === 'team-main-panel-members') {
+        applyTeamHistoryPagination('member', true);
+      }
+    }
+
+    document.querySelectorAll('[data-team-main-tab-target]').forEach(function(tabButton) {
+      tabButton.addEventListener('click', function() {
+        switchTeamMainTab(tabButton.getAttribute('data-team-main-tab-target'));
+      });
+    });
+
+    function setupTeamSplitLayout() {
+      var splitLayout = document.getElementById('ta-team-split-layout');
+      var mainColumn = document.getElementById('ta-team-main-column');
+      var splitter = document.getElementById('ta-team-splitter-controls');
+      if (!splitLayout || !mainColumn || !splitter) return;
+
+      var SPLIT_STORAGE_KEY = 'taTeamSplitLeftPercent';
+      var DEFAULT_LEFT_PERCENT = 64;
+      var MIN_LEFT_PERCENT = 22;
+      var MAX_LEFT_PERCENT = 78;
+      var dragging = false;
+      var pointerId = null;
+      var mediaQuery = window.matchMedia('(min-width: 1280px)');
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function isDesktopWidth() {
+        return mediaQuery.matches;
+      }
+
+      function applySplitPercent(percent, persist) {
+        var safePercent = clamp(percent, MIN_LEFT_PERCENT, MAX_LEFT_PERCENT);
+        mainColumn.style.flexBasis = safePercent + '%';
+        if (persist && window.sessionStorage) {
+          sessionStorage.setItem(SPLIT_STORAGE_KEY, String(safePercent));
+        }
+      }
+
+      function loadSavedSplitPercent() {
+        var saved = window.sessionStorage ? sessionStorage.getItem(SPLIT_STORAGE_KEY) : null;
+        var parsed = parseFloat(saved);
+        if (Number.isNaN(parsed)) return DEFAULT_LEFT_PERCENT;
+        return clamp(parsed, MIN_LEFT_PERCENT, MAX_LEFT_PERCENT);
+      }
+
+      function updateSplitFromPointer(clientX, persist) {
+        var rect = splitLayout.getBoundingClientRect();
+        if (!rect.width) return;
+        var percent = ((clientX - rect.left) / rect.width) * 100;
+        applySplitPercent(percent, persist);
+      }
+
+      splitter.addEventListener('pointerdown', function(event) {
+        if (!isDesktopWidth()) return;
+        dragging = true;
+        pointerId = event.pointerId;
+        splitter.classList.add('is-dragging');
+        document.body.classList.add('ta-team-split-dragging');
+        if (splitter.setPointerCapture) splitter.setPointerCapture(pointerId);
+        event.preventDefault();
+      });
+
+      window.addEventListener('pointermove', function(event) {
+        if (!dragging || !isDesktopWidth()) return;
+        if (pointerId !== null && event.pointerId !== pointerId) return;
+        updateSplitFromPointer(event.clientX, true);
+      });
+
+      function stopDragging(event) {
+        if (!dragging) return;
+        if (event && pointerId !== null && event.pointerId !== pointerId) return;
+        dragging = false;
+        splitter.classList.remove('is-dragging');
+        document.body.classList.remove('ta-team-split-dragging');
+        if (pointerId !== null && splitter.releasePointerCapture) {
+          try { splitter.releasePointerCapture(pointerId); } catch (_error) {}
+        }
+        pointerId = null;
+      }
+
+      window.addEventListener('pointerup', stopDragging);
+      window.addEventListener('pointercancel', stopDragging);
+
+      function syncSplitForViewport() {
+        if (!isDesktopWidth()) {
+          mainColumn.style.flexBasis = '';
+          return;
+        }
+        applySplitPercent(loadSavedSplitPercent(), false);
+      }
+
+      syncSplitForViewport();
+      window.addEventListener('resize', syncSplitForViewport);
+    }
+
+    resetVacancyHistorySortIcons('position');
+    resetMemberHistorySortIcons('name');
+    switchTeamSidebarTab('<%= @active_sidebar_tab == 'vacancies' ? 'team-sidebar-vacancies-panel' : 'team-sidebar-members-panel' %>');
+    updateWorkforceOverviewCountBadge('<%= @active_sidebar_tab == 'vacancies' ? 'team-sidebar-vacancies-panel' : 'team-sidebar-members-panel' %>');
+    setupTeamDragAndDrop();
+    setupTeamMemberToggles();
+    setupTeamSplitLayout();
+    initTeamMemberAddDatepickers();
+    applyTeamHistoryPagination('vacancy', false);
+    applyTeamHistoryPagination('member', false);
+    switchTeamMainTab('<%= @active_main_tab == 'members' ? 'team-main-panel-members' : 'team-main-panel-structure' %>');
+    setTimeout(function() { applyTeamHistoryPagination('member', true); }, 0);
+
+    <% if @show_add_member_modal %>
+      teamMembersOpenAddModal();
+      <% if selected_add_member_team %>
+        teamMembersSelectAddTeam('<%= selected_add_member_team.id %>', '<%= j(selected_add_member_team.name) %>');
+      <% end %>
+    <% end %>
+
+    // Prevent default first-input autofocus from selecting the hiring title field on initial page load.
+    function clearInitialHiringTitleFocus() {
+      var hiringTitleInput = document.getElementById('ta_hiring_need_title');
+      if (!hiringTitleInput) return;
+      if (document.activeElement === hiringTitleInput) {
+        hiringTitleInput.blur();
+      }
+    }
+    setTimeout(clearInitialHiringTitleFocus, 0);
+    setTimeout(clearInitialHiringTitleFocus, 100);
+
+    // Keep initial server-rendered tab state to avoid first-paint layout mutation
+  });
+</script>

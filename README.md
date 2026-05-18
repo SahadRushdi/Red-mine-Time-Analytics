@@ -39,6 +39,22 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Pre-defined Holidays**: Includes Sri Lankan public holidays, Poya days, and Islamic holidays
 - **See**: [Custom Holidays User Guide](CUSTOM_HOLIDAYS_USER_GUIDE.md) for detailed documentation
 
+### Leave-Aware Active Days (Admin + Dashboards)
+- **Multiple Leave Ingestion Approaches**:
+  - Gmail OAuth 2.0 (recommended default)
+  - Domain-Wide Delegation (DWD)
+  - Google Apps Script webhook push
+- **Dedicated Leave Config Page**: Configure leave ingestion from **Administration → Leave Count**
+- **Admin Leaves Operations Page**: Use top-menu **Leaves** (admins only) for filtering, totals, grouped daily views, and unflagging records
+- **Historical + Incremental Sync**: Available for OAuth and DWD approaches
+- **Leave-aware Active Days**: Individual dashboard active days now uses `Working Days - Leave Days`
+- **Leave-aware Averages**: Individual averages and team overview averages exclude synced leave days from denominators
+- **Natural Language Parsing**: Chronic + Nickel parse leave dates from the email subject first, then the body, then the sent date as a last fallback
+- **Half-Day Detection**: Emails containing `half day`, `morning`, or `evening` are counted as `0.5`; full-day phrases stay `1.0`
+- **Reply Updates**: Follow-up replies in the same thread replace earlier leave records so amendments are not double-counted
+- **Deduplication/Amendments**: Same-day updates replace prior values to avoid double counting
+- **Hybrid AI Extraction**: Simple subject-only leave requests are parsed deterministically, and complex/reply/range cases can be routed to AI extraction
+
 ### UI/UX Improvements
 - **Modern Button System**: Unified button styling with shared base classes for consistency
   - Primary blue buttons for main actions (Apply, Show Summary View, Active toggle)
@@ -56,8 +72,23 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Mobile-First Design**: Sections stack vertically on smaller screens
 - **Smart Chart Switching**: Charts automatically update when toggling between summary and detailed views
 
+### Team Dashboard
+- **Team Analytics Dashboard**: Team productivity insights and workload distribution for team leads
+- **Multiple View Modes**: Time, Activity, Project, and Members views
+- **Team Configuration**: Admin interface for managing teams, members, and project assignments
+- **Personal Projects Grouping**: Automatically group sub-projects as "Personal Projects" in dashboard
+  - Configure parent project URL in team settings
+  - All sub-projects (including nested) automatically grouped
+  - Simplifies dashboard view for teams with many personal projects
+  - Real-time URL validation before save
+- **Hierarchical Team Structure**: Support for parent-child team relationships
+- **Historical Tracking**: Track member and project assignments with date ranges
+- **Access Control**: Team leads see their teams and sub-teams; super users see all teams without team assignment
+ - **Exclusion List**: Exclude specific users (e.g., C-level executives) from analytics with optional start/end dates
+- **Interactive Charts**: Same powerful Chart.js visualizations as Individual Dashboard
+- **Export Functionality**: CSV export for team time entries
+
 ### Coming Soon
-- **Team Dashboard**: Team productivity insights and workload distribution
 - **Custom Dashboard**: Personalized analytics views with configurable widgets
 
 ## Installation
@@ -104,6 +135,49 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 7. **Data Table**: Detailed results below the analytics section with pagination
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
 
+### Leave Mailbox Setup
+1. Go to **Administration → Leave Count**
+2. Configure common fields:
+   - Leave recipient email
+   - Historical sync start date
+   - Sync enabled toggle
+3. Choose one ingestion approach:
+   - **Gmail OAuth 2.0 (Recommended)**: set OAuth client ID/secret + account email, save, then click **Connect Gmail Account**
+   - **Domain-Wide Delegation**: set delegated user + service account JSON
+   - **Google Apps Script (Webhook Push)**: copy webhook URL and deploy script template from the page
+4. Configure **AI model** extraction for edge cases (optional):
+   - Enable AI extraction
+   - Choose provider (Google/OpenAI/Anthropic/Custom)
+   - Set model + API key (+ base URL for custom provider)
+5. Save settings
+6. For OAuth/DWD, run **Historical Sync** once, then **Incremental Sync** (or schedule rake task)
+7. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
+
+### Teams Admin Payload API
+- **Endpoint**: `GET /admin/ta_teams/payload.json`
+- **Auth**: Requires admin user API key (session cookie method will not work reliably due to expiration)
+  - Pass API key via **query parameter**: `?api_key=<your_api_key>`
+  - OR via **header**: `X-Redmine-API-Key: <your_api_key>`
+- **Getting your API Key**:
+  - Log in as admin → **My Account** → **API Access Key** → **Show**
+- **Important**: After deploying, **restart Redmine** for API key authentication to take effect
+- **Query Params**:
+  - `api_key` (required, or use `X-Redmine-API-Key` header)
+  - `limit` (default `100`, max `500`)
+  - `offset` (default `0`)
+- **Response**:
+  - `data.teams`: Team hierarchy with `id`, `name`, `parentTeamId`, `leadMemberIds`, `memberIds`, `metadata`
+  - `data.members`: Unique users with `id`, `name`, `email`, `status`, `metadata.memberships`
+  - `pagination`: `{ limit, offset, totalTeams, totalMembers }`
+- **Error Handling**:
+  - No/invalid API key: `HTTP 401` with `{ error: 'API key is required' }`
+  - Non-admin API key: `HTTP 403` with `{ error: 'Invalid API key or insufficient permissions' }`
+- **Example curl request**:
+  ```bash
+  curl -X GET "http://localhost:3000/admin/ta_teams/payload.json?limit=100&offset=0&api_key=YOUR_API_KEY" \
+    -H "Accept: application/json"
+  ```
+
 ### Chart Interaction
 - **View-Specific Defaults**: Time Overview use bar charts, Activity and Grouping views use pie charts by default
 - Use the chart type dropdown to switch between bar, line, and pie charts
@@ -122,6 +196,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Views**: Optimized ERB templates with side-by-side analytics layout
 - **Chart Library**: Chart.js for interactive visualizations with real-time type switching
 - **Utilities**: Modular chart generation and CSV export helpers
+- **Leave Sync Services**: `LeaveSyncService`, provider adapters (OAuth/DWD/GAS), `HybridLeaveExtractor`, `SimpleLeaveEmailParser`, `AiLeaveExtractor`, and `LeaveEmailParser` under `lib/redmine_time_analytics/`
 
 ### UI/UX Design
 The plugin implements a modern, space-optimized design:
@@ -241,6 +316,27 @@ redmine_time_analytics/
 ```
 
 ### Recent Improvements (January 2026)
+
+#### Personal Projects Grouping Feature (January 28, 2026)
+- **Simplified Project View**: Automatically group personal projects in team dashboard
+  - Admin configures parent project URL in team settings (e.g., `http://0.0.0.0:3000/projects/iot-team`)
+  - All sub-projects (including nested levels) automatically grouped as "Personal Projects"
+  - Reduces dashboard clutter for teams with many personal/individual projects
+  - Main team projects (e.g., ADMS, Switchgear) shown separately
+- **Real-time URL Validation**: AJAX validation before saving team configuration
+  - Validates project exists in current Redmine instance
+  - Shows green checkmark for valid URLs, red error for invalid
+  - Prevents configuration mistakes
+- **Recursive Sub-project Discovery**: Automatically includes all nested sub-projects
+  - Uses Redmine's native project hierarchy (parent-child relationships)
+  - No manual maintenance required
+  - Updates automatically when new sub-projects are added
+- **Backward Compatible**: Teams without personal project URL work as before
+- **Usage Example**:
+  - Grid Control Team has main projects: ADMS, Switchgear
+  - Configure personal project URL: `http://0.0.0.0:3000/projects/iot-team`
+  - All personal projects (Sahad, Dihan, Lakshan, etc.) grouped as "Personal Projects"
+  - Dashboard shows 3 entries instead of 20+: ADMS, Switchgear, Personal Projects
 
 #### Custom Holiday Management UI (January 20, 2026)
 - **Admin Interface**: Web-based UI for managing holidays without code changes

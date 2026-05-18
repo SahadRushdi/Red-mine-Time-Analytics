@@ -1,0 +1,770 @@
+<% html_title "Team Details" %>
+
+<% content_for :header_tags do %>
+  <%= stylesheet_link_tag 'flowbite.min.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
+  <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= h(@team.name) %></h2>
+      <p class="text-sm text-gray-500">Team details, recent memberships, and assigned projects.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <%= link_to 'Edit Team', edit_admin_ta_team_path(@team), class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+      <button type="button"
+              onclick="teamDelete('<%= admin_ta_team_path(@team) %>', '<%= form_authenticity_token %>')"
+              class="ta-btn-danger inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium">Delete Team</button>
+      <%= link_to 'Back to Teams', admin_ta_teams_path, class: 'ta-btn-secondary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Full Path</p>
+        <p class="mt-1 text-sm font-medium text-gray-900"><%= h(@team.full_path) %></p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Parent Team</p>
+        <p class="mt-1 text-sm font-medium text-gray-900">
+          <% if @team.parent_team %>
+            <%= link_to @team.parent_team.name, admin_ta_team_path(@team.parent_team), class: 'text-blue-600 hover:text-blue-700 hover:underline' %>
+          <% else %>
+            Root Team
+          <% end %>
+        </p>
+      </div>
+      <% if @team.description.present? %>
+        <div class="md:col-span-2">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Description</p>
+          <p class="mt-1 text-sm text-gray-700"><%= h(@team.description) %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h3 class="font-semibold text-gray-900">Team Members (<%= @memberships.count %>)</h3>
+        <p class="text-xs text-gray-500">Showing latest 10 memberships</p>
+      </div>
+      <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <input type="text" id="ta-team-members-search" placeholder="Search name, email, role, or status..."
+               class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+               oninput="filterTeamMembersRows()">
+      </div>
+    </div>
+
+    <% if @memberships.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamDetailsTableSort('team-members', 'name', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamDetailsTableSort('team-members', 'name', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Name</span>
+                  <span id="ta-team-members-sort-icon-name" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Role</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamDetailsTableSort('team-members', 'start-date', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamDetailsTableSort('team-members', 'start-date', '.ta-team-members-row', ['name', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-team-members-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @memberships.limit(10).each do |membership| %>
+              <% role_label = membership.lead? ? 'Team Lead' : 'Team Member' %>
+              <% status_label = membership.active? ? 'Active' : 'Inactive' %>
+              <% search_text = [membership.user.name, membership.user.mail, role_label, status_label].join(' ').downcase %>
+              <% form_id = "ta-team-member-form-#{membership.id}" %>
+              <tr class="ta-team-members-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= h(search_text) %>"
+                  data-membership-id="<%= membership.id %>"
+                  data-sort-name="<%= membership.user.name.to_s.downcase %>"
+                  data-sort-start-date="<%= membership.start_date ? membership.start_date.to_time.to_i : 0 %>">
+                <td class="px-4 py-3">
+                  <%= link_to membership.user.name, user_path(membership.user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= h(membership.user.mail) %></td>
+                <td class="px-4 py-3">
+                  <div class="ta-team-member-view">
+                    <% if membership.lead? %>
+                      <span class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700">Team Lead</span>
+                    <% else %>
+                      <span class="inline-flex items-center rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Team Member</span>
+                    <% end %>
+                  </div>
+                  <div class="ta-team-member-edit hidden tep-inline-form">
+                    <div class="relative inline-flex w-full max-w-[11rem]" id="ta-team-member-role-wrapper-<%= membership.id %>">
+                      <button type="button"
+                              id="ta-team-member-role-btn-<%= membership.id %>"
+                              onclick="toggleTeamMemberRoleDropdown(<%= membership.id %>)"
+                              class="tep-field ta-team-role-button flex items-center justify-between gap-2 text-sm px-3 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0">
+                        <span id="ta-team-member-role-text-<%= membership.id %>" class="text-gray-700 truncate flex-1"><%= membership.lead? ? 'Team Lead' : 'Team Member' %></span>
+                        <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </button>
+                      <input type="hidden"
+                             name="ta_team_membership[role]"
+                             id="ta-team-member-role-<%= membership.id %>"
+                             value="<%= membership.role %>"
+                             form="<%= form_id %>">
+                       <div id="ta-team-member-role-list-<%= membership.id %>"
+                            class="tep-activity-dropdown ta-team-role-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl"
+                            style="min-width: 180px; top: calc(100% + 2px);">
+                        <button type="button"
+                                class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                onclick="teamMembersSelectRole(<%= membership.id %>, 'member', 'Team Member')">
+                          Team Member
+                        </button>
+                        <button type="button"
+                                class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                onclick="teamMembersSelectRole(<%= membership.id %>, 'lead', 'Team Lead')">
+                          Team Lead
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-gray-600">
+                  <div class="ta-team-member-view"><%= membership.start_date ? format_date(membership.start_date) : '—' %></div>
+                  <div class="ta-team-member-edit hidden tep-inline-form">
+                    <input type="text"
+                           id="ta-team-member-start-date-<%= membership.id %>"
+                            name="ta_team_membership[start_date]"
+                            form="<%= form_id %>"
+                            value="<%= membership.start_date ? membership.start_date.strftime('%m/%d/%Y') : '' %>"
+                            autocomplete="off"
+                            placeholder="mm/dd/yyyy"
+                            datepicker
+                            datepicker-format="mm/dd/yyyy"
+                            datepicker-autohide
+                            class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                  </div>
+                </td>
+                <td class="px-4 py-3 text-gray-600">
+                  <div class="ta-team-member-view"><%= membership.end_date ? format_date(membership.end_date) : 'Active' %></div>
+                  <div class="ta-team-member-edit hidden tep-inline-form">
+                    <input type="text"
+                           id="ta-team-member-end-date-<%= membership.id %>"
+                           name="ta_team_membership[end_date]"
+                            form="<%= form_id %>"
+                            value="<%= membership.end_date ? membership.end_date.strftime('%m/%d/%Y') : '' %>"
+                            autocomplete="off"
+                            placeholder="mm/dd/yyyy"
+                            datepicker
+                            datepicker-format="mm/dd/yyyy"
+                            datepicker-autohide
+                            class="tep-field ta-date-input text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white flex-shrink-0 w-36">
+                  </div>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="ta-team-member-view">
+                    <% if membership.active? %>
+                      <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                    <% else %>
+                      <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                    <% end %>
+                  </div>
+                  <%= hidden_field_tag 'ta_team_membership[user_id]', membership.user_id, form: form_id, id: "ta-team-member-user-id-#{membership.id}" %>
+                </td>
+                <td class="px-4 py-3 text-right">
+                  <div class="ta-team-member-view inline-flex items-center justify-end gap-1">
+                    <button type="button"
+                            onclick="event.stopPropagation(); this.blur(); toggleTeamMemberInlineEdit(<%= membership.id %>)"
+                            class="ta-inline-icon-btn"
+                            title="Edit">
+                      <span class="material-icons ta-inline-material-icon">edit</span>
+                    </button>
+                    <button type="button"
+                            onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= membership.id %>, '<%= admin_ta_team_membership_path(@team, membership) %>', '<%= form_authenticity_token %>')"
+                            class="ta-inline-icon-btn ta-inline-icon-btn--danger"
+                            title="Delete">
+                      <span class="material-icons ta-inline-material-icon">delete</span>
+                    </button>
+                  </div>
+                  <div class="ta-team-member-edit hidden inline-flex items-center justify-end gap-2">
+                    <button type="submit"
+                            form="<%= form_id %>"
+                            class="ta-btn-primary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium">Save</button>
+                    <button type="button"
+                            onclick="event.stopPropagation(); this.blur(); toggleTeamMemberInlineEdit(<%= membership.id %>)"
+                            class="ta-btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium">Cancel</button>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="hidden">
+        <% @memberships.limit(10).each do |membership| %>
+          <% form_id = "ta-team-member-form-#{membership.id}" %>
+          <%= form_tag admin_ta_team_membership_path(@team, membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{membership.id})" do %>
+          <% end %>
+        <% end %>
+      </div>
+      <% if @memberships.count > 10 %>
+        <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
+          Showing 10 of <%= @memberships.count %> memberships.
+          <%= link_to 'Open Team Management', admin_ta_teams_path(main_tab: 'members'), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-10 text-center text-sm text-gray-500">No team members found.</div>
+    <% end %>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h3 class="font-semibold text-gray-900">Assigned Projects (<%= @projects.count %>)</h3>
+        <p class="text-xs text-gray-500">Showing latest 10 project assignments</p>
+      </div>
+      <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <input type="text" id="ta-team-projects-search" placeholder="Search project or status..."
+               class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
+               oninput="filterTeamProjectsRows()">
+        <%= link_to 'Manage Projects', admin_ta_team_team_projects_path(@team), class: 'ta-btn-secondary inline-flex h-[44px] items-center justify-center rounded-lg px-4 text-sm font-medium' %>
+      </div>
+    </div>
+
+    <% if @projects.any? %>
+      <div class="overflow-x-auto">
+        <table class="ts-table w-full text-sm text-left">
+          <thead class="bg-gray-50">
+            <tr class="border-b border-gray-200">
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamDetailsTableSort('assigned-projects', 'project', '.ta-team-projects-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamDetailsTableSort('assigned-projects', 'project', '.ta-team-projects-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Project</span>
+                  <span id="ta-assigned-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamDetailsTableSort('assigned-projects', 'start-date', '.ta-team-projects-row', ['project', 'start-date'], ['start-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamDetailsTableSort('assigned-projects', 'start-date', '.ta-team-projects-row', ['project', 'start-date'], ['start-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-assigned-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @projects.limit(10).each do |team_project| %>
+              <% status_label = team_project.active? ? 'Active' : 'Inactive' %>
+              <% search_text = [team_project.project_name, status_label].join(' ').downcase %>
+              <tr class="ta-team-projects-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-search-text="<%= h(search_text) %>"
+                  data-sort-project="<%= team_project.project_name.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
+                <td class="px-4 py-3">
+                  <% if team_project.project_linkable? %>
+                    <%= link_to team_project.project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
+                  <% else %>
+                    <span class="text-sm font-semibold text-gray-900"><%= team_project.project_name %></span>
+                  <% end %>
+                </td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.start_date ? format_date(team_project.start_date) : '—' %></td>
+                <td class="px-4 py-3 text-gray-600"><%= team_project.end_date ? format_date(team_project.end_date) : 'Active' %></td>
+                <td class="px-4 py-3">
+                  <% if team_project.active? %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><span class="h-2 w-2 rounded-full bg-emerald-400"></span>Active</span>
+                  <% else %>
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500"><span class="h-2 w-2 rounded-full bg-gray-300"></span>Inactive</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if @projects.count > 10 %>
+        <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
+          Showing 10 of <%= @projects.count %> project assignments.
+          <%= link_to "View all #{@projects.count} projects", admin_ta_team_team_projects_path(@team), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="px-6 py-10 text-center text-sm text-gray-500">No assigned projects found.</div>
+    <% end %>
+  </div>
+</div>
+
+<div id="taTeamMembersDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              onclick="teamMembersCloseDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500">Are you sure you want to delete this member assignment?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="teamMembersConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+          Delete
+        </button>
+        <button type="button"
+                onclick="teamMembersCloseDeleteModal()"
+                class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="taTeamDeleteModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full h-full bg-gray-900/50">
+  <div class="relative p-4 w-full max-w-md">
+    <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
+      <button type="button"
+              class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center"
+              onclick="teamCloseDeleteModal()">
+        <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+      <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+      </svg>
+      <p class="mb-4 text-gray-500">Are you sure you want to delete this team?</p>
+      <div class="flex justify-center items-center space-x-4">
+        <button type="button" onclick="teamConfirmDelete()" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600">
+          Delete
+        </button>
+        <button type="button"
+                onclick="teamCloseDeleteModal()"
+                class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var teamPendingDelete = null;
+
+  function teamOpenDeleteModal() {
+    var modal = document.getElementById('taTeamDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamCloseDeleteModal() {
+    var modal = document.getElementById('taTeamDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamDelete(url, token) {
+    teamPendingDelete = { url: url, token: token };
+    teamOpenDeleteModal();
+  }
+
+  function teamConfirmDelete() {
+    if (!teamPendingDelete) return;
+    teamCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = teamPendingDelete.url;
+    [['authenticity_token', teamPendingDelete.token], ['_method', 'DELETE']].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function teamCloseDeleteModalIfBackdrop(event) {
+    ['taTeamDeleteModal', 'taTeamMembersDeleteModal'].forEach(function(modalId) {
+      var modal = document.getElementById(modalId);
+      if (modal && !modal.classList.contains('hidden') && event.target === modal) {
+        if (modalId === 'taTeamDeleteModal') {
+          teamCloseDeleteModal();
+        } else {
+          teamMembersCloseDeleteModal();
+        }
+      }
+    });
+  }
+
+  if (!window.__teamDeleteModalListenersBound) {
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        teamCloseDeleteModal();
+        teamMembersCloseDeleteModal();
+      }
+    });
+    document.addEventListener('click', teamCloseDeleteModalIfBackdrop);
+    window.__teamDeleteModalListenersBound = true;
+  }
+
+  function toggleTeamMemberInlineEdit(membershipId) {
+    var row = document.querySelector('[data-membership-id="' + membershipId + '"]');
+    if (!row) return;
+    var shouldOpen = !row.classList.contains('is-editing');
+    document.querySelectorAll('.ta-team-members-row.is-editing').forEach(function(editRow) {
+      editRow.classList.remove('is-editing');
+      editRow.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+        viewEl.classList.remove('hidden');
+      });
+      editRow.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+        editEl.classList.add('hidden');
+      });
+      teamMembersCloseRoleDropdownByRow(editRow);
+    });
+    if (shouldOpen) {
+      row.classList.add('is-editing');
+      row.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+        viewEl.classList.add('hidden');
+      });
+      row.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+        editEl.classList.remove('hidden');
+      });
+      initTeamMemberInlineDatepickers(membershipId);
+      var roleButton = document.getElementById('ta-team-member-role-btn-' + membershipId);
+      if (roleButton) roleButton.focus();
+    }
+  }
+
+  function normalizeTeamMemberDate(value) {
+    if (!value) return value;
+    var yyyymmdd = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (yyyymmdd) return value;
+    var mmddyyyy = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (!mmddyyyy) return value;
+    return mmddyyyy[3] + '-' + mmddyyyy[1].padStart(2, '0') + '-' + mmddyyyy[2].padStart(2, '0');
+  }
+
+  function initTeamMemberInlineDatepickers(membershipId) {
+    ['start', 'end'].forEach(function(part) {
+      var input = document.getElementById('ta-team-member-' + part + '-date-' + membershipId);
+      if (!input) return;
+      if (input.datepicker && input.datepicker.setOptions) {
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true });
+        return;
+      }
+      if (window.Datepicker) {
+        new window.Datepicker(input, {
+          format: 'mm/dd/yyyy',
+          autohide: true
+        });
+      }
+    });
+  }
+
+  var teamMembersDropdownState = {};
+
+  function teamMembersEnsureDropdownState(list) {
+    if (!list || !list.id) return null;
+    if (!teamMembersDropdownState[list.id]) {
+      teamMembersDropdownState[list.id] = {
+        parent: list.parentNode,
+        nextSibling: list.nextSibling,
+        anchorId: null
+      };
+    }
+    return teamMembersDropdownState[list.id];
+  }
+
+  function teamMembersPositionFloatingDropdown(list, anchor) {
+    if (!list || !anchor) return;
+    var rect = anchor.getBoundingClientRect();
+    var minWidth = parseFloat(list.style.minWidth || '0') || 0;
+    var targetWidth = Math.max(Math.round(rect.width), Math.round(minWidth));
+    var viewportPadding = 8;
+    var preferredHeight = Math.min(list.scrollHeight || 180, 260);
+    var spaceBelow = Math.max(0, window.innerHeight - rect.bottom - viewportPadding);
+    var spaceAbove = Math.max(0, rect.top - viewportPadding);
+    var openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    var maxHeight = Math.max(100, openUp ? spaceAbove : spaceBelow);
+
+    list.style.position = 'fixed';
+    var left = Math.max(viewportPadding, rect.left);
+    if (left + targetWidth > window.innerWidth - viewportPadding) {
+      left = Math.max(viewportPadding, window.innerWidth - viewportPadding - targetWidth);
+    }
+    list.style.left = left + 'px';
+    list.style.width = targetWidth + 'px';
+    list.style.maxHeight = Math.min(preferredHeight, maxHeight) + 'px';
+    list.style.top = openUp ? 'auto' : (rect.bottom + 2) + 'px';
+    list.style.bottom = openUp ? (window.innerHeight - rect.top + 2) + 'px' : 'auto';
+    list.style.zIndex = '10050';
+  }
+
+  function teamMembersOpenFloatingDropdown(list, anchor) {
+    if (!list || !anchor || !list.id || !anchor.id) return;
+    var state = teamMembersEnsureDropdownState(list);
+    if (!state) return;
+    state.anchorId = anchor.id;
+    if (list.parentNode !== document.body) {
+      document.body.appendChild(list);
+    }
+    list.classList.remove('hidden');
+    teamMembersPositionFloatingDropdown(list, anchor);
+  }
+
+  function teamMembersCloseFloatingDropdown(list) {
+    if (!list || !list.id) return;
+    var state = teamMembersDropdownState[list.id];
+    list.classList.add('hidden');
+    if (!state || !state.parent) return;
+    if (list.parentNode !== state.parent) {
+      state.parent.insertBefore(list, state.nextSibling);
+    }
+    state.anchorId = null;
+    list.style.position = '';
+    list.style.left = '';
+    list.style.top = '';
+    list.style.bottom = '';
+    list.style.width = '';
+    list.style.maxHeight = '';
+    list.style.zIndex = '';
+  }
+
+  function teamMembersSyncFloatingDropdownPositions() {
+    Object.keys(teamMembersDropdownState).forEach(function(listId) {
+      var list = document.getElementById(listId);
+      var state = teamMembersDropdownState[listId];
+      if (!list || !state || list.classList.contains('hidden') || !state.anchorId) return;
+      var anchor = document.getElementById(state.anchorId);
+      if (!anchor) {
+        teamMembersCloseFloatingDropdown(list);
+        return;
+      }
+      teamMembersPositionFloatingDropdown(list, anchor);
+    });
+  }
+
+  if (!window.__teamMembersFloatingDropdownListenersBound) {
+    window.addEventListener('resize', teamMembersSyncFloatingDropdownPositions);
+    document.addEventListener('scroll', teamMembersSyncFloatingDropdownPositions, true);
+    window.__teamMembersFloatingDropdownListenersBound = true;
+  }
+
+  function teamMembersCloseRoleDropdown(membershipId) {
+    var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+    if (list) teamMembersCloseFloatingDropdown(list);
+  }
+
+  function teamMembersCloseRoleDropdownByRow(row) {
+    if (!row) return;
+    var membershipId = row.getAttribute('data-membership-id');
+    if (membershipId) teamMembersCloseRoleDropdown(membershipId);
+  }
+
+  function toggleTeamMemberRoleDropdown(membershipId) {
+    var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+    var anchor = document.getElementById('ta-team-member-role-btn-' + membershipId);
+    if (!list || !anchor) return;
+    if (list.classList.contains('hidden')) {
+      teamMembersCloseAllRoleDropdowns();
+      teamMembersOpenFloatingDropdown(list, anchor);
+    } else {
+      teamMembersCloseFloatingDropdown(list);
+    }
+  }
+
+  function teamMembersCloseAllRoleDropdowns() {
+    document.querySelectorAll('[id^="ta-team-member-role-list-"]').forEach(function(list) {
+      teamMembersCloseFloatingDropdown(list);
+    });
+  }
+
+  function teamMembersSelectRole(membershipId, role, label) {
+    var hidden = document.getElementById('ta-team-member-role-' + membershipId);
+    var text = document.getElementById('ta-team-member-role-text-' + membershipId);
+    if (hidden) hidden.value = role;
+    if (text) {
+      text.textContent = label;
+      text.classList.remove('text-gray-400');
+      text.classList.add('text-gray-700');
+    }
+    teamMembersCloseRoleDropdown(membershipId);
+  }
+
+  function submitTeamMemberInlineEdit(membershipId) {
+    var startInput = document.getElementById('ta-team-member-start-date-' + membershipId);
+    var endInput = document.getElementById('ta-team-member-end-date-' + membershipId);
+    if (startInput) startInput.value = normalizeTeamMemberDate(startInput.value);
+    if (endInput) endInput.value = normalizeTeamMemberDate(endInput.value);
+    return true;
+  }
+
+  var teamMembersPendingDelete = null;
+
+  function teamMembersOpenDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamMembersCloseDeleteModal() {
+    var modal = document.getElementById('taTeamMembersDeleteModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function teamMembersDelete(membershipId, url, token) {
+    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token };
+    teamMembersOpenDeleteModal();
+  }
+
+  function teamMembersConfirmDelete() {
+    if (!teamMembersPendingDelete) return;
+    teamMembersCloseDeleteModal();
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = teamMembersPendingDelete.url;
+    [['authenticity_token', teamMembersPendingDelete.token], ['_method', 'DELETE']].forEach(function(pair) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = pair[0];
+      input.value = pair[1];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function filterRowsByInput(inputId, rowSelector) {
+    var input = document.getElementById(inputId);
+    var query = input ? input.value.toLowerCase().trim() : '';
+    document.querySelectorAll(rowSelector).forEach(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      row.style.display = !query || text.indexOf(query) !== -1 ? '' : 'none';
+      if (row.style.display === 'none' && row.classList.contains('is-editing')) {
+        row.classList.remove('is-editing');
+        row.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+          viewEl.classList.remove('hidden');
+        });
+        row.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+          editEl.classList.add('hidden');
+        });
+        teamMembersCloseRoleDropdownByRow(row);
+      }
+    });
+  }
+
+  function resetTeamDetailsTableSortIcons(tableKey, columns, activeColumn) {
+    columns.forEach(function(column) {
+      var icon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+      if (!icon) return;
+
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+      }
+      var order = icon.dataset.order || 'desc';
+      icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
+    });
+  }
+
+  function toggleTeamDetailsTableSort(tableKey, column, rowSelector, columns, numericColumns) {
+    var rows = Array.from(document.querySelectorAll(rowSelector));
+    if (!rows.length) return;
+
+    var sortIcon = document.getElementById('ta-' + tableKey + '-sort-icon-' + column);
+    if (!sortIcon) return;
+
+    var currentOrder = sortIcon.dataset.order || 'desc';
+    var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+    var numeric = numericColumns || [];
+    var tbody = rows[0].parentNode;
+
+    rows.sort(function(a, b) {
+      var attrName = 'data-sort-' + column;
+      var aValue = a.getAttribute(attrName) || '';
+      var bValue = b.getAttribute(attrName) || '';
+
+      if (numeric.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+
+      var stringCompare = aValue.localeCompare(bValue);
+      return nextOrder === 'asc' ? stringCompare : -stringCompare;
+    });
+
+    rows.forEach(function(row) { tbody.appendChild(row); });
+
+    delete sortIcon.dataset.order;
+    sortIcon.dataset.order = nextOrder;
+    resetTeamDetailsTableSortIcons(tableKey, columns, column);
+  }
+
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('[id^="ta-team-member-role-wrapper-"]').forEach(function(wrapper) {
+      var membershipId = wrapper.id.replace('ta-team-member-role-wrapper-', '');
+      var list = document.getElementById('ta-team-member-role-list-' + membershipId);
+      if (!list) return;
+      if (!wrapper.contains(e.target) && !list.contains(e.target)) {
+        teamMembersCloseFloatingDropdown(list);
+      }
+    });
+  });
+
+  function filterTeamMembersRows() {
+    filterRowsByInput('ta-team-members-search', '.ta-team-members-row');
+  }
+
+  function filterTeamProjectsRows() {
+    filterRowsByInput('ta-team-projects-search', '.ta-team-projects-row');
+  }
+
+  // Prevent default first-input autofocus from selecting the Team Members search field on initial page load.
+  function clearInitialTeamMembersSearchFocus() {
+    var teamMembersSearchInput = document.getElementById('ta-team-members-search');
+    if (!teamMembersSearchInput) return;
+    if (document.activeElement === teamMembersSearchInput) {
+      teamMembersSearchInput.blur();
+    }
+  }
+  setTimeout(clearInitialTeamMembersSearchFocus, 0);
+  setTimeout(clearInitialTeamMembersSearchFocus, 100);
+</script>
