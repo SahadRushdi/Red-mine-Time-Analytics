@@ -155,7 +155,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 
 ### Teams Admin Payload API
 - **Endpoint**: `GET /admin/ta_teams/payload.json`
-- **Auth**: Requires admin user API key (session cookie method will not work reliably due to expiration)
+- **Auth**: Requires a Redmine administrator API key (session cookie method will not work reliably due to expiration)
   - Pass API key via **query parameter**: `?api_key=<your_api_key>`
   - OR via **header**: `X-Redmine-API-Key: <your_api_key>`
 - **Getting your API Key**:
