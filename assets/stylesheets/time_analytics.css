@@ -1770,3 +1770,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   background-color: #dc2626 !important;
   border: 1px solid #dc2626 !important;
 }
+
+/* === Table Sort Header Buttons === */
+/* Ensure sort button text color is preserved on focus/active states */
+[data-table-sort] {
+  color: inherit;
+}
+
+[data-table-sort]:focus,
+[data-table-sort]:active {
+  color: inherit !important;
+}
