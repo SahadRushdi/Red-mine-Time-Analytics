@@ -23,6 +23,7 @@ RedmineApp::Application.routes.draw do
   # Admin routes for Team Analytics Configuration
   resources :admin_ta_teams, path: 'admin/ta_teams' do
     collection do
+      get :payload
       post :validate_url
       post :assign_member
     end

@@ -5,6 +5,8 @@ class AdminTaTeamsController < ApplicationController
 
   before_action :require_admin
   before_action :find_team, only: [:show, :edit, :update, :destroy]
+  skip_before_action :require_admin, only: [:payload]
+  before_action :authenticate_payload_request, only: [:payload]
 
   helper :ta_teams
 
@@ -162,7 +164,154 @@ class AdminTaTeamsController < ApplicationController
     redirect_to admin_ta_teams_path
   end
 
+  def payload
+    limit, offset = payload_pagination
+    teams_scope = TaTeam.ordered_by_name
+    total_teams = teams_scope.count
+    paginated_teams = teams_scope.offset(offset).limit(limit).to_a
+
+    memberships_for_teams = if paginated_teams.any?
+                              TaTeamMembership.where(team_id: paginated_teams.map(&:id))
+                                              .order(:team_id, :user_id, :start_date, :id)
+                                              .to_a
+                            else
+                              []
+                            end
+    memberships_by_team = memberships_for_teams.group_by(&:team_id)
+
+    members_scope = TaTeamMembership.select(:user_id).distinct.order(:user_id)
+    total_members = members_scope.count
+    paginated_member_ids = members_scope.offset(offset).limit(limit).pluck(:user_id)
+
+    users_by_id = User.where(id: paginated_member_ids).index_by(&:id)
+    memberships_for_members = if paginated_member_ids.any?
+                                TaTeamMembership.where(user_id: paginated_member_ids)
+                                                .order(:user_id, :team_id, :start_date, :id)
+                                                .to_a
+                              else
+                                []
+                              end
+    memberships_by_user = memberships_for_members.group_by(&:user_id)
+
+    render json: {
+      data: {
+        teams: paginated_teams.map { |team| serialize_team_payload(team, memberships_by_team[team.id] || []) },
+        members: paginated_member_ids.map { |user_id| serialize_member_payload(user_id, users_by_id[user_id], memberships_by_user[user_id] || []) }
+      },
+      pagination: {
+        limit: limit,
+        offset: offset,
+        totalTeams: total_teams,
+        totalMembers: total_members
+      }
+    }
+  end
+
   private
+
+  def authenticate_payload_request
+    api_key = params[:api_key] || request.headers['X-Redmine-API-Key']
+
+    if api_key.blank?
+      render json: { error: 'API key is required' }, status: :unauthorized
+      return
+    end
+
+    user = User.find_by(api_token: api_key)
+    if user.blank? || !user.admin?
+      render json: { error: 'Invalid API key or insufficient permissions' }, status: :forbidden
+      return
+    end
+
+    User.current = user
+  end
+
+  def payload_pagination
+    requested_limit = params[:limit].to_i
+    requested_offset = params[:offset].to_i
+    limit = requested_limit.positive? ? [requested_limit, 500].min : 100
+    offset = requested_offset.positive? ? requested_offset : 0
+
+    [limit, offset]
+  end
+
+  def serialize_team_payload(team, memberships)
+    lead_member_ids = memberships.select(&:lead?).map { |membership| member_api_id(membership.user_id) }.uniq
+    member_ids = memberships.map { |membership| member_api_id(membership.user_id) }.uniq
+
+    {
+      id: team_api_id(team.id),
+      name: team.name,
+      parentTeamId: team.parent_team_id.present? ? team_api_id(team.parent_team_id) : nil,
+      leadMemberIds: lead_member_ids,
+      memberIds: member_ids,
+      metadata: serialize_record_metadata(team.attributes, 'ta_teams')
+    }
+  end
+
+  def serialize_member_payload(user_id, user, memberships)
+    {
+      id: member_api_id(user_id),
+      name: user.present? ? user.name : "User ##{user_id}",
+      email: user&.mail,
+      status: member_status(user),
+      metadata: {
+        sourceTable: 'ta_team_memberships',
+        memberships: memberships.map { |membership| serialize_record_metadata(membership.attributes, 'ta_team_memberships') }
+      }
+    }
+  end
+
+  def serialize_record_metadata(attributes, table_name)
+    normalized = attributes.each_with_object({}) do |(key, value), hash|
+      hash[camelize_lower(key)] = serialize_metadata_value(value)
+    end
+
+    normalized.merge('sourceTable' => table_name)
+  end
+
+  def serialize_metadata_value(value)
+    case value
+    when Time, DateTime
+      value.utc.iso8601
+    when Date
+      value.iso8601
+    when Array
+      value.map { |item| serialize_metadata_value(item) }
+    when Hash
+      value.each_with_object({}) { |(key, nested_value), hash| hash[camelize_lower(key.to_s)] = serialize_metadata_value(nested_value) }
+    else
+      value
+    end
+  end
+
+  def member_status(user)
+    return 'UNKNOWN' unless user
+
+    case user.status
+    when User::STATUS_ACTIVE
+      'ACTIVE'
+    when User::STATUS_REGISTERED
+      'REGISTERED'
+    when User::STATUS_LOCKED
+      'LOCKED'
+    else
+      user.status.to_s.upcase
+    end
+  end
+
+  def team_api_id(id)
+    "team_#{id}"
+  end
+
+  def member_api_id(id)
+    "member_#{id}"
+  end
+
+  def camelize_lower(value)
+    parts = value.to_s.split('_')
+    [parts.first, *parts[1..].map(&:capitalize)].join
+  end
 
   def find_team
     @team = TaTeam.find(params[:id])
