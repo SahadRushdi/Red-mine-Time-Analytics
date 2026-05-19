@@ -1806,3 +1806,42 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 #leave-sync-end-date:focus {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
+
+/* === Dedicated Team Analytics Toggle Fix === */
+.ta-custom-toggle-track {
+  width: 36px !important;
+  height: 20px !important;
+  position: relative !important;
+  display: inline-block !important;
+  cursor: pointer !important;
+  border-radius: 9999px !important;
+  background-color: #e5e7eb !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.ta-custom-toggle-track::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 9999px !important;
+  height: 16px !important;
+  width: 16px !important;
+  transition: transform 0.2s ease, border-color 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.peer:checked + .ta-custom-toggle-track {
+  background-color: #3b82f6 !important;
+}
+
+.peer:checked + .ta-custom-toggle-track::after {
+  transform: translateX(16px) !important;
+  border-color: #3b82f6 !important;
+}
+
+.peer:focus + .ta-custom-toggle-track {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
+}

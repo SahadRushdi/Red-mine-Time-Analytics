@@ -22,6 +22,31 @@
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
     <div class="px-6 py-4 border-b border-gray-200">
+      <h3 class="text-base font-semibold text-gray-900">Dashboard Visibility</h3>
+      <p class="mt-1 text-sm text-gray-500">Enable or disable specific dashboards globally.</p>
+    </div>
+    <div class="px-6 py-4">
+      <%= form_tag admin_ta_team_settings_path, method: :post, id: 'my-team-visibility-form' do %>
+        <%= hidden_field_tag :setting_type, 'my_team_visibility' %>
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-sm font-medium text-gray-900">My Team Page</span>
+            <p class="text-xs text-gray-500">Toggle visibility of the "My Team" menu item for Team Leads and Super Users.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <%= hidden_field_tag :my_team_enabled, '0' %>
+            <%= check_box_tag :my_team_enabled, '1', @my_team_enabled,
+                              class: 'sr-only peer',
+                              onchange: 'this.form.submit()' %>
+            <div class="ta-custom-toggle-track"></div>
+          </label>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="px-6 py-4 border-b border-gray-200">
       <h3 class="text-base font-semibold text-gray-900">Support Redmine Integration</h3>
       <p class="mt-1 text-sm text-gray-500">
         Configure global external Redmine credentials for Effective Time calculation.
