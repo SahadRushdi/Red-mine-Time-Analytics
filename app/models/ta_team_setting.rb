@@ -235,25 +235,20 @@ class TaTeamSetting < ActiveRecord::Base
     raise ArgumentError, 'Leave recipient email must be valid' unless normalized_recipient.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
 
     if historical_sync_start_date.present?
-      begin
-        Date.parse(historical_sync_start_date.to_s)
-      rescue ArgumentError
-        raise ArgumentError, 'Historical sync start date is invalid'
-      end
+      start_date = safe_parse_date(historical_sync_start_date)
+      raise ArgumentError, 'Historical sync start date is invalid' if start_date.nil?
     end
     if historical_sync_end_date.present?
-      begin
-        Date.parse(historical_sync_end_date.to_s)
-      rescue ArgumentError
-        raise ArgumentError, 'Historical sync end date is invalid'
-      end
+      end_date = safe_parse_date(historical_sync_end_date)
+      raise ArgumentError, 'Historical sync end date is invalid' if end_date.nil?
     end
     approach = leave_approach.to_s
     raise ArgumentError, 'Leave approach is invalid' unless LEAVE_APPROACHES.include?(approach)
+
     if historical_sync_start_date.present? && historical_sync_end_date.present?
-      start_date = Date.parse(historical_sync_start_date.to_s)
-      end_date = Date.parse(historical_sync_end_date.to_s)
-      raise ArgumentError, 'Historical sync end date must be on or after start date' if end_date < start_date
+      s_date = safe_parse_date(historical_sync_start_date)
+      e_date = safe_parse_date(historical_sync_end_date)
+      raise ArgumentError, 'Historical sync end date must be on or after start date' if e_date < s_date
     end
     if historical_sync_end_date.present? && historical_sync_start_date.blank?
       raise ArgumentError, 'Historical sync start date is required when an end date is provided'
@@ -358,9 +353,21 @@ class TaTeamSetting < ActiveRecord::Base
   end
 
   def self.parse_date_setting(value)
-    Date.parse(value.to_s)
-  rescue ArgumentError, TypeError
-    nil
+    safe_parse_date(value.to_s)
+  end
+
+  def self.safe_parse_date(value)
+    return nil if value.blank?
+    begin
+      # Try MM/DD/YYYY first (standard for the date pickers in this plugin)
+      Date.strptime(value.to_s, '%m/%d/%Y')
+    rescue ArgumentError
+      begin
+        Date.parse(value.to_s)
+      rescue ArgumentError
+        nil
+      end
+    end
   end
 
   def self.parse_time_setting(value)
