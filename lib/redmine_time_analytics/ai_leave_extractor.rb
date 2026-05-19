@@ -581,11 +581,8 @@ module RedmineTimeAnalytics
     end
 
     def request_ai!(subject:, body:, primary_body:, sent_at:)
-      provider = settings[:ai_provider].to_s
       model = settings[:ai_model].to_s
       api_key = settings[:ai_api_key].to_s
-      base_url = settings[:ai_base_url].to_s
-      raise 'AI provider is required' if provider.blank?
       raise 'AI model is required' if model.blank?
       raise 'AI API key is required' if api_key.blank?
 
@@ -603,26 +600,12 @@ module RedmineTimeAnalytics
         #{sent_at.iso8601}
       TEXT
 
-      case provider
-      when 'google'
-        call_google(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-      when 'openai'
-        call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-      when 'anthropic'
-        call_anthropic(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-      when 'custom'
-        call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-      else
-        raise "Unsupported AI provider: #{provider}"
-      end
+      call_google(model: model, api_key: api_key, user_prompt: user_prompt)
     end
 
     def request_ai_batch!(messages:)
-      provider = settings[:ai_provider].to_s
       model = settings[:ai_model].to_s
       api_key = settings[:ai_api_key].to_s
-      base_url = settings[:ai_base_url].to_s
-      raise 'AI provider is required' if provider.blank?
       raise 'AI model is required' if model.blank?
       raise 'AI API key is required' if api_key.blank?
 
@@ -645,32 +628,13 @@ module RedmineTimeAnalytics
         #{JSON.generate(messages)}
       TEXT
 
-      # Change 7: Pass higher max_tokens for batch calls
-      raw = case provider
-            when 'google'
-              call_google(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-            when 'openai'
-              call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-            when 'anthropic'
-              call_anthropic(model: model, api_key: api_key, base_url: base_url,
-                             user_prompt: user_prompt, max_tokens: 4000)
-            when 'custom'
-              call_openai(model: model, api_key: api_key, base_url: base_url, user_prompt: user_prompt)
-            else
-              raise "Unsupported AI provider: #{provider}"
-            end
-      normalize_batch_payload(raw)
+      call_google(model: model, api_key: api_key, user_prompt: user_prompt)
     end
 
-    def call_google(model:, api_key:, base_url:, user_prompt:)
-      endpoint =
-        if base_url.present?
-          base_url
-        else
-          encoded_model = URI.encode_www_form_component(model)
-          encoded_key = URI.encode_www_form_component(api_key)
-          "https://generativelanguage.googleapis.com/v1beta/models/#{encoded_model}:generateContent?key=#{encoded_key}"
-        end
+    def call_google(model:, api_key:, user_prompt:)
+      encoded_model = URI.encode_www_form_component(model)
+      encoded_key = URI.encode_www_form_component(api_key)
+      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/#{encoded_model}:generateContent?key=#{encoded_key}"
 
       payload = http_post_json(
         endpoint,
@@ -685,56 +649,6 @@ module RedmineTimeAnalytics
         }
       )
       text = payload.dig('candidates', 0, 'content', 'parts', 0, 'text').to_s
-      parse_model_json(text)
-    end
-
-    def call_openai(model:, api_key:, base_url:, user_prompt:)
-      endpoint = base_url.presence || 'https://api.openai.com/v1/chat/completions'
-      payload = http_post_json(
-        endpoint,
-        headers: {
-          'Content-Type' => 'application/json',
-          'Authorization' => "Bearer #{api_key}"
-        },
-        body: {
-          model: model,
-          temperature: 0.0,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: user_prompt }
-          ]
-        }
-      )
-      text = payload.dig('choices', 0, 'message', 'content').to_s
-      parse_model_json(text)
-    end
-
-    # Change 7: Added max_tokens parameter (default 400 for single, 4000 for batch)
-    def call_anthropic(model:, api_key:, base_url:, user_prompt:, max_tokens: 400)
-      endpoint = base_url.presence || 'https://api.anthropic.com/v1/messages'
-      payload = http_post_json(
-        endpoint,
-        headers: {
-          'Content-Type' => 'application/json',
-          'x-api-key' => api_key,
-          'anthropic-version' => '2023-06-01'
-        },
-        body: {
-          model: model,
-          max_tokens: max_tokens,
-          temperature: 0.0,
-          system: SYSTEM_PROMPT,
-          messages: [
-            { role: 'user', content: user_prompt }
-          ]
-        }
-      )
-      content = payload['content']
-      text = if content.is_a?(Array)
-               content.find { |item| item.is_a?(Hash) && item['type'] == 'text' }.to_h['text'].to_s
-             else
-               ''
-             end
       parse_model_json(text)
     end
 

@@ -234,7 +234,7 @@ module RedmineTimeAnalytics
                'historical'
              when 'incremental'
                'incremental'
-             when 'push', 'google_apps_script_push'
+             when 'push'
                'push'
              else
                mode.to_s[0, 16]

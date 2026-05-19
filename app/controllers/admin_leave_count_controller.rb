@@ -16,8 +16,6 @@ class AdminLeaveCountController < ApplicationController
     @leave_sync_settings = TaTeamSetting.leave_sync_settings
     @leave_sync_configured = TaTeamSetting.leave_sync_configured?
     @manual_pull_available = TaTeamSetting.leave_sync_manual_pull?
-    @webhook_url = leave_google_apps_script_webhook_url
-    @apps_script_template = build_apps_script_template
   end
 
   def create
@@ -27,18 +25,14 @@ class AdminLeaveCountController < ApplicationController
       recipient_email: sync_params[:leave_sync_recipient_email],
       historical_sync_start_date: sync_params[:leave_sync_start_date],
       historical_sync_end_date: sync_params[:leave_sync_end_date],
-      leave_approach: sync_params[:leave_sync_approach],
+      leave_approach: 'oauth',
       oauth_client_id: sync_params[:leave_oauth_client_id],
       oauth_client_secret: sync_params[:leave_oauth_client_secret],
       oauth_account_email: sync_params[:leave_oauth_account_email],
-      dwd_delegated_user: sync_params[:leave_dwd_delegated_user],
-      dwd_service_account_json: sync_params[:leave_dwd_service_account_json],
-      gas_webhook_secret: sync_params[:leave_gas_webhook_secret],
-      ai_extraction_enabled: sync_params[:leave_ai_extraction_enabled],
-      ai_provider: sync_params[:leave_ai_provider],
+      ai_extraction_enabled: sync_params[:leave_ai_api_key].present?,
+      ai_provider: 'google',
       ai_model: sync_params[:leave_ai_model],
-      ai_api_key: sync_params[:leave_ai_api_key],
-      ai_base_url: sync_params[:leave_ai_base_url]
+      ai_api_key: sync_params[:leave_ai_api_key]
     )
     flash[:notice] = l(:notice_leave_count_settings_updated)
   rescue ArgumentError => e
@@ -48,13 +42,8 @@ class AdminLeaveCountController < ApplicationController
   end
 
   def sync_leave_inbox
-    settings = TaTeamSetting.leave_sync_settings
-    if settings[:leave_approach] == 'google_apps_script'
-      flash[:error] = l(:error_leave_push_based_no_manual_sync)
-      return redirect_to admin_leave_count_path
-    end
-
     sync_mode = params[:sync_mode].to_s == 'historical' ? :historical : :incremental
+    settings = TaTeamSetting.leave_sync_settings
     result = RedmineTimeAnalytics::LeaveSyncService.new(settings: settings).sync!(mode: sync_mode)
 
     if result.errors.any?
@@ -144,18 +133,12 @@ class AdminLeaveCountController < ApplicationController
       :leave_sync_recipient_email,
       :leave_sync_start_date,
       :leave_sync_end_date,
-      :leave_sync_approach,
       :leave_oauth_client_id,
       :leave_oauth_client_secret,
       :leave_oauth_account_email,
-      :leave_dwd_delegated_user,
-      :leave_dwd_service_account_json,
-      :leave_gas_webhook_secret,
       :leave_ai_extraction_enabled,
-      :leave_ai_provider,
       :leave_ai_model,
-      :leave_ai_api_key,
-      :leave_ai_base_url
+      :leave_ai_api_key
     )
   end
 
@@ -182,49 +165,5 @@ class AdminLeaveCountController < ApplicationController
     payload
   rescue JSON::ParserError
     raise ArgumentError, 'Token exchange returned an invalid response'
-  end
-
-  def build_apps_script_template
-    <<~SCRIPT
-      // Google Apps Script template for leave webhook push
-      // 1) Update WEBHOOK_URL and WEBHOOK_SECRET
-      // 2) Set a time-driven trigger to run pushLeaveEmails()
-      const WEBHOOK_URL = "#{leave_google_apps_script_webhook_url}";
-      const WEBHOOK_SECRET = "<your-webhook-secret>";
-      const RECIPIENT_EMAIL = "vacation-group@entgra.io";
-
-      function pushLeaveEmails() {
-        const threads = GmailApp.search('to:' + RECIPIENT_EMAIL + ' newer_than:1d');
-        const messages = [];
-        threads.forEach((thread) => {
-          thread.getMessages().forEach((mail) => {
-            messages.push({
-              message_id: String(mail.getId()),
-              thread_id: String(thread.getId()),
-              from: mail.getFrom(),
-              to: mail.getTo(),
-              subject: mail.getSubject(),
-              sent_at: mail.getDate().toISOString(),
-              body: mail.getPlainBody()
-            });
-          });
-        });
-
-        const body = JSON.stringify({ messages: messages });
-        const signature = Utilities.computeHmacSha256Signature(body, WEBHOOK_SECRET)
-          .map((b) => ('0' + (b < 0 ? b + 256 : b).toString(16)).slice(-2))
-          .join('');
-
-        UrlFetchApp.fetch(WEBHOOK_URL, {
-          method: 'post',
-          contentType: 'application/json',
-          payload: body,
-          headers: {
-            'X-Webhook-Signature': signature
-          },
-          muteHttpExceptions: true
-        });
-      }
-    SCRIPT
   end
 end
