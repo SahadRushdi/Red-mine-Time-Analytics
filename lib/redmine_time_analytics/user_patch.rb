@@ -32,12 +32,23 @@ module RedmineTimeAnalytics
 
         # Check if user can access Team Analytics dashboard
         def can_access_team_analytics?(date = Date.today)
+          # Admins who are team leads can always access
+          return true if admin? && is_team_lead?(date)
+
+          # Otherwise, access depends on the global toggle
+          return false unless TaTeamSetting.my_team_enabled?
+
           super_user_for_team_analytics? || is_team_lead?(date)
         end
 
         # Get teams user can open as team dashboards
         # Super users get all teams; team leads get led teams + all descendants
         def accessible_team_dashboard_teams(date = Date.today)
+          # Access check: Admins who are team leads bypass the global toggle
+          unless admin? && is_team_lead?(date)
+            return TaTeam.none unless TaTeamSetting.my_team_enabled?
+          end
+
           return TaTeam.all if super_user_for_team_analytics?
 
           led = led_teams(date)

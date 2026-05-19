@@ -16,10 +16,19 @@ class AdminTaTeamSettingsController < ApplicationController
     @super_user_settings_by_user_id = TaTeamSetting.super_users.pluck(:user_id, :id).to_h
     @support_redmine_settings = TaTeamSetting.support_redmine_settings
     @support_redmine_configured = TaTeamSetting.support_redmine_configured?
+    @my_team_enabled = TaTeamSetting.my_team_enabled?
   end
 
   def create
     setting_type = team_setting_params[:setting_type]
+
+    if setting_type == 'my_team_visibility'
+      enabled = team_setting_params[:my_team_enabled] == '1'
+      TaTeamSetting.update_my_team_enabled(enabled)
+      flash[:notice] = "My Team page #{enabled ? 'activated' : 'deactivated'} successfully"
+      redirect_to admin_ta_team_settings_path
+      return
+    end
 
     if setting_type == 'support_redmine'
       base_url = team_setting_params[:support_redmine_base_url].to_s.strip
@@ -97,7 +106,7 @@ class AdminTaTeamSettingsController < ApplicationController
   end
 
   def team_setting_params
-    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key)
+    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key, :my_team_enabled)
   end
 
   def parse_admin_setting_date(value)

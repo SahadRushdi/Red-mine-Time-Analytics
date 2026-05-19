@@ -156,6 +156,17 @@ class TaTeamSetting < ActiveRecord::Base
     cfg[:base_url].present? && cfg[:api_key].present?
   end
 
+  def self.my_team_enabled?
+    raw = Setting.plugin_redmine_time_analytics || {}
+    raw['my_team_enabled'].to_s != '0' # Enabled by default
+  end
+
+  def self.update_my_team_enabled(enabled)
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['my_team_enabled'] = (enabled.to_s == '1' || enabled == true) ? '1' : '0'
+    Setting.plugin_redmine_time_analytics = settings
+  end
+
   def self.update_support_redmine_settings(base_url:, api_key:)
     settings = (Setting.plugin_redmine_time_analytics || {}).dup
 
