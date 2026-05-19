@@ -107,11 +107,7 @@
                     <% end %>
                   </div>
                   <div class="ta-team-project-edit hidden tep-inline-form w-full space-y-3">
-                    <div class="md:col-span-2 relative min-w-0">
-                      <%= label_tag "ta-team-project-source-button-#{team_project.id}", 'Project Source', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
-                      <div class="mb-1 text-xs text-gray-500">External Support Redmine URL</div>
-                      <%= hidden_field_tag 'ta_team_project[source_type]', 'external', form: form_id, id: "ta-team-project-source-value-#{team_project.id}" %>
-                    </div>
+                    <%= hidden_field_tag 'ta_team_project[source_type]', 'external', form: form_id, id: "ta-team-project-source-value-#{team_project.id}" %>
 
                     <div class="md:col-span-2 hidden" id="ta-team-project-local-wrap-<%= team_project.id %>">
                       <%= label_tag "ta-team-project-project-button-#{team_project.id}", 'Project', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
@@ -144,7 +140,6 @@
                     </div>
 
                     <div class="md:col-span-2" id="ta-team-project-external-wrap-<%= team_project.id %>">
-                      <%= label_tag "ta-team-project-external-url-#{team_project.id}", 'External Project URL', class: 'mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500' %>
                       <%= text_field_tag 'ta_team_project[external_project_url]',
                                          team_project.external_project_url,
                                          id: "ta-team-project-external-url-#{team_project.id}",
@@ -154,7 +149,6 @@
                                          required: true,
                                          disabled: false,
                                          class: 'ta-team-field ta-team-project-inline-url ta-team-settings-member-input block h-[43px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900' %>
-                      <p class="mt-1 text-xs text-gray-500">Must include <code>/projects/&lt;identifier&gt;</code>.</p>
                     </div>
                   </div>
                 </td>
@@ -407,18 +401,11 @@
 
           <%= hidden_field_tag 'ta_team_project[source_type]', 'external', id: 'ta-add-team-project-source-type' %>
 
-          <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div class="md:col-span-2">
-              <%= label_tag :ta_team_project_source_type_modal, 'Project Source', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-              <div class="flex items-center gap-2 pt-1">
-                <span class="text-sm text-gray-800 font-medium">External Support Redmine URL</span>
-              </div>
-            </div>
-
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
             <%# Internal project selection removed - default to External Support Redmine URL %>
             <%= hidden_field_tag 'ta_team_project[project_id]', @team_project.project_id, id: 'ta-add-team-project-id' %>
 
-            <div class="md:col-span-2" id="ta-add-external-project-url-wrap">
+            <div id="ta-add-external-project-url-wrap">
               <%= label_tag :ta_team_project_external_project_url_modal, 'External Project URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
               <%= text_field_tag 'ta_team_project[external_project_url]',
                                  selected_external_url,
