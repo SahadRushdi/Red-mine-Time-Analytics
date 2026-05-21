@@ -64,7 +64,8 @@ class TimeEntryPanelController < ApplicationController
     end
     @issues.reverse!
 
-    @issues_without_logs = assigned_issues.reject { |issue| period_te_dates.key?(issue.id) }
+    @period_issues = assigned_issues.select { |issue| issue.updated_on.in?(period_window) }
+    @issues_without_logs = @period_issues.reject { |issue| period_te_dates.key?(issue.id) }
     @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
     @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
     @issues_without_logs.reverse! if @unlogged_sort == 'desc'
@@ -73,6 +74,7 @@ class TimeEntryPanelController < ApplicationController
     @issues_worked_count = @time_entries.map(&:issue_id).uniq.count
     @unique_projects_count = @time_entries.map(&:project_id).uniq.count
     @all_issues_count = assigned_issues.count
+    @period_issues_count = @period_issues.count
   end
 
   def get_activities
