@@ -26,6 +26,8 @@ en:
   label_this_week: "This Week"
   label_last_week: "Last Week"
   label_this_month: "This Month"
+  label_last_month: "Last Month"
+  label_last_3_months: "Last 3 Months"
   label_this_year: "This Year"
   label_custom_range: "Custom Range"
   
