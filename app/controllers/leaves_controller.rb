@@ -6,8 +6,8 @@ class LeavesController < ApplicationController
 
   def index
     @users = User.active.sorted
-    @default_from = parse_date(params[:from]) || Date.current.beginning_of_month
-    @default_to = parse_date(params[:to]) || Date.current
+    @filter = resolve_filter
+    @default_from, @default_to = resolve_date_range(@filter)
     @filter_status = params[:status].to_s.presence
     @filter_user_id = params[:user_id].to_s.presence
     @selected_user = @filter_user_id.present? ? User.find_by(id: @filter_user_id) : nil
@@ -91,6 +91,33 @@ class LeavesController < ApplicationController
 
   def filter_params
     params.permit(:from, :to, :user_id, :status)
+  end
+
+  def resolve_filter
+    requested_filter = params[:filter].presence
+    return requested_filter if requested_filter.present?
+    return 'custom' if params[:from].present? || params[:to].present?
+
+    'this_month'
+  end
+
+  def resolve_date_range(filter)
+    case filter
+    when 'last_month'
+      from_date = (Date.current - 1.month).beginning_of_month
+      to_date = (Date.current - 1.month).end_of_month
+    when 'last_3_months'
+      from_date = (Date.current - 3.months).beginning_of_month
+      to_date = (Date.current - 1.month).end_of_month
+    when 'custom'
+      from_date = parse_date(params[:from]) || Date.current.beginning_of_month
+      to_date = parse_date(params[:to]) || Date.current
+    else
+      from_date = Date.current.beginning_of_month
+      to_date = Date.current.end_of_month
+    end
+
+    [from_date, to_date]
   end
 
   def leaves_payload(filters)

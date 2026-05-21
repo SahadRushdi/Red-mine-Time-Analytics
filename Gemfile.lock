@@ -5,7 +5,10 @@ GEM
       public_suffix (>= 2.0.2, < 8.0)
     base64 (0.3.0)
     chronic (0.10.2)
+    concurrent-ruby (1.3.6)
     declarative (0.0.20)
+    et-orbi (1.4.0)
+      tzinfo
     faraday (2.14.1)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -14,6 +17,9 @@ GEM
       faraday (>= 1, < 3)
     faraday-net_http (3.4.2)
       net-http (~> 0.5)
+    fugit (1.12.1)
+      et-orbi (~> 1.4)
+      raabro (~> 1.4)
     google-apis-core (1.0.2)
       addressable (~> 2.8, >= 2.8.7)
       faraday (~> 2.13)
@@ -47,17 +53,22 @@ GEM
     nickel (0.1.6)
     os (1.1.4)
     public_suffix (6.0.2)
+    raabro (1.4.0)
     representable (3.2.0)
       declarative (< 0.1.0)
       trailblazer-option (>= 0.1.1, < 0.2.0)
       uber (< 0.2.0)
     retriable (3.4.1)
+    rufus-scheduler (3.9.2)
+      fugit (~> 1.1, >= 1.11.1)
     signet (0.21.0)
       addressable (~> 2.8)
       faraday (>= 0.17.5, < 3.a)
       jwt (>= 1.5, < 4.0)
       multi_json (~> 1.10)
     trailblazer-option (0.1.2)
+    tzinfo (2.0.6)
+      concurrent-ruby (~> 1.0)
     uber (0.1.0)
     uri (1.1.1)
 
@@ -70,6 +81,7 @@ DEPENDENCIES
   google-apis-gmail_v1
   googleauth
   nickel
+  rufus-scheduler
 
 BUNDLED WITH
    2.6.9

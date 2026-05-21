@@ -11,6 +11,7 @@ require File.expand_path('lib/redmine_time_analytics/leave_providers/google_apps
 require File.expand_path('lib/redmine_time_analytics/leave_fetcher_factory', __dir__)
 require File.expand_path('lib/redmine_time_analytics/gmail_leave_fetcher', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_sync_service', __dir__)
+require File.expand_path('lib/redmine_time_analytics/leave_sync_scheduler', __dir__)
 
 Redmine::Plugin.register :redmine_time_analytics do
   name 'Redmine Time Analytics Plugin'
@@ -59,5 +60,9 @@ Redmine::Plugin.register :redmine_time_analytics do
   # Add permissions
   project_module :time_analytics do
     permission :view_time_analytics, { time_analytics: [:index, :individual_dashboard] }
+  end
+
+  Rails.application.config.after_initialize do
+    RedmineTimeAnalytics::LeaveSyncScheduler.start
   end
 end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'fugit'
+
 # TaTeamSetting model represents plugin settings for users
 # Used for exclusion list (users whose time logs are ignored) and super users (can view all teams)
 class TaTeamSetting < ActiveRecord::Base
@@ -7,8 +9,9 @@ class TaTeamSetting < ActiveRecord::Base
 
   # Constants
   SETTING_TYPES = %w[exclusion super_user].freeze
-  LEAVE_APPROACHES = %w[oauth dwd google_apps_script].freeze
-  AI_PROVIDERS = %w[google openai anthropic custom].freeze
+  LEAVE_APPROACHES = %w[oauth].freeze
+  AI_PROVIDERS = %w[google].freeze
+  DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
 
   # Associations
   belongs_to :user
@@ -158,7 +161,7 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.my_team_enabled?
     raw = Setting.plugin_redmine_time_analytics || {}
-    raw['my_team_enabled'].to_s != '0' # Enabled by default
+    raw['my_team_enabled'].to_s == '1'
   end
 
   def self.update_my_team_enabled(enabled)
@@ -180,13 +183,10 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.leave_sync_settings
     raw = Setting.plugin_redmine_time_analytics || {}
-    approach = raw['leave_sync_approach'].to_s
-    approach = 'oauth' unless LEAVE_APPROACHES.include?(approach)
+    approach = 'oauth'
 
     oauth_client_secret_raw = raw['leave_oauth_client_secret_enc'].presence || raw['leave_oauth_client_secret'].to_s
     oauth_refresh_token_raw = raw['leave_oauth_refresh_token_enc'].presence || raw['leave_oauth_refresh_token'].to_s
-    dwd_service_json_raw = raw['leave_dwd_service_account_json_enc'].presence || raw['leave_gmail_service_account_json'].to_s
-    gas_secret_raw = raw['leave_gas_webhook_secret_enc'].presence || raw['leave_gas_webhook_secret'].to_s
     ai_api_key_raw = raw['leave_ai_api_key_enc'].presence || raw['leave_ai_api_key'].to_s
 
     {
@@ -199,17 +199,18 @@ class TaTeamSetting < ActiveRecord::Base
       oauth_client_secret: decrypt_value(oauth_client_secret_raw),
       oauth_refresh_token: decrypt_value(oauth_refresh_token_raw),
       oauth_account_email: raw['leave_oauth_account_email'].to_s.strip,
-      dwd_delegated_user: raw['leave_dwd_delegated_user'].to_s.strip.presence || raw['leave_gmail_delegated_user'].to_s.strip,
-      dwd_service_account_json: decrypt_value(dwd_service_json_raw),
-      gas_webhook_secret: decrypt_value(gas_secret_raw),
       ai_extraction_enabled: raw['leave_ai_extraction_enabled'].to_s == '1',
-      ai_provider: raw['leave_ai_provider'].to_s.strip,
+      ai_provider: 'google',
       ai_model: raw['leave_ai_model'].to_s.strip,
       ai_api_key: decrypt_value(ai_api_key_raw),
-      ai_base_url: raw['leave_ai_base_url'].to_s.strip,
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
-      last_sync_mode: raw['leave_sync_last_mode'].to_s
+      last_sync_mode: raw['leave_sync_last_mode'].to_s,
+      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
     }
+  end
+
+  def self.default_leave_sync_cron
+    DEFAULT_LEAVE_SYNC_CRON
   end
 
   def self.update_leave_sync_settings!(
@@ -217,18 +218,15 @@ class TaTeamSetting < ActiveRecord::Base
     recipient_email:,
     historical_sync_start_date:,
     historical_sync_end_date: nil,
-    leave_approach:,
+    leave_approach: 'oauth',
     oauth_client_id: nil,
     oauth_client_secret: nil,
     oauth_account_email: nil,
-    dwd_delegated_user: nil,
-    dwd_service_account_json: nil,
-    gas_webhook_secret: nil,
+    leave_sync_cron: nil,
     ai_extraction_enabled: nil,
-    ai_provider: nil,
+    ai_provider: 'google',
     ai_model: nil,
-    ai_api_key: nil,
-    ai_base_url: nil
+    ai_api_key: nil
   )
     normalized_recipient = recipient_email.to_s.strip.downcase
     raise ArgumentError, 'Leave recipient email is required' if normalized_recipient.blank?
@@ -242,8 +240,6 @@ class TaTeamSetting < ActiveRecord::Base
       end_date = safe_parse_date(historical_sync_end_date)
       raise ArgumentError, 'Historical sync end date is invalid' if end_date.nil?
     end
-    approach = leave_approach.to_s
-    raise ArgumentError, 'Leave approach is invalid' unless LEAVE_APPROACHES.include?(approach)
 
     if historical_sync_start_date.present? && historical_sync_end_date.present?
       s_date = safe_parse_date(historical_sync_start_date)
@@ -255,12 +251,8 @@ class TaTeamSetting < ActiveRecord::Base
     end
 
     normalized_oauth_account = oauth_account_email.to_s.strip.downcase
-    normalized_dwd_user = dwd_delegated_user.to_s.strip.downcase
     if normalized_oauth_account.present? && !normalized_oauth_account.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
       raise ArgumentError, 'OAuth account email must be valid'
-    end
-    if normalized_dwd_user.present? && !normalized_dwd_user.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
-      raise ArgumentError, 'DWD delegated user must be valid'
     end
 
     settings = (Setting.plugin_redmine_time_analytics || {}).dup
@@ -268,11 +260,12 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_recipient_email'] = normalized_recipient
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_end_date'] = historical_sync_end_date.to_s
-    settings['leave_sync_approach'] = approach
+    settings['leave_sync_approach'] = 'oauth'
+    cron_expression = leave_sync_cron.to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
+    settings['leave_sync_cron'] = cron_expression
     settings['leave_ai_extraction_enabled'] = ai_extraction_enabled.to_s == '1' ? '1' : '0'
-    settings['leave_ai_provider'] = ai_provider.to_s.strip
+    settings['leave_ai_provider'] = 'google'
     settings['leave_ai_model'] = ai_model.to_s.strip
-    settings['leave_ai_base_url'] = ai_base_url.to_s.strip
 
     settings['leave_oauth_client_id'] = oauth_client_id.to_s.strip
     settings['leave_oauth_account_email'] = normalized_oauth_account
@@ -280,20 +273,10 @@ class TaTeamSetting < ActiveRecord::Base
       settings['leave_oauth_client_secret_enc'] = encrypt_value(oauth_client_secret.to_s)
     end
 
-    settings['leave_dwd_delegated_user'] = normalized_dwd_user
-    if dwd_service_account_json.present?
-      settings['leave_dwd_service_account_json_enc'] = encrypt_value(dwd_service_account_json.to_s)
-    end
-
-    if gas_webhook_secret.present?
-      settings['leave_gas_webhook_secret_enc'] = encrypt_value(gas_webhook_secret.to_s)
-    elsif approach != 'google_apps_script'
-      settings.delete('leave_gas_webhook_secret_enc')
-    end
-
     settings['leave_ai_api_key_enc'] = encrypt_value(ai_api_key.to_s) if ai_api_key.present?
 
-    validate_leave_sync_config!(settings, approach: approach)
+    validate_leave_sync_config!(settings)
+    validate_leave_sync_cron!(settings)
     validate_leave_ai_config!(settings)
     Setting.plugin_redmine_time_analytics = settings
   end
@@ -309,23 +292,14 @@ class TaTeamSetting < ActiveRecord::Base
     config = leave_sync_settings
     return false if config[:recipient_email].blank?
 
-    case config[:leave_approach]
-    when 'oauth'
-      config[:oauth_client_id].present? &&
-        config[:oauth_client_secret].present? &&
-        config[:oauth_account_email].present? &&
-        config[:oauth_refresh_token].present?
-    when 'dwd'
-      config[:dwd_delegated_user].present? && config[:dwd_service_account_json].present?
-    when 'google_apps_script'
-      true
-    else
-      false
-    end
+    config[:oauth_client_id].present? &&
+      config[:oauth_client_secret].present? &&
+      config[:oauth_account_email].present? &&
+      config[:oauth_refresh_token].present?
   end
 
   def self.leave_sync_manual_pull?
-    leave_sync_settings[:leave_approach] != 'google_apps_script'
+    true
   end
 
   def self.leave_ai_configured?
@@ -402,39 +376,32 @@ class TaTeamSetting < ActiveRecord::Base
     encrypted
   end
 
-  def self.validate_leave_sync_config!(settings, approach:)
-    case approach
-    when 'oauth'
-      client_id = settings['leave_oauth_client_id'].to_s.strip
-      client_secret = decrypt_value(settings['leave_oauth_client_secret_enc'].to_s)
-      account_email = settings['leave_oauth_account_email'].to_s.strip
-      raise ArgumentError, 'OAuth client ID is required' if client_id.blank?
-      raise ArgumentError, 'OAuth client secret is required' if client_secret.blank?
-      raise ArgumentError, 'OAuth account email is required' if account_email.blank?
-    when 'dwd'
-      delegated_user = settings['leave_dwd_delegated_user'].to_s.strip
-      service_json = decrypt_value(settings['leave_dwd_service_account_json_enc'].to_s)
-      raise ArgumentError, 'DWD delegated user is required' if delegated_user.blank?
-      raise ArgumentError, 'DWD service account JSON is required' if service_json.blank?
-    when 'google_apps_script'
-      # Webhook secret is optional but recommended.
-    end
+  def self.validate_leave_sync_config!(settings)
+    client_id = settings['leave_oauth_client_id'].to_s.strip
+    client_secret = decrypt_value(settings['leave_oauth_client_secret_enc'].to_s)
+    account_email = settings['leave_oauth_account_email'].to_s.strip
+    raise ArgumentError, 'OAuth client ID is required' if client_id.blank?
+    raise ArgumentError, 'OAuth client secret is required' if client_secret.blank?
+    raise ArgumentError, 'OAuth account email is required' if account_email.blank?
   end
 
   def self.validate_leave_ai_config!(settings)
     return unless settings['leave_ai_extraction_enabled'].to_s == '1'
 
-    provider = settings['leave_ai_provider'].to_s.strip
     model = settings['leave_ai_model'].to_s.strip
     api_key = decrypt_value(settings['leave_ai_api_key_enc'].to_s)
-    base_url = settings['leave_ai_base_url'].to_s.strip
 
-    raise ArgumentError, 'AI provider is invalid' unless AI_PROVIDERS.include?(provider)
     raise ArgumentError, 'AI model is required when AI extraction is enabled' if model.blank?
     raise ArgumentError, 'AI API key is required when AI extraction is enabled' if api_key.blank?
-    if provider == 'custom' && base_url.blank?
-      raise ArgumentError, 'AI base URL is required for custom AI provider'
-    end
+  end
+
+  def self.validate_leave_sync_cron!(settings)
+    cron = settings['leave_sync_cron'].to_s.strip
+    raise ArgumentError, 'Leave sync cron expression is required' if cron.blank?
+
+    Fugit::Cron.parse(cron)
+  rescue StandardError
+    raise ArgumentError, 'Leave sync cron expression is invalid'
   end
 
   # Check if this setting is for exclusion

@@ -188,6 +188,14 @@
     color: #1e3a8a !important;
   }
 
+  #team-tree-container .jstree-anchor[data-node-type="member"].jstree-clicked {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    color: #1d4ed8 !important;
+    font-weight: 500 !important;
+  }
+
   #team-tree-container li.team-tree-active-row > .jstree-wholerow {
     background: linear-gradient(90deg, #eff6ff 0%, #dbeafe 100%) !important;
     border: 1px solid #93c5fd !important;
@@ -396,6 +404,9 @@
         var userId = data.node.data.user_id;
         var url = '<%= my_time_path %>' + '?user_id=' + userId + '&<%= @member_dashboard_query %>';
         window.open(url, '_blank');
+        setTimeout(function() {
+          data.instance.deselect_all(true);
+        }, 0);
       }
     });
 
