@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'fugit'
+
 # TaTeamSetting model represents plugin settings for users
 # Used for exclusion list (users whose time logs are ignored) and super users (can view all teams)
 class TaTeamSetting < ActiveRecord::Base
@@ -9,6 +11,7 @@ class TaTeamSetting < ActiveRecord::Base
   SETTING_TYPES = %w[exclusion super_user].freeze
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
+  DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
 
   # Associations
   belongs_to :user
@@ -201,8 +204,13 @@ class TaTeamSetting < ActiveRecord::Base
       ai_model: raw['leave_ai_model'].to_s.strip,
       ai_api_key: decrypt_value(ai_api_key_raw),
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
-      last_sync_mode: raw['leave_sync_last_mode'].to_s
+      last_sync_mode: raw['leave_sync_last_mode'].to_s,
+      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
     }
+  end
+
+  def self.default_leave_sync_cron
+    DEFAULT_LEAVE_SYNC_CRON
   end
 
   def self.update_leave_sync_settings!(
@@ -214,6 +222,7 @@ class TaTeamSetting < ActiveRecord::Base
     oauth_client_id: nil,
     oauth_client_secret: nil,
     oauth_account_email: nil,
+    leave_sync_cron: nil,
     ai_extraction_enabled: nil,
     ai_provider: 'google',
     ai_model: nil,
@@ -252,6 +261,8 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_end_date'] = historical_sync_end_date.to_s
     settings['leave_sync_approach'] = 'oauth'
+    cron_expression = leave_sync_cron.to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
+    settings['leave_sync_cron'] = cron_expression
     settings['leave_ai_extraction_enabled'] = ai_extraction_enabled.to_s == '1' ? '1' : '0'
     settings['leave_ai_provider'] = 'google'
     settings['leave_ai_model'] = ai_model.to_s.strip
@@ -265,6 +276,7 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_ai_api_key_enc'] = encrypt_value(ai_api_key.to_s) if ai_api_key.present?
 
     validate_leave_sync_config!(settings)
+    validate_leave_sync_cron!(settings)
     validate_leave_ai_config!(settings)
     Setting.plugin_redmine_time_analytics = settings
   end
@@ -381,6 +393,15 @@ class TaTeamSetting < ActiveRecord::Base
 
     raise ArgumentError, 'AI model is required when AI extraction is enabled' if model.blank?
     raise ArgumentError, 'AI API key is required when AI extraction is enabled' if api_key.blank?
+  end
+
+  def self.validate_leave_sync_cron!(settings)
+    cron = settings['leave_sync_cron'].to_s.strip
+    raise ArgumentError, 'Leave sync cron expression is required' if cron.blank?
+
+    Fugit::Cron.parse(cron)
+  rescue StandardError
+    raise ArgumentError, 'Leave sync cron expression is invalid'
   end
 
   # Check if this setting is for exclusion

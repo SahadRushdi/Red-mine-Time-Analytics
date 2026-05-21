@@ -16,6 +16,12 @@ class AdminLeaveCountController < ApplicationController
     @leave_sync_settings = TaTeamSetting.leave_sync_settings
     @leave_sync_configured = TaTeamSetting.leave_sync_configured?
     @manual_pull_available = TaTeamSetting.leave_sync_manual_pull?
+    @leave_sync_enabled = @leave_sync_settings[:enabled]
+    @leave_sync_cron = @leave_sync_settings[:cron]
+    @leave_sync_scheduler_active = @leave_sync_enabled && @leave_sync_configured
+    if @leave_sync_scheduler_active
+      @leave_sync_next_run_at = RedmineTimeAnalytics::LeaveSyncScheduler.next_run_at(settings: @leave_sync_settings)
+    end
   end
 
   def create
@@ -29,11 +35,13 @@ class AdminLeaveCountController < ApplicationController
       oauth_client_id: sync_params[:leave_oauth_client_id],
       oauth_client_secret: sync_params[:leave_oauth_client_secret],
       oauth_account_email: sync_params[:leave_oauth_account_email],
+      leave_sync_cron: sync_params[:leave_sync_cron],
       ai_extraction_enabled: sync_params[:leave_ai_api_key].present?,
       ai_provider: 'google',
       ai_model: sync_params[:leave_ai_model],
       ai_api_key: sync_params[:leave_ai_api_key]
     )
+    RedmineTimeAnalytics::LeaveSyncScheduler.refresh!
     flash[:notice] = l(:notice_leave_count_settings_updated)
   rescue ArgumentError => e
     flash[:error] = e.message
@@ -136,6 +144,7 @@ class AdminLeaveCountController < ApplicationController
       :leave_oauth_client_id,
       :leave_oauth_client_secret,
       :leave_oauth_account_email,
+      :leave_sync_cron,
       :leave_ai_extraction_enabled,
       :leave_ai_model,
       :leave_ai_api_key
