@@ -158,7 +158,7 @@ class TaTeamSetting < ActiveRecord::Base
 
   def self.my_team_enabled?
     raw = Setting.plugin_redmine_time_analytics || {}
-    raw['my_team_enabled'].to_s != '0' # Enabled by default
+    raw['my_team_enabled'].to_s == '1'
   end
 
   def self.update_my_team_enabled(enabled)

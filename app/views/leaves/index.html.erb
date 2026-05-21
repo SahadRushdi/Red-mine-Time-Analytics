@@ -403,25 +403,54 @@
         .catch(function (error) { alert(error.message); });
     }
 
-    function typeaheadFocus(menu, query, attrName) {
+    function findDropdownOption(menu, query, attrName) {
       if (!menu) return;
       var options = Array.from(menu.querySelectorAll('.leaves-dropdown-option'))
         .filter(function (btn) { return btn.style.display !== 'none'; });
       if (!options.length) return;
       var normalized = normalize(query);
-      var match = options.find(function (btn) {
+      return options.find(function (btn) {
         var label = normalize(btn.getAttribute(attrName) || btn.textContent || '');
         return label.indexOf(normalized) === 0;
-      });
-      if (match) {
-        match.focus();
-        return;
-      }
-      var fallback = options.find(function (btn) {
+      }) || options.find(function (btn) {
         var label = normalize(btn.getAttribute(attrName) || btn.textContent || '');
         return label.indexOf(normalized) !== -1;
-      });
-      if (fallback) fallback.focus();
+      }) || null;
+    }
+
+    var userDropdownTypeahead = {
+      buffer: '',
+      timer: null
+    };
+
+    function resetUserDropdownTypeahead() {
+      userDropdownTypeahead.buffer = '';
+      window.clearTimeout(userDropdownTypeahead.timer);
+      userDropdownTypeahead.timer = null;
+    }
+
+    function handleUserDropdownTypeahead(menu, query, attrName, selectFn) {
+      var typed = normalize(query);
+      if (!typed) return;
+
+      userDropdownTypeahead.buffer += typed;
+      window.clearTimeout(userDropdownTypeahead.timer);
+      userDropdownTypeahead.timer = window.setTimeout(function () {
+        resetUserDropdownTypeahead();
+      }, 900);
+
+      var match = findDropdownOption(menu, userDropdownTypeahead.buffer, attrName);
+      if (!match) {
+        userDropdownTypeahead.buffer = typed;
+        match = findDropdownOption(menu, typed, attrName);
+      }
+      if (!match) return;
+
+      match.focus();
+      if (normalize(match.getAttribute(attrName) || match.textContent || '') === userDropdownTypeahead.buffer) {
+        selectFn(match);
+        resetUserDropdownTypeahead();
+      }
     }
 
     function bindDropdownKeyboard(menuId, attrName, selectFn) {
@@ -457,7 +486,12 @@
 
         if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
           event.preventDefault();
-          typeaheadFocus(menu, event.key, attrName);
+          if (menuId === 'leaves-user-dropdown') {
+            handleUserDropdownTypeahead(menu, event.key, attrName, selectFn);
+            return;
+          }
+          var match = findDropdownOption(menu, event.key, attrName);
+          if (match) match.focus();
         }
       });
 
@@ -469,6 +503,7 @@
           }
         });
         button.addEventListener('click', function () {
+          if (menuId === 'leaves-user-dropdown') resetUserDropdownTypeahead();
           selectFn(button);
         });
       });
@@ -492,7 +527,14 @@
       if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
         openDropdown(menuId);
-        typeaheadFocus(document.getElementById(menuId), event.key, attrName);
+        if (menuId === 'leaves-user-dropdown') {
+          handleUserDropdownTypeahead(document.getElementById(menuId), event.key, attrName, function (button) {
+            button.click();
+          });
+        } else {
+          var match = findDropdownOption(document.getElementById(menuId), event.key, attrName);
+          if (match) match.focus();
+        }
       }
     }
 
@@ -873,12 +915,10 @@
 
     function statusBadge(status, flaggedReason, aiAnalyzed) {
       if (status === 'confirmed') {
-        var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
-        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span>' + analyzedHtml + '</div>';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span></div>';
       }
       var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
-      var analyzedHtml = aiAnalyzed ? '<div class="mt-1 text-xs font-medium text-emerald-600">Analyzed by AI</div>' : '';
-      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + analyzedHtml + '</div>';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + '</div>';
     }
 
     function leaveTypeForFraction(fraction) {
