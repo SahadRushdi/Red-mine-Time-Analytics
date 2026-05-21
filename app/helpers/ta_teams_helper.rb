@@ -13,7 +13,8 @@ module TaTeamsHelper
       members_panel_id = "ta-team-members-#{team.id}"
       child_teams = children_map[team.id] || []
 
-      html << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", style: ta_team_item_style(level), data: { team_id: team.id }) do
+      branch_content = ''.html_safe
+      branch_content << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", style: ta_team_item_style(level), data: { team_id: team.id }) do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
         member_count = active_member_counts[team.id].to_i
@@ -79,10 +80,12 @@ module TaTeamsHelper
       end
 
       if child_teams.any?
-        html << content_tag(:div, class: "ta-team-children level-#{level + 1}", style: ta_team_branch_style(level + 1)) do
+        branch_content << content_tag(:div, class: "ta-team-children level-#{level + 1}", style: ta_team_branch_style(level + 1)) do
           ta_team_tree(child_teams, level + 1, children_map, active_member_counts, open_hiring_counts, team_memberships_map)
         end
       end
+
+      html << content_tag(:div, branch_content, class: "ta-team-branch level-#{level}")
     end
     html
   end

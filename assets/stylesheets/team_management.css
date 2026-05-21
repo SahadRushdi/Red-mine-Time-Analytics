@@ -1,12 +1,18 @@
 .ta-team-item {
+  display: flow-root;
   margin-bottom: 0.5rem;
   border: 1px solid var(--ta-team-item-color, #e5e7eb);
   border-radius: 0.75rem;
   background: var(--ta-team-item-bg, #ffffff);
   padding: 0.75rem;
   min-height: 56px;
-  contain: layout;
+  overflow: visible;
   /* transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; */
+}
+
+.ta-team-branch {
+  display: block;
+  clear: both;
 }
 
 .ta-team-item:hover {
@@ -108,15 +114,10 @@ body.ta-team-split-dragging {
 .ta-team-item.level-3 { margin-left: 3rem; }
 
 .ta-team-children {
+  display: block;
   margin-left: 0.75rem;
   padding-left: 1rem;
   border-left: 4px solid var(--ta-team-branch-color, #93c5fd);
-}
-
-.ta-team-children.level-2,
-.ta-team-children.level-3,
-.ta-team-children.level-4 {
-  margin-top: 0.5rem;
 }
 
 .ta-team-name {

@@ -74,8 +74,7 @@
 
       <div class="rounded-lg border border-purple-100 bg-purple-50 p-4 space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-900"><%= l(:label_leave_approach_ai_model) %></span>
-          <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-purple-700"><%= l(:label_leave_ai_extraction_mode) %></span>
+          <span class="text-sm font-semibold text-gray-900"><%= l(:label_leave_ai_extraction_mode) %></span>
         </div>
         <p class="text-sm text-gray-700">Provide your AI API key to enable AI extraction for complex leave cases.</p>
         <%= hidden_field_tag :leave_ai_extraction_enabled, '1' %>
@@ -92,6 +91,33 @@
           <div>
             <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
             <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+        </div>
+      </div>
+
+      <div id="leave-historical-sync-accordion" data-accordion="collapse">
+        <h2 id="leave-historical-sync-heading">
+          <button type="button"
+                  class="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 text-left text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+                  data-accordion-target="#leave-historical-sync-body"
+                  aria-expanded="false"
+                  aria-controls="leave-historical-sync-body">
+            <span><%= l(:label_leave_historical_sync_dates) %></span>
+            <svg data-accordion-icon class="h-3.5 w-3.5 shrink-0 rotate-180 text-gray-500 transition-transform" aria-hidden="true" fill="none" viewBox="0 0 10 6">
+              <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"></path>
+            </svg>
+          </button>
+        </h2>
+        <div id="leave-historical-sync-body" class="hidden" aria-labelledby="leave-historical-sync-heading">
+          <div class="grid grid-cols-1 gap-4 pt-4 md:grid-cols-2">
+            <div>
+              <%= label_tag :leave_sync_start_date, l(:label_historical_sync_start_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= text_field_tag :leave_sync_start_date, @leave_sync_settings[:historical_sync_start_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-start-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-blue-400 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
+            </div>
+            <div>
+              <%= label_tag :leave_sync_end_date, l(:label_historical_sync_end_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= text_field_tag :leave_sync_end_date, @leave_sync_settings[:historical_sync_end_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-end-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-blue-400 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
+            </div>
           </div>
         </div>
       </div>
