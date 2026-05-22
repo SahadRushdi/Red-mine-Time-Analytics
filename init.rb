@@ -25,7 +25,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   menu :top_menu, :time_analytics, { controller: 'time_analytics', action: 'index' }, 
        caption: :label_time_analytics, after: :my_page
 
-  # Add Team Analytics menu (visible to team leads and super users)
+  # Add Team Analytics menu (visible to team leads and super users, even if they are not assigned to a team)
   menu :top_menu, :team_analytics,
        { controller: 'team_analytics', action: 'index' },
        caption: 'My Team',

@@ -15,11 +15,11 @@ class AdminTaTeamMembershipsController < ApplicationController
 
     if @membership.save
       flash[:notice] = l(:notice_successful_create)
-      redirect_to admin_ta_teams_path(main_tab: 'members')
+      redirect_to admin_ta_teams_path(main_tab: params[:main_tab].presence || 'structure')
     else
       flash[:error] = @membership.errors.full_messages.to_sentence
       redirect_to admin_ta_teams_path(
-        main_tab: 'members',
+        main_tab: params[:main_tab].presence || 'structure',
         open_add_member_modal: 1,
         add_member_team_id: @team.id
       )
@@ -29,17 +29,17 @@ class AdminTaTeamMembershipsController < ApplicationController
   def update
     if @membership.update(membership_params)
       flash[:notice] = l(:notice_successful_update)
-      redirect_to admin_ta_teams_path(main_tab: 'members')
+      redirect_membership_context
     else
       flash[:error] = @membership.errors.full_messages.to_sentence
-      redirect_to admin_ta_teams_path(main_tab: 'members')
+      redirect_membership_context
     end
   end
 
   def destroy
     @membership.destroy
     flash[:notice] = l(:notice_successful_delete)
-    redirect_to admin_ta_teams_path(main_tab: 'members')
+    redirect_membership_context
   end
 
   private
@@ -58,5 +58,13 @@ class AdminTaTeamMembershipsController < ApplicationController
 
   def membership_params
     params.require(:ta_team_membership).permit(:user_id, :role, :start_date, :end_date)
+  end
+
+  def redirect_membership_context
+    if params[:main_tab].present?
+      redirect_to admin_ta_teams_path(main_tab: params[:main_tab])
+    else
+      redirect_back fallback_location: admin_ta_team_path(@team)
+    end
   end
 end

@@ -83,7 +83,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - Real-time URL validation before save
 - **Hierarchical Team Structure**: Support for parent-child team relationships
 - **Historical Tracking**: Track member and project assignments with date ranges
-- **Access Control**: Team leads see their teams and sub-teams; super users see all teams without team assignment
+- **Access Control**: Team leads see their teams and sub-teams; super users see all teams even without any team assignment
  - **Exclusion List**: Exclude specific users (e.g., C-level executives) from analytics with optional start/end dates
 - **Interactive Charts**: Same powerful Chart.js visualizations as Individual Dashboard
 - **Export Functionality**: CSV export for team time entries

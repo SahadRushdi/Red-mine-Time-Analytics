@@ -227,7 +227,7 @@
                               <span class="material-icons ta-inline-material-icon">edit</span>
                             </button>
                             <button type="button"
-                                    onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= current_membership.id %>, '<%= admin_ta_team_membership_path(current_team, current_membership) %>', '<%= form_authenticity_token %>')"
+                                    onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= current_membership.id %>, '<%= admin_ta_team_membership_path(current_team, current_membership) %>', '<%= form_authenticity_token %>', 'members')"
                                     class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                                     title="Delete"
                                     aria-label="Delete member">
@@ -257,6 +257,7 @@
                 <% next unless current_membership && current_membership.team %>
                 <% form_id = "ta-member-history-form-#{current_membership.id}" %>
                 <%= form_tag admin_ta_team_membership_path(current_membership.team, current_membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{current_membership.id})" do %>
+                  <%= hidden_field_tag :main_tab, 'members', form: form_id %>
                 <% end %>
               <% end %>
             </div>
@@ -334,8 +335,8 @@
       <% end %>
 
       <% selected_add_member_team = @all_teams.find { |team| team.id.to_s == @selected_add_member_team_id.to_s } %>
-      <div id="taTeamMembersAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10040] justify-center items-center w-full h-full bg-gray-900/50">
-        <div class="relative p-4 w-full max-w-3xl max-h-full">
+      <div id="taTeamMembersAddModal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/50 p-4 sm:items-center">
+        <div class="relative w-full max-w-3xl">
           <div class="relative bg-white rounded-lg shadow">
             <div class="flex items-start justify-between p-4 border-b rounded-t">
               <div>
@@ -360,6 +361,7 @@
                     data-create-path-base="<%= admin_ta_team_memberships_path(0) %>"
                     onsubmit="return submitTeamMemberAddForm()">
                 <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+                <%= hidden_field_tag :main_tab, @active_main_tab.presence || 'structure' %>
 
                 <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div class="md:col-span-2">
@@ -696,6 +698,11 @@
     return mmddyyyy[3] + '-' + mmddyyyy[1].padStart(2, '0') + '-' + mmddyyyy[2].padStart(2, '0');
   }
 
+  var teamMembersAddModalState = {
+    parent: null,
+    nextSibling: null
+  };
+
   function initTeamMemberInlineDatepickers(membershipId) {
     var input = document.getElementById('ta-team-member-start-date-' + membershipId);
     if (!input) return;
@@ -895,7 +902,8 @@
   }
 
   function teamMembersDelete(membershipId, url, token) {
-    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token };
+    var mainTab = arguments.length > 3 ? arguments[3] : null;
+    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token, mainTab: mainTab };
     teamMembersOpenDeleteModal();
   }
 
@@ -913,6 +921,13 @@
       input.value = pair[1];
       form.appendChild(input);
     });
+    if (teamMembersPendingDelete.mainTab) {
+      var tabInput = document.createElement('input');
+      tabInput.type = 'hidden';
+      tabInput.name = 'main_tab';
+      tabInput.value = teamMembersPendingDelete.mainTab;
+      form.appendChild(tabInput);
+    }
     document.body.appendChild(form);
     form.submit();
   }
@@ -1269,6 +1284,11 @@
   function teamMembersOpenAddModal() {
     var modal = document.getElementById('taTeamMembersAddModal');
     if (!modal) return;
+    if (modal.parentNode !== document.body) {
+      teamMembersAddModalState.parent = modal.parentNode;
+      teamMembersAddModalState.nextSibling = modal.nextSibling;
+      document.body.appendChild(modal);
+    }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.setAttribute('aria-hidden', 'false');
@@ -1291,6 +1311,9 @@
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     modal.setAttribute('aria-hidden', 'true');
+    if (teamMembersAddModalState.parent && modal.parentNode !== teamMembersAddModalState.parent) {
+      teamMembersAddModalState.parent.insertBefore(modal, teamMembersAddModalState.nextSibling);
+    }
     teamMembersCloseAddTeamDropdown();
     teamMembersCloseAddUserDropdown();
     teamMembersCloseAddRoleDropdown();
