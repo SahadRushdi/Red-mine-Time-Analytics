@@ -73,7 +73,9 @@ class TimeEntryPanelController < ApplicationController
     # Summary card data
     @issues_worked_count = @time_entries.map(&:issue_id).uniq.count
     @unique_projects_count = @time_entries.map(&:project_id).uniq.count
-    @all_issues_count = assigned_issues.count
+    # Count only issues relevant to the selected time period: combination of
+    # period-active issues (from the Logged tab's search list) and the Unlogged list.
+    @all_issues_count = (@issues.map(&:id) | @issues_without_logs.map(&:id)).count
     @period_issues_count = @period_issues.count
   end
 
