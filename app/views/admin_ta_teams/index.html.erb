@@ -227,7 +227,7 @@
                               <span class="material-icons ta-inline-material-icon">edit</span>
                             </button>
                             <button type="button"
-                                    onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= current_membership.id %>, '<%= admin_ta_team_membership_path(current_team, current_membership) %>', '<%= form_authenticity_token %>', '<%= @active_main_tab.presence %>')"
+                                    onclick="event.stopPropagation(); this.blur(); teamMembersDelete(<%= current_membership.id %>, '<%= admin_ta_team_membership_path(current_team, current_membership) %>', '<%= form_authenticity_token %>', 'members')"
                                     class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                                     title="Delete"
                                     aria-label="Delete member">
@@ -257,7 +257,7 @@
                 <% next unless current_membership && current_membership.team %>
                 <% form_id = "ta-member-history-form-#{current_membership.id}" %>
                 <%= form_tag admin_ta_team_membership_path(current_membership.team, current_membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{current_membership.id})" do %>
-                  <%= hidden_field_tag :main_tab, @active_main_tab, form: form_id if @active_main_tab.present? %>
+                  <%= hidden_field_tag :main_tab, 'members', form: form_id %>
                 <% end %>
               <% end %>
             </div>
