@@ -282,8 +282,8 @@
   </div>
 </div>
 
-<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-gray-900/60 p-4 sm:items-center">
-<div class="relative w-full max-w-3xl">
+<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/50 p-4 sm:items-center">
+  <div class="relative w-full max-w-3xl">
     <div class="relative rounded-2xl bg-white shadow-xl flex flex-col min-h-[520px]">
       <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
         <div>
@@ -309,7 +309,7 @@
                      id="leaves-manual-user-search"
                      placeholder="Select a user"
                      autocomplete="off"
-                     class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                     class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
                      required>
               <input type="hidden" id="leaves-manual-user-id" value="">
               <div id="leaves-manual-user-list"
@@ -335,9 +335,6 @@
             <div>
               <label for="leaves-manual-from" class="mb-1 block text-sm font-medium text-gray-700">From Date</label>
               <div class="relative">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                </div>
                 <input type="text"
                        id="leaves-manual-from"
                        autocomplete="off"
@@ -346,35 +343,31 @@
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
             <div>
               <label for="leaves-manual-to" class="mb-1 block text-sm font-medium text-gray-700">To Date</label>
               <div class="relative">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                </div>
                 <input type="text"
                        id="leaves-manual-to"
                        autocomplete="off"
                        placeholder="Pick a date"
-                       required
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4">
             <div>
               <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_leave_type) %></label>
               <div class="relative" id="leaves-manual-fraction-wrapper">
                 <button type="button"
                         id="leaves-manual-fraction-button"
-                        class="leaves-modal-input inline-flex h-[42px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
+                        class="leaves-modal-input inline-flex h-[44px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
                   <span id="leaves-manual-fraction-label">0.5</span>
                   <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -387,18 +380,11 @@
                 </div>
               </div>
             </div>
-            <div>
-              <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_status) %></label>
-              <input type="text"
-                     value="<%= l(:label_confirmed) %>"
-                     disabled
-                     class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
-            </div>
           </div>
 
           <div class="mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
-            <button type="button" id="leaves-manual-cancel" class="leaves-modal-cancel inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button type="submit" class="leaves-modal-submit inline-flex items-center rounded-lg bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2563eb]"><%= l(:label_add_leave) %></button>
+            <button type="button" id="leaves-manual-cancel" class="leaves-modal-cancel inline-flex h-[44px] items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button type="submit" class="leaves-modal-submit inline-flex h-[44px] items-center rounded-lg bg-[#3b82f6] px-4 text-sm font-semibold text-white hover:bg-[#2563eb]"><%= l(:label_add_leave) %></button>
           </div>
         </form>
       </div>
@@ -491,6 +477,7 @@
     var deleteState = { id: null };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var monthState = { year: null, month: null };
+    var manualUserState = { activeIndex: -1 };
     var manualElements = {
       modal: document.getElementById('leaves-manual-modal'),
       openButton: document.getElementById('leaves-add-button'),
@@ -1517,6 +1504,8 @@
       if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = '0.5';
       if (manualElements.userSearch) manualElements.userSearch.value = '';
       if (manualElements.userId) manualElements.userId.value = '';
+      closeManualUserDropdown();
+      closeManualFractionMenu();
       if (manualElements.userSearch) manualElements.userSearch.focus();
     }
 
@@ -1534,6 +1523,8 @@
         var searchValue = option.getAttribute('data-user-search') || '';
         option.style.display = searchValue.indexOf(query) !== -1 ? '' : 'none';
       });
+      manualUserState.activeIndex = -1;
+      setManualUserActiveOption(-1);
     }
 
     function openManualUserDropdown() {
@@ -1545,6 +1536,8 @@
     function closeManualUserDropdown() {
       if (!manualElements.userList) return;
       manualElements.userList.classList.add('hidden');
+      manualUserState.activeIndex = -1;
+      setManualUserActiveOption(-1);
     }
 
     function selectManualUser(option) {
@@ -1552,6 +1545,34 @@
       manualElements.userId.value = option.getAttribute('data-user-id') || '';
       manualElements.userSearch.value = option.getAttribute('data-user-text') || option.textContent.trim();
       closeManualUserDropdown();
+    }
+
+    function getVisibleManualUserOptions() {
+      if (!manualElements.userList) return [];
+      return Array.from(manualElements.userList.querySelectorAll('.leaves-modal-option')).filter(function (option) {
+        return option.style.display !== 'none';
+      });
+    }
+
+    function setManualUserActiveOption(index) {
+      var options = getVisibleManualUserOptions();
+      options.forEach(function (option, optionIndex) {
+        option.classList.toggle('leaves-modal-option--active', optionIndex === index);
+      });
+      if (index >= 0 && options[index]) {
+        options[index].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function moveManualUserActiveOption(step) {
+      var options = getVisibleManualUserOptions();
+      if (!options.length) return;
+      if (manualUserState.activeIndex < 0) {
+        manualUserState.activeIndex = step > 0 ? 0 : options.length - 1;
+      } else {
+        manualUserState.activeIndex = Math.max(0, Math.min(options.length - 1, manualUserState.activeIndex + step));
+      }
+      setManualUserActiveOption(manualUserState.activeIndex);
     }
 
     function toggleManualFractionMenu() {
@@ -1654,7 +1675,29 @@
         filterManualUsers();
       });
       manualElements.userSearch.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') closeManualUserDropdown();
+        if (event.key === 'Escape') {
+          closeManualUserDropdown();
+          return;
+        }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
+          moveManualUserActiveOption(1);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
+          moveManualUserActiveOption(-1);
+          return;
+        }
+        if (event.key === 'Enter') {
+          var options = getVisibleManualUserOptions();
+          if (manualUserState.activeIndex >= 0 && options[manualUserState.activeIndex]) {
+            event.preventDefault();
+            selectManualUser(options[manualUserState.activeIndex]);
+          }
+        }
       });
     }
     if (manualElements.userList) {

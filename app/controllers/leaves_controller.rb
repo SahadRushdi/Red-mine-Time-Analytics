@@ -25,9 +25,8 @@ class LeavesController < ApplicationController
     return render json: { error: 'User is required' }, status: :unprocessable_entity if user.nil?
 
     from_date = parse_date(manual_leave_params[:from])
-    to_date = parse_date(manual_leave_params[:to])
+    to_date = parse_date(manual_leave_params[:to]) || from_date
     return render json: { error: 'From date is required' }, status: :unprocessable_entity if from_date.nil?
-    return render json: { error: 'To date is required' }, status: :unprocessable_entity if to_date.nil?
     return render json: { error: 'From date must be earlier than To date' }, status: :unprocessable_entity if from_date > to_date
 
     leave_fraction = manual_leave_params[:leave_fraction].to_f

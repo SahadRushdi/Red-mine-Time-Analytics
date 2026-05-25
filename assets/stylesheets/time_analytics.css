@@ -745,6 +745,20 @@ button[data-table-sort]:active {
   box-shadow: inset 0 0 0 1px #3b82f6 !important;
 }
 
+#leaves-manual-modal {
+  background-color: rgba(17, 24, 39, 0.5) !important;
+}
+
+#leaves-manual-fraction-button,
+#leaves-manual-fraction-button:hover,
+#leaves-manual-fraction-button:focus,
+#leaves-manual-fraction-button:focus-visible,
+#leaves-manual-fraction-button:active {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+
 .leaves-modal-option,
 .leaves-modal-option:hover,
 .leaves-modal-option:focus,
@@ -759,6 +773,13 @@ button[data-table-sort]:active {
 .leaves-modal-option:hover,
 .leaves-modal-option:focus {
   background-color: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+.leaves-modal-option--active,
+.leaves-modal-option--active:hover,
+.leaves-modal-option--active:focus {
+  background-color: #e5e7eb !important;
   color: #111827 !important;
 }
 
