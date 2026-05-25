@@ -282,7 +282,7 @@
   </div>
 </div>
 
-<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/50 p-4 sm:items-center">
+<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/70 p-4 sm:items-center">
   <div class="relative w-full max-w-3xl">
     <div class="relative rounded-2xl bg-white shadow-xl flex flex-col min-h-[520px]">
       <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
@@ -397,7 +397,7 @@
     <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
       <button type="button"
               class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center !border-0 !outline-none !shadow-none !ring-0"
-              data-modal-hide="leaves-delete-modal">
+              data-leaves-delete-close="true">
         <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
         </svg>
@@ -409,7 +409,7 @@
       <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
       <div class="flex justify-center items-center space-x-4">
         <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
-        <button type="button" id="leaves-delete-cancel" data-modal-hide="leaves-delete-modal" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
+        <button type="button" id="leaves-delete-cancel" data-leaves-delete-close="true" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
       </div>
     </div>
   </div>
@@ -1486,7 +1486,7 @@
 
     var deleteConfirmButton = document.getElementById('leaves-delete-confirm');
     var deleteCancelButton = document.getElementById('leaves-delete-cancel');
-    var deleteCloseButtons = document.querySelectorAll('[data-modal-hide="leaves-delete-modal"]');
+    var deleteCloseButtons = document.querySelectorAll('[data-leaves-delete-close="true"]');
     if (deleteConfirmButton) deleteConfirmButton.addEventListener('click', confirmDelete);
     if (deleteCancelButton) deleteCancelButton.addEventListener('click', closeDeleteModal);
     deleteCloseButtons.forEach(function (button) {
@@ -1500,8 +1500,7 @@
       manualElements.modal.setAttribute('aria-hidden', 'false');
       if (manualElements.from) manualElements.from.value = formatDateForInput(new Date());
       if (manualElements.to) manualElements.to.value = '';
-      if (manualElements.fraction) manualElements.fraction.value = '0.5';
-      if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = '0.5';
+      setManualLeaveTypeMode('single');
       if (manualElements.userSearch) manualElements.userSearch.value = '';
       if (manualElements.userId) manualElements.userId.value = '';
       closeManualUserDropdown();
@@ -1547,6 +1546,27 @@
       closeManualUserDropdown();
     }
 
+    function setManualLeaveTypeMode(mode) {
+      if (!manualElements.fraction || !manualElements.fractionButton || !manualElements.fractionLabel || !manualElements.fractionMenu) return;
+      var isRange = mode === 'range';
+      manualElements.fraction.value = isRange ? '1' : '0.5';
+      manualElements.fractionLabel.textContent = isRange ? '1' : '0.5';
+      manualElements.fractionButton.disabled = isRange;
+      manualElements.fractionButton.classList.toggle('cursor-not-allowed', isRange);
+      manualElements.fractionButton.classList.toggle('opacity-70', isRange);
+      manualElements.fractionButton.classList.toggle('pointer-events-none', isRange);
+      manualElements.fractionMenu.classList.toggle('hidden', isRange);
+    }
+
+    function syncManualLeaveTypeMode() {
+      if (!manualElements.to) return;
+      if (manualElements.to.value && manualElements.to.value.trim()) {
+        setManualLeaveTypeMode('range');
+      } else {
+        setManualLeaveTypeMode('single');
+      }
+    }
+
     function getVisibleManualUserOptions() {
       if (!manualElements.userList) return [];
       return Array.from(manualElements.userList.querySelectorAll('.leaves-modal-option')).filter(function (option) {
@@ -1576,7 +1596,7 @@
     }
 
     function toggleManualFractionMenu() {
-      if (!manualElements.fractionMenu) return;
+      if (!manualElements.fractionMenu || (manualElements.fractionButton && manualElements.fractionButton.disabled)) return;
       var shouldOpen = manualElements.fractionMenu.classList.contains('hidden');
       manualElements.fractionMenu.classList.toggle('hidden', !shouldOpen);
     }
@@ -1587,6 +1607,7 @@
     }
 
     function selectManualFraction(value) {
+      if (manualElements.fractionButton && manualElements.fractionButton.disabled) return;
       if (manualElements.fraction) manualElements.fraction.value = value;
       if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = value;
       closeManualFractionMenu();
@@ -1598,6 +1619,7 @@
         alert('Please select a user.');
         return false;
       }
+      syncManualLeaveTypeMode();
 
       fetch('<%= leaves_create_path %>', {
         method: 'POST',
@@ -1724,6 +1746,11 @@
         submitManualLeave();
       });
     }
+    if (manualElements.to) {
+      manualElements.to.addEventListener('input', syncManualLeaveTypeMode);
+      manualElements.to.addEventListener('change', syncManualLeaveTypeMode);
+      manualElements.to.addEventListener('changeDate', syncManualLeaveTypeMode);
+    }
     document.addEventListener('click', function (event) {
       if (!event.target.closest('#leaves-manual-user-wrapper')) {
         closeManualUserDropdown();
@@ -1732,5 +1759,6 @@
         closeManualFractionMenu();
       }
     });
+    syncManualLeaveTypeMode();
   });
 </script>
