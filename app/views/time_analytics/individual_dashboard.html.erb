@@ -74,18 +74,12 @@
         </svg>
       </button>
       <div id="grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-        <button type="button" onclick="setGroupingAndSubmit('daily')" 
-            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'daily' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-          Daily
-        </button>
-        <button type="button" onclick="setGroupingAndSubmit('weekly')" 
-            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'weekly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-          Weekly
-        </button>
-        <button type="button" onclick="setGroupingAndSubmit('monthly')" 
-            class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == 'monthly' ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-          Monthly
-        </button>
+        <% @grouping_options.each do |option| %>
+          <button type="button" onclick="setGroupingAndSubmit('<%= option %>')" 
+              class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == option ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
+            <%= option.capitalize %>
+          </button>
+        <% end %>
       </div>
       <%= hidden_field_tag :grouping, @grouping, id: 'grouping_hidden' %>
     </div>

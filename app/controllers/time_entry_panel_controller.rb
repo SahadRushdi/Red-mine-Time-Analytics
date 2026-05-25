@@ -35,28 +35,26 @@ class TimeEntryPanelController < ApplicationController
     # Build grouped entries for the Time Logs tab
     @grouped_entries = build_grouped_entries(@time_entries.to_a, @grouping, @from, @to)
 
-    # Build activity maps per issue
-    issue_ids = assigned_issues.map(&:id)
-    last_te_dates = TimeEntry.where(issue_id: issue_ids, user_id: @user.id)
-                              .group(:issue_id)
-                              .maximum(:created_on)
-    period_te_dates = TimeEntry.where(issue_id: issue_ids, user_id: @user.id, spent_on: @from..@to)
-                               .group(:issue_id)
-                               .maximum(:created_on)
-
-    @issue_last_activity = {}
-    assigned_issues.each do |issue|
-      te_date = last_te_dates[issue.id]
-      @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
-    end
-
     period_window = @from.beginning_of_day..@to.end_of_day
+    period_te_dates = @time_entries.each_with_object({}) do |entry, memo|
+      next unless entry.issue_id
+      memo[entry.issue_id] = [memo[entry.issue_id], entry.created_on].compact.max
+    end
 
     # Logged-tab issue dropdown: include issues active in this period.
-    # Active means issue.updated_on is in range OR user logged time in range.
-    @issues = assigned_issues.select do |issue|
-      issue.updated_on.in?(period_window) || period_te_dates.key?(issue.id)
-    end
+    # Active means issue.updated_on is in range for assigned issues OR user logged time in range.
+    assigned_period_issue_ids = assigned_issues.select { |issue| issue.updated_on.in?(period_window) }.map(&:id)
+    period_logged_issue_ids = period_te_dates.keys
+    logged_issue_ids = (assigned_period_issue_ids | period_logged_issue_ids)
+    @issues = if logged_issue_ids.any?
+                Issue.joins(:project)
+                     .where(id: logged_issue_ids)
+                     .where(projects: { status: Project::STATUS_ACTIVE })
+                     .includes(:project, :tracker, :status, :priority)
+                     .to_a
+              else
+                []
+              end
 
     @issues.sort_by! do |issue|
       period_issue_update = issue.updated_on.in?(period_window) ? issue.updated_on : nil
@@ -64,8 +62,39 @@ class TimeEntryPanelController < ApplicationController
     end
     @issues.reverse!
 
-    @period_issues = assigned_issues.select { |issue| issue.updated_on.in?(period_window) }
-    @issues_without_logs = @period_issues.reject { |issue| period_te_dates.key?(issue.id) }
+    updated_issue_ids = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
+                               .distinct
+                               .pluck(:journalized_id)
+    updated_candidates = if updated_issue_ids.any?
+                           Issue.joins(:project)
+                                .where(id: updated_issue_ids)
+                                .where(projects: { status: Project::STATUS_ACTIVE })
+                                .includes(:project, :tracker, :status, :priority)
+                                .to_a
+                         else
+                           []
+                         end
+
+    Issue.load_visible_last_updated_by(updated_candidates, @user) if updated_candidates.any?
+    @period_issues = updated_candidates.select do |issue|
+      issue.updated_on.in?(period_window) && issue.last_updated_by == @user
+    end
+    @issues_without_logs = @period_issues
+
+    issue_ids_for_activity = (@issues.map(&:id) | @issues_without_logs.map(&:id))
+    last_te_dates = if issue_ids_for_activity.any?
+                      TimeEntry.where(user_id: @user.id, issue_id: issue_ids_for_activity)
+                               .group(:issue_id)
+                               .maximum(:created_on)
+                    else
+                      {}
+                    end
+    @issue_last_activity = {}
+    (@issues + @issues_without_logs).uniq { |issue| issue.id }.each do |issue|
+      te_date = last_te_dates[issue.id]
+      @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
+    end
+
     @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
     @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
     @issues_without_logs.reverse! if @unlogged_sort == 'desc'
@@ -134,9 +163,14 @@ class TimeEntryPanelController < ApplicationController
     if params[:grouping].present?
       session[:tep_grouping] = params[:grouping]
     end
-    @grouping = params[:grouping].presence || session[:tep_grouping] || 'daily'
-    @grouping = 'daily' unless %w[daily weekly monthly].include?(@grouping)
+    @grouping_options = short_range_filter? ? %w[daily weekly] : %w[daily weekly monthly]
+    requested_grouping = params[:grouping].presence || session[:tep_grouping] || 'daily'
+    @grouping = @grouping_options.include?(requested_grouping) ? requested_grouping : 'daily'
     session[:tep_grouping] = @grouping
+  end
+
+  def short_range_filter?
+    %w[last_7_days last_14_days this_week last_week].include?(@filter)
   end
 
   def build_grouped_entries(entries, grouping, from_date, to_date)
