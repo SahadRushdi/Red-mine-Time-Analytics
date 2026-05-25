@@ -24,37 +24,12 @@
 
     <div class="flex flex-col gap-3 xl:items-end">
       <div class="flex flex-wrap items-end justify-end gap-3">
-        <%= hidden_field_tag :filter, @filter, id: 'filter_hidden' %>
-
-        <div class="ta-period-group inline-flex rounded-lg shadow-sm" role="group">
-          <% [
-            ['this_month', l(:label_this_month)],
-            ['last_month', l(:label_last_month)],
-            ['last_3_months', l(:label_last_3_months)],
-            ['custom', l(:label_custom_range)]
-          ].each_with_index do |(value, label), idx| %>
-            <% active = @filter == value %>
-            <% button_classes = ['ta-period-btn px-4 py-2.5 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300'] %>
-            <% button_classes << 'rounded-l-lg' if idx.zero? %>
-            <% button_classes << 'rounded-r-lg' if idx == 3 %>
-            <% button_classes << (active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900') %>
-            <button type="button"
-                    data-leaves-period-button="true"
-                    data-filter-value="<%= value %>"
-                    onclick="<%= value == 'custom' ? 'toggleCustomDateRange()' : "setLeavesFilterAndLoad('#{value}')" %>"
-                    style="<%= active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                    class="<%= button_classes.join(' ') %>">
-              <%= label %>
-            </button>
-          <% end %>
-        </div>
-
-        <div id="custom-date-range" class="ta-custom-range <%= 'hidden' unless @filter == 'custom' %> flex flex-nowrap items-center gap-2">
+        <div>
           <div id="leaves-date-range-picker" date-rangepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" class="flex flex-nowrap items-center gap-2">
-            <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_from) %>:</span>
-            <%= text_field_tag :from, (@filter == 'custom' && @default_from ? @default_from.strftime('%m/%d/%Y') : ''), id: 'leaves-date-range-start', autocomplete: 'off', placeholder: 'Select date start', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
-            <span class="ta-custom-range-label text-sm text-gray-600"><%= l(:label_to) %>:</span>
-            <%= text_field_tag :to, (@filter == 'custom' && @default_to ? @default_to.strftime('%m/%d/%Y') : ''), id: 'leaves-date-range-end', autocomplete: 'off', placeholder: 'Select date end', class: 'ta-date-input block w-40 min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+            <span class="text-sm text-gray-600"><%= l(:label_from) %>:</span>
+            <%= text_field_tag :from, @default_from.strftime('%m/%d/%Y'), id: 'leaves-filter-from', autocomplete: 'off', placeholder: 'Select date start', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
+            <span class="text-sm text-gray-600"><%= l(:label_to) %>:</span>
+            <%= text_field_tag :to, @default_to.strftime('%m/%d/%Y'), id: 'leaves-filter-to', autocomplete: 'off', placeholder: 'Select date end', class: 'block !h-[43px] w-40 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 leading-[1.2] shadow-sm placeholder:text-gray-400 focus:border-[#3b82f6] focus:outline-none focus:ring-0', 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true' %>
           </div>
         </div>
 
@@ -90,6 +65,53 @@
             <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-status="flagged" data-status-label="<%= j l(:label_flagged) %>"><%= l(:label_flagged) %></button>
           </div>
         </div>
+
+        <button type="button"
+                id="leaves-add-button"
+                class="leaves-add-button inline-flex h-[43px] items-center gap-2 rounded-lg bg-[#3b82f6] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#2563eb]">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14M5 12h14"></path>
+          </svg>
+          <span><%= l(:label_add_leave) %></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <% month_labels = %w[Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec] %>
+  <div class="leaves-month-picker">
+    <div class="leaves-month-picker-inner flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="flex items-center gap-2">
+          <button type="button" id="leaves-year-prev" class="leaves-year-btn" aria-label="Previous year">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          <span id="leaves-year-label" class="text-sm font-semibold text-gray-800"></span>
+        </div>
+
+        <div class="leaves-months flex flex-wrap items-center gap-2">
+          <% month_labels.each_with_index do |label, index| %>
+            <button type="button"
+                    class="leaves-month-button"
+                    data-leaves-month="<%= index %>"
+                    data-leaves-month-label="<%= label %>">
+              <span class="leaves-month-dot" aria-hidden="true"></span>
+              <span class="leaves-month-text"><%= label %></span>
+            </button>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 text-sm text-gray-600">
+        <button type="button" id="leaves-year-next" class="leaves-year-btn" aria-label="Next year">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>
+        </button>
+        <span class="h-5 w-px bg-gray-200"></span>
+        <span id="leaves-selected-label" class="font-semibold text-gray-700"></span>
       </div>
     </div>
   </div>
@@ -260,12 +282,136 @@
   </div>
 </div>
 
+<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-gray-900/60 p-4 sm:items-center">
+<div class="relative w-full max-w-3xl">
+    <div class="relative rounded-2xl bg-white shadow-xl flex flex-col min-h-[520px]">
+      <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900"><%= l(:label_add_leave) %></h3>
+          <p class="mt-1 text-sm text-gray-500"><%= l(:text_add_leave_description) %></p>
+        </div>
+        <button type="button"
+                id="leaves-manual-close"
+                class="leaves-modal-close text-gray-400">
+          <svg aria-hidden="true" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+
+      <div class="px-5 py-5 flex-1">
+        <form id="leaves-manual-form" class="flex h-full flex-col space-y-4">
+          <div>
+            <label for="leaves-manual-user-search" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
+            <div class="relative min-w-0" id="leaves-manual-user-wrapper">
+              <input type="text"
+                     id="leaves-manual-user-search"
+                     placeholder="Select a user"
+                     autocomplete="off"
+                     class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                     required>
+              <input type="hidden" id="leaves-manual-user-id" value="">
+              <div id="leaves-manual-user-list"
+                   class="leaves-modal-dropdown hidden absolute left-0 z-[10050] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-xl">
+                <div class="max-h-56 overflow-y-auto py-1">
+                  <% @users.each do |user| %>
+                    <% user_text = "#{user.name} (#{user.mail})" %>
+                    <button type="button"
+                            class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700"
+                            data-user-id="<%= user.id %>"
+                            data-user-text="<%= j(user_text) %>"
+                            data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>">
+                      <span class="text-gray-800"><%= h(user.name) %></span>
+                      <span class="text-gray-400">(<%= h(user.mail) %>)</span>
+                    </button>
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label for="leaves-manual-from" class="mb-1 block text-sm font-medium text-gray-700">From Date</label>
+              <div class="relative">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <input type="text"
+                       id="leaves-manual-from"
+                       autocomplete="off"
+                       placeholder="Pick a date"
+                       required
+                       datepicker
+                       datepicker-format="mm/dd/yyyy"
+                       datepicker-autohide="true"
+                       class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900">
+              </div>
+            </div>
+            <div>
+              <label for="leaves-manual-to" class="mb-1 block text-sm font-medium text-gray-700">To Date</label>
+              <div class="relative">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <input type="text"
+                       id="leaves-manual-to"
+                       autocomplete="off"
+                       placeholder="Pick a date"
+                       required
+                       datepicker
+                       datepicker-format="mm/dd/yyyy"
+                       datepicker-autohide="true"
+                       class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_leave_type) %></label>
+              <div class="relative" id="leaves-manual-fraction-wrapper">
+                <button type="button"
+                        id="leaves-manual-fraction-button"
+                        class="leaves-modal-input inline-flex h-[42px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
+                  <span id="leaves-manual-fraction-label">0.5</span>
+                  <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <input type="hidden" id="leaves-manual-fraction" value="0.5">
+                <div id="leaves-manual-fraction-menu" class="hidden absolute left-0 z-[10050] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-xl">
+                  <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-fraction-value="0.5">0.5</button>
+                  <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-fraction-value="1">1</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_status) %></label>
+              <input type="text"
+                     value="<%= l(:label_confirmed) %>"
+                     disabled
+                     class="leaves-modal-input block h-[42px] w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+            </div>
+          </div>
+
+          <div class="mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+            <button type="button" id="leaves-manual-cancel" class="leaves-modal-cancel inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button type="submit" class="leaves-modal-submit inline-flex items-center rounded-lg bg-[#3b82f6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#2563eb]"><%= l(:label_add_leave) %></button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="leaves-delete-modal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[9999] items-center justify-center w-full h-full bg-gray-900/50">
   <div class="relative p-4 w-full max-w-md">
     <div class="relative p-4 text-center bg-white rounded-lg shadow sm:p-5">
       <button type="button"
               class="tep-delete-close text-gray-400 absolute top-2.5 right-2.5 bg-transparent rounded-lg text-sm p-1.5 inline-flex items-center !border-0 !outline-none !shadow-none !ring-0"
-              data-leaves-delete-close="true">
+              data-modal-hide="leaves-delete-modal">
         <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
         </svg>
@@ -277,7 +423,7 @@
       <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
       <div class="flex justify-center items-center space-x-4">
         <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
-        <button type="button" id="leaves-delete-cancel" data-leaves-delete-close="true" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
+        <button type="button" id="leaves-delete-cancel" data-modal-hide="leaves-delete-modal" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
       </div>
     </div>
   </div>
@@ -287,7 +433,6 @@
   document.addEventListener('DOMContentLoaded', function () {
     var csrfToken = '<%= form_authenticity_token %>';
     var initialFilters = <%= {
-      filter: @filter.to_s,
       from: @default_from.strftime('%m/%d/%Y'),
       to: @default_to.strftime('%m/%d/%Y'),
       user_id: @filter_user_id.to_s,
@@ -309,10 +454,13 @@
     };
 
     var elements = {
-      filter: document.getElementById('filter_hidden'),
-      customRange: document.getElementById('custom-date-range'),
-      from: document.getElementById('leaves-date-range-start'),
-      to: document.getElementById('leaves-date-range-end'),
+      from: document.getElementById('leaves-filter-from'),
+      to: document.getElementById('leaves-filter-to'),
+      yearLabel: document.getElementById('leaves-year-label'),
+      yearPrev: document.getElementById('leaves-year-prev'),
+      yearNext: document.getElementById('leaves-year-next'),
+      selectedLabel: document.getElementById('leaves-selected-label'),
+      monthButtons: document.querySelectorAll('[data-leaves-month]'),
       userButton: document.getElementById('leaves-user-dropdown-button'),
       userLabel: document.getElementById('leaves-user-dropdown-label'),
       userMenu: document.getElementById('leaves-user-dropdown'),
@@ -341,7 +489,24 @@
 
     var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
     var deleteState = { id: null };
-    var currentFilter = initialFilters.filter || 'this_month';
+    var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var monthState = { year: null, month: null };
+    var manualElements = {
+      modal: document.getElementById('leaves-manual-modal'),
+      openButton: document.getElementById('leaves-add-button'),
+      closeButton: document.getElementById('leaves-manual-close'),
+      cancelButton: document.getElementById('leaves-manual-cancel'),
+      form: document.getElementById('leaves-manual-form'),
+      userSearch: document.getElementById('leaves-manual-user-search'),
+      userList: document.getElementById('leaves-manual-user-list'),
+      userId: document.getElementById('leaves-manual-user-id'),
+      from: document.getElementById('leaves-manual-from'),
+      to: document.getElementById('leaves-manual-to'),
+      fraction: document.getElementById('leaves-manual-fraction'),
+      fractionButton: document.getElementById('leaves-manual-fraction-button'),
+      fractionLabel: document.getElementById('leaves-manual-fraction-label'),
+      fractionMenu: document.getElementById('leaves-manual-fraction-menu')
+    };
 
     function closeDropdowns(exceptId) {
       dropdownIds.forEach(function (id) {
@@ -426,193 +591,65 @@
         .catch(function (error) { alert(error.message); });
     }
 
+    function parseDateFromInput(value) {
+      if (!value) return null;
+      var parts = String(value).split('/');
+      if (parts.length !== 3) return null;
+      var month = parseInt(parts[0], 10) - 1;
+      var day = parseInt(parts[1], 10);
+      var year = parseInt(parts[2], 10);
+      if (Number.isNaN(month) || Number.isNaN(day) || Number.isNaN(year)) return null;
+      var date = new Date(year, month, day);
+      if (Number.isNaN(date.getTime())) return null;
+      return date;
+    }
+
     function formatDateForInput(date) {
       var month = String(date.getMonth() + 1).padStart(2, '0');
       var day = String(date.getDate()).padStart(2, '0');
       return month + '/' + day + '/' + date.getFullYear();
     }
 
-    function computePeriodRange(filterValue) {
-      var today = new Date();
-      var year = today.getFullYear();
-      var month = today.getMonth();
-      var fromDate;
-      var toDate;
-
-      switch (filterValue) {
-        case 'last_month':
-          fromDate = new Date(year, month - 1, 1);
-          toDate = new Date(year, month, 0);
-          break;
-        case 'last_3_months':
-          fromDate = new Date(year, month - 3, 1);
-          toDate = new Date(year, month, 0);
-          break;
-        case 'this_month':
-        default:
-          fromDate = new Date(year, month, 1);
-          toDate = new Date(year, month + 1, 0);
-          break;
-      }
-
-      return {
-        from: formatDateForInput(fromDate),
-        to: formatDateForInput(toDate)
-      };
+    function setDateRange(fromDate, toDate) {
+      if (elements.from) elements.from.value = formatDateForInput(fromDate);
+      if (elements.to) elements.to.value = formatDateForInput(toDate);
     }
 
-    function applyPresetDateRange(filterValue) {
-      var range = computePeriodRange(filterValue);
-      if (elements.from) elements.from.value = range.from;
-      if (elements.to) elements.to.value = range.to;
+    function syncMonthPickerFromInputs() {
+      var fromDate = parseDateFromInput(elements.from.value);
+      var baseDate = fromDate || new Date();
+      monthState.year = baseDate.getFullYear();
+      monthState.month = baseDate.getMonth();
+      updateMonthPickerUI();
     }
 
-    function updateLeavesHistory() {
-      var params = new URLSearchParams();
-      params.set('filter', currentFilter);
-      if (elements.from && elements.from.value) params.set('from', elements.from.value);
-      if (elements.to && elements.to.value) params.set('to', elements.to.value);
-      if (elements.userInput.value) params.set('user_id', elements.userInput.value);
-      if (elements.statusInput.value) params.set('status', elements.statusInput.value);
-      var query = params.toString();
-      var url = window.location.pathname + (query ? '?' + query : '');
-      window.history.replaceState({}, '', url);
-    }
+    function updateMonthPickerUI() {
+      if (!elements.yearLabel || !elements.selectedLabel || !elements.monthButtons.length) return;
+      var current = new Date();
+      elements.yearLabel.textContent = String(monthState.year);
+      elements.selectedLabel.textContent = monthLabels[monthState.month] + ' ' + monthState.year;
 
-    function syncLeavesFilterButtons() {
-      document.querySelectorAll('[data-leaves-period-button="true"]').forEach(function (button) {
-        var isActive = button.getAttribute('data-filter-value') === currentFilter;
-        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-        button.classList.toggle('!text-white', isActive);
-        button.classList.toggle('!bg-[#3b82f6]', isActive);
-        button.classList.toggle('hover:!bg-[#2563eb]', isActive);
-        button.classList.toggle('!text-gray-700', !isActive);
-        button.classList.toggle('!bg-white', !isActive);
-        button.classList.toggle('hover:!bg-gray-50', !isActive);
-        button.classList.toggle('hover:!text-gray-900', !isActive);
-        button.style.backgroundColor = isActive ? '#3b82f6' : '';
-        button.style.color = isActive ? '#ffffff' : '';
-      });
-    }
-
-    function showCustomDateRange() {
-      if (!elements.customRange) return;
-      elements.customRange.classList.remove('hidden');
-      elements.customRange.classList.add('flex');
-    }
-
-    function hideCustomDateRange() {
-      if (!elements.customRange) return;
-      elements.customRange.classList.add('hidden');
-      elements.customRange.classList.remove('flex');
-    }
-
-    function syncLeavesDatePickers() {
-      [elements.from, elements.to].forEach(function (input) {
-        if (input && input.datepicker && typeof input.datepicker.hide === 'function') {
-          input.datepicker.hide();
+      elements.monthButtons.forEach(function (button) {
+        var buttonMonth = parseInt(button.getAttribute('data-leaves-month'), 10);
+        var isActive = buttonMonth === monthState.month;
+        var dot = button.querySelector('.leaves-month-dot');
+        button.classList.toggle('leaves-month-button--active', isActive);
+        if (dot) {
+          var showDot = monthState.year === current.getFullYear() && buttonMonth === current.getMonth();
+          dot.classList.toggle('leaves-month-dot--visible', showDot);
         }
       });
     }
 
-    function setLeavesFilterAndLoad(filterValue) {
-      currentFilter = filterValue;
-      if (elements.filter) elements.filter.value = filterValue;
-
-      if (filterValue === 'custom') {
-        showCustomDateRange();
-        syncLeavesFilterButtons();
-        updateLeavesHistory();
-        return;
-      }
-
-      applyPresetDateRange(filterValue);
-      hideCustomDateRange();
-      syncLeavesDatePickers();
-      syncLeavesFilterButtons();
-      updateLeavesHistory();
-      loadData();
-    }
-
-    window.setLeavesFilterAndLoad = setLeavesFilterAndLoad;
-
-    function toggleCustomDateRange() {
-      if (!elements.filter || !elements.customRange) return;
-      currentFilter = 'custom';
-      elements.filter.value = 'custom';
-      if (elements.customRange.classList.contains('hidden')) {
-        showCustomDateRange();
-      } else {
-        hideCustomDateRange();
-        syncLeavesDatePickers();
-      }
-      syncLeavesFilterButtons();
-      updateLeavesHistory();
-    }
-
-    window.toggleCustomDateRange = toggleCustomDateRange;
-
-    function initLeavesCustomDateRangeVisibility() {
-      if (currentFilter === 'custom') {
-        showCustomDateRange();
-      } else {
-        hideCustomDateRange();
-        applyPresetDateRange(currentFilter);
-      }
-      syncLeavesFilterButtons();
-    }
-
-    function bindLeavesCustomDateRangeEvents() {
-      if (!elements.from || !elements.to) return;
-
-      function handleDateRangeChange() {
-        currentFilter = 'custom';
-        if (elements.filter) elements.filter.value = 'custom';
-        syncLeavesFilterButtons();
-        updateLeavesHistory();
+    function setMonthSelection(year, month, shouldLoad) {
+      monthState.year = year;
+      monthState.month = month;
+      var fromDate = new Date(year, month, 1);
+      var toDate = new Date(year, month + 1, 0);
+      setDateRange(fromDate, toDate);
+      updateMonthPickerUI();
+      if (shouldLoad !== false) {
         scheduleLoadData();
-      }
-
-      [elements.from, elements.to].forEach(function (input) {
-        input.addEventListener('change', handleDateRangeChange);
-        input.addEventListener('changeDate', function () {
-          handleDateRangeChange();
-          syncLeavesDatePickers();
-        });
-      });
-
-      function bindManualToggle(input) {
-        if (!input || input.dataset.manualToggleBound === '1') return;
-        input.addEventListener('click', function (event) {
-          event.preventDefault();
-          event.stopPropagation();
-          if (!input.datepicker) return;
-          if (input.datepicker.active) {
-            input.datepicker.hide();
-          } else {
-            input.datepicker.show();
-          }
-        });
-        input.addEventListener('keydown', function (event) {
-          if (event.key === 'Escape' && input.datepicker && input.datepicker.hide) {
-            input.datepicker.hide();
-            input.blur();
-          }
-        });
-        input.dataset.manualToggleBound = '1';
-      }
-
-      bindManualToggle(elements.from);
-      bindManualToggle(elements.to);
-
-      if (!window.__leavesRangeOutsideCloseBound) {
-        document.addEventListener('mousedown', function (event) {
-          var target = event.target;
-          var isInsideRangeUi = (elements.customRange && elements.customRange.contains(target)) || !!target.closest('.datepicker');
-          if (isInsideRangeUi) return;
-          syncLeavesDatePickers();
-        });
-        window.__leavesRangeOutsideCloseBound = true;
       }
     }
 
@@ -1066,7 +1103,6 @@
 
     function updateHistory() {
       var params = new URLSearchParams();
-      params.set('filter', currentFilter);
       if (elements.from.value) params.set('from', elements.from.value);
       if (elements.to.value) params.set('to', elements.to.value);
       if (elements.userInput.value) params.set('user_id', elements.userInput.value);
@@ -1078,7 +1114,6 @@
 
     function loadData() {
       var params = new URLSearchParams({
-        filter: currentFilter,
         from: elements.from.value,
         to: elements.to.value,
         user_id: elements.userInput.value,
@@ -1359,8 +1394,17 @@
       button.addEventListener('click', handleSortClick);
     });
 
-    initLeavesCustomDateRangeVisibility();
-    bindLeavesCustomDateRangeEvents();
+    function bindDateAutoReload(input) {
+      input.addEventListener('change', scheduleLoadData);
+      input.addEventListener('changeDate', function () {
+        scheduleLoadData();
+        hideDatePickers();
+      });
+      input.addEventListener('change', syncMonthPickerFromInputs);
+    }
+
+    bindDateAutoReload(elements.from);
+    bindDateAutoReload(elements.to);
 
     window.addEventListener('pageshow', deferHideDatePickers);
 
@@ -1455,12 +1499,108 @@
 
     var deleteConfirmButton = document.getElementById('leaves-delete-confirm');
     var deleteCancelButton = document.getElementById('leaves-delete-cancel');
-    var deleteCloseButtons = document.querySelectorAll('[data-leaves-delete-close="true"]');
+    var deleteCloseButtons = document.querySelectorAll('[data-modal-hide="leaves-delete-modal"]');
     if (deleteConfirmButton) deleteConfirmButton.addEventListener('click', confirmDelete);
     if (deleteCancelButton) deleteCancelButton.addEventListener('click', closeDeleteModal);
     deleteCloseButtons.forEach(function (button) {
       button.addEventListener('click', closeDeleteModal);
     });
+
+    function openManualModal() {
+      if (!manualElements.modal) return;
+      manualElements.modal.classList.remove('hidden');
+      manualElements.modal.classList.add('flex');
+      manualElements.modal.setAttribute('aria-hidden', 'false');
+      if (manualElements.from) manualElements.from.value = formatDateForInput(new Date());
+      if (manualElements.to) manualElements.to.value = '';
+      if (manualElements.fraction) manualElements.fraction.value = '0.5';
+      if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = '0.5';
+      if (manualElements.userSearch) manualElements.userSearch.value = '';
+      if (manualElements.userId) manualElements.userId.value = '';
+      if (manualElements.userSearch) manualElements.userSearch.focus();
+    }
+
+    function closeManualModal() {
+      if (!manualElements.modal) return;
+      manualElements.modal.classList.add('hidden');
+      manualElements.modal.classList.remove('flex');
+      manualElements.modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function filterManualUsers() {
+      if (!manualElements.userList || !manualElements.userSearch) return;
+      var query = normalize(manualElements.userSearch.value);
+      manualElements.userList.querySelectorAll('.leaves-modal-option').forEach(function (option) {
+        var searchValue = option.getAttribute('data-user-search') || '';
+        option.style.display = searchValue.indexOf(query) !== -1 ? '' : 'none';
+      });
+    }
+
+    function openManualUserDropdown() {
+      if (!manualElements.userList) return;
+      manualElements.userList.classList.remove('hidden');
+      filterManualUsers();
+    }
+
+    function closeManualUserDropdown() {
+      if (!manualElements.userList) return;
+      manualElements.userList.classList.add('hidden');
+    }
+
+    function selectManualUser(option) {
+      if (!manualElements.userId || !manualElements.userSearch) return;
+      manualElements.userId.value = option.getAttribute('data-user-id') || '';
+      manualElements.userSearch.value = option.getAttribute('data-user-text') || option.textContent.trim();
+      closeManualUserDropdown();
+    }
+
+    function toggleManualFractionMenu() {
+      if (!manualElements.fractionMenu) return;
+      var shouldOpen = manualElements.fractionMenu.classList.contains('hidden');
+      manualElements.fractionMenu.classList.toggle('hidden', !shouldOpen);
+    }
+
+    function closeManualFractionMenu() {
+      if (!manualElements.fractionMenu) return;
+      manualElements.fractionMenu.classList.add('hidden');
+    }
+
+    function selectManualFraction(value) {
+      if (manualElements.fraction) manualElements.fraction.value = value;
+      if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = value;
+      closeManualFractionMenu();
+    }
+
+    function submitManualLeave() {
+      if (!manualElements.userId || !manualElements.from || !manualElements.to || !manualElements.fraction) return false;
+      if (!manualElements.userId.value) {
+        alert('Please select a user.');
+        return false;
+      }
+
+      fetch('<%= leaves_create_path %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: manualElements.userId.value,
+          from: manualElements.from.value,
+          to: manualElements.to.value,
+          leave_fraction: manualElements.fraction.value
+        })
+      }).then(function (response) { return response.json(); })
+        .then(function (payload) {
+          if (payload.error) throw new Error(payload.error);
+          closeManualModal();
+          loadData();
+        })
+        .catch(function (error) { alert(error.message); });
+
+      return false;
+    }
 
     elements.from.value = initialFilters.from;
     elements.to.value = initialFilters.to;
@@ -1473,9 +1613,81 @@
     syncDropdownActiveState('leaves-status-dropdown', 'data-status', elements.statusInput.value);
     syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
     updateSortIndicators();
-    syncLeavesFilterButtons();
+    syncMonthPickerFromInputs();
     setTab('daily');
     deferHideDatePickers();
     loadData();
+
+    if (elements.monthButtons.length) {
+      elements.monthButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          var month = parseInt(button.getAttribute('data-leaves-month'), 10);
+          setMonthSelection(monthState.year, month);
+        });
+      });
+    }
+
+    if (elements.yearPrev) {
+      elements.yearPrev.addEventListener('click', function () {
+        setMonthSelection(monthState.year - 1, monthState.month);
+      });
+    }
+
+    if (elements.yearNext) {
+      elements.yearNext.addEventListener('click', function () {
+        setMonthSelection(monthState.year + 1, monthState.month);
+      });
+    }
+
+    if (manualElements.openButton) manualElements.openButton.addEventListener('click', openManualModal);
+    if (manualElements.closeButton) manualElements.closeButton.addEventListener('click', closeManualModal);
+    if (manualElements.cancelButton) manualElements.cancelButton.addEventListener('click', closeManualModal);
+    if (manualElements.modal) {
+      manualElements.modal.addEventListener('click', function (event) {
+        if (event.target === manualElements.modal) closeManualModal();
+      });
+    }
+    if (manualElements.userSearch) {
+      manualElements.userSearch.addEventListener('click', openManualUserDropdown);
+      manualElements.userSearch.addEventListener('input', function () {
+        openManualUserDropdown();
+        filterManualUsers();
+      });
+      manualElements.userSearch.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeManualUserDropdown();
+      });
+    }
+    if (manualElements.userList) {
+      manualElements.userList.addEventListener('click', function (event) {
+        var option = event.target.closest('.leaves-modal-option');
+        if (option) selectManualUser(option);
+      });
+    }
+    if (manualElements.fractionButton) {
+      manualElements.fractionButton.addEventListener('click', function () {
+        toggleManualFractionMenu();
+      });
+    }
+    if (manualElements.fractionMenu) {
+      manualElements.fractionMenu.addEventListener('click', function (event) {
+        var option = event.target.closest('[data-fraction-value]');
+        if (!option) return;
+        selectManualFraction(option.getAttribute('data-fraction-value'));
+      });
+    }
+    if (manualElements.form) {
+      manualElements.form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        submitManualLeave();
+      });
+    }
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('#leaves-manual-user-wrapper')) {
+        closeManualUserDropdown();
+      }
+      if (!event.target.closest('#leaves-manual-fraction-wrapper')) {
+        closeManualFractionMenu();
+      }
+    });
   });
 </script>

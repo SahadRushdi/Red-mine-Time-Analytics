@@ -26,8 +26,6 @@ en:
   label_this_week: "This Week"
   label_last_week: "Last Week"
   label_this_month: "This Month"
-  label_last_month: "Last Month"
-  label_last_3_months: "Last 3 Months"
   label_this_year: "This Year"
   label_custom_range: "Custom Range"
   
@@ -107,6 +105,7 @@ en:
   label_configured: "Configured"
   label_not_configured: "Not configured"
   label_leaves: "Leaves"
+  label_add_leave: "Add Leave"
   label_leave_type: "Leave Type"
   label_total_leave_days: "Total Leave Days"
   label_daily_leaves: "Daily Leaves"
@@ -157,6 +156,7 @@ en:
   error_leave_oauth_refresh_token_missing: "OAuth callback did not return a refresh token. Re-run consent with prompt=consent."
 
   text_leaves_admin_description: "Find leaves quickly, review totals, and resolve flagged leave records."
+  text_add_leave_description: "Add a new leave record for a user. The status will be automatically set to confirmed."
   text_leave_count_settings_description: "Configure leave ingestion and sync mode for your organization."
   text_leave_oauth_description: "OAuth 2.0 user-consent flow."
   text_leave_ai_description: "Use built-in parser for simple subject-only leave emails and route complex/reply/range cases to AI."
