@@ -593,6 +593,7 @@
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Issue</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Assignee</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
                 <span role="button" tabindex="0" onclick="toggleTepUnloggedSort(); this.blur();"
@@ -628,6 +629,7 @@
                   </div>
                 </td>
                 <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
+                <td class="px-4 py-3 text-gray-600"><%= issue.assigned_to ? h(issue.assigned_to.name) : '-' %></td>
                 <td class="px-4 py-3">
                   <span class="ts-status-badge"><%= issue.status.name %></span>
                 </td>
@@ -648,7 +650,7 @@
 
               <%# Inline log form for this issue %>
               <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
-                <td colspan="5" class="px-0 py-0">
+                <td colspan="6" class="px-0 py-0">
                   <div id="issue-inline-form-<%= issue.id %>" class="tep-inline-form">
                     <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 flex-wrap">
                       <div class="flex items-center gap-1.5 flex-shrink-0">

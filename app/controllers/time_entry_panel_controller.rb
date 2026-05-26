@@ -50,7 +50,7 @@ class TimeEntryPanelController < ApplicationController
                 Issue.joins(:project)
                      .where(id: logged_issue_ids)
                      .where(projects: { status: Project::STATUS_ACTIVE })
-                     .includes(:project, :tracker, :status, :priority)
+                   .includes(:project, :tracker, :status, :priority, :assigned_to)
                      .to_a
               else
                 []
@@ -69,7 +69,7 @@ class TimeEntryPanelController < ApplicationController
                            Issue.joins(:project)
                                 .where(id: updated_issue_ids)
                                 .where(projects: { status: Project::STATUS_ACTIVE })
-                                .includes(:project, :tracker, :status, :priority)
+                                .includes(:project, :tracker, :status, :priority, :assigned_to)
                                 .to_a
                          else
                            []
