@@ -14,6 +14,7 @@ module RedmineTimeAnalytics
       \b\d{1,2}\s*&\s*\d{1,2}\b|
       \b(?:from|between|through|until)\b
     /ix.freeze
+    WFH_REGEX = /\b(wfh|work from home|working from home|remote today|home today|working remotely|remote work)\b/i.freeze
     DATE_TOKEN_REGEX = /
       \b\d{4}-\d{2}-\d{2}\b|
       \b\d{4}[\/.]\d{1,2}[\/.]\d{1,2}\b|
@@ -31,6 +32,10 @@ module RedmineTimeAnalytics
     end
 
     def parse(message:, recipient_email:)
+      if wfh_only_request?(message)
+        return result(status: :ignored, reason: 'wfh_is_not_leave')
+      end
+
       if simple_subject_request?(message)
         return @simple_parser.parse(message: message, recipient_email: recipient_email)
       end
@@ -52,6 +57,12 @@ module RedmineTimeAnalytics
 
       indexed.each do |item|
         message = item[:message]
+
+        if wfh_only_request?(message)
+          results[item[:index]] = result(status: :ignored, reason: 'wfh_is_not_leave')
+          next
+        end
+
         if simple_subject_request?(message)
           results[item[:index]] = @simple_parser.parse(message: message, recipient_email: recipient_email)
           next
@@ -127,6 +138,14 @@ module RedmineTimeAnalytics
 
     def contains_date_token?(text)
       text.match?(DATE_TOKEN_REGEX)
+    end
+
+    def wfh_only_request?(message)
+      combined_text = "#{message[:subject]}\n#{primary_body_text(message[:body])}".downcase
+      return false unless combined_text.match?(WFH_REGEX)
+
+      # If it mentions WFH, it's NOT a leave unless it also explicitly mentions leave keywords
+      !LEAVE_CONTEXT_KEYWORDS.any? { |keyword| combined_text.include?(keyword) }
     end
 
     def multi_date_subject?(subject_text)
