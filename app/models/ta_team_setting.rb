@@ -12,6 +12,8 @@ class TaTeamSetting < ActiveRecord::Base
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
   DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
+  DEFAULT_MISSING_TIME_CRON = '30 13 * * 2-6'
+  DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
 
   # Associations
   belongs_to :user
@@ -209,6 +211,44 @@ class TaTeamSetting < ActiveRecord::Base
     }
   end
 
+  def self.missing_time_settings
+    raw = Setting.plugin_redmine_time_analytics || {}
+    enabled_setting = raw.key?('missing_time_enabled') ? raw['missing_time_enabled'].to_s : '1'
+    recipients_raw = raw['missing_time_recipients'].to_s.strip
+    {
+      enabled: enabled_setting == '1',
+      cron: raw['missing_time_cron'].to_s.strip.presence || DEFAULT_MISSING_TIME_CRON,
+      recipients: parse_recipient_list(recipients_raw.presence || 'sahad@entgra.io'),
+      from_name: raw['missing_time_from_name'].to_s.strip.presence || 'Time Analytics System',
+      timezone: raw['missing_time_timezone'].to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
+    }
+  end
+
+  def self.update_missing_time_settings!(enabled:, recipients:, cron:, from_name: nil, timezone: nil)
+    normalized_recipients = parse_recipient_list(recipients)
+    raise ArgumentError, 'Missing time recipients are required' if normalized_recipients.empty?
+
+    normalized_recipients.each do |email|
+      next if email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+
+      raise ArgumentError, "Invalid recipient email: #{email}"
+    end
+
+    cron_expression = cron.to_s.strip.presence || DEFAULT_MISSING_TIME_CRON
+    validate_missing_time_cron!(cron_expression)
+
+    normalized_timezone = timezone.to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
+    raise ArgumentError, 'Missing time timezone is required' if normalized_timezone.blank?
+
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['missing_time_enabled'] = enabled.to_s == '1' ? '1' : '0'
+    settings['missing_time_cron'] = cron_expression
+    settings['missing_time_recipients'] = normalized_recipients.join(', ')
+    settings['missing_time_from_name'] = from_name.to_s.strip
+    settings['missing_time_timezone'] = normalized_timezone
+    Setting.plugin_redmine_time_analytics = settings
+  end
+
   def self.default_leave_sync_cron
     DEFAULT_LEAVE_SYNC_CRON
   end
@@ -402,6 +442,23 @@ class TaTeamSetting < ActiveRecord::Base
     Fugit::Cron.parse(cron)
   rescue StandardError
     raise ArgumentError, 'Leave sync cron expression is invalid'
+  end
+
+  def self.validate_missing_time_cron!(cron)
+    cron_expression = cron.to_s.strip
+    raise ArgumentError, 'Missing time cron expression is required' if cron_expression.blank?
+
+    Fugit::Cron.parse(cron_expression)
+  rescue StandardError
+    raise ArgumentError, 'Missing time cron expression is invalid'
+  end
+
+  def self.parse_recipient_list(value)
+    Array(value)
+      .flat_map { |entry| entry.to_s.split(/[;,]/) }
+      .map(&:strip)
+      .reject(&:blank?)
+      .uniq
   end
 
   # Check if this setting is for exclusion
