@@ -5,6 +5,7 @@ RedmineApp::Application.routes.draw do
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
   get 'leaves', to: 'leaves#index', as: :leaves
   get 'leaves/data', to: 'leaves#data', as: :leaves_data
+  post 'leaves', to: 'leaves#create', as: :leaves_create
   patch 'leaves/:id', to: 'leaves#update', as: :leave_update
   patch 'leaves/:id/status', to: 'leaves#update_status', as: :leave_status
   delete 'leaves/:id', to: 'leaves#destroy', as: :leave_destroy

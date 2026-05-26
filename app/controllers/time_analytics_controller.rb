@@ -321,11 +321,16 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Use session grouping if no parameter provided
-    @grouping = params[:grouping].presence || session[:time_analytics_grouping] || 'daily'
-    @grouping = 'daily' unless %w[daily weekly monthly].include?(@grouping)
+    @grouping_options = short_range_filter? ? %w[daily weekly] : %w[daily weekly monthly]
+    requested_grouping = params[:grouping].presence || session[:time_analytics_grouping] || 'daily'
+    @grouping = @grouping_options.include?(requested_grouping) ? requested_grouping : 'daily'
     
     # Update session with valid grouping
     session[:time_analytics_grouping] = @grouping
+  end
+
+  def short_range_filter?
+    %w[last_7_days last_14_days this_week last_week].include?(@filter)
   end
 
   def calculate_avg_hours_per_day

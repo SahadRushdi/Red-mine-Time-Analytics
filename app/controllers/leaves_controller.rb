@@ -6,8 +6,8 @@ class LeavesController < ApplicationController
 
   def index
     @users = User.active.sorted
-    @filter = resolve_filter
-    @default_from, @default_to = resolve_date_range(@filter)
+    @default_from = parse_date(params[:from]) || Date.current.beginning_of_month
+    @default_to = parse_date(params[:to]) || Date.current
     @filter_status = params[:status].to_s.presence
     @filter_user_id = params[:user_id].to_s.presence
     @selected_user = @filter_user_id.present? ? User.find_by(id: @filter_user_id) : nil
@@ -16,6 +16,47 @@ class LeavesController < ApplicationController
   def data
     render json: leaves_payload(filter_params)
   rescue ArgumentError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def create
+    user_id = manual_leave_params[:user_id].to_s
+    user = User.find_by(id: user_id)
+    return render json: { error: 'User is required' }, status: :unprocessable_entity if user.nil?
+
+    from_date = parse_date(manual_leave_params[:from])
+    to_date = parse_date(manual_leave_params[:to]) || from_date
+    return render json: { error: 'From date is required' }, status: :unprocessable_entity if from_date.nil?
+    return render json: { error: 'From date must be earlier than To date' }, status: :unprocessable_entity if from_date > to_date
+
+    leave_fraction = manual_leave_params[:leave_fraction].to_f
+    unless [TaLeaveRecord::HALF_DAY_FRACTION, TaLeaveRecord::FULL_DAY_FRACTION].include?(leave_fraction)
+      return render json: { error: 'Leave fraction must be 0.5 or 1' }, status: :unprocessable_entity
+    end
+
+    created = 0
+    recipient_email = TaTeamSetting.leave_sync_settings[:recipient_email]
+    TaLeaveRecord.transaction do
+      (from_date..to_date).each do |date|
+        record = TaLeaveRecord.find_or_initialize_by(user_id: user.id, leave_date: date)
+        record.assign_attributes(
+          leave_fraction: leave_fraction,
+          status: 'confirmed',
+          sender_email: TaLeaveRecord.user_email(user),
+          recipient_email: recipient_email,
+          raw_subject: 'Manual entry',
+          sync_mode: 'manual',
+          source_sent_at: Time.zone.now
+        )
+        record.save!
+        created += 1
+      end
+    end
+
+    render json: { ok: true, created: created }, status: :ok
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
+  rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
@@ -93,31 +134,8 @@ class LeavesController < ApplicationController
     params.permit(:from, :to, :user_id, :status)
   end
 
-  def resolve_filter
-    requested_filter = params[:filter].presence
-    return requested_filter if requested_filter.present?
-    return 'custom' if params[:from].present? || params[:to].present?
-
-    'this_month'
-  end
-
-  def resolve_date_range(filter)
-    case filter
-    when 'last_month'
-      from_date = (Date.current - 1.month).beginning_of_month
-      to_date = (Date.current - 1.month).end_of_month
-    when 'last_3_months'
-      from_date = (Date.current - 3.months).beginning_of_month
-      to_date = (Date.current - 1.month).end_of_month
-    when 'custom'
-      from_date = parse_date(params[:from]) || Date.current.beginning_of_month
-      to_date = parse_date(params[:to]) || Date.current
-    else
-      from_date = Date.current.beginning_of_month
-      to_date = Date.current.end_of_month
-    end
-
-    [from_date, to_date]
+  def manual_leave_params
+    params.permit(:user_id, :from, :to, :leave_fraction)
   end
 
   def leaves_payload(filters)

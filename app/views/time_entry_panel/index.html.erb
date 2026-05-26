@@ -74,10 +74,10 @@
         </svg>
       </button>
       <div id="tep-grouping-dropdown" class="hidden absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-        <% [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']].each do |val, label| %>
+        <% @grouping_options.each do |val| %>
           <button type="button" onclick="setTepGroupingAndSubmit('<%= val %>')"
                   class="w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 <%= @grouping == val ? '!bg-blue-50 !text-[#3b82f6] font-semibold' : '!text-gray-700' %>">
-            <%= label %>
+            <%= val.capitalize %>
           </button>
         <% end %>
       </div>
@@ -119,7 +119,7 @@
     </div>
     <div class="ts-summary-card-content">
       <p class="ts-summary-card-label">All Issues</p>
-      <p class="ts-summary-card-value"><%= @all_issues_count %> <span class="ts-summary-card-unit">assigned</span></p>
+      <p class="ts-summary-card-value"><%= @all_issues_count %> <span class="ts-summary-card-unit">in period</span></p>
     </div>
   </div>
 
@@ -160,7 +160,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
             </svg>
-            Unlogged
+            Worked On
             <span class="ts-tab-badge"><%= @issues_without_logs.count %></span>
           </span>
         </button>
@@ -583,7 +583,7 @@
       <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
       </svg>
-      <span>Issues assigned to you and updated in this period without time entries. <%= @issues_without_logs.count %> of <%= @period_issues_count %> issues</span>
+      <span>Issues worked on during the selected period. <%= @period_issues_count %> issues</span>
     </div>
 
     <% if @issues_without_logs.any? %>
@@ -593,6 +593,7 @@
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Issue</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Assignee</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
                 <span role="button" tabindex="0" onclick="toggleTepUnloggedSort(); this.blur();"
@@ -628,6 +629,7 @@
                   </div>
                 </td>
                 <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
+                <td class="px-4 py-3 text-gray-600"><%= issue.assigned_to ? h(issue.assigned_to.name) : '-' %></td>
                 <td class="px-4 py-3">
                   <span class="ts-status-badge"><%= issue.status.name %></span>
                 </td>
@@ -648,7 +650,7 @@
 
               <%# Inline log form for this issue %>
               <tr id="issue-inline-row-<%= issue.id %>" class="hidden">
-                <td colspan="5" class="px-0 py-0">
+                <td colspan="6" class="px-0 py-0">
                   <div id="issue-inline-form-<%= issue.id %>" class="tep-inline-form">
                     <div class="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-blue-100 border-l-4 border-l-blue-500 flex-wrap">
                       <div class="flex items-center gap-1.5 flex-shrink-0">
@@ -716,7 +718,7 @@
           </tbody>
         </table>
       </div>
-      <nav id="tep-unlogged-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Unlogged issues pagination">
+      <nav id="tep-unlogged-pagination" class="hidden px-4 py-3 border-t border-gray-200 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between" aria-label="Updated by me issues pagination">
         <span id="tep-unlogged-pagination-info" class="text-sm text-gray-700"></span>
         <ul id="tep-unlogged-pagination-links" class="inline-flex -space-x-px text-sm h-8"></ul>
       </nav>
@@ -725,8 +727,8 @@
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <h3 class="mt-2 text-sm font-medium text-gray-900">All caught up!</h3>
-        <p class="mt-1 text-sm text-gray-500">You've logged time for all assigned issues in this period.</p>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No updates found</h3>
+        <p class="mt-1 text-sm text-gray-500">You have not updated any issues in this period.</p>
       </div>
     <% end %>
   </div>
