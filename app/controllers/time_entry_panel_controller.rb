@@ -62,12 +62,13 @@ class TimeEntryPanelController < ApplicationController
     end
     @issues.reverse!
 
-    updated_issue_ids = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
-                               .distinct
-                               .pluck(:journalized_id)
-    updated_candidates = if updated_issue_ids.any?
+    journal_activity = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
+                              .group(:journalized_id)
+                              .maximum(:created_on)
+    journaled_issue_ids = journal_activity.keys
+    updated_candidates = if journaled_issue_ids.any?
                            Issue.joins(:project)
-                                .where(id: updated_issue_ids)
+                                .where(id: journaled_issue_ids)
                                 .where(projects: { status: Project::STATUS_ACTIVE })
                                 .includes(:project, :tracker, :status, :priority, :assigned_to)
                                 .to_a
@@ -75,35 +76,24 @@ class TimeEntryPanelController < ApplicationController
                            []
                          end
 
-    Issue.load_visible_last_updated_by(updated_candidates, @user) if updated_candidates.any?
-    @period_issues = updated_candidates.select do |issue|
-      issue.updated_on.in?(period_window) && issue.last_updated_by == @user
+    @period_issues = updated_candidates
+    @issues_without_logs = @period_issues.sort_by do |issue|
+      journal_activity[issue.id] || Time.at(0)
     end
-    @issues_without_logs = @period_issues
 
-    issue_ids_for_activity = (@issues.map(&:id) | @issues_without_logs.map(&:id))
-    last_te_dates = if issue_ids_for_activity.any?
-                      TimeEntry.where(user_id: @user.id, issue_id: issue_ids_for_activity)
-                               .group(:issue_id)
-                               .maximum(:created_on)
-                    else
-                      {}
-                    end
     @issue_last_activity = {}
-    (@issues + @issues_without_logs).uniq { |issue| issue.id }.each do |issue|
-      te_date = last_te_dates[issue.id]
-      @issue_last_activity[issue.id] = [issue.updated_on, te_date].compact.max
+    @issues_without_logs.each do |issue|
+      @issue_last_activity[issue.id] = journal_activity[issue.id] || issue.updated_on
     end
 
     @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
-    @issues_without_logs.sort_by! { |issue| @issue_last_activity[issue.id] || Time.at(0) }
     @issues_without_logs.reverse! if @unlogged_sort == 'desc'
 
     # Summary card data
     @issues_worked_count = @time_entries.map(&:issue_id).uniq.count
     @unique_projects_count = @time_entries.map(&:project_id).uniq.count
     # Count only issues relevant to the selected time period: combination of
-    # period-active issues (from the Logged tab's search list) and the Unlogged list.
+    # period-active issues (from the Logged tab's search list) and the Updated By Me list.
     @all_issues_count = (@issues.map(&:id) | @issues_without_logs.map(&:id)).count
     @period_issues_count = @period_issues.count
   end

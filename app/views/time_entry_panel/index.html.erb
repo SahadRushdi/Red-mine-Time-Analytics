@@ -583,7 +583,7 @@
       <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
       </svg>
-      <span>Issues last updated by you in this period. <%= @period_issues_count %> issues</span>
+      <span>Issues updated by you in this period. <%= @period_issues_count %> issues</span>
     </div>
 
     <% if @issues_without_logs.any? %>
@@ -728,7 +728,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">No updates found</h3>
-        <p class="mt-1 text-sm text-gray-500">You have not last-updated any issues in this period.</p>
+        <p class="mt-1 text-sm text-gray-500">You have not updated any issues in this period.</p>
       </div>
     <% end %>
   </div>
