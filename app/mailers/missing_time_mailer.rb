@@ -10,13 +10,17 @@ class MissingTimeMailer < Mailer
     )
 
     subject_text = RedmineTimeAnalytics::MissingTimeEmailTemplate.subject_for(target_date)
-    mail(to: recipients, subject: subject_text, from: formatted_from(from_name))
+    mail_options = { to: recipients, subject: subject_text }
+    from_address = formatted_from(from_name)
+    mail_options[:from] = from_address if from_address.present?
+    mail(mail_options)
   end
 
   private
 
   def formatted_from(from_name)
-    return Setting.mail_from if from_name.blank? || Setting.mail_from.blank?
+    return nil if Setting.mail_from.blank?
+    return Setting.mail_from if from_name.blank?
 
     "#{from_name} <#{Setting.mail_from}>"
   end

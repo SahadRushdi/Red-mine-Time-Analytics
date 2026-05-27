@@ -25,17 +25,33 @@ module RedmineTimeAnalytics
 
         missing_users = users_missing_time(target_date)
         result.missing_users = missing_users
-        return result if missing_users.empty?
+        if missing_users.empty?
+          Rails.logger.info("[MissingTimeScheduler] no missing time entries for #{target_date}")
+          return result
+        end
 
-        MissingTimeMailer.reminder(
-          missing_users: missing_users,
-          target_date: target_date,
-          mail_date: today,
-          recipients: @settings[:recipients],
-          from_name: @settings[:from_name]
-        ).deliver_now
+        begin
+          MissingTimeMailer.reminder(
+            missing_users: missing_users,
+            target_date: target_date,
+            mail_date: today,
+            recipients: @settings[:recipients],
+            from_name: @settings[:from_name]
+          ).deliver_now
 
-        result.sent = true
+          Rails.logger.info(
+            "[MissingTimeScheduler] sent reminder for #{target_date} to #{Array(@settings[:recipients]).join(', ')} "\
+            "(#{missing_users.length} users)"
+          )
+
+          result.sent = true
+        rescue Net::SMTPAuthenticationError => e
+          Rails.logger.error("[MissingTimeScheduler] SMTP auth failed when sending reminder: #{e.message}")
+          result.errors << "SMTP authentication failed: #{e.message}"
+        rescue StandardError => e
+          Rails.logger.error("[MissingTimeScheduler] failed to send reminder: #{e.class}: #{e.message}")
+          result.errors << "Mail send failed: #{e.class}: #{e.message}"
+        end
       end
 
       result

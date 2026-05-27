@@ -12,7 +12,7 @@ class TaTeamSetting < ActiveRecord::Base
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
   DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
-  DEFAULT_MISSING_TIME_CRON = '30 13 * * 2-6'
+  DEFAULT_MISSING_TIME_CRON = '*/10 * * * 2-6'
   DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
 
   # Associations
@@ -247,6 +247,10 @@ class TaTeamSetting < ActiveRecord::Base
     settings['missing_time_from_name'] = from_name.to_s.strip
     settings['missing_time_timezone'] = normalized_timezone
     Setting.plugin_redmine_time_analytics = settings
+
+    if defined?(RedmineTimeAnalytics::MissingTimeScheduler)
+      RedmineTimeAnalytics::MissingTimeScheduler.refresh!
+    end
   end
 
   def self.default_leave_sync_cron

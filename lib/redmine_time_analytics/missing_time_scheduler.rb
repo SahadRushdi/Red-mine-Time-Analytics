@@ -80,8 +80,9 @@ module RedmineTimeAnalytics
         end
         result
       rescue StandardError => e
-        Rails.logger.error("[MissingTimeScheduler] failed: #{e.message}")
-        raise
+        # Log but do not re-raise to avoid crashing scheduler. Errors are captured in result where possible.
+        Rails.logger.error("[MissingTimeScheduler] failed: #{e.class}: #{e.message}")
+        nil
       end
 
       def scheduler_timezone
