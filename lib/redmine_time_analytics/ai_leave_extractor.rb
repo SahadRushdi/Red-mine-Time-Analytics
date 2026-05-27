@@ -47,6 +47,19 @@ module RedmineTimeAnalytics
       → STOP HERE.
 
       ██████████████████████████████████████████████████
+      WFH / REMOTE WORK RULE — NOT A LEAVE
+      ██████████████████████████████████████████████████
+
+      Emails about "Working from Home" (WFH) or "Remote Work" are NOT leave requests.
+      The employee is still working, just not in the office.
+
+      IF the email contains keywords like "WFH", "Work from home", "Working remotely",
+      "Remote today", "Home today" AND does NOT explicitly say they are taking
+      a leave (annual, medical, etc.) for that same time
+      → Return EXACTLY: {"status":"not_a_leave","reason":"wfh_is_not_leave","leave_entries":[]}
+      → STOP HERE.
+
+      ██████████████████████████████████████████████████
       REMINDER EXCEPTION
       ██████████████████████████████████████████████████
 
