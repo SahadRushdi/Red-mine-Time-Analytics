@@ -65,10 +65,20 @@ class TimeEntryPanelController < ApplicationController
     journal_activity = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
                               .group(:journalized_id)
                               .maximum(:created_on)
-    journaled_issue_ids = journal_activity.keys
-    updated_candidates = if journaled_issue_ids.any?
+    created_issue_activity = Issue.joins(:project)
+                                  .where(assigned_to_id: @user.id, created_on: period_window)
+                                  .where(projects: { status: Project::STATUS_ACTIVE })
+                                  .pluck(:id, :created_on)
+                                  .to_h
+    created_issue_ids = created_issue_activity.keys
+    time_logged_issue_ids = period_te_dates.keys
+
+    visible_created_issue_ids = created_issue_ids - time_logged_issue_ids
+    activity_issue_ids = (journal_activity.keys | visible_created_issue_ids)
+
+    updated_candidates = if activity_issue_ids.any?
                            Issue.joins(:project)
-                                .where(id: journaled_issue_ids)
+                                .where(id: activity_issue_ids)
                                 .where(projects: { status: Project::STATUS_ACTIVE })
                                 .includes(:project, :tracker, :status, :priority, :assigned_to)
                                 .to_a
@@ -78,12 +88,12 @@ class TimeEntryPanelController < ApplicationController
 
     @period_issues = updated_candidates
     @issues_without_logs = @period_issues.sort_by do |issue|
-      journal_activity[issue.id] || Time.at(0)
+      journal_activity[issue.id] || created_issue_activity[issue.id] || Time.at(0)
     end
 
     @issue_last_activity = {}
     @issues_without_logs.each do |issue|
-      @issue_last_activity[issue.id] = journal_activity[issue.id] || issue.updated_on
+      @issue_last_activity[issue.id] = journal_activity[issue.id] || created_issue_activity[issue.id] || issue.updated_on
     end
 
     @unlogged_sort = %w[asc desc].include?(params[:unlogged_sort].to_s) ? params[:unlogged_sort].to_s : 'desc'
