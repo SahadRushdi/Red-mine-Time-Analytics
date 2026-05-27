@@ -26,6 +26,14 @@ class AdminLeaveCountController < ApplicationController
 
   def create
     sync_params = leave_sync_params
+    settings = TaTeamSetting.leave_sync_settings
+    
+    # AI should be enabled if it was explicitly enabled in the form OR 
+    # if a new API key is provided OR if an existing API key exists and we are not disabling it.
+    ai_enabled = sync_params[:leave_ai_extraction_enabled] == '1' || 
+                 sync_params[:leave_ai_api_key].present? ||
+                 (settings[:ai_api_key].present? && sync_params[:leave_ai_extraction_enabled] != '0')
+
     TaTeamSetting.update_leave_sync_settings!(
       enabled: sync_params[:leave_sync_enabled],
       recipient_email: sync_params[:leave_sync_recipient_email],
@@ -36,7 +44,7 @@ class AdminLeaveCountController < ApplicationController
       oauth_client_secret: sync_params[:leave_oauth_client_secret],
       oauth_account_email: sync_params[:leave_oauth_account_email],
       leave_sync_cron: sync_params[:leave_sync_cron],
-      ai_extraction_enabled: sync_params[:leave_ai_api_key].present?,
+      ai_extraction_enabled: ai_enabled,
       ai_provider: 'google',
       ai_model: sync_params[:leave_ai_model],
       ai_api_key: sync_params[:leave_ai_api_key]

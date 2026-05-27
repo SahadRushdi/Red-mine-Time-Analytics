@@ -296,14 +296,14 @@ class TaTeamSetting < ActiveRecord::Base
     end
 
     settings = (Setting.plugin_redmine_time_analytics || {}).dup
-    settings['leave_sync_enabled'] = enabled.to_s == '1' ? '1' : '0'
+    settings['leave_sync_enabled'] = (enabled.to_s == '1' || enabled == true) ? '1' : '0'
     settings['leave_sync_recipient_email'] = normalized_recipient
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_end_date'] = historical_sync_end_date.to_s
     settings['leave_sync_approach'] = 'oauth'
     cron_expression = leave_sync_cron.to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
     settings['leave_sync_cron'] = cron_expression
-    settings['leave_ai_extraction_enabled'] = ai_extraction_enabled.to_s == '1' ? '1' : '0'
+    settings['leave_ai_extraction_enabled'] = (ai_extraction_enabled.to_s == '1' || ai_extraction_enabled == true) ? '1' : '0'
     settings['leave_ai_provider'] = 'google'
     settings['leave_ai_model'] = ai_model.to_s.strip
 

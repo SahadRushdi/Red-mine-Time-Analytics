@@ -26,6 +26,7 @@ module RedmineTimeAnalytics
     ATTENDANCE_KEYWORDS = ['attending office', 'coming to the office', 'coming to office', 'joining office',
                            'will be at the office', 'will be at office', 'arriving at the office',
                            'arriving to the office', 'going to office', 'coming to work'].freeze
+    WFH_KEYWORDS = ['wfh', 'work from home', 'working from home', 'remote today', 'remote work', 'working remotely'].freeze
     LEAVE_CONTEXT_KEYWORDS = ['leave', 'sick leave', 'on leave', 'out of office', 'ooh', 'vacation', 'holiday',
                               'absent', 'not feeling well'].freeze
     DATE_OVERRIDE_KEYWORDS = ['shift', 'shifted', 'reschedul', 'moved to', 'updated', 'update',
@@ -616,6 +617,12 @@ module RedmineTimeAnalytics
     def attendance_only_request?(subject_text:, body_text:)
       normalized = [normalize_date_text(subject_text), normalize_date_text(primary_body_text(body_text))]
                     .compact.join("\n").downcase
+      
+      # If it contains WFH keywords, treat as attendance/non-leave UNLESS it also explicitly mentions leave
+      if WFH_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
+        return !LEAVE_CONTEXT_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
+      end
+
       return false unless ATTENDANCE_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
 
       !LEAVE_CONTEXT_KEYWORDS.any? { |keyword| normalized.include?(keyword) }
