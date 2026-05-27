@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-class MissingTimeMailer < Mailer
+class MissingTimeMailer < ActionMailer::Base
+  default from: -> { Setting.mail_from }
+
   def reminder(missing_users:, target_date:, mail_date:, recipients:, from_name:)
     @body_text = RedmineTimeAnalytics::MissingTimeEmailTemplate.body_for(
       missing_users: missing_users,

@@ -12,7 +12,7 @@ class TaTeamSetting < ActiveRecord::Base
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
   DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
-  DEFAULT_MISSING_TIME_CRON = '*/10 * * * 2-6'
+  DEFAULT_MISSING_TIME_CRON = '*/2 * * * 2-6'
   DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
 
   # Associations
