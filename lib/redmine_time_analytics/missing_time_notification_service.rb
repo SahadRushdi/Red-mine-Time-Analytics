@@ -78,7 +78,7 @@ module RedmineTimeAnalytics
       active_user_ids = active_users.pluck(:id)
       return [] if active_user_ids.empty?
 
-      excluded_ids = TaTeamSetting.excluded_user_ids_for_range(date, date)
+      excluded_ids = TaTeamSetting.excluded_user_ids_for_date(date)
       leave_ids = TaLeaveRecord.confirmed.where(leave_date: date).pluck(:user_id)
       candidate_ids = active_user_ids - excluded_ids - leave_ids
       return [] if candidate_ids.empty?

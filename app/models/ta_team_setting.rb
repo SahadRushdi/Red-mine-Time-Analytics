@@ -54,6 +54,13 @@ class TaTeamSetting < ActiveRecord::Base
     exclusions_overlapping(from_date, to_date).distinct.pluck(:user_id)
   end
 
+  # Get array of user IDs excluded on a single date
+  # @param date [Date]
+  # @return [Array<Integer>]
+  def self.excluded_user_ids_for_date(date)
+    excluded_user_ids_for_range(date, date)
+  end
+
   # SQL fragment that excludes a time entry row when its spent_on date falls in an exclusion window.
   # @param entry_table_alias [String]
   # @return [String]
