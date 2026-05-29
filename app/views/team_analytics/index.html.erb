@@ -614,12 +614,12 @@
               <th scope="col" class="px-6 py-3">
                 <%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %>
               </th>
-              <th scope="col" class="px-6 py-3 text-center">Team Size</th>
-              <th scope="col" class="px-6 py-3 text-right">Team Time</th>
+              <th scope="col" class="px-2 py-3 text-center">Team<br/>Size</th>
+              <th scope="col" class="px-2 py-3 text-right">Team<br/>Time</th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
               <% if @show_effective_time_column %>
-                <th scope="col" class="px-6 py-3 text-right">Support (Redmine) Time</th>
-                <th scope="col" class="px-6 py-3 text-right">Effective Time (%)</th>
+                <th scope="col" class="px-2 py-3 text-right">Support<br/>Time</th>
+                <th scope="col" class="px-2 py-3 text-right">Effective<br/>Time (%)</th>
               <% end %>
             </tr>
           </thead>
@@ -627,12 +627,12 @@
             <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
               <tr class="bg-white border-b hover:bg-gray-50">
                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
-                <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
+                <td class="px-2 py-4 text-center text-gray-900"><%= entry.member_count %></td>
+                <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
                 <% if @show_effective_time_column %>
-                  <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
-                  <td class="px-6 py-4 text-right font-mono text-gray-900">
+                  <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="px-2 py-4 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
                     <% else %>

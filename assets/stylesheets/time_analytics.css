@@ -74,7 +74,11 @@
   table-layout: auto;
 }
 
-.analytics-section .time-overview-box th,
+.analytics-section .time-overview-box th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+
 .analytics-section .time-overview-box td {
   white-space: nowrap;
 }
