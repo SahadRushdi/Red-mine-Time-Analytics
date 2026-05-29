@@ -8,6 +8,7 @@ class AdminTaTeamSettingsController < ApplicationController
   before_action :require_admin
 
   def index
+    @active_tab = params[:tab].presence || 'exclusions'
     @excluded_settings = TaTeamSetting.exclusions.includes(:user).to_a.sort_by { |setting| setting.user_name.to_s.downcase }
     @excluded_users = @excluded_settings.map(&:user).compact
     @super_users = User.where(id: TaTeamSetting.super_user_ids).sorted
@@ -26,7 +27,7 @@ class AdminTaTeamSettingsController < ApplicationController
       enabled = team_setting_params[:my_team_enabled] == '1'
       TaTeamSetting.update_my_team_enabled(enabled)
       flash[:notice] = "My Team page #{enabled ? 'activated' : 'deactivated'} successfully"
-      redirect_to admin_ta_team_settings_path
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
@@ -42,7 +43,7 @@ class AdminTaTeamSettingsController < ApplicationController
         flash[:error] = e.message
       end
 
-      redirect_to admin_ta_team_settings_path
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
@@ -50,7 +51,7 @@ class AdminTaTeamSettingsController < ApplicationController
 
     if user_id.blank? || user_id.zero?
       flash[:error] = "Please select a user"
-      redirect_to admin_ta_team_settings_path
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
@@ -80,14 +81,15 @@ class AdminTaTeamSettingsController < ApplicationController
       flash[:error] = "Invalid setting type"
     end
 
-    redirect_to admin_ta_team_settings_path
+    redirect_to admin_ta_team_settings_path(tab: team_setting_params[:tab].presence || @active_tab)
   end
 
   def destroy
     setting = TaTeamSetting.find(params[:id])
+    active_tab = params[:tab].presence || (setting.super_user? ? 'super-users' : 'exclusions')
     setting.destroy
     flash[:notice] = l(:notice_successful_delete)
-    redirect_to admin_ta_team_settings_path
+    redirect_to admin_ta_team_settings_path(tab: active_tab)
   rescue ActiveRecord::RecordNotFound
     render_404
   end
@@ -106,7 +108,7 @@ class AdminTaTeamSettingsController < ApplicationController
   end
 
   def team_setting_params
-    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key, :my_team_enabled)
+    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key, :my_team_enabled, :tab)
   end
 
   def parse_admin_setting_date(value)

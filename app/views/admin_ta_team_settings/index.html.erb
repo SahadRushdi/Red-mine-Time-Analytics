@@ -28,6 +28,7 @@
     <div class="px-6 py-4">
       <%= form_tag admin_ta_team_settings_path, method: :post, id: 'my-team-visibility-form' do %>
         <%= hidden_field_tag :setting_type, 'my_team_visibility' %>
+        <%= hidden_field_tag :tab, @active_tab %>
         <div class="flex items-center justify-between">
           <div>
             <span class="text-sm font-medium text-gray-900">My Team Page</span>
@@ -60,6 +61,7 @@
     <div class="px-6 py-4">
       <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-4 md:grid-cols-2' do %>
         <%= hidden_field_tag :setting_type, 'support_redmine' %>
+        <%= hidden_field_tag :tab, @active_tab %>
         <div class="md:col-span-1">
           <%= label_tag :support_redmine_base_url, 'Support Redmine Base URL', class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
           <%= text_field_tag :support_redmine_base_url,
@@ -87,7 +89,7 @@
       <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
         <li class="me-2">
           <button type="button" id="tab-exclusions" onclick="switchTeamSettingsTab('exclusions')"
-                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 ta-view-tab-active">
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 <%= @active_tab == 'exclusions' ? 'ta-view-tab-active' : '' %>">
             <span class="inline-flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-1.414-1.414L12 9.172 7.05 4.222 5.636 5.636 10.586 10.586 5.636 15.536l1.414 1.414L12 12l4.95 4.95 1.414-1.414-4.95-4.95z"></path>
@@ -99,7 +101,7 @@
         </li>
         <li class="me-2">
           <button type="button" id="tab-super-users" onclick="switchTeamSettingsTab('super-users')"
-                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+                  class="ta-view-tab inline-block px-4 py-2.5 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50 <%= @active_tab == 'super-users' ? 'ta-view-tab-active' : '' %>">
             <span class="inline-flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5V4H2v16h5m10 0v-4a4 4 0 00-8 0v4m8 0H7m8-13a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -123,7 +125,7 @@
       </div>
     </div>
 
-    <div id="panel-exclusions">
+    <div id="panel-exclusions" class="<%= 'hidden' unless @active_tab == 'exclusions' %>">
       <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
         <span>Users in this list are excluded from team analytics reports for the selected date range.</span>
       </div>
@@ -131,6 +133,7 @@
       <div class="px-6 py-4 border-b border-gray-100">
         <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-end' do %>
           <%= hidden_field_tag :setting_type, 'exclusion' %>
+        <%= hidden_field_tag :tab, 'exclusions' %>
           <div class="min-w-0">
             <%= label_tag 'ta-team-settings-user-search-exclusion', 'Add user to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
             <div class="relative min-w-0" id="ta-team-settings-user-wrapper-exclusion">
@@ -235,7 +238,7 @@
                   <td class="px-4 py-3 text-right">
                     <% if setting_id.present? %>
                       <button type="button"
-                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>', 'exclusions')"
                               class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                               title="Delete"
                               aria-label="Delete exclusion">
@@ -257,7 +260,7 @@
       <% end %>
     </div>
 
-    <div id="panel-super-users" class="hidden">
+    <div id="panel-super-users" class="<%= 'hidden' unless @active_tab == 'super-users' %>">
       <div class="px-6 py-2 text-sm text-gray-500 flex items-center gap-2 border-b border-gray-100">
         <span>Super users can access analytics across all teams, regardless of membership.</span>
       </div>
@@ -265,6 +268,7 @@
       <div class="px-6 py-4 border-b border-gray-100">
         <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
           <%= hidden_field_tag :setting_type, 'super_user' %>
+        <%= hidden_field_tag :tab, 'super-users' %>
           <div>
             <%= label_tag 'ta-team-settings-user-search-super-user', 'Add super user', class: 'mb-1 block text-sm font-medium text-gray-700' %>
             <div class="relative min-w-0" id="ta-team-settings-user-wrapper-super-user">
@@ -336,7 +340,7 @@
                   <td class="px-4 py-3 text-right">
                     <% if setting_id.present? %>
                       <button type="button"
-                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>')"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>', 'super-users')"
                               class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                               title="Delete"
                               aria-label="Delete super user">
@@ -690,6 +694,7 @@
         setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, column)), 'desc');
       });
     });
+    switchTeamSettingsTab('<%= @active_tab %>');
     applyTeamSettingsPagination('exclusions', false);
     applyTeamSettingsPagination('super-users', false);
   });
@@ -712,8 +717,8 @@
     modal.setAttribute('aria-hidden', 'true');
   }
 
-  function teamSettingsDelete(settingId, url, token) {
-    teamSettingsPendingDelete = { settingId: settingId, url: url, token: token };
+  function teamSettingsDelete(settingId, url, token, tabName) {
+    teamSettingsPendingDelete = { settingId: settingId, url: url, token: token, tabName: tabName };
     var trigger = document.getElementById('teamSettingsDeleteButton');
     if (trigger) {
       trigger.click();
@@ -742,6 +747,13 @@
       input.value = pair[1];
       form.appendChild(input);
     });
+    if (teamSettingsPendingDelete.tabName) {
+      var tabInput = document.createElement('input');
+      tabInput.type = 'hidden';
+      tabInput.name = 'tab';
+      tabInput.value = teamSettingsPendingDelete.tabName;
+      form.appendChild(tabInput);
+    }
     document.body.appendChild(form);
     form.submit();
   }

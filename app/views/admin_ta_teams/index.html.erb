@@ -257,7 +257,9 @@
                 <% next unless current_membership && current_membership.team %>
                 <% form_id = "ta-member-history-form-#{current_membership.id}" %>
                 <%= form_tag admin_ta_team_membership_path(current_membership.team, current_membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{current_membership.id})" do %>
-                  <%= hidden_field_tag :main_tab, 'members', form: form_id %>
+                  <%= hidden_field_tag :main_tab, 'members', form: form_id, id: "ta-member-history-main-tab-#{current_membership.id}" %>
+                  <%= hidden_field_tag :sidebar_tab, nil, form: form_id, id: "ta-member-history-sidebar-tab-#{current_membership.id}" %>
+                  <%= hidden_field_tag :page, nil, form: form_id, id: "ta-member-history-page-#{current_membership.id}" %>
                 <% end %>
               <% end %>
             </div>
@@ -703,18 +705,32 @@
     nextSibling: null
   };
 
+  function teamHistoryVisibleMemberRows() {
+    return Array.from(document.querySelectorAll('#team-main-panel-members .ta-member-history-group-row')).filter(function(row) {
+      return row.style.display !== 'none';
+    });
+  }
+
+  function teamHistoryDatepickerOrientationForRow(row) {
+    var visibleRows = teamHistoryVisibleMemberRows();
+    var rowIndex = visibleRows.indexOf(row);
+    return rowIndex >= 0 && rowIndex < 5 ? 'bottom auto' : 'top auto';
+  }
+
   function initTeamMemberInlineDatepickers(membershipId) {
+    var row = document.querySelector('[data-membership-id="' + membershipId + '"]');
     var input = document.getElementById('ta-team-member-start-date-' + membershipId);
     if (!input) return;
+    var orientation = teamHistoryDatepickerOrientationForRow(row);
     if (input.datepicker && input.datepicker.setOptions) {
-      input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+      input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: orientation });
       return;
     }
     if (window.Datepicker) {
       new window.Datepicker(input, {
         format: 'mm/dd/yyyy',
         autohide: true,
-        orientation: 'top auto'
+        orientation: orientation
       });
     }
   }
@@ -880,6 +896,14 @@
   function submitTeamMemberInlineEdit(membershipId) {
     var startInput = document.getElementById('ta-team-member-start-date-' + membershipId);
     if (startInput) startInput.value = normalizeTeamMemberDate(startInput.value);
+    var pageInput = document.getElementById('ta-member-history-page-' + membershipId);
+    var sidebarTabInput = document.getElementById('ta-member-history-sidebar-tab-' + membershipId);
+    var mainTabInput = document.getElementById('ta-member-history-main-tab-' + membershipId);
+    if (pageInput && teamHistoryPagination.member) pageInput.value = teamHistoryPagination.member.currentPage;
+    if (sidebarTabInput) {
+      sidebarTabInput.value = document.querySelector('#team-sidebar-vacancies-panel:not(.hidden)') ? 'vacancies' : 'members';
+    }
+    if (mainTabInput) mainTabInput.value = document.querySelector('#team-main-panel-members:not(.hidden)') ? 'members' : 'structure';
     return true;
   }
 
@@ -903,7 +927,9 @@
 
   function teamMembersDelete(membershipId, url, token) {
     var mainTab = arguments.length > 3 ? arguments[3] : null;
-    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token, mainTab: mainTab };
+    var page = teamHistoryPagination.member ? teamHistoryPagination.member.currentPage : null;
+    var sidebarTab = document.querySelector('#team-sidebar-vacancies-panel:not(.hidden)') ? 'vacancies' : 'members';
+    teamMembersPendingDelete = { membershipId: membershipId, url: url, token: token, mainTab: mainTab, page: page, sidebarTab: sidebarTab };
     teamMembersOpenDeleteModal();
   }
 
@@ -927,6 +953,20 @@
       tabInput.name = 'main_tab';
       tabInput.value = teamMembersPendingDelete.mainTab;
       form.appendChild(tabInput);
+    }
+    if (teamMembersPendingDelete.sidebarTab) {
+      var sidebarTabInput = document.createElement('input');
+      sidebarTabInput.type = 'hidden';
+      sidebarTabInput.name = 'sidebar_tab';
+      sidebarTabInput.value = teamMembersPendingDelete.sidebarTab;
+      form.appendChild(sidebarTabInput);
+    }
+    if (teamMembersPendingDelete.page) {
+      var pageInput = document.createElement('input');
+      pageInput.type = 'hidden';
+      pageInput.name = 'page';
+      pageInput.value = teamMembersPendingDelete.page;
+      form.appendChild(pageInput);
     }
     document.body.appendChild(form);
     form.submit();
@@ -1397,7 +1437,7 @@
 
   var teamHistoryPagination = {
     vacancy: { currentPage: 1, perPage: 10 },
-    member: { currentPage: 1, perPage: 10 }
+    member: { currentPage: <%= params[:page].to_i.positive? ? params[:page].to_i : 1 %>, perPage: 10 }
   };
 
   function teamHistoryCreatePageButton(config) {
@@ -1955,7 +1995,7 @@
     setupTeamSplitLayout();
     initTeamMemberAddDatepickers();
     applyTeamHistoryPagination('vacancy', false);
-    applyTeamHistoryPagination('member', false);
+    applyTeamHistoryPagination('member', true);
     switchTeamMainTab('<%= @active_main_tab == 'members' ? 'team-main-panel-members' : 'team-main-panel-structure' %>');
     setTimeout(function() { applyTeamHistoryPagination('member', true); }, 0);
 

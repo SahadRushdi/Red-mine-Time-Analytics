@@ -62,7 +62,11 @@ class AdminTaTeamMembershipsController < ApplicationController
 
   def redirect_membership_context
     if params[:main_tab].present?
-      redirect_to admin_ta_teams_path(main_tab: params[:main_tab])
+      redirect_params = { main_tab: params[:main_tab] }
+      redirect_params[:sidebar_tab] = params[:sidebar_tab] if params[:sidebar_tab].present?
+      redirect_params[:page] = params[:page] if params[:page].present?
+
+      redirect_to admin_ta_teams_path(redirect_params)
     else
       redirect_back fallback_location: admin_ta_team_path(@team)
     end
