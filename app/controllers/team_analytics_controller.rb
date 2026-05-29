@@ -272,8 +272,7 @@ class TeamAnalyticsController < ApplicationController
     
     # Add direct members after sub-teams
     memberships.each do |membership|
-      next if excluded_ids.include?(membership.user_id)
-      
+      is_excluded = excluded_ids.include?(membership.user_id)
       user = membership.user
       
       # Member node
@@ -284,10 +283,12 @@ class TeamAnalyticsController < ApplicationController
         state: { opened: false },
         a_attr: {
           'data-node-type': 'member',
-          'data-user-id': user.id
+          'data-user-id': user.id,
+          'data-excluded': is_excluded ? 'true' : 'false'
         },
         data: {
-          user_id: user.id
+          user_id: user.id,
+          excluded: is_excluded
         }
       }
       

@@ -238,6 +238,26 @@
     text-decoration: underline;
   }
 
+  #team-tree-container .jstree-anchor[data-node-type="member"][data-excluded="true"] {
+    color: #b45309;
+    font-weight: 600;
+  }
+
+  #team-tree-container .jstree-anchor[data-node-type="member"][data-excluded="true"]::after {
+    content: "★";
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    vertical-align: middle;
+  }
+
   /* Projects node styling */
   #team-tree-container .jstree-anchor[data-node-type="projects"] {
     color: #64748b;
