@@ -10,7 +10,7 @@ class TeamAnalyticsController < ApplicationController
     '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
     '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
   ].freeze
-  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available)
+  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available, :raw_period)
 
   def index
     # Super users can access all teams; team leads can access led teams + descendants
@@ -241,11 +241,62 @@ class TeamAnalyticsController < ApplicationController
     render json: tree_nodes
   end
 
+  # API endpoint for period-specific team member details (Team Size modal)
+  def get_period_team_members
+    team_id = params[:team_id]
+    period_start = params[:period_start].to_date rescue nil
+    grouping = params[:grouping] || 'weekly'
+
+    return render json: { error: 'Missing parameters' }, status: 400 unless team_id && period_start
+
+    team = TaTeam.find_by(id: team_id)
+    return render json: { error: 'Team not found' }, status: 404 unless team
+
+    # Calculate period end
+    period_end = if grouping == 'monthly'
+                   period_start.end_of_month
+                 else
+                   period_start.end_of_week(:monday)
+                 end
+
+    # Get direct members active during this period
+    memberships = team.active_members(period_start, period_end)
+    member_ids = memberships.map(&:user_id).compact.uniq
+
+    # Fetch hours logged by these members in this specific period
+    period_hours = TimeEntry.where(user_id: member_ids, spent_on: period_start..period_end)
+                             .group(:user_id)
+                             .sum(:hours)
+    
+    member_data = memberships.map do |membership|
+      user = membership.user
+      next nil unless user
+
+      leave_days = TaLeaveRecord.total_leave_days_for_user(
+        user_id: user.id,
+        from_date: period_start,
+        to_date: period_end
+      )
+
+      {
+        name: user.name,
+        hours: (period_hours[user.id] || 0.0).to_f,
+        leave_days: leave_days
+      }
+    end.compact.sort_by { |m| -m[:hours] }
+
+    render json: {
+      team_name: team.name,
+      period_label: helpers.format_period_for_table(period_start, grouping, period_start, period_end),
+      members: member_data
+    }
+  end
+
   # Recursively build team node with sub-teams and members
   def build_team_node(team, excluded_ids, from_date, to_date)
-    # Get direct members for this team only
+    # Get direct members for this team only (currently active only)
     memberships = TaTeamMembership.where(team: team)
-                                 .where('end_date IS NULL OR end_date >= ?', from_date)
+                                 .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', Date.today, Date.today)
                                  .includes(:user)
     
     # Build team node
@@ -472,18 +523,13 @@ class TeamAnalyticsController < ApplicationController
     # Sort by period key in DESCENDING order (newest first, like Individual Dashboard)
     sorted_data = data.sort_by { |key, _| key }.reverse
     
-    # Return structured data with period, team_size (not member_count), hours, and average
+      # Return structured data with period, team_size (not member_count), hours, and average
     sorted_data.map do |period, hours|
       # Convert period key to appropriate format for the helper
-      period_for_display = case grouping
-                           when 'monthly'
-                             if period.is_a?(Array)
-                               Date.new(period[0], period[1], 1)
-                             else
-                               period.to_date
-                             end
+      period_for_display = if period.is_a?(Array)
+                             Date.new(period[0], period[1], 1)
                            else
-                             period
+                             period.to_date
                            end
       
       period_label = helpers.format_period_for_table(period_for_display, grouping, @from, @to)
@@ -493,7 +539,7 @@ class TeamAnalyticsController < ApplicationController
       # Calculate average: Total Hours / (Team Size * Active Working Days)
       average = calculate_period_average(period_for_display, grouping, hours, team_size)
       
-      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false)
+      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false, period_for_display.to_s)
     end
   end
 
@@ -530,7 +576,7 @@ class TeamAnalyticsController < ApplicationController
     if result.errors.any?
       @effective_time_error_message = result.errors.uniq.join('; ')
       @time_overview_data = @time_overview_data.map do |row|
-        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false)
+        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
       end
       return
     end
@@ -547,13 +593,13 @@ class TeamAnalyticsController < ApplicationController
                                ((support_hours / internal_hours) * 100.0).round(2)
                              end
 
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?, row.raw_period)
     end
   rescue StandardError => e
     @show_effective_time_column = true
     @effective_time_error_message = e.message
     @time_overview_data = @time_overview_data.map do |row|
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
     end
   end
 
