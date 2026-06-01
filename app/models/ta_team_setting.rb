@@ -23,6 +23,7 @@ class TaTeamSetting < ActiveRecord::Base
   validates :start_date, presence: true, if: :exclusion?
   validate :end_date_after_start_date, if: :exclusion?
   before_validation :default_exclusion_start_date, if: :exclusion?
+  before_validation :deactivate_if_user_locked
 
   # Scopes
   scope :active, -> { where(active: true) }
@@ -453,6 +454,12 @@ class TaTeamSetting < ActiveRecord::Base
 
   def default_exclusion_start_date
     self.start_date = Date.current if start_date.blank?
+  end
+
+  def deactivate_if_user_locked
+    return unless user&.status == User::STATUS_LOCKED
+
+    self.active = false
   end
 
   public

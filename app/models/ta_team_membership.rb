@@ -20,6 +20,8 @@ class TaTeamMembership < ActiveRecord::Base
   validate :end_date_after_start_date
   validate :no_overlapping_memberships
 
+  before_validation :set_end_date_for_locked_user
+
   # Scopes
   scope :active, -> { where(end_date: nil) }
   scope :inactive, -> { where.not(end_date: nil) }
@@ -121,6 +123,14 @@ class TaTeamMembership < ActiveRecord::Base
 
     if overlapping.exists?
       errors.add(:base, "User already has an overlapping membership in this team during this period")
+    end
+  end
+
+  def set_end_date_for_locked_user
+    return unless user&.status == User::STATUS_LOCKED
+
+    if end_date.blank?
+      self.end_date = Date.today
     end
   end
 end
