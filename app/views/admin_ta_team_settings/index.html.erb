@@ -131,36 +131,75 @@
       </div>
 
       <div class="px-6 py-4 border-b border-gray-100">
-        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-end' do %>
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-end', onsubmit: "return submitTeamSettingsMultiSelect('exclusion')" do %>
           <%= hidden_field_tag :setting_type, 'exclusion' %>
-        <%= hidden_field_tag :tab, 'exclusions' %>
+          <%= hidden_field_tag :tab, 'exclusions' %>
           <div class="min-w-0">
-            <%= label_tag 'ta-team-settings-user-search-exclusion', 'Add user to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-exclusion">
-              <input type="text"
-                     id="ta-team-settings-user-search-exclusion"
-                     placeholder="🔍 Search member... *"
-                     autocomplete="off"
-                     onclick="openTeamSettingsMemberDropdown('exclusion')"
-                     oninput="filterTeamSettingsMembers('exclusion')"
-                     onkeydown="handleTeamSettingsMemberKey(event, 'exclusion')"
-                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
-              <input type="hidden" name="user_id" id="ta-team-settings-user-id-exclusion">
-              <div id="ta-team-settings-user-list-exclusion"
-                    class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                     style="min-width: 300px; max-width: 100%; max-height: 220px; top: calc(100% + 2px);">
-                <% @available_users.each do |user| %>
-                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
-                       tabindex="0"
-                       data-id="<%= user.id %>"
-                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
-                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
-                       onclick="selectTeamSettingsMember('exclusion', '<%= user.id %>', this.getAttribute('data-text'))"
-                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'exclusion', '<%= user.id %>', this.getAttribute('data-text'))">
-                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+            <%= label_tag 'ta-team-settings-multiselect-button-exclusion', 'Add users to exclusion list', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-multiselect-wrapper-exclusion"
+                 data-team-settings-multiselect="exclusion"
+                 data-default-label="Add to Exclusion List"
+                 data-count-one-label="Add 1 to Exclusion List"
+                 data-count-many-label="Add {count} to Exclusion List">
+              <button type="button"
+                      id="ta-team-settings-multiselect-button-exclusion"
+                      onclick="toggleTeamSettingsMultiSelectMenu('exclusion')"
+                      aria-expanded="false"
+                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
+                <span class="truncate" id="ta-team-settings-multiselect-button-label-exclusion">Select members</span>
+                <svg class="h-4 w-4 flex-shrink-0 !text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div id="ta-team-settings-multiselect-menu-exclusion"
+                   class="hidden absolute left-0 bottom-full z-[9999] mb-2 w-full max-w-full rounded-lg !border !border-slate-300 !bg-white shadow-xl md:w-[420px]">
+                <div class="p-3">
+                  <div class="relative">
+                    <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+                      <svg class="h-4 w-4 !text-slate-400" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                       <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"></path>
+                      </svg>
+                    </div>
+                    <input type="search"
+                          id="ta-team-settings-multiselect-search-exclusion"
+                          placeholder="Search member..."
+                          autocomplete="off"
+                          oninput="filterTeamSettingsMultiSelect('exclusion')"
+                          class="ta-team-settings-multiselect-search block h-[38px] w-full rounded-lg !border !border-blue-500 !bg-white py-2 ps-12 pe-3 text-sm !text-slate-900 placeholder:!text-slate-400 focus:!border-blue-600 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none">
                   </div>
-                <% end %>
+                </div>
+                <div class="max-h-72 overflow-y-auto p-2">
+                  <% @available_users.each do |user| %>
+                    <label class="ta-team-settings-multiselect-option group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:!bg-slate-100 focus-within:!bg-slate-100"
+                          data-team-settings-multiselect-option="exclusion"
+                          data-search="<%= j("#{user.name} #{user.mail}".downcase) %>">
+                      <span class="relative mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center">
+                       <input type="checkbox"
+                              class="peer h-4 w-4 cursor-pointer appearance-none rounded border !border-slate-300 !bg-white checked:!border-blue-600 checked:!bg-blue-600 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none"
+                              data-user-id="<%= user.id %>"
+                              data-user-name="<%= h(user.name) %>"
+                              data-user-email="<%= h(user.mail) %>"
+                              onchange="toggleTeamSettingsMultiSelectOption('exclusion', this)">
+                       <svg class="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                         <path d="M7.5 13.5L4.5 10.5L3.25 11.75L7.5 16L17 6.5L15.75 5.25L7.5 13.5Z" fill="currentColor"></path>
+                       </svg>
+                      </span>
+                      <span class="min-w-0">
+                      <span class="ta-team-settings-multiselect-option-name block text-sm font-medium !text-slate-900 group-hover:!text-slate-900 group-hover:!opacity-100"><%= h(user.name) %></span>
+                      <span class="ta-team-settings-multiselect-option-email block text-xs !text-slate-600 group-hover:!text-slate-700 group-hover:!opacity-100"><%= h(user.mail) %></span>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+                <div class="border-t !border-slate-200 p-3">
+                  <div id="ta-team-settings-selected-chips-exclusion" class="mb-3 flex flex-wrap gap-2"></div>
+                  <div class="flex items-center justify-between gap-2">
+                    <button type="button" onclick="clearTeamSettingsMultiSelect('exclusion')" class="ta-team-settings-multiselect-clear text-xs font-medium !text-slate-500 hover:!text-slate-700">Clear selection</button>
+                    <span class="text-xs !text-slate-500">Select multiple members</span>
+                  </div>
+                </div>
               </div>
+              <div id="ta-team-settings-selected-inputs-exclusion"></div>
             </div>
           </div>
           <div class="min-w-0">
@@ -189,7 +228,9 @@
                                'datepicker-autohide' => 'true' %>
           </div>
           <div class="lg:self-end">
-            <%= button_tag 'Add to Exclusion List', type: 'submit', class: 'tep-action-btn w-full lg:w-auto flex-shrink-0 inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+            <%= button_tag type: 'submit', id: 'ta-team-settings-submit-exclusion', disabled: true, class: 'tep-action-btn w-full lg:w-auto flex-shrink-0 inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0 disabled:cursor-not-allowed disabled:opacity-50', style: 'background-color: #2563eb !important;' do %>
+              <span id="ta-team-settings-submit-label-exclusion">Add to Exclusion List</span>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -266,39 +307,80 @@
       </div>
 
       <div class="px-6 py-4 border-b border-gray-100">
-        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end' do %>
+        <%= form_tag admin_ta_team_settings_path, method: :post, class: 'grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end', onsubmit: "return submitTeamSettingsMultiSelect('super-user')" do %>
           <%= hidden_field_tag :setting_type, 'super_user' %>
-        <%= hidden_field_tag :tab, 'super-users' %>
+          <%= hidden_field_tag :tab, 'super-users' %>
           <div>
-            <%= label_tag 'ta-team-settings-user-search-super-user', 'Add super user', class: 'mb-1 block text-sm font-medium text-gray-700' %>
-            <div class="relative min-w-0" id="ta-team-settings-user-wrapper-super-user">
-              <input type="text"
-                     id="ta-team-settings-user-search-super-user"
-                     placeholder="🔍 Search member... *"
-                     autocomplete="off"
-                     onclick="openTeamSettingsMemberDropdown('super-user')"
-                     oninput="filterTeamSettingsMembers('super-user')"
-                     onkeydown="handleTeamSettingsMemberKey(event, 'super-user')"
-                      class="ta-team-settings-member-input block h-[34px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
-              <input type="hidden" name="user_id" id="ta-team-settings-user-id-super-user">
-              <div id="ta-team-settings-user-list-super-user"
-                   class="tep-issue-dropdown hidden absolute left-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
-                    style="min-width: 420px; max-height: 220px; top: calc(100% + 2px);">
-                <% @available_users.each do |user| %>
-                  <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
-                       tabindex="0"
-                       data-id="<%= user.id %>"
-                       data-text="<%= j("#{user.name} (#{user.mail})") %>"
-                       data-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
-                       onclick="selectTeamSettingsMember('super-user', '<%= user.id %>', this.getAttribute('data-text'))"
-                       onkeydown="handleTeamSettingsMemberOptionKey(event, 'super-user', '<%= user.id %>', this.getAttribute('data-text'))">
-                    <span class="text-gray-700 leading-relaxed"><%= h(user.name) %> <span class="text-gray-400">(<%= h(user.mail) %>)</span></span>
+            <%= label_tag 'ta-team-settings-multiselect-button-super-user', 'Add super users', class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative min-w-0" id="ta-team-settings-multiselect-wrapper-super-user"
+                 data-team-settings-multiselect="super-user"
+                 data-default-label="Add as Super User"
+                 data-count-one-label="Add 1 super user"
+                 data-count-many-label="Add {count} super users">
+              <button type="button"
+                      id="ta-team-settings-multiselect-button-super-user"
+                      onclick="toggleTeamSettingsMultiSelectMenu('super-user')"
+                      aria-expanded="false"
+                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
+                <span class="truncate" id="ta-team-settings-multiselect-button-label-super-user">Select members</span>
+                <svg class="h-4 w-4 flex-shrink-0 !text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <div id="ta-team-settings-multiselect-menu-super-user"
+                   class="hidden absolute left-0 bottom-full z-[9999] mb-2 w-full max-w-full rounded-lg !border !border-slate-300 !bg-white shadow-xl md:w-[420px]">
+                <div class="p-3">
+                  <div class="relative">
+                    <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+                      <svg class="h-4 w-4 !text-slate-400" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21-3.5-3.5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"></path>
+                      </svg>
+                    </div>
+                    <input type="search"
+                           id="ta-team-settings-multiselect-search-super-user"
+                           placeholder="Search member..."
+                           autocomplete="off"
+                           oninput="filterTeamSettingsMultiSelect('super-user')"
+                           class="ta-team-settings-multiselect-search block h-[38px] w-full rounded-lg !border !border-blue-500 !bg-white py-2 ps-12 pe-3 text-sm !text-slate-900 placeholder:!text-slate-400 focus:!border-blue-600 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none">
                   </div>
-                <% end %>
+                </div>
+                <div class="max-h-72 overflow-y-auto p-2">
+                  <% @available_users.each do |user| %>
+                    <label class="ta-team-settings-multiselect-option group flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 hover:!bg-slate-100 focus-within:!bg-slate-100"
+                           data-team-settings-multiselect-option="super-user"
+                           data-search="<%= j("#{user.name} #{user.mail}".downcase) %>">
+                      <span class="relative mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center">
+                        <input type="checkbox"
+                              class="peer h-4 w-4 cursor-pointer appearance-none rounded border !border-slate-300 !bg-white checked:!border-blue-600 checked:!bg-blue-600 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none"
+                              data-user-id="<%= user.id %>"
+                              data-user-name="<%= h(user.name) %>"
+                              data-user-email="<%= h(user.mail) %>"
+                              onchange="toggleTeamSettingsMultiSelectOption('super-user', this)">
+                        <svg class="pointer-events-none absolute h-3 w-3 text-white opacity-0 peer-checked:opacity-100" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                          <path d="M7.5 13.5L4.5 10.5L3.25 11.75L7.5 16L17 6.5L15.75 5.25L7.5 13.5Z" fill="currentColor"></path>
+                        </svg>
+                      </span>
+                      <span class="min-w-0">
+                       <span class="ta-team-settings-multiselect-option-name block text-sm font-medium !text-slate-900 group-hover:!text-slate-900 group-hover:!opacity-100"><%= h(user.name) %></span>
+                       <span class="ta-team-settings-multiselect-option-email block text-xs !text-slate-600 group-hover:!text-slate-700 group-hover:!opacity-100"><%= h(user.mail) %></span>
+                      </span>
+                    </label>
+                  <% end %>
+                </div>
+                <div class="border-t !border-slate-200 p-3">
+                  <div id="ta-team-settings-selected-chips-super-user" class="mb-3 flex flex-wrap gap-2"></div>
+                  <div class="flex items-center justify-between gap-2">
+                    <button type="button" onclick="clearTeamSettingsMultiSelect('super-user')" class="ta-team-settings-multiselect-clear text-xs font-medium !text-slate-500 hover:!text-slate-700">Clear selection</button>
+                    <span class="text-xs !text-slate-500">Select multiple members</span>
+                  </div>
+                </div>
               </div>
+              <div id="ta-team-settings-selected-inputs-super-user"></div>
             </div>
           </div>
-          <%= button_tag 'Add as Super User', type: 'submit', class: 'tep-action-btn flex-shrink-0 inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0', style: 'background-color: #2563eb !important;' %>
+          <%= button_tag type: 'submit', id: 'ta-team-settings-submit-super-user', disabled: true, class: 'tep-action-btn flex-shrink-0 inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0 !outline-none !shadow-none !ring-0 disabled:cursor-not-allowed disabled:opacity-50', style: 'background-color: #2563eb !important;' do %>
+            <span id="ta-team-settings-submit-label-super-user">Add as Super User</span>
+          <% end %>
         <% end %>
       </div>
 
@@ -394,6 +476,92 @@
     </div>
   </div>
 </div>
+
+<style>
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-search,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-search {
+    padding-left: 3rem !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    caret-color: #2563eb !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-search::placeholder,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-search::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-search:focus,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-search:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18) !important;
+    border-color: #2563eb !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid transparent !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:hover,
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:focus-within,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:hover,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:focus-within {
+    background: #eff6ff !important;
+    color: #0f172a !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:hover .ta-team-settings-multiselect-option-name,
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:hover .ta-team-settings-multiselect-option-email,
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:focus-within .ta-team-settings-multiselect-option-name,
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option:focus-within .ta-team-settings-multiselect-option-email,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:hover .ta-team-settings-multiselect-option-name,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:hover .ta-team-settings-multiselect-option-email,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:focus-within .ta-team-settings-multiselect-option-name,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option:focus-within .ta-team-settings-multiselect-option-email {
+    color: #0f172a !important;
+    opacity: 1 !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-option input[type="checkbox"],
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-option input[type="checkbox"] {
+    accent-color: #2563eb !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-clear,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-clear {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #64748b !important;
+    padding: 0 !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-clear:hover,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-clear:hover {
+    background: transparent !important;
+    color: #334155 !important;
+  }
+
+  #ta-team-settings-multiselect-wrapper-exclusion .ta-team-settings-multiselect-menu,
+  #ta-team-settings-multiselect-wrapper-super-user .ta-team-settings-multiselect-menu {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  #ta-team-settings-multiselect-menu-exclusion,
+  #ta-team-settings-multiselect-menu-super-user {
+    border-color: #cbd5e1 !important;
+  }
+
+  #ta-team-settings-multiselect-menu-exclusion .ta-team-settings-multiselect-search,
+  #ta-team-settings-multiselect-menu-super-user .ta-team-settings-multiselect-search {
+    border-color: #2563eb !important;
+  }
+</style>
 
 <script>
   function switchTeamSettingsTab(tabName) {
@@ -588,107 +756,169 @@
     renderTeamSettingsPaginationControls(tabType, matchedRows.length, totalPages, startIndex, endIndex);
   }
 
-  function teamSettingsMemberElements(type) {
+  var teamSettingsMultiSelectTypes = ['exclusion', 'super-user'];
+
+  function teamSettingsMultiSelectElements(type) {
     return {
-      wrapper: document.getElementById('ta-team-settings-user-wrapper-' + type),
-      search: document.getElementById('ta-team-settings-user-search-' + type),
-      hidden: document.getElementById('ta-team-settings-user-id-' + type),
-      list: document.getElementById('ta-team-settings-user-list-' + type)
+      wrapper: document.getElementById('ta-team-settings-multiselect-wrapper-' + type),
+      button: document.getElementById('ta-team-settings-multiselect-button-' + type),
+      buttonLabel: document.getElementById('ta-team-settings-multiselect-button-label-' + type),
+      menu: document.getElementById('ta-team-settings-multiselect-menu-' + type),
+      search: document.getElementById('ta-team-settings-multiselect-search-' + type),
+      chips: document.getElementById('ta-team-settings-selected-chips-' + type),
+      hiddenInputs: document.getElementById('ta-team-settings-selected-inputs-' + type),
+      submitButton: document.getElementById('ta-team-settings-submit-' + type),
+      submitLabel: document.getElementById('ta-team-settings-submit-label-' + type)
     };
   }
 
-  function openTeamSettingsMemberDropdown(type) {
-    var els = teamSettingsMemberElements(type);
-    if (!els.list) return;
-    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) { opt.style.display = ''; });
-    els.list.classList.remove('hidden');
+  function closeTeamSettingsMultiSelectMenu(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu || !els.button) return;
+    els.menu.classList.add('hidden');
+    els.button.setAttribute('aria-expanded', 'false');
   }
 
-  function closeTeamSettingsMemberDropdown(type) {
-    var els = teamSettingsMemberElements(type);
-    if (!els.list) return;
-    els.list.classList.add('hidden');
-  }
-
-  function filterTeamSettingsMembers(type) {
-    var els = teamSettingsMemberElements(type);
-    if (!els.search || !els.list) return;
-    var query = els.search.value.toLowerCase().trim();
-    els.list.classList.remove('hidden');
-    els.list.querySelectorAll('.tep-issue-option').forEach(function(opt) {
-      var text = (opt.getAttribute('data-search') || '').toLowerCase();
-      opt.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
-    });
-    if (els.hidden) els.hidden.value = '';
-  }
-
-  function selectTeamSettingsMember(type, userId, displayText) {
-    var els = teamSettingsMemberElements(type);
-    if (els.hidden) els.hidden.value = userId;
-    if (els.search) els.search.value = displayText;
-    closeTeamSettingsMemberDropdown(type);
-  }
-
-  function handleTeamSettingsMemberKey(event, type) {
-    var els = teamSettingsMemberElements(type);
-    if (!els.list) return;
-    if (event.key === 'Escape') {
-      closeTeamSettingsMemberDropdown(type);
-      return;
+  function openTeamSettingsMultiSelectMenu(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu || !els.button) return;
+    els.menu.classList.remove('hidden');
+    els.button.setAttribute('aria-expanded', 'true');
+    if (els.search) {
+      setTimeout(function() {
+        els.search.focus();
+      }, 0);
     }
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
-        return opt.style.display !== 'none';
+  }
+
+  function toggleTeamSettingsMultiSelectMenu(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu || els.menu.classList.contains('hidden')) {
+      teamSettingsMultiSelectTypes.forEach(function(otherType) {
+        if (otherType !== type) closeTeamSettingsMultiSelectMenu(otherType);
       });
-      if (visible.length) visible[0].focus();
+      openTeamSettingsMultiSelectMenu(type);
+    } else {
+      closeTeamSettingsMultiSelectMenu(type);
     }
   }
 
-  function handleTeamSettingsMemberOptionKey(event, type, userId, displayText) {
-    var els = teamSettingsMemberElements(type);
-    if (!els.list) return;
-    var visible = Array.from(els.list.querySelectorAll('.tep-issue-option')).filter(function(opt) {
-      return opt.style.display !== 'none';
-    });
-    var current = event.target;
-    var currentIdx = visible.indexOf(current);
+  function teamSettingsMultiSelectLabel(type, count) {
+    var wrapper = document.getElementById('ta-team-settings-multiselect-wrapper-' + type);
+    if (!wrapper) return '';
+    if (count <= 0) return wrapper.getAttribute('data-default-label') || '';
+    if (count === 1) return (wrapper.getAttribute('data-count-one-label') || '').replace('{count}', String(count));
+    return (wrapper.getAttribute('data-count-many-label') || '').replace('{count}', String(count));
+  }
 
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      selectTeamSettingsMember(type, userId, displayText);
-      if (els.search) els.search.focus();
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      var next = visible[currentIdx + 1];
-      if (next) next.focus();
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      if (currentIdx === 0) {
-        if (els.search) els.search.focus();
-      } else {
-        var prev = visible[currentIdx - 1];
-        if (prev) prev.focus();
-      }
-    } else if (event.key === 'Escape') {
-      closeTeamSettingsMemberDropdown(type);
-      if (els.search) els.search.focus();
+  function teamSettingsSyncMultiSelect(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.wrapper || !els.menu || !els.hiddenInputs || !els.chips) return;
+
+    var selected = [];
+    els.menu.querySelectorAll('input[type="checkbox"][data-user-id]').forEach(function(checkbox) {
+      var userId = checkbox.getAttribute('data-user-id');
+      if (!userId || !checkbox.checked) return;
+      selected.push({
+        id: userId,
+        name: checkbox.getAttribute('data-user-name') || '',
+        email: checkbox.getAttribute('data-user-email') || ''
+      });
+    });
+
+    els.hiddenInputs.innerHTML = '';
+    selected.forEach(function(user) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'user_ids[]';
+      input.value = user.id;
+      els.hiddenInputs.appendChild(input);
+    });
+
+    els.chips.innerHTML = '';
+    selected.forEach(function(user) {
+      var chip = document.createElement('span');
+      chip.className = 'inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700';
+      var chipLabel = document.createElement('span');
+      chipLabel.className = 'truncate';
+      chipLabel.textContent = user.name;
+      chip.appendChild(chipLabel);
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'inline-flex h-4 w-4 items-center justify-center rounded-full text-blue-500 hover:bg-blue-100 hover:text-blue-700';
+      remove.setAttribute('aria-label', 'Remove ' + user.name);
+      remove.innerHTML = '&times;';
+      remove.addEventListener('click', function() {
+        var checkbox = els.menu.querySelector('input[type="checkbox"][data-user-id="' + user.id + '"]');
+        if (checkbox) {
+          checkbox.checked = false;
+          teamSettingsSyncMultiSelect(type);
+        }
+      });
+
+      chip.appendChild(remove);
+      els.chips.appendChild(chip);
+    });
+
+    if (els.buttonLabel) {
+      els.buttonLabel.textContent = selected.length ? (selected.length + ' selected') : 'Select members';
     }
+    if (els.submitLabel) {
+      els.submitLabel.textContent = teamSettingsMultiSelectLabel(type, selected.length);
+    }
+    if (els.submitButton) {
+      els.submitButton.disabled = selected.length === 0;
+    }
+  }
+
+  function toggleTeamSettingsMultiSelectOption(type, checkbox) {
+    if (!checkbox) return;
+    teamSettingsSyncMultiSelect(type);
+  }
+
+  function filterTeamSettingsMultiSelect(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu || !els.search) return;
+    var query = els.search.value.toLowerCase().trim();
+    els.menu.querySelectorAll('[data-team-settings-multiselect-option="' + type + '"]').forEach(function(option) {
+      var text = (option.getAttribute('data-search') || '').toLowerCase();
+      option.style.display = !query || text.indexOf(query) !== -1 ? '' : 'none';
+    });
+  }
+
+  function clearTeamSettingsMultiSelect(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu) return;
+    els.menu.querySelectorAll('input[type="checkbox"][data-user-id]').forEach(function(checkbox) {
+      checkbox.checked = false;
+    });
+    if (els.search) els.search.value = '';
+    filterTeamSettingsMultiSelect(type);
+    teamSettingsSyncMultiSelect(type);
+  }
+
+  function submitTeamSettingsMultiSelect(type) {
+    var els = teamSettingsMultiSelectElements(type);
+    if (!els.menu) return false;
+    var selected = els.menu.querySelectorAll('input[type="checkbox"][data-user-id]:checked').length;
+    return selected > 0;
   }
 
   document.addEventListener('click', function(event) {
-    ['exclusion', 'super-user'].forEach(function(type) {
-      var els = teamSettingsMemberElements(type);
-      var clickedInsideList = !!(els.list && els.list.contains(event.target));
-      if (els.wrapper && !els.wrapper.contains(event.target) && !clickedInsideList) {
-        closeTeamSettingsMemberDropdown(type);
+    teamSettingsMultiSelectTypes.forEach(function(type) {
+      var els = teamSettingsMultiSelectElements(type);
+      if (els.wrapper && !els.wrapper.contains(event.target)) {
+        closeTeamSettingsMultiSelectMenu(type);
       }
     });
   });
 
   document.addEventListener('DOMContentLoaded', function() {
-    closeTeamSettingsMemberDropdown('exclusion');
-    closeTeamSettingsMemberDropdown('super-user');
+    teamSettingsMultiSelectTypes.forEach(function(type) {
+      teamSettingsSyncMultiSelect(type);
+      filterTeamSettingsMultiSelect(type);
+    });
     ['exclusions', 'super-users'].forEach(function(tabType) {
       ['user', 'email'].forEach(function(column) {
         setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, column)), 'desc');
