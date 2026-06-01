@@ -199,6 +199,16 @@
               <% end %>
             </div>
           </div>
+          <button type="button"
+                  id="leaves-delete-all-button"
+                  class="leaves-entry-icon-btn leaves-entry-icon-btn--delete inline-flex h-[43px] w-[43px] items-center justify-center disabled:cursor-not-allowed disabled:opacity-50"
+                  title="<%= l(:button_delete_all) %>"
+                  aria-label="<%= l(:button_delete_all) %>"
+                  disabled>
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -406,7 +416,10 @@
       <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
       </svg>
-      <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
+      <p id="leaves-delete-message"
+         class="mb-4 text-gray-500"
+         data-single-message="<%= j l(:text_confirm_delete_flagged_leave) %>"
+         data-bulk-message="<%= j l(:text_confirm_delete_all_leaves) %>"><%= l(:text_confirm_delete_flagged_leave) %></p>
       <div class="flex justify-center items-center space-x-4">
         <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
         <button type="button" id="leaves-delete-cancel" data-leaves-delete-close="true" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
@@ -458,6 +471,7 @@
       perPageButton: document.getElementById('leaves-per-page-dropdown-button'),
       perPageLabel: document.getElementById('leaves-per-page-label'),
       perPageMenu: document.getElementById('leaves-per-page-dropdown'),
+      deleteAllButton: document.getElementById('leaves-delete-all-button'),
       search: document.getElementById('ts-search-input'),
       dailyTab: document.getElementById('leaves-tab-daily'),
       summaryTab: document.getElementById('leaves-tab-summary'),
@@ -474,7 +488,7 @@
     };
 
     var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
-    var deleteState = { id: null };
+    var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var monthState = { year: null, month: null };
     var manualUserState = { activeIndex: -1 };
@@ -547,10 +561,21 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       modal.setAttribute('aria-hidden', 'true');
+      deleteState.id = null;
+      deleteState.mode = 'single';
     }
 
-    function openDeleteModal(id) {
-      deleteState.id = id;
+    function updateDeleteMessage(mode) {
+      var message = document.getElementById('leaves-delete-message');
+      if (!message) return;
+      var nextMessage = mode === 'all' ? message.dataset.bulkMessage : message.dataset.singleMessage;
+      if (nextMessage) message.textContent = nextMessage;
+    }
+
+    function openDeleteModal(id, mode) {
+      deleteState.id = id || null;
+      deleteState.mode = mode || (id ? 'single' : 'all');
+      updateDeleteMessage(deleteState.mode);
       var modal = document.getElementById('leaves-delete-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
@@ -559,10 +584,33 @@
     }
 
     function confirmDelete() {
-      if (!deleteState.id) return;
+      var mode = deleteState.mode;
       var id = deleteState.id;
-      deleteState.id = null;
       closeDeleteModal();
+      if (mode === 'all') {
+        var payload = {
+          from: elements.from.value,
+          to: elements.to.value,
+          user_id: elements.userInput.value,
+          status: elements.statusInput.value
+        };
+        fetch('<%= leaves_destroy_all_path %>', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(function (response) { return response.json(); })
+          .then(function (responsePayload) {
+            if (responsePayload.error) throw new Error(responsePayload.error);
+            loadData();
+          })
+          .catch(function (error) { alert(error.message); });
+        return;
+      }
+      if (!id) return;
       fetch('/leaves/' + id, {
         method: 'DELETE',
         headers: {
@@ -1099,6 +1147,13 @@
       window.history.replaceState({}, '', url);
     }
 
+    function setDeleteAllButtonState(totalRecords) {
+      if (!elements.deleteAllButton) return;
+      var disabled = Number(totalRecords || 0) === 0;
+      elements.deleteAllButton.disabled = disabled;
+      elements.deleteAllButton.classList.toggle('opacity-50', disabled);
+    }
+
     function loadData() {
       var params = new URLSearchParams({
         from: elements.from.value,
@@ -1117,10 +1172,12 @@
           state.summaryPage = 1;
           updateHistory();
           renderTables();
+          var totalRecords = (payload.totals && payload.totals.total_records) || 0;
           document.getElementById('leaves-card-overall').textContent = formatNumber((payload.totals && payload.totals.overall_leave_days) || 0);
           document.getElementById('leaves-card-users').textContent = formatNumber((payload.totals && payload.totals.users_with_leave) || 0);
           document.getElementById('leaves-card-flagged').textContent = formatNumber((payload.totals && payload.totals.flagged_records) || 0);
-          document.getElementById('leaves-card-records').textContent = formatNumber((payload.totals && payload.totals.total_records) || 0);
+          document.getElementById('leaves-card-records').textContent = formatNumber(totalRecords);
+          setDeleteAllButtonState(totalRecords);
         })
         .catch(function (error) {
           elements.dailyBody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
@@ -1451,7 +1508,7 @@
           .catch(function (error) { alert(error.message); });
       }
       if (deleteButton) {
-        openDeleteModal(deleteButton.getAttribute('data-delete-id'));
+        openDeleteModal(deleteButton.getAttribute('data-delete-id'), 'single');
       }
       if (saveButton) {
         saveEditRow(saveButton.getAttribute('data-leaves-save-id'));
@@ -1492,6 +1549,12 @@
     deleteCloseButtons.forEach(function (button) {
       button.addEventListener('click', closeDeleteModal);
     });
+    if (elements.deleteAllButton) {
+      elements.deleteAllButton.addEventListener('click', function () {
+        if (elements.deleteAllButton.disabled) return;
+        openDeleteModal(null, 'all');
+      });
+    }
 
     function openManualModal() {
       if (!manualElements.modal) return;

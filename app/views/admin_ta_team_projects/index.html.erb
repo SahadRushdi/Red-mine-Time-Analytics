@@ -620,9 +620,9 @@
       var input = document.getElementById(id);
       if (!input) return;
       if (input.datepicker && input.datepicker.setOptions) {
-        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'bottom auto' });
       } else if (window.Datepicker) {
-        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+        new window.Datepicker(input, { format: 'mm/dd/yyyy', autohide: true, orientation: 'bottom auto' });
       }
       if (!input.dataset.datepickerLayerBound) {
         ['focus', 'click'].forEach(function(eventName) {
@@ -765,14 +765,14 @@
       var input = document.getElementById('ta-team-project-' + part + '-date-' + teamProjectId);
       if (!input) return;
       if (input.datepicker && input.datepicker.setOptions) {
-        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+        input.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'bottom auto' });
         return;
       }
       if (window.Datepicker) {
         new window.Datepicker(input, {
           format: 'mm/dd/yyyy',
           autohide: true,
-          orientation: 'top auto'
+          orientation: 'bottom auto'
         });
       }
     });

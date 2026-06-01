@@ -591,16 +591,44 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Issue</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Assignee</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort(); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort(); }"
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort('issue'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort('issue'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Issue</span>
+                  <span id="tep-unlogged-sort-icon-issue" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort('project'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort('project'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Project</span>
+                  <span id="tep-unlogged-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort('assignee'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort('assignee'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Assignee</span>
+                  <span id="tep-unlogged-sort-icon-assignee" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort('status'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort('status'); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Status</span>
+                  <span id="tep-unlogged-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTepUnloggedSort('last-updated'); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTepUnloggedSort('last-updated'); }"
                       class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
                   <span>Last Updated</span>
-                  <span id="tep-unlogged-sort-icon" class="sort desc icon icon-sorted-asc"></span>
+                  <span id="tep-unlogged-sort-icon-last-updated" class="sort desc icon icon-sorted-asc"></span>
                 </span>
               </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-center">Action</th>
@@ -611,6 +639,10 @@
                 <tr class="ts-issue-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     data-issue-id="<%= issue.id %>"
                     data-search-text="<%= "##{issue.id} #{issue.subject} #{issue.project.name} #{issue.tracker.name} #{issue.status.name}".downcase %>"
+                    data-issue-sort="<%= "##{issue.id} #{issue.subject}".downcase %>"
+                    data-project-sort="<%= issue.project.name.to_s.downcase %>"
+                    data-assignee-sort="<%= issue.assigned_to ? issue.assigned_to.name.to_s.downcase : '' %>"
+                    data-status-sort="<%= issue.status.name.to_s.downcase %>"
                     data-last-updated="<%= (@issue_last_activity[issue.id] || issue.updated_on).to_i %>">
                 <td class="px-4 py-3">
                   <div class="flex items-start gap-1.5">
@@ -1161,20 +1193,42 @@
     document.getElementById('time-entry-panel-form').submit();
   }
 
-  function toggleTepUnloggedSort() {
+  function tepResetUnloggedSortIcons(activeColumn) {
+    ['issue', 'project', 'assignee', 'status', 'last-updated'].forEach(function(column) {
+      var icon = document.getElementById('tep-unlogged-sort-icon-' + column);
+      if (!icon) return;
+      if (column !== activeColumn) {
+        delete icon.dataset.order;
+        icon.className = 'sort desc icon icon-sorted-asc';
+      }
+    });
+  }
+
+  function toggleTepUnloggedSort(column) {
+    var sortColumn = column || 'last-updated';
     var panel = document.getElementById('panel-recent-work');
     var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
     if (!tbody) return;
 
     var rows = Array.from(tbody.querySelectorAll('tr.ts-issue-row'));
-    var sortIcon = document.getElementById('tep-unlogged-sort-icon');
+    var sortIcon = document.getElementById('tep-unlogged-sort-icon-' + sortColumn);
+    if (!sortIcon) return;
     var currentOrder = sortIcon && sortIcon.dataset.order ? sortIcon.dataset.order : 'desc';
     var nextOrder = currentOrder === 'desc' ? 'asc' : 'desc';
 
     rows.sort(function(a, b) {
-      var aValue = parseInt(a.getAttribute('data-last-updated') || '0', 10);
-      var bValue = parseInt(b.getAttribute('data-last-updated') || '0', 10);
-      return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      if (sortColumn === 'last-updated') {
+        var aDateValue = parseInt(a.getAttribute('data-last-updated') || '0', 10);
+        var bDateValue = parseInt(b.getAttribute('data-last-updated') || '0', 10);
+        return nextOrder === 'asc' ? aDateValue - bDateValue : bDateValue - aDateValue;
+      }
+
+      var attr = 'data-' + sortColumn + '-sort';
+      var aValue = (a.getAttribute(attr) || '').toLowerCase();
+      var bValue = (b.getAttribute(attr) || '').toLowerCase();
+      if (aValue === bValue) return 0;
+      if (nextOrder === 'asc') return aValue < bValue ? -1 : 1;
+      return aValue > bValue ? -1 : 1;
     });
 
     rows.forEach(function(row) {
@@ -1183,16 +1237,15 @@
       if (inlineRow) tbody.appendChild(inlineRow);
     });
 
-    if (sortIcon) {
-      sortIcon.dataset.order = nextOrder;
-      sortIcon.className = nextOrder === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
-    }
+    tepResetUnloggedSortIcons(sortColumn);
+    sortIcon.dataset.order = nextOrder;
+    sortIcon.className = nextOrder === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
 
     tepApplyUnloggedPagination(true);
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    var icon = document.getElementById('tep-unlogged-sort-icon');
+    var icon = document.getElementById('tep-unlogged-sort-icon-last-updated');
     if (icon) icon.dataset.order = 'desc';
     tepApplyUnloggedPagination(false);
   });

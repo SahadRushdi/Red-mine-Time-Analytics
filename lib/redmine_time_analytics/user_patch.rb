@@ -2,6 +2,8 @@ module RedmineTimeAnalytics
   module UserPatch
     def self.included(base)
       base.class_eval do
+        after_save :handle_ta_user_lock
+
         # Get teams where the user is a team lead (active memberships only)
         def led_teams(date = Date.today)
           TaTeamMembership.where(user: self, role: 'lead')
@@ -61,6 +63,22 @@ module RedmineTimeAnalytics
           return led_teams(date) if admin? && is_team_lead?(date)
 
           led_teams(date)
+        end
+
+        private
+
+        def handle_ta_user_lock
+          return unless status == User::STATUS_LOCKED
+
+          # 1. Update active team memberships (end_date is nil or in the future)
+          memberships = TaTeamMembership.where(user_id: id)
+                                       .where('end_date IS NULL OR end_date > ?', Date.today)
+          
+          memberships.update_all(end_date: Date.today) if memberships.any?
+
+          # 2. Delete super user and exclusion list settings
+          settings = TaTeamSetting.where(user_id: id, setting_type: ['super_user', 'exclusion'])
+          settings.destroy_all if settings.any?
         end
       end
     end

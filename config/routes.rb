@@ -6,6 +6,7 @@ RedmineApp::Application.routes.draw do
   get 'leaves', to: 'leaves#index', as: :leaves
   get 'leaves/data', to: 'leaves#data', as: :leaves_data
   post 'leaves', to: 'leaves#create', as: :leaves_create
+  delete 'leaves', to: 'leaves#destroy_all', as: :leaves_destroy_all
   patch 'leaves/:id', to: 'leaves#update', as: :leave_update
   patch 'leaves/:id/status', to: 'leaves#update_status', as: :leave_status
   delete 'leaves/:id', to: 'leaves#destroy', as: :leave_destroy
@@ -25,6 +26,7 @@ RedmineApp::Application.routes.draw do
   get 'team/analytics', to: 'team_analytics#index', as: :team_analytics
   post 'team/analytics/export_csv', to: 'team_analytics#export_csv', as: :team_analytics_export_csv
   get 'team/analytics/tree_data', to: 'team_analytics#get_tree_data', as: :team_analytics_tree_data
+  get 'team/analytics/period_members', to: 'team_analytics#get_period_team_members', as: :team_analytics_period_members
 
   # Admin routes for Team Analytics Configuration
   resources :admin_ta_teams, path: 'admin/ta_teams' do

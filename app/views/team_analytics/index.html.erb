@@ -238,6 +238,26 @@
     text-decoration: underline;
   }
 
+  #team-tree-container .jstree-anchor[data-node-type="member"][data-excluded="true"] {
+    color: #b45309;
+    font-weight: 600;
+  }
+
+  #team-tree-container .jstree-anchor[data-node-type="member"][data-excluded="true"]::after {
+    content: "★";
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    vertical-align: middle;
+  }
+
   /* Projects node styling */
   #team-tree-container .jstree-anchor[data-node-type="projects"] {
     color: #64748b;
@@ -544,8 +564,11 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label"><%= l(:label_working_days) %></p>
+      <p class="ts-summary-card-label">Working Days</p>
       <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
+      <p class="text-xs text-gray-500 mt-1">
+        Leave Days: <%= number_with_precision(@team_leave_days || 0, precision: 1) %>
+      </p>
     </div>
   </div>
 
@@ -594,12 +617,12 @@
               <th scope="col" class="px-6 py-3">
                 <%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %>
               </th>
-              <th scope="col" class="px-6 py-3 text-center">Team Size</th>
-              <th scope="col" class="px-6 py-3 text-right">Team Time</th>
+              <th scope="col" class="px-2 py-3 text-center">Team<br/>Size</th>
+              <th scope="col" class="px-2 py-3 text-right">Team<br/>Time</th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
               <% if @show_effective_time_column %>
-                <th scope="col" class="px-6 py-3 text-right">Support (Redmine) Time</th>
-                <th scope="col" class="px-6 py-3 text-right">Effective Time (%)</th>
+                <th scope="col" class="px-2 py-3 text-right">Support<br/>Time</th>
+                <th scope="col" class="px-2 py-3 text-right">Effective<br/>Time (%)</th>
               <% end %>
             </tr>
           </thead>
@@ -607,12 +630,22 @@
             <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
               <tr class="bg-white border-b hover:bg-gray-50">
                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
-                <td class="px-6 py-4 text-center text-gray-900"><%= entry.member_count %></td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
+                <td class="px-2 py-4 text-center text-gray-900">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <span><%= entry.member_count %></span>
+                    <button type="button" 
+                            onclick="showTeamMemberDetails('<%= @selected_team.id %>', '<%= entry.raw_period %>', '<%= @grouping %>')"
+                            class="ta-info-icon-btn flex items-center justify-center cursor-pointer"
+                            title="View members">
+                      <span class="material-symbols-outlined !text-[16px] leading-none select-none">info</span>
+                    </button>
+                  </div>
+                </td>
+                <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
                 <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
                 <% if @show_effective_time_column %>
-                  <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
-                  <td class="px-6 py-4 text-right font-mono text-gray-900">
+                  <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="px-2 py-4 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
                     <% else %>
@@ -1508,6 +1541,166 @@
     }
   }
 
+  function showTeamMemberDetails(teamId, periodStart, grouping) {
+    const modal = document.getElementById('team-member-details-modal');
+    const tableBody = document.getElementById('team-member-details-table-body');
+    const title = document.getElementById('team-member-details-title');
+    const subtitle = document.getElementById('team-member-details-subtitle');
+    
+    if (!modal || !tableBody) return;
+
+    // Show loading state
+    title.textContent = 'Loading...';
+    subtitle.textContent = '';
+    tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">Fetching member details...</td></tr>';
+    
+    // Show modal using Flowbite
+    const modalOptions = {
+      placement: 'center',
+      backdrop: 'dynamic',
+      backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+      closable: true
+    };
+    const modalObj = new Modal(modal, modalOptions);
+    modalObj.show();
+
+    // Ensure close buttons work correctly
+    const closeButtons = modal.querySelectorAll('[data-modal-hide="team-member-details-modal"]');
+    closeButtons.forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        modalObj.hide();
+      };
+    });
+
+    // Fetch data
+    fetch(`<%= team_analytics_period_members_path %>?team_id=${teamId}&period_start=${periodStart}&grouping=${grouping}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">${data.error}</td></tr>`;
+          return;
+        }
+
+        title.textContent = `${data.team_name} Members`;
+        subtitle.textContent = data.period_label;
+        
+        if (!data.members || data.members.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
+          return;
+        }
+
+        tableBody.innerHTML = data.members.map(member => `
+          <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+            <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
+            <td class="px-6 py-4 text-center">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Active
+              </span>
+            </td>
+            <td class="px-6 py-4 text-right text-gray-900 font-mono">${(member.hours || 0).toFixed(2)}h</td>
+            <td class="px-6 py-4 text-right text-gray-900">${parseFloat(member.leave_days || 0).toFixed(1)} days</td>
+          </tr>
+        `).join('');
+      })
+      .catch(error => {
+        console.error('Error fetching member details:', error);
+        tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-red-500">Error loading member details.</td></tr>';
+      });
+  }
+
 </script>
+
+<!-- Team Member Details Modal -->
+<div id="team-member-details-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto h-[calc(100%-1rem)] max-h-full">
+  <div class="relative w-full max-w-3xl max-h-full">
+    <!-- Modal content -->
+    <div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
+      <!-- Modal header -->
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex flex-col">
+          <h3 id="team-member-details-title" class="text-xl font-bold text-gray-900">
+            Team Members
+          </h3>
+          <p id="team-member-details-subtitle" class="text-sm text-gray-500 mt-0.5 font-medium"></p>
+        </div>
+        <button type="button" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="team-member-details-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <!-- Modal body -->
+      <div class="p-0">
+        <div class="relative overflow-x-auto sm:rounded-lg max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          <table class="w-full text-sm text-left text-gray-500 sticky-header">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
+              <tr>
+                <th scope="col" class="px-6 py-3 font-bold border-b border-gray-200">Member Name</th>
+                <th scope="col" class="px-6 py-3 text-center font-bold border-b border-gray-200">Status</th>
+                <th scope="col" class="px-6 py-3 text-right font-bold border-b border-gray-200">Hours</th>
+                <th scope="col" class="px-6 py-3 text-right font-bold border-b border-gray-200">Leave Days</th>
+              </tr>
+            </thead>
+            <tbody id="team-member-details-table-body">
+              <!-- Content populated via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-end">
+        <button data-modal-hide="team-member-details-modal" type="button" class="!text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Custom scrollbar for better look in the modal */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 20px;
+  }
+  
+  .sticky-header thead th {
+    position: sticky;
+    top: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .ta-info-icon-btn {
+    color: #3b82f6 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .ta-info-icon-btn:hover, .ta-info-icon-btn:focus {
+    color: #2563eb !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .ta-info-icon-btn span {
+    font-size: 16px !important;
+  }
+</style>
   </div>
 </div>
