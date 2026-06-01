@@ -128,6 +128,26 @@ class LeavesController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def destroy_all
+    filters = filter_params
+    from_date = parse_date(filters[:from]) || Date.current.beginning_of_month
+    to_date = parse_date(filters[:to]) || Date.current
+    raise ArgumentError, 'From date must be earlier than To date' if from_date > to_date
+
+    scope = TaLeaveRecord.within_range(from_date, to_date)
+    scope = scope.where(user_id: filters[:user_id].to_i) if filters[:user_id].present?
+    if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
+      scope = scope.where(status: filters[:status].to_s)
+    end
+
+    deleted = scope.delete_all
+    render json: { ok: true, deleted: deleted }, status: :ok
+  rescue ArgumentError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def filter_params

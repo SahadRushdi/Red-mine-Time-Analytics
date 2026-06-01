@@ -56,6 +56,7 @@ class TeamAnalyticsController < ApplicationController
     @total_hours = @time_entries.sum(:hours)
     @entry_count = @time_entries.count
     @active_days_count = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
+    @team_leave_days = calculate_team_leave_days_for_period(@from, @to)
 
     Rails.logger.info "Team Analytics: Found #{@entry_count} time entries, Total hours: #{@total_hours}"
     

@@ -146,6 +146,7 @@ en:
   button_run_historical_sync: "Run Historical Sync"
   button_save_leave_count_settings: "Save Leave Count Settings"
   button_delete: "Delete"
+  button_delete_all: "Delete all"
 
   notice_leave_count_settings_updated: "Leave Count settings updated"
   notice_leave_oauth_connected: "Gmail OAuth connected successfully"
@@ -168,3 +169,4 @@ en:
   text_leave_push_only_sync_notice: "Google Apps Script push mode is active. Use Apps Script triggers to push leave emails."
   text_unmapped_sender_cannot_unflag: "Map sender email to a Redmine user first."
   text_confirm_delete_flagged_leave: "Delete this leave request?"
+  text_confirm_delete_all_leaves: "Delete all leave records in this view?"
