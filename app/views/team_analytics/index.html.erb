@@ -564,8 +564,11 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label"><%= l(:label_leave_days) %></p>
-      <p class="ts-summary-card-value"><%= number_with_precision(@team_leave_days || 0, precision: 1) %> <span class="ts-summary-card-unit">days</span></p>
+      <p class="ts-summary-card-label">Working Days</p>
+      <p class="ts-summary-card-value"><%= @active_days_count %> <span class="ts-summary-card-unit">days</span></p>
+      <p class="text-xs text-gray-500 mt-1">
+        Leave Days: <%= number_with_precision(@team_leave_days || 0, precision: 1) %>
+      </p>
     </div>
   </div>
 

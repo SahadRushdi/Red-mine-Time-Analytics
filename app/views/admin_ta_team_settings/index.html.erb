@@ -145,7 +145,7 @@
                       id="ta-team-settings-multiselect-button-exclusion"
                       onclick="toggleTeamSettingsMultiSelectMenu('exclusion')"
                       aria-expanded="false"
-                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
+                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 hover:!text-slate-900 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
                 <span class="truncate" id="ta-team-settings-multiselect-button-label-exclusion">Select members</span>
                 <svg class="h-4 w-4 flex-shrink-0 !text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -321,7 +321,7 @@
                       id="ta-team-settings-multiselect-button-super-user"
                       onclick="toggleTeamSettingsMultiSelectMenu('super-user')"
                       aria-expanded="false"
-                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
+                      class="inline-flex h-[34px] w-full items-center justify-between gap-3 rounded-lg !border !border-slate-300 !bg-white px-3 text-sm font-medium !text-slate-900 shadow-sm hover:!bg-slate-50 hover:!text-slate-900 focus:!border-blue-500 focus:!ring-2 focus:!ring-blue-500/20 focus:outline-none focus:ring-0">
                 <span class="truncate" id="ta-team-settings-multiselect-button-label-super-user">Select members</span>
                 <svg class="h-4 w-4 flex-shrink-0 !text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -574,6 +574,15 @@
   #ta-team-settings-multiselect-button-super-user {
     border-color: #cbd5e1 !important;
     box-shadow: none !important;
+    color: #0f172a !important;
+  }
+
+  #ta-team-settings-multiselect-button-exclusion:hover,
+  #ta-team-settings-multiselect-button-super-user:hover,
+  #ta-team-settings-multiselect-button-exclusion:hover span,
+  #ta-team-settings-multiselect-button-super-user:hover span {
+    color: #0f172a !important;
+    background-color: #f8fafc !important;
   }
 
   #ta-team-settings-multiselect-button-exclusion:focus,

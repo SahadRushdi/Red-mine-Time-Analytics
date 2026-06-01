@@ -27,9 +27,8 @@ class TeamAnalyticsController < ApplicationController
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
-    # Get hierarchical team members (own + inherited from child teams)
-    # This implements the "bubble up" logic where child team members appear in parent teams
-    @team_members = @selected_team.hierarchical_members(@from, @to)
+    # Get direct team members only (no bubble up from child teams)
+    @team_members = @selected_team.active_members(@from, @to).to_a
     
     @member_ids = @team_members.map(&:user_id).uniq
     
@@ -196,8 +195,8 @@ class TeamAnalyticsController < ApplicationController
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
-    # Include selected team + descendants (same access model as dashboard)
-    @team_members = @selected_team.hierarchical_members(@from, @to)
+    # Include selected team members only (no descendants)
+    @team_members = @selected_team.active_members(@from, @to).to_a
     
     @member_ids = @team_members.map(&:user_id)
     @active_member_ids = @member_ids - excluded_ids
