@@ -48,11 +48,21 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+  }
+
+  /* Override Redmine theme blue hover for modal close icon */
+  [data-modal-hide="team-member-details-modal"]:hover {
+    color: #111827 !important;
+    background-color: #f3f4f6 !important;
+  }
+  [data-modal-hide="team-member-details-modal"]:hover svg,
+  [data-modal-hide="team-member-details-modal"]:hover svg path {
+    stroke: #111827 !important;
   }
 
   .team-tree-sidebar.is-collapsed .team-tree-sidebar__panel {
     display: flex;
+    overflow: hidden;
   }
 
   .team-tree-sidebar.is-collapsed .tree-view-content {
