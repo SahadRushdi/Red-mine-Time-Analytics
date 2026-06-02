@@ -7,6 +7,7 @@ RedmineApp::Application.routes.draw do
   get 'leaves/data', to: 'leaves#data', as: :leaves_data
   post 'leaves', to: 'leaves#create', as: :leaves_create
   delete 'leaves', to: 'leaves#destroy_all', as: :leaves_destroy_all
+  delete 'leaves/bulk_destroy', to: 'leaves#bulk_destroy', as: :leaves_bulk_destroy
   patch 'leaves/:id', to: 'leaves#update', as: :leave_update
   patch 'leaves/:id/status', to: 'leaves#update_status', as: :leave_status
   delete 'leaves/:id', to: 'leaves#destroy', as: :leave_destroy
