@@ -128,6 +128,23 @@ class LeavesController < ApplicationController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def bulk_destroy
+    ids = params[:ids]
+    if ids.blank? || !ids.is_a?(Array)
+      return render json: { error: 'No IDs provided' }, status: :unprocessable_entity
+    end
+
+    deleted_count = 0
+    TaLeaveRecord.transaction do
+      scope = TaLeaveRecord.where(id: ids).where(status: %w[confirmed flagged])
+      deleted_count = scope.delete_all
+    end
+
+    render json: { ok: true, deleted_count: deleted_count }, status: :ok
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def destroy_all
     filters = filter_params
     from_date = parse_date(filters[:from]) || Date.current.beginning_of_month
