@@ -8,6 +8,7 @@ class AdminTaTeamSettingsController < ApplicationController
   before_action :require_admin
 
   def index
+    @active_tab = active_team_settings_tab
     @excluded_settings = TaTeamSetting.exclusions.includes(:user).to_a.sort_by { |setting| setting.user_name.to_s.downcase }
     @excluded_users = @excluded_settings.map(&:user).compact
     @super_users = User.where(id: TaTeamSetting.super_user_ids).sorted
@@ -20,13 +21,15 @@ class AdminTaTeamSettingsController < ApplicationController
   end
 
   def create
+    @active_tab = active_team_settings_tab
     setting_type = team_setting_params[:setting_type]
+    selected_user_ids = selected_team_setting_user_ids
 
     if setting_type == 'my_team_visibility'
       enabled = team_setting_params[:my_team_enabled] == '1'
       TaTeamSetting.update_my_team_enabled(enabled)
       flash[:notice] = "My Team page #{enabled ? 'activated' : 'deactivated'} successfully"
-      redirect_to admin_ta_team_settings_path
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
@@ -42,15 +45,13 @@ class AdminTaTeamSettingsController < ApplicationController
         flash[:error] = e.message
       end
 
-      redirect_to admin_ta_team_settings_path
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
-    user_id = team_setting_params[:user_id].to_i
-
-    if user_id.blank? || user_id.zero?
-      flash[:error] = "Please select a user"
-      redirect_to admin_ta_team_settings_path
+    if selected_user_ids.empty?
+      flash[:error] = "Please select at least one user"
+      redirect_to admin_ta_team_settings_path(tab: @active_tab)
       return
     end
 
@@ -58,36 +59,28 @@ class AdminTaTeamSettingsController < ApplicationController
     when 'exclusion'
       start_date = parse_admin_setting_date(team_setting_params[:start_date]) || Date.current
       end_date = parse_admin_setting_date(team_setting_params[:end_date])
-      setting = TaTeamSetting.add_to_exclusion_list(user_id, start_date: start_date, end_date: end_date)
-
-      if setting.persisted?
-        flash[:notice] = setting.previously_new_record? ? "User added to exclusion list" : "Exclusion dates updated"
-      else
-        flash[:error] = "Failed to add user: #{setting.errors.full_messages.join(', ')}"
+      selected_user_ids.each do |user_id|
+        TaTeamSetting.add_to_exclusion_list(user_id, start_date: start_date, end_date: end_date)
       end
+      flash[:notice] = "#{selected_user_ids.size} #{selected_user_ids.size == 1 ? 'user' : 'users'} added to exclusion list"
     when 'super_user'
-      if TaTeamSetting.super_user_ids.include?(user_id)
-        flash[:warning] = "User is already a super user"
-      else
-        setting = TaTeamSetting.add_super_user(user_id)
-        if setting.persisted?
-          flash[:notice] = "User added as super user"
-        else
-          flash[:error] = "Failed to add user: #{setting.errors.full_messages.join(', ')}"
-        end
+      selected_user_ids.each do |user_id|
+        TaTeamSetting.add_super_user(user_id)
       end
+      flash[:notice] = "#{selected_user_ids.size} #{selected_user_ids.size == 1 ? 'super user' : 'super users'} added"
     else
       flash[:error] = "Invalid setting type"
     end
 
-    redirect_to admin_ta_team_settings_path
+    redirect_to admin_ta_team_settings_path(tab: team_setting_params[:tab].presence || @active_tab)
   end
 
   def destroy
     setting = TaTeamSetting.find(params[:id])
+    active_tab = params[:tab].presence || (setting.super_user? ? 'super-users' : 'exclusions')
     setting.destroy
     flash[:notice] = l(:notice_successful_delete)
-    redirect_to admin_ta_team_settings_path
+    redirect_to admin_ta_team_settings_path(tab: active_tab)
   rescue ActiveRecord::RecordNotFound
     render_404
   end
@@ -106,7 +99,7 @@ class AdminTaTeamSettingsController < ApplicationController
   end
 
   def team_setting_params
-    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key, :my_team_enabled)
+    params.permit(:setting_type, :user_id, :start_date, :end_date, :support_redmine_base_url, :support_redmine_api_key, :my_team_enabled, :tab, user_ids: [])
   end
 
   def parse_admin_setting_date(value)
@@ -115,5 +108,17 @@ class AdminTaTeamSettingsController < ApplicationController
     Date.strptime(value, '%m/%d/%Y')
   rescue ArgumentError
     Date.parse(value)
+  end
+
+  def active_team_settings_tab
+    team_setting_params[:tab].presence || params[:tab].presence || 'exclusions'
+  end
+
+  def selected_team_setting_user_ids
+    array = Array(team_setting_params[:user_ids]).map(&:to_i).select(&:positive?)
+    return array.uniq if array.any?
+
+    single_id = team_setting_params[:user_id].to_i
+    single_id.positive? ? [single_id] : []
   end
 end

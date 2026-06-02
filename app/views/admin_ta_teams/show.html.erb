@@ -46,6 +46,19 @@
           <p class="mt-1 text-sm text-gray-700"><%= h(@team.description) %></p>
         </div>
       <% end %>
+      <% personal_project_urls = @team.parse_personal_project_urls %>
+      <% if personal_project_urls.any? %>
+        <div class="md:col-span-2">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Personal Project URLs</p>
+          <ul class="mt-2 space-y-1 text-sm text-gray-700">
+            <% personal_project_urls.each do |url| %>
+              <li class="break-all">
+                <%= link_to h(url), url, class: 'text-blue-600 hover:text-blue-700 hover:underline', target: '_blank', rel: 'noopener noreferrer' %>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
     </div>
   </div>
 

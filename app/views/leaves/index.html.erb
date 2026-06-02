@@ -5,6 +5,28 @@
   <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+  <style>
+    #leaves-bulk-delete-button {
+      background-color: #dc2626 !important;
+      border: 1px solid #dc2626 !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+    }
+    #leaves-bulk-delete-button:hover {
+      background-color: #b91c1c !important;
+      border-color: #b91c1c !important;
+      color: #ffffff !important;
+    }
+    #leaves-bulk-delete-button:active, 
+    #leaves-bulk-delete-button:focus,
+    #leaves-bulk-delete-button:focus-within {
+      background-color: #991b1b !important;
+      border-color: #991b1b !important;
+      color: #ffffff !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+  </style>
 <% end %>
 
 <% selected_user_label = @selected_user ? h(@selected_user.name) : l(:label_all_users) %>
@@ -180,6 +202,14 @@
         </ul>
 
         <div class="flex flex-wrap items-center gap-3">
+          <button type="button"
+                  id="leaves-bulk-delete-button"
+                  class="hidden inline-flex h-[43px] items-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"></path>
+            </svg>
+            <span id="leaves-bulk-delete-label">Delete (0)</span>
+          </button>
           <div class="relative w-full lg:w-[320px]">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"/></svg>
@@ -209,6 +239,11 @@
           <table class="w-full text-left text-sm text-gray-600">
             <thead class="bg-gray-50 text-xs uppercase text-gray-500">
               <tr class="border-b border-gray-200">
+                <th class="px-4 py-3">
+                  <div class="flex items-center">
+                    <input type="checkbox" id="leaves-select-all" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                  </div>
+                </th>
                 <th class="px-4 py-3">
                   <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="daily" data-sort-key="leave_date" data-sort-label="<%= j l(:label_date) %>">
                     <span><%= l(:label_date) %></span>
@@ -406,7 +441,10 @@
       <svg class="text-gray-400 w-11 h-11 mb-3.5 mx-auto" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
       </svg>
-      <p class="mb-4 text-gray-500"><%= l(:text_confirm_delete_flagged_leave) %></p>
+      <p id="leaves-delete-message"
+         class="mb-4 text-gray-500"
+         data-single-message="<%= j l(:text_confirm_delete_flagged_leave) %>"
+         data-bulk-message="<%= j l(:text_confirm_delete_all_leaves) %>"><%= l(:text_confirm_delete_flagged_leave) %></p>
       <div class="flex justify-center items-center space-x-4">
         <button type="button" id="leaves-delete-confirm" class="tep-delete-confirm py-2 px-3 text-sm font-medium text-center text-white rounded-lg bg-red-600 hover:bg-red-700"><%= l(:button_delete) %></button>
         <button type="button" id="leaves-delete-cancel" data-leaves-delete-close="true" class="tep-delete-cancel py-2 px-3 text-sm font-medium text-gray-500 bg-white rounded-lg border border-gray-200 hover:bg-gray-100 !border-gray-200 !outline-none !shadow-none !ring-0">Cancel</button>
@@ -436,7 +474,8 @@
       summarySort: 'total_leave_days',
       summaryDirection: 'desc',
       dailyRecords: [],
-      summaryRecords: []
+      summaryRecords: [],
+      selectedIds: new Set()
     };
 
     var elements = {
@@ -458,6 +497,10 @@
       perPageButton: document.getElementById('leaves-per-page-dropdown-button'),
       perPageLabel: document.getElementById('leaves-per-page-label'),
       perPageMenu: document.getElementById('leaves-per-page-dropdown'),
+      deleteAllButton: document.getElementById('leaves-delete-all-button'),
+      bulkDeleteButton: document.getElementById('leaves-bulk-delete-button'),
+      bulkDeleteLabel: document.getElementById('leaves-bulk-delete-label'),
+      selectAllCheckbox: document.getElementById('leaves-select-all'),
       search: document.getElementById('ts-search-input'),
       dailyTab: document.getElementById('leaves-tab-daily'),
       summaryTab: document.getElementById('leaves-tab-summary'),
@@ -474,7 +517,7 @@
     };
 
     var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
-    var deleteState = { id: null };
+    var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var monthState = { year: null, month: null };
     var manualUserState = { activeIndex: -1 };
@@ -547,10 +590,27 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       modal.setAttribute('aria-hidden', 'true');
+      deleteState.id = null;
+      deleteState.mode = 'single';
     }
 
-    function openDeleteModal(id) {
-      deleteState.id = id;
+    function updateDeleteMessage(mode) {
+      var message = document.getElementById('leaves-delete-message');
+      if (!message) return;
+      var nextMessage = message.dataset.singleMessage;
+      if (mode === 'all') {
+        nextMessage = message.dataset.bulkMessage;
+      } else if (mode === 'bulk_selected') {
+        var count = state.selectedIds.size;
+        nextMessage = 'Are you sure you want to delete ' + count + ' selected leave records?';
+      }
+      if (nextMessage) message.textContent = nextMessage;
+    }
+
+    function openDeleteModal(id, mode) {
+      deleteState.id = id || null;
+      deleteState.mode = mode || (id ? 'single' : 'all');
+      updateDeleteMessage(deleteState.mode);
       var modal = document.getElementById('leaves-delete-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
@@ -559,10 +619,55 @@
     }
 
     function confirmDelete() {
-      if (!deleteState.id) return;
+      var mode = deleteState.mode;
       var id = deleteState.id;
-      deleteState.id = null;
       closeDeleteModal();
+      if (mode === 'all') {
+        var payload = {
+          from: elements.from.value,
+          to: elements.to.value,
+          user_id: elements.userInput.value,
+          status: elements.statusInput.value
+        };
+        fetch('<%= leaves_destroy_all_path %>', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify(payload)
+        }).then(function (response) { return response.json(); })
+          .then(function (responsePayload) {
+            if (responsePayload.error) throw new Error(responsePayload.error);
+            loadData();
+          })
+          .catch(function (error) { alert(error.message); });
+        return;
+      }
+
+      if (mode === 'bulk_selected') {
+        var ids = Array.from(state.selectedIds);
+        fetch('<%= leaves_bulk_destroy_path %>', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            Accept: 'application/json'
+          },
+          body: JSON.stringify({ ids: ids })
+        }).then(function (response) { return response.json(); })
+          .then(function (payload) {
+            if (payload.error) throw new Error(payload.error);
+            state.selectedIds.clear();
+            updateBulkDeleteButton();
+            loadData();
+          })
+          .catch(function (error) { alert(error.message); });
+        return;
+      }
+
+      if (!id) return;
       fetch('/leaves/' + id, {
         method: 'DELETE',
         headers: {
@@ -782,6 +887,8 @@
       elements.summaryPanel.classList.toggle('hidden', dailyActive);
       elements.dailyTab.classList.toggle('leaves-tab-active', dailyActive);
       elements.summaryTab.classList.toggle('leaves-tab-active', !dailyActive);
+      state.selectedIds.clear();
+      updateBulkDeleteButton();
     }
 
     function selectedText(value, fallback) {
@@ -932,6 +1039,28 @@
       });
     }
 
+    function updateBulkDeleteButton() {
+      if (!elements.bulkDeleteButton || !elements.bulkDeleteLabel) return;
+      var count = state.selectedIds.size;
+      elements.bulkDeleteLabel.textContent = 'Delete (' + count + ')';
+      elements.bulkDeleteButton.classList.toggle('hidden', count === 0);
+      elements.bulkDeleteButton.disabled = count === 0;
+    }
+
+    function updateSelectAllCheckbox() {
+      if (!elements.selectAllCheckbox) return;
+      var checkboxes = document.querySelectorAll('.leaves-row-checkbox');
+      if (checkboxes.length === 0) {
+        elements.selectAllCheckbox.checked = false;
+        elements.selectAllCheckbox.indeterminate = false;
+        return;
+      }
+      var checkedCount = 0;
+      checkboxes.forEach(function (cb) { if (cb.checked) checkedCount += 1; });
+      elements.selectAllCheckbox.checked = checkedCount === checkboxes.length;
+      elements.selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+    }
+
     function scheduleLoadData() {
       window.clearTimeout(scheduleLoadData.timer);
       scheduleLoadData.timer = window.setTimeout(function () {
@@ -952,6 +1081,7 @@
         html = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
       } else {
         page.items.forEach(function (record) {
+          var isChecked = state.selectedIds.has(String(record.id));
           var leaveDateValue = formatLeaveDateForInput(record.leave_date);
           var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
           var actionHtml = '<div class="inline-flex items-center gap-2">' +
@@ -979,6 +1109,7 @@
           actionHtml += '</div>';
 
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
+            '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
             '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
             '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
@@ -986,7 +1117,7 @@
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
           '</tr>';
           html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
-            '<td colspan="5" class="px-4 py-4">' +
+            '<td colspan="6" class="px-4 py-4">' +
               '<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">' +
                 '<div class="flex flex-col gap-4 sm:flex-row sm:items-end">' +
                   '<div class="w-full sm:w-48">' +
@@ -1019,6 +1150,7 @@
       }
 
       elements.dailyBody.innerHTML = html;
+      updateSelectAllCheckbox();
       renderPagination(
         elements.dailyPagination,
         elements.dailyLinks,
@@ -1030,6 +1162,8 @@
         page.endIndex,
         function (nextPage) {
           state.dailyPage = nextPage;
+          state.selectedIds.clear();
+          updateBulkDeleteButton();
           renderDailyRows();
         }
       );
@@ -1099,6 +1233,13 @@
       window.history.replaceState({}, '', url);
     }
 
+    function setDeleteAllButtonState(totalRecords) {
+      if (!elements.deleteAllButton) return;
+      var disabled = Number(totalRecords || 0) === 0;
+      elements.deleteAllButton.disabled = disabled;
+      elements.deleteAllButton.classList.toggle('opacity-50', disabled);
+    }
+
     function loadData() {
       var params = new URLSearchParams({
         from: elements.from.value,
@@ -1115,15 +1256,19 @@
           state.summaryRecords = payload.user_summary || [];
           state.dailyPage = 1;
           state.summaryPage = 1;
+          state.selectedIds.clear();
+          updateBulkDeleteButton();
           updateHistory();
           renderTables();
+          var totalRecords = (payload.totals && payload.totals.total_records) || 0;
           document.getElementById('leaves-card-overall').textContent = formatNumber((payload.totals && payload.totals.overall_leave_days) || 0);
           document.getElementById('leaves-card-users').textContent = formatNumber((payload.totals && payload.totals.users_with_leave) || 0);
           document.getElementById('leaves-card-flagged').textContent = formatNumber((payload.totals && payload.totals.flagged_records) || 0);
-          document.getElementById('leaves-card-records').textContent = formatNumber((payload.totals && payload.totals.total_records) || 0);
+          document.getElementById('leaves-card-records').textContent = formatNumber(totalRecords);
+          setDeleteAllButtonState(totalRecords);
         })
         .catch(function (error) {
-          elements.dailyBody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+          elements.dailyBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
           elements.summaryBody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
         });
     }
@@ -1342,6 +1487,8 @@
       closeDropdowns();
       state.dailyPage = 1;
       state.summaryPage = 1;
+      state.selectedIds.clear();
+      updateBulkDeleteButton();
       renderTables();
     }
 
@@ -1398,7 +1545,47 @@
     elements.search.addEventListener('input', function () {
       state.dailyPage = 1;
       state.summaryPage = 1;
+      state.selectedIds.clear();
+      updateBulkDeleteButton();
       renderTables();
+    });
+
+    if (elements.bulkDeleteButton) {
+      elements.bulkDeleteButton.addEventListener('click', function () {
+        if (state.selectedIds.size > 0) {
+          openDeleteModal(null, 'bulk_selected');
+        }
+      });
+    }
+
+    if (elements.selectAllCheckbox) {
+      elements.selectAllCheckbox.addEventListener('change', function () {
+        var isChecked = elements.selectAllCheckbox.checked;
+        document.querySelectorAll('.leaves-row-checkbox').forEach(function (cb) {
+          cb.checked = isChecked;
+          var recordId = String(cb.getAttribute('data-record-id'));
+          if (isChecked) {
+            state.selectedIds.add(recordId);
+          } else {
+            state.selectedIds.delete(recordId);
+          }
+        });
+        updateBulkDeleteButton();
+      });
+    }
+
+    document.getElementById('leaves-daily-tbody').addEventListener('change', function (event) {
+      var rowCheckbox = event.target.closest('.leaves-row-checkbox');
+      if (rowCheckbox) {
+        var recordId = String(rowCheckbox.getAttribute('data-record-id'));
+        if (rowCheckbox.checked) {
+          state.selectedIds.add(recordId);
+        } else {
+          state.selectedIds.delete(recordId);
+        }
+        updateBulkDeleteButton();
+        updateSelectAllCheckbox();
+      }
     });
 
     document.addEventListener('click', function (event) {
@@ -1451,7 +1638,7 @@
           .catch(function (error) { alert(error.message); });
       }
       if (deleteButton) {
-        openDeleteModal(deleteButton.getAttribute('data-delete-id'));
+        openDeleteModal(deleteButton.getAttribute('data-delete-id'), 'single');
       }
       if (saveButton) {
         saveEditRow(saveButton.getAttribute('data-leaves-save-id'));
@@ -1492,6 +1679,12 @@
     deleteCloseButtons.forEach(function (button) {
       button.addEventListener('click', closeDeleteModal);
     });
+    if (elements.deleteAllButton) {
+      elements.deleteAllButton.addEventListener('click', function () {
+        if (elements.deleteAllButton.disabled) return;
+        openDeleteModal(null, 'all');
+      });
+    }
 
     function openManualModal() {
       if (!manualElements.modal) return;
