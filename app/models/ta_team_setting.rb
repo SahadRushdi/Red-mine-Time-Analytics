@@ -215,8 +215,35 @@ class TaTeamSetting < ActiveRecord::Base
       ai_api_key: decrypt_value(ai_api_key_raw),
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
       last_sync_mode: raw['leave_sync_last_mode'].to_s,
-      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
+      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON,
+      freq_type: raw['leave_sync_freq_type'].to_s.presence || 'interval',
+      interval_value: raw['leave_sync_interval_value'].to_s.presence || '10',
+      interval_unit: raw['leave_sync_interval_unit'].to_s.presence || 'minutes',
+      daily_time: raw['leave_sync_daily_time'].to_s.presence || '09:00',
+      daily_days: (raw['leave_sync_daily_days'].to_s.split(',').presence || %w[1 2 3 4 5])
     }
+  end
+
+  def self.generate_cron_from_ui(params)
+    freq_type = params[:leave_sync_freq_type]
+    if freq_type == 'interval'
+      val = params[:leave_sync_interval_value].to_i
+      unit = params[:leave_sync_interval_unit]
+      case unit
+      when 'minutes' then "*/#{val} * * * *"
+      when 'hours'   then "0 */#{val} * * *"
+      when 'days'    then "0 0 */#{val} * *"
+      else DEFAULT_LEAVE_SYNC_CRON
+      end
+    elsif freq_type == 'daily'
+      time = params[:leave_sync_daily_time].to_s # HH:MM
+      days = Array(params[:leave_sync_daily_days]).reject(&:blank?).join(',')
+      days = '*' if days.blank?
+      hour, min = time.split(':')
+      "#{min.to_i} #{hour.to_i} * * #{days} Asia/Kolkata"
+    else
+      params[:leave_sync_cron].presence || DEFAULT_LEAVE_SYNC_CRON
+    end
   end
 
   def self.missing_time_settings
@@ -275,6 +302,11 @@ class TaTeamSetting < ActiveRecord::Base
     oauth_client_secret: nil,
     oauth_account_email: nil,
     leave_sync_cron: nil,
+    leave_sync_freq_type: nil,
+    leave_sync_interval_value: nil,
+    leave_sync_interval_unit: nil,
+    leave_sync_daily_time: nil,
+    leave_sync_daily_days: nil,
     ai_extraction_enabled: nil,
     ai_provider: 'google',
     ai_model: nil,
@@ -313,8 +345,18 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_end_date'] = historical_sync_end_date.to_s
     settings['leave_sync_approach'] = 'oauth'
+    
     cron_expression = leave_sync_cron.to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
     settings['leave_sync_cron'] = cron_expression
+    
+    settings['leave_sync_freq_type'] = leave_sync_freq_type.to_s if leave_sync_freq_type.present?
+    settings['leave_sync_interval_value'] = leave_sync_interval_value.to_s if leave_sync_interval_value.present?
+    settings['leave_sync_interval_unit'] = leave_sync_interval_unit.to_s if leave_sync_interval_unit.present?
+    settings['leave_sync_daily_time'] = leave_sync_daily_time.to_s if leave_sync_daily_time.present?
+    if leave_sync_daily_days.present?
+      settings['leave_sync_daily_days'] = Array(leave_sync_daily_days).reject(&:blank?).join(',')
+    end
+
     settings['leave_ai_extraction_enabled'] = (ai_extraction_enabled.to_s == '1' || ai_extraction_enabled == true) ? '1' : '0'
     settings['leave_ai_provider'] = 'google'
     settings['leave_ai_model'] = ai_model.to_s.strip

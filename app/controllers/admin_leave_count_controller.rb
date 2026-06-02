@@ -34,6 +34,8 @@ class AdminLeaveCountController < ApplicationController
                  sync_params[:leave_ai_api_key].present? ||
                  (settings[:ai_api_key].present? && sync_params[:leave_ai_extraction_enabled] != '0')
 
+    cron_expression = TaTeamSetting.generate_cron_from_ui(sync_params)
+
     TaTeamSetting.update_leave_sync_settings!(
       enabled: sync_params[:leave_sync_enabled],
       recipient_email: sync_params[:leave_sync_recipient_email],
@@ -43,7 +45,12 @@ class AdminLeaveCountController < ApplicationController
       oauth_client_id: sync_params[:leave_oauth_client_id],
       oauth_client_secret: sync_params[:leave_oauth_client_secret],
       oauth_account_email: sync_params[:leave_oauth_account_email],
-      leave_sync_cron: sync_params[:leave_sync_cron],
+      leave_sync_cron: cron_expression,
+      leave_sync_freq_type: sync_params[:leave_sync_freq_type],
+      leave_sync_interval_value: sync_params[:leave_sync_interval_value],
+      leave_sync_interval_unit: sync_params[:leave_sync_interval_unit],
+      leave_sync_daily_time: sync_params[:leave_sync_daily_time],
+      leave_sync_daily_days: sync_params[:leave_sync_daily_days],
       ai_extraction_enabled: ai_enabled,
       ai_provider: 'google',
       ai_model: sync_params[:leave_ai_model],
@@ -153,9 +160,14 @@ class AdminLeaveCountController < ApplicationController
       :leave_oauth_client_secret,
       :leave_oauth_account_email,
       :leave_sync_cron,
+      :leave_sync_freq_type,
+      :leave_sync_interval_value,
+      :leave_sync_interval_unit,
+      :leave_sync_daily_time,
       :leave_ai_extraction_enabled,
       :leave_ai_model,
-      :leave_ai_api_key
+      :leave_ai_api_key,
+      leave_sync_daily_days: []
     )
   end
 

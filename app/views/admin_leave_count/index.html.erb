@@ -6,6 +6,18 @@
   <%= stylesheet_link_tag 'time_analytics.css', plugin: 'redmine_time_analytics' %>
   <%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
+  <style>
+    /* Custom styles for day selection pills to ensure they work regardless of Tailwind compilation issues */
+    .day-pill-checkbox:checked + .day-pill-visual {
+      background-color: #2563eb !important;
+      color: #ffffff !important;
+      border-color: #2563eb !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    .day-pill-visual:hover {
+      background-color: #f3f4f6;
+    }
+  </style>
 <% end %>
 
 <div class="space-y-6">
@@ -114,12 +126,43 @@
             <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_scheduler_inactive) %></span>
           <% end %>
         </div>
+        
         <% if @leave_sync_settings[:enabled] %>
-          <p class="text-sm text-gray-600"><%= l(:text_leave_sync_cron_help) %></p>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <%= label_tag :leave_sync_cron, l(:label_leave_sync_cron), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-              <%= text_field_tag :leave_sync_cron, @leave_sync_cron, placeholder: TaTeamSetting.default_leave_sync_cron, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+              <%= label_tag :leave_sync_freq_type, l(:label_frequency_type), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <div class="relative" id="leave-sync-freq-type-wrapper">
+                <button type="button"
+                        id="leave-sync-freq-type-btn"
+                        class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                  <span id="leave-sync-freq-type-text" class="text-gray-700 truncate flex-1 text-left">
+                    <%= @leave_sync_settings[:freq_type] == 'daily' ? l(:label_freq_daily) : l(:label_freq_interval) %>
+                  </span>
+                  <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <%= hidden_field_tag :leave_sync_freq_type, @leave_sync_settings[:freq_type], id: 'leave-sync-freq-type-value' %>
+                <div id="leave-sync-freq-type-list"
+                     class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                  <ul class="py-1 text-sm text-gray-700">
+                    <li>
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                              onclick="selectFreqType('interval', '<%= l(:label_freq_interval) %>')">
+                        <%= l(:label_freq_interval) %>
+                      </button>
+                    </li>
+                    <li>
+                      <button type="button"
+                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                              onclick="selectFreqType('daily', '<%= l(:label_freq_daily) %>')">
+                        <%= l(:label_freq_daily) %>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
             <div>
               <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_next_run_at) %></span>
@@ -128,6 +171,65 @@
                   <%= format_time(@leave_sync_next_run_at) %>
                 <% else %>
                   <%= l(:label_not_scheduled) %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+
+          <div id="freq-panel-interval" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'interval' %> space-y-3 pt-2">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <%= label_tag :leave_sync_interval_value, l(:label_interval_value), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+                <%= number_field_tag :leave_sync_interval_value, @leave_sync_settings[:interval_value], min: 1, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+              </div>
+              <div>
+                <%= label_tag :leave_sync_interval_unit, l(:label_interval_unit), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+                <div class="relative" id="leave-sync-interval-unit-wrapper">
+                  <button type="button"
+                          id="leave-sync-interval-unit-btn"
+                          class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                    <span id="leave-sync-interval-unit-text" class="text-gray-700 truncate flex-1 text-left">
+                      <%= l("label_unit_#{@leave_sync_settings[:interval_unit]}".to_sym) %>
+                    </span>
+                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+                  <%= hidden_field_tag :leave_sync_interval_unit, @leave_sync_settings[:interval_unit], id: 'leave-sync-interval-unit-value' %>
+                  <div id="leave-sync-interval-unit-list"
+                       class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                    <ul class="py-1 text-sm text-gray-700">
+                      <% [['minutes', l(:label_unit_minutes)], ['hours', l(:label_unit_hours)], ['days', l(:label_unit_days)]].each do |val, label| %>
+                        <li>
+                          <button type="button"
+                                  class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                  onclick="selectIntervalUnit('<%= val %>', '<%= label %>')">
+                            <%= label %>
+                          </button>
+                        </li>
+                      <% end %>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="freq-panel-daily" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'daily' %> space-y-4 pt-2">
+            <div>
+              <%= label_tag :leave_sync_daily_time, l(:label_specific_time), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= time_field_tag :leave_sync_daily_time, @leave_sync_settings[:daily_time], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+            </div>
+            <div>
+              <span class="mb-2 block text-sm font-medium text-gray-700"><%= l(:label_select_days) %></span>
+              <div class="flex flex-wrap gap-2">
+                <% [[l(:label_day_mon), '1'], [l(:label_day_tue), '2'], [l(:label_day_wed), '3'], [l(:label_day_thu), '4'], [l(:label_day_fri), '5'], [l(:label_day_sat), '6'], [l(:label_day_sun), '7']].each do |label, val| %>
+                  <label class="inline-flex items-center cursor-pointer">
+                    <%= check_box_tag 'leave_sync_daily_days[]', val, @leave_sync_settings[:daily_days].include?(val), class: 'sr-only day-pill-checkbox', id: "day_#{val}" %>
+                    <div class="day-pill-visual px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200">
+                      <%= label %>
+                    </div>
+                  </label>
                 <% end %>
               </div>
             </div>
@@ -165,7 +267,54 @@
 </div>
 
 <script>
+  function selectFreqType(val, label) {
+    document.getElementById('leave-sync-freq-type-value').value = val;
+    document.getElementById('leave-sync-freq-type-text').textContent = label;
+    document.getElementById('leave-sync-freq-type-list').classList.add('hidden');
+    
+    const intervalPanel = document.getElementById('freq-panel-interval');
+    const dailyPanel = document.getElementById('freq-panel-daily');
+    
+    if (val === 'interval') {
+      intervalPanel.classList.remove('hidden');
+      dailyPanel.classList.add('hidden');
+    } else {
+      intervalPanel.classList.add('hidden');
+      dailyPanel.classList.remove('hidden');
+    }
+  }
+
+  function selectIntervalUnit(val, label) {
+    document.getElementById('leave-sync-interval-unit-value').value = val;
+    document.getElementById('leave-sync-interval-unit-text').textContent = label;
+    document.getElementById('leave-sync-interval-unit-list').classList.add('hidden');
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
-    // AI panel is always visible since AI extraction is enabled by default
+    const freqBtn = document.getElementById('leave-sync-freq-type-btn');
+    const freqList = document.getElementById('leave-sync-freq-type-list');
+    const unitBtn = document.getElementById('leave-sync-interval-unit-btn');
+    const unitList = document.getElementById('leave-sync-interval-unit-list');
+
+    if (freqBtn) {
+      freqBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        freqList.classList.toggle('hidden');
+        if (unitList) unitList.classList.add('hidden');
+      });
+    }
+
+    if (unitBtn) {
+      unitBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        unitList.classList.toggle('hidden');
+        if (freqList) freqList.classList.add('hidden');
+      });
+    }
+
+    document.addEventListener('click', function() {
+      if (freqList) freqList.classList.add('hidden');
+      if (unitList) unitList.classList.add('hidden');
+    });
   });
 </script>

@@ -150,7 +150,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
    - Choose provider (Google/OpenAI/Anthropic/Custom)
    - Set model + API key (+ base URL for custom provider)
 5. Save settings
-6. For OAuth/DWD, run **Historical Sync** once, then enable the in-app scheduler by turning on **Enable mailbox sync** and setting the cron expression (default every 10 minutes).
+6. For OAuth/DWD, run **Historical Sync** once, then enable the in-app scheduler by turning on **Enable mailbox sync** and setting the schedule (Interval or Daily/Weekly at specific time).
 7. For Google Apps Script, use time-driven GAS triggers to push messages to the webhook endpoint
 
 ### Teams Admin Payload API
