@@ -66,22 +66,30 @@ class AdminLeaveCountController < ApplicationController
 
   def sync_leave_inbox
     sync_mode = params[:sync_mode].to_s == 'historical' ? :historical : :incremental
-    settings = TaTeamSetting.leave_sync_settings
-    result = RedmineTimeAnalytics::LeaveSyncService.new(settings: settings).sync!(mode: sync_mode)
-
-    if result.errors.any?
-      unique_errors = result.errors.uniq
-      Rails.logger.warn(
-        "[LeaveSync] completed with #{result.errors.length} errors (#{unique_errors.length} unique): #{unique_errors.first(10).join(' | ')}"
-      )
-      flash[:error] = "Leave sync finished with errors (#{result.errors.length} total). See log for details."
-    else
-      flash[:notice] = "Leave sync completed (Processed messages: #{result.processed_count}, Imported messages: #{result.imported_count}, Flagged messages: #{result.flagged_count})"
+    sync_id = SecureRandom.hex(8)
+    
+    # Start sync in background thread
+    Thread.new do
+      begin
+        # Ensure thread has its own DB connection
+        ActiveRecord::Base.connection_pool.with_connection do
+          settings = TaTeamSetting.leave_sync_settings
+          tracker = RedmineTimeAnalytics::SyncTracker.new(sync_id)
+          RedmineTimeAnalytics::LeaveSyncService.new(settings: settings, tracker: tracker).sync!(mode: sync_mode)
+        end
+      rescue StandardError => e
+        Rails.logger.error("[LeaveSync] Background sync failed: #{e.message}\n#{e.backtrace.join("\n")}")
+        RedmineTimeAnalytics::SyncTracker.new(sync_id).fail(error: e.message)
+      end
     end
-  rescue StandardError => e
-    flash[:error] = "Leave sync failed: #{e.message}"
-  ensure
-    redirect_to admin_leave_count_path
+
+    render json: { sync_id: sync_id }
+  end
+
+  def sync_status
+    sync_id = params[:sync_id]
+    progress = RedmineTimeAnalytics::SyncTracker.get(sync_id) || { status: 'starting', message: 'Initializing...', progress: 0 }
+    render json: progress
   end
 
   def oauth_start

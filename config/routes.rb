@@ -53,6 +53,7 @@ RedmineApp::Application.routes.draw do
   get 'admin/leave_count', to: 'admin_leave_count#index', as: :admin_leave_count
   post 'admin/leave_count', to: 'admin_leave_count#create'
   post 'admin/leave_count/sync_leave_inbox', to: 'admin_leave_count#sync_leave_inbox', as: :admin_leave_count_sync_leave_inbox
+  get 'admin/leave_count/sync_status', to: 'admin_leave_count#sync_status', as: :admin_leave_count_sync_status
   get 'admin/leave_count/oauth_start', to: 'admin_leave_count#oauth_start', as: :admin_leave_count_oauth_start
   get 'admin/leave_count/oauth_callback', to: 'admin_leave_count#oauth_callback', as: :admin_leave_count_oauth_callback
   post 'webhooks/leave_email/google_apps_script', to: 'leave_webhooks#google_apps_script', as: :leave_google_apps_script_webhook

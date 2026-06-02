@@ -246,19 +246,27 @@
   </div>
 
   <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <div id="sync-progress-container" class="hidden mb-6 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 id="sync-status-text" class="text-sm font-semibold text-blue-700 italic">Initializing...</h3>
+        <span id="sync-percent-text" class="text-xs font-medium text-blue-700">0%</span>
+      </div>
+      <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div id="sync-progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+    </div>
+
     <h3 class="text-base font-semibold text-gray-900 mb-3"><%= l(:label_manual_sync_actions) %></h3>
     <% if @manual_pull_available %>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <%= form_tag({ controller: 'admin_leave_count', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
-          <%= hidden_field_tag :sync_mode, 'incremental' %>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
           <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_incremental_sync) %></p>
-          <%= button_tag l(:button_run_incremental_sync), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #2563eb !important;' %>
-        <% end %>
-        <%= form_tag({ controller: 'admin_leave_count', action: 'sync_leave_inbox' }, method: :post, class: 'rounded-lg border border-gray-200 bg-gray-50 p-3') do %>
-          <%= hidden_field_tag :sync_mode, 'historical' %>
+          <button type="button" onclick="startManualSync('incremental')" class="tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #2563eb !important;"><%= l(:button_run_incremental_sync) %></button>
+        </div>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
           <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_historical_sync) %></p>
-          <%= button_tag l(:button_run_historical_sync), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #1d4ed8 !important;' %>
-        <% end %>
+          <button type="button" onclick="startManualSync('historical')" class="tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #1d4ed8 !important;"><%= l(:button_run_historical_sync) %></button>
+        </div>
       </div>
     <% else %>
       <p class="text-sm text-gray-600"><%= l(:text_leave_push_only_sync_notice) %></p>
@@ -267,6 +275,79 @@
 </div>
 
 <script>
+  let syncPollInterval = null;
+
+  function startManualSync(mode) {
+    const container = document.getElementById('sync-progress-container');
+    const statusText = document.getElementById('sync-status-text');
+    const progressBar = document.getElementById('sync-progress-bar');
+    const percentText = document.getElementById('sync-percent-text');
+
+    container.classList.remove('hidden');
+    statusText.textContent = 'Starting sync...';
+    statusText.className = 'text-sm font-semibold text-blue-700 italic';
+    progressBar.style.width = '0%';
+    percentText.textContent = '0%';
+
+    fetch('<%= admin_leave_count_sync_leave_inbox_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: `sync_mode=${mode}`
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.sync_id) {
+        pollSyncStatus(data.sync_id);
+      } else {
+        alert('Failed to start sync: ' + (data.error || 'Unknown error'));
+        container.classList.add('hidden');
+      }
+    })
+    .catch(error => {
+      console.error('Error starting sync:', error);
+      alert('Error starting sync. Check console for details.');
+      container.classList.add('hidden');
+    });
+  }
+
+  function pollSyncStatus(syncId) {
+    if (syncPollInterval) clearInterval(syncPollInterval);
+    
+    syncPollInterval = setInterval(() => {
+      fetch(`<%= admin_leave_count_sync_status_path %>?sync_id=${syncId}`)
+      .then(response => response.json())
+      .then(data => {
+        const statusText = document.getElementById('sync-status-text');
+        const progressBar = document.getElementById('sync-progress-bar');
+        const percentText = document.getElementById('sync-percent-text');
+
+        statusText.textContent = data.message || 'Processing...';
+        progressBar.style.width = `${data.progress || 0}%`;
+        percentText.textContent = `${data.progress || 0}%`;
+
+        if (data.status === 'completed' || data.status === 'failed') {
+          clearInterval(syncPollInterval);
+          syncPollInterval = null;
+          if (data.status === 'completed') {
+            statusText.className = 'text-sm font-semibold text-emerald-600 italic';
+            setTimeout(() => {
+               window.location.reload();
+            }, 3000);
+          } else {
+            statusText.className = 'text-sm font-semibold text-red-600 italic';
+            statusText.textContent = 'Sync failed: ' + (data.error || 'Unknown error');
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error polling sync status:', error);
+      });
+    }, 1500);
+  }
+
   function selectFreqType(val, label) {
     document.getElementById('leave-sync-freq-type-value').value = val;
     document.getElementById('leave-sync-freq-type-text').textContent = label;
