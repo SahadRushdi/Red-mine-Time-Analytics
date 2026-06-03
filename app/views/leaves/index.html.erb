@@ -26,6 +26,31 @@
       box-shadow: none !important;
       outline: none !important;
     }
+    /* Selection banner buttons styling */
+    #leaves-select-all-pages-btn, #leaves-clear-selection-btn {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      color: #1e40af !important; /* blue-800 */
+      text-decoration: underline !important;
+      font-weight: 700 !important;
+      font-size: inherit !important;
+      cursor: pointer !important;
+      height: auto !important;
+      line-height: inherit !important;
+    }
+    #leaves-select-all-pages-btn:hover, #leaves-clear-selection-btn:hover {
+      background: transparent !important;
+      color: #1e3a8a !important; /* blue-900 */
+      text-decoration: none !important;
+    }
+    #leaves-select-all-pages-btn:focus, #leaves-clear-selection-btn:focus {
+      outline: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+    }
   </style>
 <% end %>
 
@@ -235,6 +260,11 @@
 
     <div class="p-4">
       <div id="leaves-daily-panel">
+        <div id="leaves-global-selection-banner" class="hidden mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800 border border-blue-100 flex items-center justify-center gap-2">
+          <span id="leaves-selection-text"></span>
+          <button type="button" id="leaves-select-all-pages-btn" class="font-bold underline hover:text-blue-900"></button>
+          <button type="button" id="leaves-clear-selection-btn" class="hidden font-bold underline hover:text-blue-900">Clear selection</button>
+        </div>
         <div class="overflow-x-auto rounded-xl border border-gray-200">
           <table class="w-full text-left text-sm text-gray-600">
             <thead class="bg-gray-50 text-xs uppercase text-gray-500">
@@ -475,7 +505,9 @@
       summaryDirection: 'desc',
       dailyRecords: [],
       summaryRecords: [],
-      selectedIds: new Set()
+      selectedIds: new Set(),
+      selectAllPages: false,
+      totalCount: 0
     };
 
     var elements = {
@@ -501,6 +533,10 @@
       bulkDeleteButton: document.getElementById('leaves-bulk-delete-button'),
       bulkDeleteLabel: document.getElementById('leaves-bulk-delete-label'),
       selectAllCheckbox: document.getElementById('leaves-select-all'),
+      selectionBanner: document.getElementById('leaves-global-selection-banner'),
+      selectionText: document.getElementById('leaves-selection-text'),
+      selectAllPagesBtn: document.getElementById('leaves-select-all-pages-btn'),
+      clearSelectionBtn: document.getElementById('leaves-clear-selection-btn'),
       search: document.getElementById('ts-search-input'),
       dailyTab: document.getElementById('leaves-tab-daily'),
       summaryTab: document.getElementById('leaves-tab-summary'),
@@ -647,7 +683,14 @@
       }
 
       if (mode === 'bulk_selected') {
-        var ids = Array.from(state.selectedIds);
+        var payload = {
+          ids: Array.from(state.selectedIds),
+          select_all_pages: state.selectAllPages,
+          from: elements.from.value,
+          to: elements.to.value,
+          user_id: elements.userInput.value,
+          status: elements.statusInput.value
+        };
         fetch('<%= leaves_bulk_destroy_path %>', {
           method: 'DELETE',
           headers: {
@@ -655,11 +698,12 @@
             'X-CSRF-Token': csrfToken,
             Accept: 'application/json'
           },
-          body: JSON.stringify({ ids: ids })
+          body: JSON.stringify(payload)
         }).then(function (response) { return response.json(); })
           .then(function (payload) {
             if (payload.error) throw new Error(payload.error);
             state.selectedIds.clear();
+            state.selectAllPages = false;
             updateBulkDeleteButton();
             loadData();
           })
@@ -1041,10 +1085,42 @@
 
     function updateBulkDeleteButton() {
       if (!elements.bulkDeleteButton || !elements.bulkDeleteLabel) return;
-      var count = state.selectedIds.size;
+      var count = state.selectAllPages ? state.totalCount : state.selectedIds.size;
       elements.bulkDeleteLabel.textContent = 'Delete (' + count + ')';
       elements.bulkDeleteButton.classList.toggle('hidden', count === 0);
       elements.bulkDeleteButton.disabled = count === 0;
+    }
+
+    function updateSelectionBanner() {
+      if (!elements.selectionBanner) return;
+      
+      var query = normalize(elements.search.value);
+      var filtered = state.dailyRecords.filter(function (record) { return matchesSearch(record, query); });
+      var totalFiltered = filtered.length;
+      var pageCount = Math.min(totalFiltered, state.perPage);
+      
+      // If selectAllPages is TRUE, show "All X records selected. Clear selection"
+      if (state.selectAllPages) {
+        elements.selectionBanner.classList.remove('hidden');
+        elements.selectionText.textContent = 'All ' + state.totalCount + ' records in Leaves are selected.';
+        elements.selectAllPagesBtn.classList.add('hidden');
+        elements.clearSelectionBtn.classList.remove('hidden');
+        return;
+      }
+
+      // If all records ON THIS PAGE are selected AND there are more records in total
+      var allOnPageSelected = document.querySelectorAll('.leaves-row-checkbox').length > 0 && 
+                              document.querySelectorAll('.leaves-row-checkbox:not(:checked)').length === 0;
+
+      if (allOnPageSelected && state.totalCount > document.querySelectorAll('.leaves-row-checkbox').length) {
+        elements.selectionBanner.classList.remove('hidden');
+        elements.selectionText.textContent = 'All ' + document.querySelectorAll('.leaves-row-checkbox').length + ' records on this page are selected.';
+        elements.selectAllPagesBtn.classList.remove('hidden');
+        elements.selectAllPagesBtn.textContent = 'Select all ' + state.totalCount + ' records in Leaves';
+        elements.clearSelectionBtn.classList.add('hidden');
+      } else {
+        elements.selectionBanner.classList.add('hidden');
+      }
     }
 
     function updateSelectAllCheckbox() {
@@ -1059,6 +1135,7 @@
       checkboxes.forEach(function (cb) { if (cb.checked) checkedCount += 1; });
       elements.selectAllCheckbox.checked = checkedCount === checkboxes.length;
       elements.selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+      updateSelectionBanner();
     }
 
     function scheduleLoadData() {
@@ -1163,7 +1240,9 @@
         function (nextPage) {
           state.dailyPage = nextPage;
           state.selectedIds.clear();
+          state.selectAllPages = false;
           updateBulkDeleteButton();
+          updateSelectionBanner();
           renderDailyRows();
         }
       );
@@ -1254,18 +1333,20 @@
           if (payload.error) throw new Error(payload.error);
           state.dailyRecords = flattenDailyGroups(payload.daily_groups || []);
           state.summaryRecords = payload.user_summary || [];
+          state.totalCount = (payload.totals && payload.totals.total_records) || 0;
           state.dailyPage = 1;
           state.summaryPage = 1;
           state.selectedIds.clear();
+          state.selectAllPages = false;
+          updateSelectionBanner();
           updateBulkDeleteButton();
           updateHistory();
           renderTables();
-          var totalRecords = (payload.totals && payload.totals.total_records) || 0;
           document.getElementById('leaves-card-overall').textContent = formatNumber((payload.totals && payload.totals.overall_leave_days) || 0);
           document.getElementById('leaves-card-users').textContent = formatNumber((payload.totals && payload.totals.users_with_leave) || 0);
           document.getElementById('leaves-card-flagged').textContent = formatNumber((payload.totals && payload.totals.flagged_records) || 0);
-          document.getElementById('leaves-card-records').textContent = formatNumber(totalRecords);
-          setDeleteAllButtonState(totalRecords);
+          document.getElementById('leaves-card-records').textContent = formatNumber(state.totalCount);
+          setDeleteAllButtonState(state.totalCount);
         })
         .catch(function (error) {
           elements.dailyBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
@@ -1546,7 +1627,9 @@
       state.dailyPage = 1;
       state.summaryPage = 1;
       state.selectedIds.clear();
+      state.selectAllPages = false;
       updateBulkDeleteButton();
+      updateSelectionBanner();
       renderTables();
     });
 
@@ -1558,9 +1641,29 @@
       });
     }
 
+    if (elements.selectAllPagesBtn) {
+      elements.selectAllPagesBtn.addEventListener('click', function() {
+        state.selectAllPages = true;
+        updateSelectionBanner();
+        updateBulkDeleteButton();
+      });
+    }
+
+    if (elements.clearSelectionBtn) {
+      elements.clearSelectionBtn.addEventListener('click', function() {
+        state.selectedIds.clear();
+        state.selectAllPages = false;
+        elements.selectAllCheckbox.checked = false;
+        document.querySelectorAll('.leaves-row-checkbox').forEach(function(cb) { cb.checked = false; });
+        updateSelectionBanner();
+        updateBulkDeleteButton();
+      });
+    }
+
     if (elements.selectAllCheckbox) {
       elements.selectAllCheckbox.addEventListener('change', function () {
         var isChecked = elements.selectAllCheckbox.checked;
+        state.selectAllPages = false; // Reset global selection on any change
         document.querySelectorAll('.leaves-row-checkbox').forEach(function (cb) {
           cb.checked = isChecked;
           var recordId = String(cb.getAttribute('data-record-id'));
@@ -1570,6 +1673,7 @@
             state.selectedIds.delete(recordId);
           }
         });
+        updateSelectionBanner();
         updateBulkDeleteButton();
       });
     }
@@ -1582,6 +1686,7 @@
           state.selectedIds.add(recordId);
         } else {
           state.selectedIds.delete(recordId);
+          state.selectAllPages = false;
         }
         updateBulkDeleteButton();
         updateSelectAllCheckbox();
