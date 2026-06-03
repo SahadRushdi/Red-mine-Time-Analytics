@@ -5,7 +5,7 @@ class AdminTaTeamMembershipsController < ApplicationController
 
   before_action :require_admin
   before_action :find_team
-  before_action :find_membership, only: [:update, :destroy]
+  before_action :find_membership, only: [:update, :destroy, :move]
 
   helper :ta_teams
 
@@ -40,6 +40,45 @@ class AdminTaTeamMembershipsController < ApplicationController
     @membership.destroy
     flash[:notice] = l(:notice_successful_delete)
     redirect_membership_context
+  end
+
+  def move
+    target_team_id = params[:target_team_id]
+    @target_team = TaTeam.find(target_team_id)
+    move_mode = params[:move_mode] # 'move' or 'inactivate_and_add'
+
+    ActiveRecord::Base.transaction do
+      if move_mode == 'move'
+        # Requirement 1: Delete from current team and add to new team
+        user_id = @membership.user_id
+        role = @membership.role
+        @membership.destroy!
+
+        @new_membership = @target_team.ta_team_memberships.create!(
+          user_id: user_id,
+          role: role,
+          start_date: Date.today
+        )
+      else
+        # Requirement 2: Inactivate in current team and add to new team
+        @membership.update!(end_date: Date.today)
+
+        @new_membership = @target_team.ta_team_memberships.create!(
+          user_id: @membership.user_id,
+          role: @membership.role,
+          start_date: Date.today
+        )
+      end
+    end
+
+    flash[:notice] = "Member successfully moved to #{@target_team.name}"
+    redirect_to admin_ta_teams_path(main_tab: 'structure')
+  rescue ActiveRecord::RecordInvalid => e
+    flash[:error] = e.record.errors.full_messages.to_sentence
+    redirect_to admin_ta_teams_path(main_tab: 'structure')
+  rescue StandardError => e
+    flash[:error] = e.message
+    redirect_to admin_ta_teams_path(main_tab: 'structure')
   end
 
   private

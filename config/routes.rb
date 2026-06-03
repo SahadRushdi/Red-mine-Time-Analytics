@@ -36,7 +36,9 @@ RedmineApp::Application.routes.draw do
       post :validate_url
       post :assign_member
     end
-    resources :admin_ta_team_memberships, path: 'memberships', as: 'memberships', only: [:create, :update, :destroy]
+    resources :admin_ta_team_memberships, path: 'memberships', as: 'memberships', only: [:create, :update, :destroy] do
+      post :move, on: :member
+    end
     resources :admin_ta_team_projects, path: 'projects', as: 'team_projects'
   end
 
