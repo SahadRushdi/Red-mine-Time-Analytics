@@ -11,6 +11,7 @@ require File.expand_path('lib/redmine_time_analytics/leave_providers/google_apps
 require File.expand_path('lib/redmine_time_analytics/leave_fetcher_factory', __dir__)
 require File.expand_path('lib/redmine_time_analytics/gmail_leave_fetcher', __dir__)
 require File.expand_path('lib/redmine_time_analytics/sync_tracker', __dir__)
+require File.expand_path('app/jobs/redmine_time_analytics/leave_sync_job', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_sync_service', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_sync_scheduler', __dir__)
 require File.expand_path('lib/redmine_time_analytics/missing_time_email_template', __dir__)

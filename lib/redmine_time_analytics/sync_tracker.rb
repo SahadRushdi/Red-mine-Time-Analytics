@@ -12,7 +12,7 @@ module RedmineTimeAnalytics
       Rails.cache.write(
         cache_key,
         { status: 'processing', message: message, progress: progress.to_i },
-        expires_in: 30.minutes
+        expires_in: 60.minutes
       )
     end
 
@@ -20,7 +20,7 @@ module RedmineTimeAnalytics
       Rails.cache.write(
         cache_key,
         { status: 'completed', message: message, progress: 100 },
-        expires_in: 30.minutes
+        expires_in: 60.minutes
       )
     end
 
@@ -28,7 +28,7 @@ module RedmineTimeAnalytics
       Rails.cache.write(
         cache_key,
         { status: 'failed', error: error, progress: 0 },
-        expires_in: 30.minutes
+        expires_in: 60.minutes
       )
     end
 

@@ -68,22 +68,16 @@ class AdminLeaveCountController < ApplicationController
     sync_mode = params[:sync_mode].to_s == 'historical' ? :historical : :incremental
     sync_id = SecureRandom.hex(8)
     
-    # Start sync in background thread
-    Thread.new do
-      begin
-        # Ensure thread has its own DB connection
-        ActiveRecord::Base.connection_pool.with_connection do
-          settings = TaTeamSetting.leave_sync_settings
-          tracker = RedmineTimeAnalytics::SyncTracker.new(sync_id)
-          RedmineTimeAnalytics::LeaveSyncService.new(settings: settings, tracker: tracker).sync!(mode: sync_mode)
-        end
-      rescue StandardError => e
-        Rails.logger.error("[LeaveSync] Background sync failed: #{e.message}\n#{e.backtrace.join("\n")}")
-        RedmineTimeAnalytics::SyncTracker.new(sync_id).fail(error: e.message)
-      end
-    end
+    # Start sync in background using Sucker Punch
+    RedmineTimeAnalytics::LeaveSyncJob.perform_async(sync_mode, sync_id)
 
-    render json: { sync_id: sync_id }
+    message = if sync_mode == :historical
+                "Historical sync started."
+              else
+                "Incremental sync started. This should complete shortly."
+              end
+
+    render json: { sync_id: sync_id, message: message }
   end
 
   def sync_status

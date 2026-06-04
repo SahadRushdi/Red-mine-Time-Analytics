@@ -300,6 +300,9 @@
     .then(response => response.json())
     .then(data => {
       if (data.sync_id) {
+        if (data.message) {
+          statusText.textContent = data.message;
+        }
         pollSyncStatus(data.sync_id);
       } else {
         alert('Failed to start sync: ' + (data.error || 'Unknown error'));

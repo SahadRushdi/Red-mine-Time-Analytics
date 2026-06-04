@@ -66,6 +66,8 @@ GEM
       faraday (>= 0.17.5, < 3.a)
       jwt (>= 1.5, < 4.0)
       multi_json (~> 1.10)
+    sucker_punch (3.3.0)
+      concurrent-ruby (~> 1.0)
     trailblazer-option (0.1.2)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
@@ -82,6 +84,7 @@ DEPENDENCIES
   googleauth
   nickel
   rufus-scheduler
+  sucker_punch
 
 BUNDLED WITH
    2.6.9
