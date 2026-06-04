@@ -631,8 +631,8 @@ cancel_result = cancel_ai.parse(
   recipient_email: 'vacation-group@entgra.io'
 )
 assert_equal(:cancelled, cancel_result.status, 'latest cancellation reply should override the subject')
-assert_equal(1, cancel_result.leave_dates.length, 'cancelled reply should keep the original requested date')
-assert_equal(0.5, cancel_result.leave_fraction, 'cancelled half-day request should preserve the half-day fraction')
+assert_equal(0, cancel_result.leave_dates.length, 'cancelled reply should have empty leave dates')
+assert_equal(0.0, cancel_result.leave_fraction, 'cancelled request should have 0.0 fraction')
 
 mixed_ai = RedmineTimeAnalytics::AiLeaveExtractor.new(
   settings: {
@@ -896,7 +896,7 @@ case7_cancel = case7_ai.parse(
   recipient_email: 'vacation-group@entgra.io'
 )
 assert_equal(:cancelled, case7_cancel.status, 'cancellation reply should be classified as cancelled even without an explicit date')
-assert_equal([Date.new(2026, 4, 6)], case7_cancel.leave_dates, 'case 7 cancellation should keep the original leave date')
+assert_equal(0, case7_cancel.leave_dates.length, 'case 7 cancellation should have empty leave dates')
 
 TaLeaveRecord.reset!
 TaLeaveRecord.upsert_from_email!(

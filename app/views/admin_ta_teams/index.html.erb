@@ -543,6 +543,54 @@
         </div>
       </div>
 
+      <div id="taTeamMemberMoveModal" tabindex="-1" aria-hidden="true" class="hidden fixed top-0 right-0 left-0 z-[10000] justify-center items-center w-full h-full bg-gray-900/50">
+        <div class="relative p-4 w-full max-w-lg">
+          <div class="relative bg-white rounded-xl shadow-lg border border-gray-200">
+            <div class="flex items-center justify-between p-4 border-b">
+              <h3 class="text-lg font-bold text-gray-900">Move Team Member</h3>
+              <button type="button" onclick="teamManagementCloseMoveModal()" class="ta-modal-close-btn text-gray-400 hover:text-gray-900 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+            <div class="p-6">
+              <div class="mb-6 rounded-lg bg-blue-50 p-4 border border-blue-100">
+                <div class="flex items-start gap-3">
+                  <div class="mt-0.5 rounded-full bg-blue-500 p-1 text-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-blue-900">Moving <span id="ta-move-member-name" class="font-bold"></span></p>
+                    <p class="text-xs text-blue-700 mt-1">To team: <span id="ta-move-target-team-name" class="font-bold"></span></p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <label class="relative flex cursor-pointer rounded-xl border border-gray-200 p-4 transition-all hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                  <input type="radio" name="ta_move_mode" value="move" checked class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
+                  <div class="ml-3">
+                    <span class="block text-sm font-bold text-gray-900">Remove and Move</span>
+                    <span class="mt-1 block text-xs text-gray-500">Deletes the user from the current team and adds them to the new team.</span>
+                  </div>
+                </label>
+
+                <label class="relative flex cursor-pointer rounded-xl border border-gray-200 p-4 transition-all hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                  <input type="radio" name="ta_move_mode" value="inactivate_and_add" class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
+                  <div class="ml-3">
+                    <span class="block text-sm font-bold text-gray-900">Inactivate and Move</span>
+                    <span class="mt-1 block text-xs text-gray-500">Sets the current date as the end date for the current team and starts a new membership in the target team.</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div class="flex items-center justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-xl">
+              <button type="button" onclick="teamManagementCloseMoveModal()" class="ta-btn-secondary rounded-lg px-4 py-2 text-sm font-medium transition-colors">Cancel</button>
+              <button type="button" onclick="teamManagementConfirmMove()" class="ta-btn-primary rounded-lg px-4 py-2 text-sm font-medium transition-colors shadow-sm">Confirm Move</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div id="ta-team-splitter-controls"
@@ -997,6 +1045,136 @@
       var order = icon.dataset.order || 'desc';
       icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
     });
+  }
+
+  var teamManagementMoveState = {
+    membershipId: null,
+    userId: null,
+    userName: null,
+    sourceTeamId: null,
+    targetTeamId: null,
+    targetTeamName: null
+  };
+
+  function teamManagementHandleDragStart(event) {
+    var target = event.currentTarget;
+    var data = {
+      membershipId: target.dataset.membershipId,
+      userId: target.dataset.userId,
+      userName: target.dataset.userName,
+      teamId: target.dataset.teamId
+    };
+    event.dataTransfer.setData('application/json', JSON.stringify(data));
+    event.dataTransfer.effectAllowed = 'move';
+    
+    // Optional: add a class to the element being dragged
+    target.classList.add('opacity-50');
+    
+    // Clear tooltip if any
+    var tooltipId = target.dataset.tooltipTarget;
+    if (tooltipId) {
+      var tooltip = document.getElementById(tooltipId);
+      if (tooltip) tooltip.classList.add('invisible', 'opacity-0');
+    }
+  }
+
+  function teamManagementHandleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    var target = event.currentTarget;
+    if (target.classList.contains('ta-team-dropzone')) {
+      target.classList.add('ta-team-dropzone--active');
+    }
+  }
+
+  function teamManagementHandleDragLeave(event) {
+    var target = event.currentTarget;
+    target.classList.remove('ta-team-dropzone--active');
+  }
+
+  function teamManagementHandleDrop(event) {
+    event.preventDefault();
+    var target = event.currentTarget;
+    target.classList.remove('ta-team-dropzone--active');
+
+    var jsonData = event.dataTransfer.getData('application/json');
+    if (!jsonData) return;
+
+    var data = JSON.parse(jsonData);
+    var targetTeamId = target.dataset.teamId;
+    var targetTeamName = target.dataset.teamName;
+
+    // Don't do anything if dropped on the same team
+    if (data.teamId == targetTeamId) return;
+
+    teamManagementMoveState = {
+      membershipId: data.membershipId,
+      userId: data.userId,
+      userName: data.userName,
+      sourceTeamId: data.teamId,
+      targetTeamId: targetTeamId,
+      targetTeamName: targetTeamName
+    };
+
+    teamManagementOpenMoveModal();
+  }
+
+  function teamManagementOpenMoveModal() {
+    var modal = document.getElementById('taTeamMemberMoveModal');
+    if (!modal) return;
+
+    document.getElementById('ta-move-member-name').textContent = teamManagementMoveState.userName;
+    document.getElementById('ta-move-target-team-name').textContent = teamManagementMoveState.targetTeamName;
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function teamManagementCloseMoveModal() {
+    var modal = document.getElementById('taTeamMemberMoveModal');
+    if (!modal) return;
+
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+    
+    // Remove drag opacity from all chips just in case
+    document.querySelectorAll('.ta-team-member-chip').forEach(function(chip) {
+      chip.classList.remove('opacity-50');
+    });
+  }
+
+  function teamManagementConfirmMove() {
+    var moveMode = document.querySelector('input[name="ta_move_mode"]:checked').value;
+    var membershipId = teamManagementMoveState.membershipId;
+    var targetTeamId = teamManagementMoveState.targetTeamId;
+    var sourceTeamId = teamManagementMoveState.sourceTeamId;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/admin/ta_teams/' + sourceTeamId + '/memberships/' + membershipId + '/move';
+    
+    var tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = 'authenticity_token';
+    tokenInput.value = '<%= form_authenticity_token %>';
+    form.appendChild(tokenInput);
+
+    var targetTeamInput = document.createElement('input');
+    targetTeamInput.type = 'hidden';
+    targetTeamInput.name = 'target_team_id';
+    targetTeamInput.value = targetTeamId;
+    form.appendChild(targetTeamInput);
+
+    var moveModeInput = document.createElement('input');
+    moveModeInput.type = 'hidden';
+    moveModeInput.name = 'move_mode';
+    moveModeInput.value = moveMode;
+    form.appendChild(moveModeInput);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
   function toggleMemberHistorySort(column) {
