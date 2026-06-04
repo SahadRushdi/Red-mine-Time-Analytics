@@ -448,6 +448,14 @@ button.ta-team-action.ta-team-action-members:active {
   background-color: #eff6ff;
 }
 
+.ta-team-dropzone.ta-team-dropzone--active {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), inset 0 0 0 1px #3b82f6;
+  background-color: #eff6ff !important;
+  transform: scale(1.01);
+  transition: all 0.2s ease;
+}
+
 .ta-team-history-tabs-header {
   margin-bottom: -1px;
 }
@@ -757,6 +765,10 @@ button.ta-btn-danger,
 #taTeamMembersDeleteModal button:hover,
 #taTeamMembersDeleteModal button:focus,
 #taTeamMembersDeleteModal button:active,
+#taTeamMemberMoveModal button,
+#taTeamMemberMoveModal button:hover,
+#taTeamMemberMoveModal button:focus,
+#taTeamMemberMoveModal button:active,
 #taTeamDeleteModal button,
 #taTeamDeleteModal button:hover,
 #taTeamDeleteModal button:focus,
@@ -784,11 +796,13 @@ button.ta-btn-danger,
   outline: none !important;
   box-shadow: none !important;
   text-decoration: none !important;
+  border: none !important;
 }
 
 #taTeamMembersAddModal .tep-delete-close,
 #taTeamProjectsAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
+#taTeamMemberMoveModal .ta-modal-close-btn,
 #taTeamDeleteModal .tep-delete-close,
 #taTeamProjectsDeleteModal .tep-delete-close,
 #taHiringCreateModal .tep-delete-close,
@@ -796,11 +810,13 @@ button.ta-btn-danger,
 #taHiringTitleDeleteModal .tep-delete-close,
 .ta-member-history-modal .tep-delete-close {
   border: none !important;
+  background: transparent !important;
 }
 
 #taTeamMembersAddModal .tep-delete-close:hover,
 #taTeamProjectsAddModal .tep-delete-close:hover,
 #taTeamMembersDeleteModal .tep-delete-close:hover,
+#taTeamMemberMoveModal .ta-modal-close-btn:hover,
 #taTeamDeleteModal .tep-delete-close:hover,
 #taTeamProjectsDeleteModal .tep-delete-close:hover,
 #taHiringCreateModal .tep-delete-close:hover,
@@ -809,6 +825,7 @@ button.ta-btn-danger,
 .ta-member-history-modal .tep-delete-close:hover {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
+  border: none !important;
 }
 
 #taTeamMembersAddModal .datepicker,

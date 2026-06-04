@@ -129,6 +129,21 @@ class LeavesController < ApplicationController
   end
 
   def bulk_destroy
+    if params[:select_all_pages].to_s == 'true'
+      filters = filter_params
+      from_date = parse_date(filters[:from]) || Date.current.beginning_of_month
+      to_date = parse_date(filters[:to]) || Date.current
+      
+      scope = TaLeaveRecord.within_range(from_date, to_date)
+      scope = scope.where(user_id: filters[:user_id].to_i) if filters[:user_id].present?
+      if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
+        scope = scope.where(status: filters[:status].to_s)
+      end
+      
+      deleted_count = scope.delete_all
+      return render json: { ok: true, deleted_count: deleted_count }, status: :ok
+    end
+
     ids = params[:ids]
     if ids.blank? || !ids.is_a?(Array)
       return render json: { error: 'No IDs provided' }, status: :unprocessable_entity

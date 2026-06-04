@@ -14,7 +14,13 @@ module TaTeamsHelper
       child_teams = children_map[team.id] || []
 
       branch_content = ''.html_safe
-      branch_content << content_tag(:div, class: "ta-team-item ta-team-dropzone level-#{level}", style: ta_team_item_style(level), data: { team_id: team.id }) do
+      branch_content << content_tag(:div,
+                                   class: "ta-team-item ta-team-dropzone level-#{level}",
+                                   style: ta_team_item_style(level),
+                                   data: { team_id: team.id, team_name: team.name },
+                                   ondragover: 'teamManagementHandleDragOver(event)',
+                                   ondragleave: 'teamManagementHandleDragLeave(event)',
+                                   ondrop: 'teamManagementHandleDrop(event)') do
         left_content = ''.html_safe
         left_content << content_tag(:span, team.name, class: 'ta-team-name')
         member_count = active_member_counts[team.id].to_i
@@ -107,7 +113,17 @@ module TaTeamsHelper
       (membership.lead? ? content_tag(:span, ta_team_lead_icon, class: 'ta-team-member-lead-icon') : ''.html_safe),
       type: 'button',
       class: chip_classes,
-      data: { tooltip_target: tooltip_id, tooltip_placement: 'top' }
+      draggable: 'true',
+      data: {
+        tooltip_target: tooltip_id,
+        tooltip_placement: 'top',
+        membership_id: membership.id,
+        user_id: user.id,
+        user_name: user.name,
+        team_id: team.id,
+        team_name: team.name
+      },
+      ondragstart: 'teamManagementHandleDragStart(event)'
     )
 
     tooltip = content_tag(:div, id: tooltip_id, role: 'tooltip', class: 'ta-team-member-tooltip absolute z-10 invisible opacity-0 tooltip') do
