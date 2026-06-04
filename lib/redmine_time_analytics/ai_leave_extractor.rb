@@ -32,8 +32,7 @@ module RedmineTimeAnalytics
       "casual leave", "medical leave", "sick leave", "study leave",
       "half day leave", "half-day leave", "half day", "leave today",
       "leave tomorrow", "going on leave", "will not be in",
-      "will not be coming", "not coming to office", "absent", "out of office",
-      "cancelled", "canceled", "cancelling", "canceling", "cancel"
+      "will not be coming", "not coming to office", "absent", "out of office"
   
     Holiday intent:
     - "holiday", "on holiday", "will be on holiday", "taking a holiday",
@@ -58,7 +57,7 @@ module RedmineTimeAnalytics
     → STOP HERE.
   
     ██████████████████████████████████████████████████
-    CANCELLATION RULE — NOT A LEAVE
+    CANCELLATION RULE — MOST IMPORTANT RULE
     ██████████████████████████████████████████████████
   
     IF the latest unquoted reply in the thread contains ANY cancellation language:
