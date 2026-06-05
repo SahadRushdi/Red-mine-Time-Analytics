@@ -122,6 +122,9 @@ module RedmineTimeAnalytics
 
       leave_entries = parsed_leave_entries(parsed)
       leave_entries = preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
+      # Skip weekends and public holidays
+      leave_entries.select! { |entry| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(entry[:date]) }
+
       reconcile_thread_entries(parsed, message, sent_at, leave_entries)
       persisted_sync_mode = persisted_sync_mode(mode, parsed.date_source == :ai)
       leave_entries.each do |entry|

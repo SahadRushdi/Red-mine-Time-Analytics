@@ -39,7 +39,7 @@ module RedmineTimeAnalytics
       "public holiday", "long weekend"
   
     Fraction-only intent (treat as leave):
-    - "half day", "half-day", "morning only", "evening only",
+    - "half day", "half-day", "morning only", "evening only", "afternoon",
       "late arrival", "after 12:30", "full day"
   
     IF the email does NOT contain ANY of the above intent words
@@ -50,79 +50,64 @@ module RedmineTimeAnalytics
     WFH / REMOTE WORK RULE — NOT A LEAVE
     ██████████████████████████████████████████████████
   
-    Emails about WFH or remote work are NOT leave requests.
     IF email contains "WFH", "Work from home", "Working remotely", "Remote today",
     "Home today" AND does NOT explicitly say they are taking leave
     → Return EXACTLY: {"status":"not_a_leave","reason":"wfh_is_not_leave","leave_entries":[]}
     → STOP HERE.
   
     ██████████████████████████████████████████████████
-    CANCELLATION RULE — MOST IMPORTANT RULE
+    CANCELLATION RULE
     ██████████████████████████████████████████████████
   
-    IF the latest unquoted reply in the thread contains ANY cancellation language:
+    IF the latest unquoted reply contains cancellation language:
     - "cancelled", "canceled", "cancelling", "canceling"
     - "please note this leave is cancelled"
-    - "will not be taking leave"
-    - "disregard my previous"
-    - "I will be working"
-    - "not taking leave anymore"
-    - "leave is cancelled"
-    - "withdrawing my leave"
+    - "will not be taking leave", "disregard my previous"
+    - "I will be working", "not taking leave anymore"
+    - "leave is cancelled", "withdrawing my leave"
   
     AND there is NO later message after the cancellation that books a new date
-    → Return EXACTLY this and NOTHING ELSE:
+    → Return EXACTLY:
       {"status":"cancelled","reason":"leave_cancelled_by_sender","leave_entries":[]}
-    → leave_entries MUST be empty []. Do NOT include the original date.
-    → Do NOT return the old date. Do NOT return any date at all.
-    → STOP HERE.
-  
-    CRITICAL: "cancelled" status always has leave_entries: []
-    The downstream system uses the empty leave_entries to DELETE the record.
-    If you include dates in leave_entries for a cancelled status you will
-    create incorrect leave records. NEVER include dates when status is cancelled.
+    → leave_entries MUST be empty []. NEVER include dates for a cancelled status.
   
     CANCEL-THEN-REBOOK EXCEPTION:
-    If a cancellation is followed by a NEW leave booking in a LATER message:
-    - The cancellation only cancelled the OLD date.
-    - Return "confirmed" with the NEW date only.
-    - Do NOT return cancelled status.
+    If a cancellation is followed by a NEW leave booking in a LATER message
+    → Return "confirmed" with the NEW date only.
   
     Thread state machine:
-      confirmed → cancelled → (nothing after)      = FINAL: cancelled, leave_entries: []
-      confirmed → cancelled → confirmed (new date)  = FINAL: confirmed, new date only
-      confirmed → shifted   → confirmed (new date)  = FINAL: confirmed, new date only
-  
-    Real cancellation example:
-      Message 1: Subject "On Leave - 01/06/2026"
-                 Body: "Please note the subject due to a personal commitment."
-                 → state = confirmed, 2026-06-01
-  
-      Message 2: Body: "Please note this leave is cancelled."
-                 → FINAL state = cancelled, no replacement
-      CORRECT:   {"status":"cancelled","reason":"leave_cancelled_by_sender","leave_entries":[]}
-      INCORRECT: {"status":"cancelled","leave_entries":[{"date":"2026-06-01","fraction":1.0}]}
-  
-    Real cancel-then-rebook example:
-      Message 1: "Half-day leave this afternoon (06/04/2026)"
-                 → state = half day 06/04/2026
-  
-      Message 2: "I am cancelling my half-day leave. I will be working full day today."
-                 → state = cancelled — DO NOT STOP, keep reading
-  
-      Message 3: "I will be taking that half-day leave this afternoon (07/04/2026)."
-                 → state = NEW half day 07/04/2026
-      CORRECT:   {"status":"confirmed","leave_entries":[{"date":"2026-04-07","fraction":0.5}]}
+      confirmed → cancelled → (nothing after)     = FINAL: cancelled, leave_entries:[]
+      confirmed → cancelled → confirmed (new date) = FINAL: confirmed, new date only
+      confirmed → shifted   → confirmed (new date) = FINAL: confirmed, new date only
   
     ██████████████████████████████████████████████████
     REMINDER EXCEPTION
     ██████████████████████████████████████████████████
   
-    IF the latest unquoted body contains ONLY reminder language with NO new date,
-    NO fraction change, NO shift, NO cancellation, NO addition
-    → Return: {"status":"not_a_leave","reason":"pure_reminder","leave_entries":[]}
+    Check the latest unquoted body ONLY (ignore subject for this check).
   
-    IF the reminder body adds ANY new information → process normally.
+    IF the latest unquoted body contains ONLY reminder language:
+    "Reminder on the previous mail", "Just a reminder",
+    "As mentioned in my previous mail", "Please refer to my previous email",
+    "Please note the subject", "please note $subject", "note the above"
+    AND contains NO new date, NO fraction change, NO shift, NO cancellation
+    → Return EXACTLY:
+      {"status":"not_a_leave","reason":"pure_reminder","leave_entries":[]}
+    → Do NOT extract subject dates. STOP HERE.
+  
+    IF the body adds ANY new information → process normally through steps below.
+  
+    Example — pure reminder, DISCARD:
+      Subject: "Halfday leave(Evening) on 05.03.2026"
+      Reply body: "Reminder on this leave."
+      → RESULT: {"status":"not_a_leave","reason":"pure_reminder","leave_entries":[]}
+  
+    ██████████████████████████████████████████████████
+    CRITICAL THREAD RULE — ALWAYS READ ALL MESSAGES
+    ██████████████████████████████████████████████████
+  
+    NEVER stop at a cancellation if more messages exist after it.
+    ALWAYS read every message to the very last one before deciding final status.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     STEP 1: READ THE FULL THREAD — LATEST REPLY IS TRUTH
@@ -133,73 +118,164 @@ module RedmineTimeAnalytics
     - Track state changes: date shifts, fraction changes, cancellations, additions.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 2: TEMPLATE VARIABLE RESOLUTION
+    STEP 2: FRACTION MAPPING — READ THIS BEFORE EXTRACTING ANY DATE
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Some emails use "$subject" or "$Subject" as a placeholder in the body.
+    Determine fraction FIRST, then extract dates.
   
-    IF body contains "$subject" or "$Subject" or "please note the subject":
-    → Treat the subject line as the leave details source.
-    → Extract dates and leave type directly from the subject line.
-    → Do NOT treat "$subject" as a date or leave entry.
+    Use 0.5 for ANY of these words anywhere in subject or body:
+    - "Half day", "Half-day", "Halfday"
+    - "Morning", "Morning only", "AM only", "First half"
+    - "Evening", "Evening only", "PM only", "Second half", "Afternoon"
+    - "Late arrival", "After 12:30", "Early leave"
+  
+    Use 1.0 for:
+    - "Full day", "Full-day", "Whole day"
+    - "On leave", "Sick leave", "Annual leave", "Study leave"
+    - "Medical leave", "Casual leave"
+    - Unspecified leave type with no time-of-day modifier
+    - When a reply explicitly says "full day" upgrading from half day
+  
+    CRITICAL FRACTION RULES:
+    - "Afternoon" = 0.5. It is a half-day modifier same as "Evening" or "Morning".
+    - "Sick leave - 29/01/25 Afternoon" → fraction is 0.5 not 1.0
+    - "Halfday leave(Evening)" → fraction is 0.5
+    - "Halfday leave(Afternoon)" → fraction is 0.5
+    - Do NOT apply one fraction globally to all dates in a list.
+    - Each date gets its own fraction based on modifiers linked to that specific date.
+    - If a range has no modifier, default all dates to 1.0.
+  
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    STEP 3: TEMPLATE VARIABLE RESOLUTION (INCLUDING TYPOS)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    Treat ALL of these as "please refer to the subject line":
+    - "$subject", "$Subject", "$subejct", "$subect", "$subjcet" ← typo variants
+    - "please note the subject", "please note $subject"
+    - "note the subject", "as per subject", "refer subject"
+  
+    IF body contains any of the above:
+    → Extract dates and leave type from the SUBJECT LINE.
+    → Apply any fraction or shift mentioned in the body to those subject dates.
+  
+    SUBJECT-THEN-REPLY FRACTION UPDATE:
+    If message 1 body references subject and message 2 reply says fraction only with no date:
+    → Keep the subject date, apply the new fraction from reply 2.
   
     Example:
-      Subject: "Study Leave - 2026/01/[26,29,30]"
-      Body:    "Hi all, Please note the $subject due to Final Year Project."
-      ACTION:  Read subject → extract Jan 26, Jan 29, Jan 30 as study leave (1.0 each).
+      Subject: "On leave 20/2/2026"
+      Message 1 body: "please note $subejct"
+      → state = 2026-02-20, fraction 1.0 (full day, unspecified)
+  
+      Message 2 body: "Taking Half day leave"  ← no date, fraction change only
+      → inherit date 2026-02-20 from subject
+      → update fraction to 0.5
+      CORRECT RESULT: [{"date":"2026-02-20","fraction":0.5}]
+      INCORRECT RESULT: [{"date":"2026-02-20","fraction":1.0}]
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 3: BRACKET DATE LIST FORMAT
+    STEP 4: FRACTION-ONLY REPLY RULE
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Bracket lists represent multiple individual dates sharing the same month and year.
-    These are NOT ranges — they are specific individual dates.
+    A reply that contains ONLY a fraction change and NO explicit date
+    is an UPDATE to the existing thread date, not a new leave request.
   
-    Format: YYYY/MM/[d1,d2,d3]
+    Detect a fraction-only reply when:
+    - Body contains fraction words: "half day", "full day", "morning",
+      "afternoon", "evening", "half-day"
+    - Body does NOT contain any explicit date (no DD/MM/YYYY, no month name,
+      no day number with context)
+    - Body does NOT contain shift keywords: "shifted", "moved", "rescheduled"
+    - Body does NOT contain cancellation keywords
+  
+    Action for fraction-only reply:
+    → Take the date(s) from the PREVIOUS message or subject line.
+    → Apply the new fraction from this reply to those dates.
+    → Return confirmed with inherited date and updated fraction.
+  
+    Example (Case 4):
+      Message 1: Subject "On leave 20/2/2026", body "please note $subejct"
+                 → thread date = 2026-02-20, fraction = 1.0
+  
+      Message 2: Body "Taking Half day leave"
+                 → NO explicit date in body
+                 → fraction-only reply detected
+                 → inherit 2026-02-20, apply fraction 0.5
+      CORRECT:   [{"date":"2026-02-20","fraction":0.5}]
+      INCORRECT: [{"date":"2026-02-20","fraction":1.0}]
+  
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    STEP 5: COMMA-SLASH SHARED MONTH DATE LISTS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    When multiple day numbers share a month and year, they appear in these formats.
+    EVERY day number listed must be extracted — never drop the first or any token.
+  
+    FORMAT A — Comma before slash: "21,22/05/2026"
+    The comma separates day numbers sharing the same month/year on the right.
+    - "21,22/05/2026"   → 2026-05-21 AND 2026-05-22
+    - "5,6,7/03/2026"   → 2026-03-05, 2026-03-06, 2026-03-07
+    - "21,22/05"        → 2026-05-21 AND 2026-05-22 (year from sent date)
+  
+    PARSING RULE for FORMAT A:
+    Split everything to the LEFT of the final "/month/year" on commas.
+    Each token is a day number sharing that month and year.
+    "21,22/05/2026" → left of /05/2026 = "21,22" → days [21, 22] → month 05, year 2026
+    → 2026-05-21, 2026-05-22
+  
+    FORMAT B — Comma with ampersand: "20, 28 & 29 of May, 2026"
+    Split ALL tokens on comma, "&", and "and". Every token before the month is a day.
+    - "20, 28 & 29 of May, 2026" → tokens [20, 28, 29] → all May 2026
+    - "20, 21 & 22 May 2026"     → tokens [20, 21, 22] → all May 2026
+    - "5, 6, 7 of March"         → tokens [5, 6, 7]    → all March
+  
+    CRITICAL — DO NOT DROP THE FIRST TOKEN:
+    "20, 28 & 29 of May" → first token is 20 → MUST be included
+    The natural grouping of "28 & 29" must NOT cause 20 to be ignored.
+  
+    Step-by-step for "20, 28 & 29 of May, 2026":
+    1. Identify month: May, year: 2026
+    2. Remove month/year from string: left part = "20, 28 & 29"
+    3. Split on comma, "&", "and": tokens = ["20", "28", "29"]
+    4. Build dates: 2026-05-20, 2026-05-28, 2026-05-29
+    CORRECT:   [20th, 28th, 29th May]
+    INCORRECT: [28th, 29th May only] ← dropping 20 is WRONG
+  
+    FORMAT C — Slash-separated days: "28/29 - May - 2026"
+    When "/" separates two small numbers (both ≤ 31) followed by a month name
+    → treat "/" as "and", not as a date separator.
+    - "28/29 - May - 2026" → 2026-05-28 AND 2026-05-29
+    - "28/29/30 May 2026"  → 2026-05-28, 2026-05-29, 2026-05-30
+  
+    HOW TO DISTINGUISH slash-day-list from a single date:
+    - "22/05/2026" → single date (day/month/year sequence) → 2026-05-22
+    - "21,22/05/2026" → day list (comma before slash) → 2026-05-21, 2026-05-22
+    - "28/29 May" → day list (two small numbers before month name) → 2026-05-28, 2026-05-29
+  
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    STEP 6: BRACKET DATE LIST FORMAT
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     - "2026/01/[26,29,30]" → 2026-01-26, 2026-01-29, 2026-01-30
     - "2026/03/[3,4,5]"    → 2026-03-03, 2026-03-04, 2026-03-05
-  
-    Each date in the bracket list is a separate leave entry.
-    Exclude weekends and public holidays from the expanded list.
-  
-    Example:
-      Subject: "Study Leave - 2026/01/[26,29,30]"
-      RESULT:  [
-                 {"date":"2026-01-26","fraction":1.0},
-                 {"date":"2026-01-29","fraction":1.0},
-                 {"date":"2026-01-30","fraction":1.0}
-               ]
+    Each date is a separate entry. Exclude weekends and public holidays.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 4: REPLY WITH ADDITIONAL INDEPENDENT LEAVE
+    STEP 7: REPLY WITH ADDITIONAL INDEPENDENT LEAVE
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    A reply does not always modify the original leave.
-    Sometimes a reply is a NEW independent leave on a different date.
+    A reply is ONE of three types:
   
-    A) MODIFICATION reply — changes the original leave:
-       Keywords: "shifted", "moved", "cancelled", "updated", "instead",
-                 "changed to", "rescheduled", "also taking"
+    A) MODIFICATION — changes original leave:
+       Has: "shifted", "moved", "cancelled", "updated", "instead",
+            "changed to", "rescheduled", "also taking"
        → Apply modification rules.
   
-    B) NEW INDEPENDENT leave reply — different date, new reason, no modification keywords:
-       → Treat as SEPARATE confirmed leave entry.
-       → Do NOT replace original dates — ADD as additional entry.
+    B) FRACTION-ONLY UPDATE — no new date, only fraction change:
+       Has: fraction word ("half day", "full day", "afternoon", "morning", "evening")
+       Has NO: explicit date, shift keyword, cancellation keyword
+       → Inherit thread date from subject/previous message, apply new fraction.
+       → See Step 4 for full rules.
   
-    Real example:
-      Message 1: Subject "Study Leave - 2026/01/[26,29,30]"
-                 → Entries: 2026-01-26, 2026-01-29, 2026-01-30
-  
-      Message 2: Body "I'm taking study leave today [2026/02/02]"
-                 → New independent leave, ADD 2026-02-02.
-  
-      CORRECT RESULT:
-      [
-        {"date":"2026-01-26","fraction":1.0},
-        {"date":"2026-01-29","fraction":1.0},
-        {"date":"2026-01-30","fraction":1.0},
-        {"date":"2026-02-02","fraction":1.0}
-      ]
+    C) NEW INDEPENDENT leave — different date, new reason, no modification keywords:
+       → ADD as additional entry. Do NOT replace original dates.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 5: DATE SHIFT RULES
+    STEP 8: DATE SHIFT RULES
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     When a date shift occurs:
     - The original date is ABANDONED. Do not include it in output.
@@ -213,17 +289,19 @@ module RedmineTimeAnalytics
       RESULT:   [{"date":"2026-02-06","fraction":1.0}]
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 6: DATE RANGE AND MULTI-DATE RULES
+    STEP 9: DATE RANGE EXPANSION
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Expand ALL date ranges into individual date entries.
   
-    Range formats to handle:
+    All supported formats:
     - "24 & 25/03/2026"            → 2026-03-24, 2026-03-25
+    - "21,22/05/2026"              → 2026-05-21, 2026-05-22
     - "28,29 of May"               → 2026-05-28, 2026-05-29
+    - "20, 28 & 29 of May, 2026"   → 2026-05-20, 2026-05-28, 2026-05-29
     - "27th February to 7th March" → expand all days inclusive
     - "28-30 May"                  → 2026-05-28, 2026-05-29, 2026-05-30
+    - "28/29 - May - 2026"         → 2026-05-28, 2026-05-29
     - "2026/01/[26,29,30]"         → 2026-01-26, 2026-01-29, 2026-01-30
-    - "next 3 days from 10/03"     → 2026-03-10, 2026-03-11, 2026-03-12
   
     CRITICAL — EXCLUDE FROM ALL RANGES AND LISTS:
     - Saturday and Sunday — NEVER include weekends.
@@ -233,38 +311,26 @@ module RedmineTimeAnalytics
       2026-09-16, 2026-10-16, 2026-11-10, 2026-11-14, 2026-12-14, 2026-12-25.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 7: FRACTION MAPPING
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    Use 0.5 for: "Half day", "Morning only", "Evening only", "Late arrival",
-                 "After 12:30", "Half-day", "AM only", "PM only".
-    Use 1.0 for: "Full day", "On leave", "Sick leave", "Annual leave", "Study leave",
-                 "Medical leave", "Casual leave", unspecified leave, or
-                 when a reply explicitly upgrades to full day.
-  
-    - Do NOT apply one fraction globally to all dates.
-    - Each date gets its own fraction based on modifiers closest to that date.
-    - If a range has no modifier, default all dates to 1.0.
-  
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 8: MISSING YEAR RESOLUTION
+    STEP 10: MISSING YEAR RESOLUTION
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     - If year is missing, use the year from the "Sent at" timestamp.
+    - Two digit year: "25" = 2025, "26" = 2026.
     - If resolved date would be >60 days in the past relative to sent date, assume next year.
     - Never guess a year if no sent date available — flag instead.
     - Date format is DD/MM/YYYY (Sri Lanka standard). "01/02/2026" = February 1st.
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 9: AMBIGUOUS — FLAG RULES
+    STEP 11: AMBIGUOUS — FLAG RULES
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Return {"status":"flagged","reason":"<specific_reason>","leave_entries":[]} when:
     - No date found and no relative date resolvable from sent timestamp.
     - "Tomorrow", "today", "next week" with no sent timestamp provided.
     - Conflicting dates with no clear thread resolution.
-    - "Taking leave if the meeting is cancelled" → reason: "conditional_leave_unresolved".
+    - "Taking leave if meeting is cancelled" → reason: "conditional_leave_unresolved".
     - "Might take leave tomorrow" → reason: "uncertain_leave_request".
   
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    STEP 10: OUTPUT FORMAT
+    STEP 12: OUTPUT FORMAT
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     Always return exactly this structure. No other text outside the JSON.
   
@@ -298,19 +364,19 @@ module RedmineTimeAnalytics
     - "Feeling sick, taking half day this morning"  → sent date, fraction 0.5
   
     BODY DATE IN BRACKETS:
-    - "taking study leave today [2026/02/02]" → extract 2026-02-02 as the leave date.
-    - Brackets around a single date = explicit date confirmation, not a range.
+    - "taking study leave today [2026/02/02]" → 2026-02-02, not a range.
   
     MIXED FRACTIONS IN ONE EMAIL:
     - "Half day on 10/03 and full day on 11/03" →
       [{"date":"2026-03-10","fraction":0.5},{"date":"2026-03-11","fraction":1.0}]
   
     TYPOS AND FORMAT VARIATIONS:
-    - "30.1.26", "30/1/2026", "30-01-2026", "Jan 30", "30th Jan" → all = 2026-01-30.
-    - Ambiguous formats in Sri Lankan context → always treat as DD/MM/YYYY.
+    - "30.1.26", "30/1/2026", "30-01-2026", "Jan 30", "30th Jan" → 2026-01-30.
+    - "29/01/25" → 2025-01-29 (two digit year, DD/MM/YY format).
+    - Ambiguous formats in Sri Lankan context → always treat as DD/MM/YYYY or DD/MM/YY.
   
     LEAVE WITH CONDITIONS:
-    - "Taking leave if the meeting is cancelled" → flag: "conditional_leave_unresolved".
+    - "Taking leave if meeting is cancelled" → flag: "conditional_leave_unresolved".
     - "Might take leave tomorrow" → flag: "uncertain_leave_request".
   PROMPT
 
@@ -880,12 +946,14 @@ module RedmineTimeAnalytics
       end
 
       if entries.empty?
-        return extract_dates_from_text(normalized).map do |date|
+        entries = extract_dates_from_text(normalized).map do |date|
           { date: date, fraction: fraction_for_text(normalized) }
         end
       end
 
-      entries.uniq { |entry| entry[:date] }.sort_by { |entry| entry[:date] }
+      entries.uniq! { |entry| entry[:date] }
+      entries.select! { |entry| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(entry[:date]) }
+      entries.sort_by { |entry| entry[:date] }
     end
 
     def expand_range_dates(text, dates)
