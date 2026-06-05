@@ -13,7 +13,8 @@ module RedmineTimeAnalytics
         load_gmail_dependencies!
       end
 
-      def fetch_messages(mode:, recipient_email:, historical_start_date:, historical_end_date:, synced_after:)
+      def fetch_messages(mode:, recipient_email:, historical_start_date:, historical_end_date:, synced_after:, tracker: nil)
+        tracker&.update(message: 'Fetching Emails...', progress: 10)
         query = ["to:#{recipient_email}"]
         if mode.to_s == 'historical'
           query << "after:#{historical_start_date.strftime('%Y/%m/%d')}" if historical_start_date
@@ -32,8 +33,15 @@ module RedmineTimeAnalytics
         end
 
         cutoff = mode.to_s == 'historical' ? [historical_start_date, historical_end_date].compact : synced_after
-        payloads = message_refs.map { |message_ref| build_message_payload(message_ref.id) }.compact
-        payloads.select { |message| within_requested_window?(message[:sent_at], mode, cutoff) }
+        total_refs = message_refs.length
+        payloads = []
+        message_refs.each_with_index do |message_ref, index|
+          if index % 20 == 0
+            tracker&.update(message: "Downloading emails (#{index + 1} of #{total_refs})...", progress: 10 + (index.to_f / total_refs * 10).to_i)
+          end
+          payloads << build_message_payload(message_ref.id)
+        end
+        payloads.compact.select { |message| within_requested_window?(message[:sent_at], mode, cutoff) }
       end
 
       private

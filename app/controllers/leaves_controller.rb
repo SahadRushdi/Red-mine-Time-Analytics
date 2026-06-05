@@ -38,6 +38,8 @@ class LeavesController < ApplicationController
     recipient_email = TaTeamSetting.leave_sync_settings[:recipient_email]
     TaLeaveRecord.transaction do
       (from_date..to_date).each do |date|
+        next unless RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date)
+
         record = TaLeaveRecord.find_or_initialize_by(user_id: user.id, leave_date: date)
         record.assign_attributes(
           leave_fraction: leave_fraction,
@@ -200,6 +202,8 @@ class LeavesController < ApplicationController
     scope = scope.where(status: filters[:status].to_s) if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
 
     records = scope.order(leave_date: :asc, user_id: :asc, source_sent_at: :asc).to_a
+    records.select! { |r| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(r.leave_date) }
+
     grouped_by_date = records.group_by(&:leave_date)
     user_totals = Hash.new(0.0)
     records.each do |record|

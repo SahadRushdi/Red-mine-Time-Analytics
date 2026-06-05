@@ -10,8 +10,9 @@ module RedmineTimeAnalytics
     AI_BATCH_CHUNK_SIZE = 50
     SyncResult = Struct.new(:processed_count, :imported_count, :flagged_count, :errors, keyword_init: true)
 
-    def initialize(settings: TaTeamSetting.leave_sync_settings)
+    def initialize(settings: TaTeamSetting.leave_sync_settings, tracker: nil)
       @settings = settings
+      @tracker = tracker
       @extractor = RedmineTimeAnalytics::HybridLeaveExtractor.new(settings: @settings)
       @fetcher = RedmineTimeAnalytics::LeaveFetcherFactory.build(@settings)
     end
@@ -20,14 +21,18 @@ module RedmineTimeAnalytics
       recipient_email = @settings[:recipient_email]
       raise 'Leave recipient email is required' if recipient_email.blank?
 
+      @tracker&.update(message: 'Connecting to mailbox...', progress: 5)
+
       messages = @fetcher.fetch_messages(
         mode: mode,
         recipient_email: recipient_email,
         historical_start_date: @settings[:historical_sync_start_date],
         historical_end_date: @settings[:historical_sync_end_date],
-        synced_after: (mode.to_s == 'historical' ? nil : @settings[:last_synced_at])
+        synced_after: (mode.to_s == 'historical' ? nil : @settings[:last_synced_at]),
+        tracker: @tracker
       )
 
+      @tracker&.update(message: 'Analyzing emails...', progress: 20)
       result = process_messages!(messages: messages, recipient_email: recipient_email, mode: mode)
 
       TaTeamSetting.update_leave_sync_runtime!(
@@ -35,6 +40,7 @@ module RedmineTimeAnalytics
         last_sync_mode: mode.to_s
       )
 
+      @tracker&.complete(message: "#{mode.to_s.titleize} sync completed! Processed #{result.processed_count} emails.")
       result
     end
 
@@ -55,7 +61,24 @@ module RedmineTimeAnalytics
     def process_messages!(messages:, recipient_email:, mode:)
       result = SyncResult.new(processed_count: 0, imported_count: 0, flagged_count: 0, errors: [])
       sorted = sorted_messages(messages)
+      total_count = sorted.length
+
+      if total_count == 0
+        @tracker&.update(message: 'No new emails found.', progress: 100)
+        return result
+      end
+
+      batch_index = 0
+      total_batches = (total_count.to_f / AI_BATCH_CHUNK_SIZE).ceil
+
       sorted.each_slice(AI_BATCH_CHUNK_SIZE) do |chunk|
+        batch_index += 1
+        progress_base = 20 + ((batch_index - 1).to_f / total_batches * 70).to_i
+        @tracker&.update(
+          message: "Processing batch #{batch_index} of #{total_batches} (#{chunk.length} emails)...",
+          progress: progress_base
+        )
+
         parsed_batch =
           if @extractor.respond_to?(:parse_batch)
             @extractor.parse_batch(
@@ -66,6 +89,9 @@ module RedmineTimeAnalytics
           else
             chunk.map { |message| @extractor.parse(message: message, recipient_email: recipient_email) }
           end
+
+        @tracker&.update(message: "Updating database (batch #{batch_index})...", progress: progress_base + 5)
+
         chunk.each_with_index do |message, index|
           result.processed_count += 1
           handle_message(message, recipient_email, mode, result, parsed: parsed_batch[index])
@@ -96,6 +122,9 @@ module RedmineTimeAnalytics
 
       leave_entries = parsed_leave_entries(parsed)
       leave_entries = preserve_latest_thread_dates_if_needed(parsed, message, sent_at, leave_entries)
+      # Skip weekends and public holidays
+      leave_entries.select! { |entry| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(entry[:date]) }
+
       reconcile_thread_entries(parsed, message, sent_at, leave_entries)
       persisted_sync_mode = persisted_sync_mode(mode, parsed.date_source == :ai)
       leave_entries.each do |entry|

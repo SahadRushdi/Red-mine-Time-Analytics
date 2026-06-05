@@ -10,8 +10,14 @@ require File.expand_path('lib/redmine_time_analytics/leave_providers/gmail_dwd_p
 require File.expand_path('lib/redmine_time_analytics/leave_providers/google_apps_script_provider', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_fetcher_factory', __dir__)
 require File.expand_path('lib/redmine_time_analytics/gmail_leave_fetcher', __dir__)
+require File.expand_path('lib/redmine_time_analytics/sync_tracker', __dir__)
+require File.expand_path('app/jobs/redmine_time_analytics/leave_sync_job', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_sync_service', __dir__)
 require File.expand_path('lib/redmine_time_analytics/leave_sync_scheduler', __dir__)
+require File.expand_path('lib/redmine_time_analytics/missing_time_email_template', __dir__)
+require File.expand_path('lib/redmine_time_analytics/missing_time_notification_service', __dir__)
+require File.expand_path('lib/redmine_time_analytics/missing_time_scheduler', __dir__)
+require File.expand_path('app/mailers/missing_time_mailer', __dir__)
 
 Redmine::Plugin.register :redmine_time_analytics do
   name 'Redmine Time Analytics Plugin'
@@ -64,5 +70,6 @@ Redmine::Plugin.register :redmine_time_analytics do
 
   Rails.application.config.after_initialize do
     RedmineTimeAnalytics::LeaveSyncScheduler.start
+    RedmineTimeAnalytics::MissingTimeScheduler.start
   end
 end
