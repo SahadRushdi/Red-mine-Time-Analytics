@@ -1011,17 +1011,10 @@ var timeAnalyticsChart = null;
 var timespanFormat = '<%= Setting.timespan_format %>';
 
 function formatHours(hours) {
-  if (!hours || hours === 0) {
-    return timespanFormat === 'minutes' ? '0:00' : '0.00';
-  }
-  
-  if (timespanFormat === 'minutes') {
-    var h = Math.floor(hours);
-    var m = Math.round((hours - h) * 60);
-    return h + ':' + (m < 10 ? '0' : '') + m;
-  } else {
-    return hours.toFixed(2);
-  }
+  var value = parseFloat(hours || 0);
+  var h = Math.floor(value);
+  var m = Math.round((value - h) * 60);
+  return h + ':' + (m < 10 ? '0' : '') + m;
 }
 
 var emptyChartMessage = '<%= j(l(:label_no_chart_data_for_range, range: date_range_label)) %>';

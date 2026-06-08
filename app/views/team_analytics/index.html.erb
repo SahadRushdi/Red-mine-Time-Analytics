@@ -1219,14 +1219,9 @@
 
   function formatTeamHours(hours) {
     var value = parseFloat(hours || 0);
-    var timespanFormat = '<%= Setting.timespan_format %>';
-
-    if (timespanFormat === 'minutes') {
-      var h = Math.floor(value);
-      var m = Math.round((value - h) * 60);
-      return h + ':' + (m < 10 ? '0' : '') + m;
-    }
-    return value.toFixed(2);
+    var h = Math.floor(value);
+    var m = Math.round((value - h) * 60);
+    return h + ':' + (m < 10 ? '0' : '') + m;
   }
 
   function initTeamDonutChart() {
@@ -1603,7 +1598,7 @@
         tableBody.innerHTML = data.members.map(member => `
           <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
             <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
-            <td class="px-6 py-4 text-right text-gray-900 font-mono">${(member.hours || 0).toFixed(2)}h</td>
+            <td class="px-6 py-4 text-right text-gray-900 font-mono">${formatTeamHours(member.hours)}</td>
             <td class="px-6 py-4 text-right text-gray-900">${parseFloat(member.leave_days || 0).toFixed(1)} days</td>
           </tr>
         `).join('');

@@ -12,6 +12,8 @@ class TaTeamSetting < ActiveRecord::Base
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
   DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
+  DEFAULT_MISSING_TIME_CRON = '0 * * * 2-6'
+  DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
 
   # Associations
   belongs_to :user
@@ -51,6 +53,13 @@ class TaTeamSetting < ActiveRecord::Base
   # @return [Array<Integer>]
   def self.excluded_user_ids_for_range(from_date, to_date)
     exclusions_overlapping(from_date, to_date).distinct.pluck(:user_id)
+  end
+
+  # Get array of user IDs excluded on a single date
+  # @param date [Date]
+  # @return [Array<Integer>]
+  def self.excluded_user_ids_for_date(date)
+    excluded_user_ids_for_range(date, date)
   end
 
   # SQL fragment that excludes a time entry row when its spent_on date falls in an exclusion window.
@@ -206,8 +215,77 @@ class TaTeamSetting < ActiveRecord::Base
       ai_api_key: decrypt_value(ai_api_key_raw),
       last_synced_at: parse_time_setting(raw['leave_sync_last_synced_at']),
       last_sync_mode: raw['leave_sync_last_mode'].to_s,
-      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
+      cron: raw['leave_sync_cron'].to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON,
+      freq_type: raw['leave_sync_freq_type'].to_s.presence || 'interval',
+      interval_value: raw['leave_sync_interval_value'].to_s.presence || '10',
+      interval_unit: raw['leave_sync_interval_unit'].to_s.presence || 'minutes',
+      daily_time: raw['leave_sync_daily_time'].to_s.presence || '09:00',
+      daily_days: (raw['leave_sync_daily_days'].to_s.split(',').presence || %w[1 2 3 4 5])
     }
+  end
+
+  def self.generate_cron_from_ui(params)
+    freq_type = params[:leave_sync_freq_type]
+    if freq_type == 'interval'
+      val = params[:leave_sync_interval_value].to_i
+      unit = params[:leave_sync_interval_unit]
+      case unit
+      when 'minutes' then "*/#{val} * * * *"
+      when 'hours'   then "0 */#{val} * * *"
+      when 'days'    then "0 0 */#{val} * *"
+      else DEFAULT_LEAVE_SYNC_CRON
+      end
+    elsif freq_type == 'daily'
+      time = params[:leave_sync_daily_time].to_s # HH:MM
+      days = Array(params[:leave_sync_daily_days]).reject(&:blank?).join(',')
+      days = '*' if days.blank?
+      hour, min = time.split(':')
+      "#{min.to_i} #{hour.to_i} * * #{days} Asia/Kolkata"
+    else
+      params[:leave_sync_cron].presence || DEFAULT_LEAVE_SYNC_CRON
+    end
+  end
+
+  def self.missing_time_settings
+    raw = Setting.plugin_redmine_time_analytics || {}
+    enabled_setting = raw.key?('missing_time_enabled') ? raw['missing_time_enabled'].to_s : '1'
+    recipients_raw = raw['missing_time_recipients'].to_s.strip
+    {
+      enabled: enabled_setting == '1',
+      cron: raw['missing_time_cron'].to_s.strip.presence || DEFAULT_MISSING_TIME_CRON,
+      recipients: parse_recipient_list(recipients_raw.presence || 'sahad@entgra.io'),
+      from_name: raw['missing_time_from_name'].to_s.strip.presence || 'Time Analytics System',
+      timezone: raw['missing_time_timezone'].to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
+    }
+  end
+
+  def self.update_missing_time_settings!(enabled:, recipients:, cron:, from_name: nil, timezone: nil)
+    normalized_recipients = parse_recipient_list(recipients)
+    raise ArgumentError, 'Missing time recipients are required' if normalized_recipients.empty?
+
+    normalized_recipients.each do |email|
+      next if email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+
+      raise ArgumentError, "Invalid recipient email: #{email}"
+    end
+
+    cron_expression = cron.to_s.strip.presence || DEFAULT_MISSING_TIME_CRON
+    validate_missing_time_cron!(cron_expression)
+
+    normalized_timezone = timezone.to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
+    raise ArgumentError, 'Missing time timezone is required' if normalized_timezone.blank?
+
+    settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    settings['missing_time_enabled'] = enabled.to_s == '1' ? '1' : '0'
+    settings['missing_time_cron'] = cron_expression
+    settings['missing_time_recipients'] = normalized_recipients.join(', ')
+    settings['missing_time_from_name'] = from_name.to_s.strip
+    settings['missing_time_timezone'] = normalized_timezone
+    Setting.plugin_redmine_time_analytics = settings
+
+    if defined?(RedmineTimeAnalytics::MissingTimeScheduler)
+      RedmineTimeAnalytics::MissingTimeScheduler.refresh!
+    end
   end
 
   def self.default_leave_sync_cron
@@ -224,6 +302,11 @@ class TaTeamSetting < ActiveRecord::Base
     oauth_client_secret: nil,
     oauth_account_email: nil,
     leave_sync_cron: nil,
+    leave_sync_freq_type: nil,
+    leave_sync_interval_value: nil,
+    leave_sync_interval_unit: nil,
+    leave_sync_daily_time: nil,
+    leave_sync_daily_days: nil,
     ai_extraction_enabled: nil,
     ai_provider: 'google',
     ai_model: nil,
@@ -262,8 +345,18 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_start_date'] = historical_sync_start_date.to_s
     settings['leave_sync_end_date'] = historical_sync_end_date.to_s
     settings['leave_sync_approach'] = 'oauth'
+    
     cron_expression = leave_sync_cron.to_s.strip.presence || DEFAULT_LEAVE_SYNC_CRON
     settings['leave_sync_cron'] = cron_expression
+    
+    settings['leave_sync_freq_type'] = leave_sync_freq_type.to_s if leave_sync_freq_type.present?
+    settings['leave_sync_interval_value'] = leave_sync_interval_value.to_s if leave_sync_interval_value.present?
+    settings['leave_sync_interval_unit'] = leave_sync_interval_unit.to_s if leave_sync_interval_unit.present?
+    settings['leave_sync_daily_time'] = leave_sync_daily_time.to_s if leave_sync_daily_time.present?
+    if leave_sync_daily_days.present?
+      settings['leave_sync_daily_days'] = Array(leave_sync_daily_days).reject(&:blank?).join(',')
+    end
+
     settings['leave_ai_extraction_enabled'] = (ai_extraction_enabled.to_s == '1' || ai_extraction_enabled == true) ? '1' : '0'
     settings['leave_ai_provider'] = 'google'
     settings['leave_ai_model'] = ai_model.to_s.strip
@@ -403,6 +496,23 @@ class TaTeamSetting < ActiveRecord::Base
     Fugit::Cron.parse(cron)
   rescue StandardError
     raise ArgumentError, 'Leave sync cron expression is invalid'
+  end
+
+  def self.validate_missing_time_cron!(cron)
+    cron_expression = cron.to_s.strip
+    raise ArgumentError, 'Missing time cron expression is required' if cron_expression.blank?
+
+    Fugit::Cron.parse(cron_expression)
+  rescue StandardError
+    raise ArgumentError, 'Missing time cron expression is invalid'
+  end
+
+  def self.parse_recipient_list(value)
+    Array(value)
+      .flat_map { |entry| entry.to_s.split(/[;,]/) }
+      .map(&:strip)
+      .reject(&:blank?)
+      .uniq
   end
 
   # Check if this setting is for exclusion

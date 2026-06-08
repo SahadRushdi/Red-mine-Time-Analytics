@@ -34,6 +34,8 @@ class AdminLeaveCountController < ApplicationController
                  sync_params[:leave_ai_api_key].present? ||
                  (settings[:ai_api_key].present? && sync_params[:leave_ai_extraction_enabled] != '0')
 
+    cron_expression = TaTeamSetting.generate_cron_from_ui(sync_params)
+
     TaTeamSetting.update_leave_sync_settings!(
       enabled: sync_params[:leave_sync_enabled],
       recipient_email: sync_params[:leave_sync_recipient_email],
@@ -43,7 +45,12 @@ class AdminLeaveCountController < ApplicationController
       oauth_client_id: sync_params[:leave_oauth_client_id],
       oauth_client_secret: sync_params[:leave_oauth_client_secret],
       oauth_account_email: sync_params[:leave_oauth_account_email],
-      leave_sync_cron: sync_params[:leave_sync_cron],
+      leave_sync_cron: cron_expression,
+      leave_sync_freq_type: sync_params[:leave_sync_freq_type],
+      leave_sync_interval_value: sync_params[:leave_sync_interval_value],
+      leave_sync_interval_unit: sync_params[:leave_sync_interval_unit],
+      leave_sync_daily_time: sync_params[:leave_sync_daily_time],
+      leave_sync_daily_days: sync_params[:leave_sync_daily_days],
       ai_extraction_enabled: ai_enabled,
       ai_provider: 'google',
       ai_model: sync_params[:leave_ai_model],
@@ -59,22 +66,24 @@ class AdminLeaveCountController < ApplicationController
 
   def sync_leave_inbox
     sync_mode = params[:sync_mode].to_s == 'historical' ? :historical : :incremental
-    settings = TaTeamSetting.leave_sync_settings
-    result = RedmineTimeAnalytics::LeaveSyncService.new(settings: settings).sync!(mode: sync_mode)
+    sync_id = SecureRandom.hex(8)
+    
+    # Start sync in background using Sucker Punch
+    RedmineTimeAnalytics::LeaveSyncJob.perform_async(sync_mode, sync_id)
 
-    if result.errors.any?
-      unique_errors = result.errors.uniq
-      Rails.logger.warn(
-        "[LeaveSync] completed with #{result.errors.length} errors (#{unique_errors.length} unique): #{unique_errors.first(10).join(' | ')}"
-      )
-      flash[:error] = "Leave sync finished with errors (#{result.errors.length} total). See log for details."
-    else
-      flash[:notice] = "Leave sync completed (Processed messages: #{result.processed_count}, Imported messages: #{result.imported_count}, Flagged messages: #{result.flagged_count})"
-    end
-  rescue StandardError => e
-    flash[:error] = "Leave sync failed: #{e.message}"
-  ensure
-    redirect_to admin_leave_count_path
+    message = if sync_mode == :historical
+                "Historical sync started."
+              else
+                "Incremental sync started. This should complete shortly."
+              end
+
+    render json: { sync_id: sync_id, message: message }
+  end
+
+  def sync_status
+    sync_id = params[:sync_id]
+    progress = RedmineTimeAnalytics::SyncTracker.get(sync_id) || { status: 'starting', message: 'Initializing...', progress: 0 }
+    render json: progress
   end
 
   def oauth_start
@@ -153,9 +162,14 @@ class AdminLeaveCountController < ApplicationController
       :leave_oauth_client_secret,
       :leave_oauth_account_email,
       :leave_sync_cron,
+      :leave_sync_freq_type,
+      :leave_sync_interval_value,
+      :leave_sync_interval_unit,
+      :leave_sync_daily_time,
       :leave_ai_extraction_enabled,
       :leave_ai_model,
-      :leave_ai_api_key
+      :leave_ai_api_key,
+      leave_sync_daily_days: []
     )
   end
 
