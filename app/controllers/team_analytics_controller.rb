@@ -1169,13 +1169,7 @@ class TeamAnalyticsController < ApplicationController
         responsive: true,
         maintainAspectRatio: false,
         legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-            fontSize: 12
-          }
+          display: false
         },
         tooltips: {
           mode: 'index',

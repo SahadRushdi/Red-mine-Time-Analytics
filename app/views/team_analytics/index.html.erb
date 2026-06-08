@@ -712,6 +712,7 @@
                   data-chart='<%= @chart_data %>' 
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
+        <div id="team-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
       </div>
     <% else %>
       <div id="chart-container" style="display: block;">
@@ -1405,9 +1406,68 @@
       teamChart = new Chart(chartElement, config);
       console.log('Chart created successfully');
       
+      // Render custom legend for bar charts (Stacked views)
+      if (config.type === 'bar') {
+        renderCustomTeamLegend(teamChart);
+      }
+      
     } catch (error) {
       console.error('Error creating chart:', error);
     }
+  }
+
+  function renderCustomTeamLegend(chart) {
+    var legendContainer = document.getElementById('team-chart-legend');
+    if (!legendContainer || !chart || !chart.data || !chart.data.datasets) return;
+
+    legendContainer.innerHTML = '';
+    var list = document.createElement('div');
+    list.className = 'flex flex-wrap gap-x-4 gap-y-2 justify-start';
+
+    chart.data.datasets.forEach(function(dataset, index) {
+      var item = document.createElement('div');
+      item.className = 'flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-200 group';
+      item.style.border = '1px solid transparent';
+      item.style.flex = '1 0 30%'; // Target ~3 items per row if space allows
+      item.style.minWidth = '140px'; // Prevent getting too squashed
+      
+      var colorBox = document.createElement('div');
+      colorBox.className = 'w-3 h-3 rounded-sm flex-shrink-0 transition-opacity';
+      colorBox.style.backgroundColor = dataset.backgroundColor;
+      
+      var label = document.createElement('span');
+      label.className = 'text-[12px] font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors';
+      label.textContent = dataset.label;
+      
+      item.appendChild(colorBox);
+      item.appendChild(label);
+
+      // Add click handler to toggle visibility
+      item.onclick = function() {
+        var meta = chart.getDatasetMeta(index);
+        meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+        
+        if (meta.hidden) {
+          item.classList.add('opacity-40');
+          label.classList.add('line-through');
+        } else {
+          item.classList.remove('opacity-40');
+          label.classList.remove('line-through');
+        }
+        
+        chart.update();
+      };
+
+      // Initial state
+      if (chart.getDatasetMeta(index).hidden) {
+        item.classList.add('opacity-40');
+        label.classList.add('line-through');
+      }
+
+      list.appendChild(item);
+    });
+
+    legendContainer.appendChild(list);
   }
 
   var TEAM_VIEW_CONFIG = {
