@@ -810,8 +810,8 @@
       <%# Summary View: Simple Activity Table (Hidden by default) %>
       <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
         <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-          <button type="button" id="sort-hours-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
           <button type="button" id="sort-name-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
         </div>
         <div class="space-y-6 px-2">
           <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
@@ -951,8 +951,8 @@
       <%# Summary View: Simple Project Table (Hidden by default) %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
         <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-          <button type="button" id="sort-hours-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
           <button type="button" id="sort-name-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
         </div>
         <div class="space-y-6 px-2">
           <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
@@ -1094,8 +1094,8 @@
       <%# Summary View: Simple Member Table (Hidden by default) %>
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
         <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-          <button type="button" id="sort-hours-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
           <button type="button" id="sort-name-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
         </div>
         <div class="space-y-6 px-2">
           <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
