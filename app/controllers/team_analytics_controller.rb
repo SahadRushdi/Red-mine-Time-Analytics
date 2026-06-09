@@ -1087,24 +1087,23 @@ class TeamAnalyticsController < ApplicationController
       matrix_data[period][member_name] += entry[:hours]
     end
     
-    # Calculate member totals first (using member name)
+    # Calculate member totals via SQL SUM to avoid accumulated float errors.
+    # reorder(nil) strips any ORDER BY from the scope so MySQL ONLY_FULL_GROUP_BY is satisfied.
+    sql_user_totals = time_entries.reorder(nil).group(:user_id).sum(:hours)
     member_totals = {}
     members_unsorted.each do |member_data|
-      member_name = member_data[:name]
-      member_totals[member_name] = periods.sum { |period| matrix_data[period][member_name] || 0 }
+      member_totals[member_data[:name]] = sql_user_totals[member_data[:id]] || 0
     end
-    
+
     # Sort members by total hours descending (largest to smallest)
     members = members_unsorted.sort_by { |member_data| -member_totals[member_data[:name]] }
-    
+
     # Calculate period totals and grand total
     period_totals = {}
-    grand_total = 0
-    
     periods.each do |period|
       period_totals[period] = members.sum { |member_data| matrix_data[period][member_data[:name]] || 0 }
-      grand_total += period_totals[period]
     end
+    grand_total = time_entries.reorder(nil).sum(:hours)
     
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
