@@ -565,12 +565,12 @@
                 </div>
               </div>
 
-              <div class="space-y-4">
+              <div class="space-y-3">
                 <label class="relative flex cursor-pointer rounded-xl border border-gray-200 p-4 transition-all hover:bg-gray-50 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
                   <input type="radio" name="ta_move_mode" value="move" checked class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
                   <div class="ml-3">
                     <span class="block text-sm font-bold text-gray-900">Remove and Move</span>
-                    <span class="mt-1 block text-xs text-gray-500">Deletes the user from the current team and adds them to the new team.</span>
+                    <span class="mt-1 block text-xs text-gray-500">Deletes from current team and adds to new team. Start date defaults to previous start date.</span>
                   </div>
                 </label>
 
@@ -578,9 +578,22 @@
                   <input type="radio" name="ta_move_mode" value="inactivate_and_add" class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
                   <div class="ml-3">
                     <span class="block text-sm font-bold text-gray-900">Inactivate and Move</span>
-                    <span class="mt-1 block text-xs text-gray-500">Sets the current date as the end date for the current team and starts a new membership in the target team.</span>
+                    <span class="mt-1 block text-xs text-gray-500">Keeps history in current team (with end date) and starts new membership. Defaults to today.</span>
                   </div>
                 </label>
+              </div>
+
+              <div class="mt-4 border-t border-gray-100 pt-4">
+                <label for="ta-move-start-date" class="mb-1.5 block text-sm font-medium text-gray-700">Start date in new team</label>
+                <input type="text"
+                       id="ta-move-start-date"
+                       autocomplete="off"
+                       placeholder="mm/dd/yyyy"
+                       datepicker
+                       datepicker-format="mm/dd/yyyy"
+                       datepicker-autohide
+                       class="ta-team-field ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-0 !text-sm !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <p id="ta-move-date-hint" class="mt-1.5 text-xs text-gray-500"></p>
               </div>
             </div>
             <div class="flex items-center justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-xl">
@@ -766,7 +779,7 @@
   }
 
   function initTeamMemberInlineDatepickers(membershipId) {
-    var row = document.querySelector('[data-membership-id="' + membershipId + '"]');
+    var row = document.querySelector('.ta-member-history-group-row[data-membership-id="' + membershipId + '"]');
     var input = document.getElementById('ta-team-member-start-date-' + membershipId);
     if (!input) return;
     var orientation = teamHistoryDatepickerOrientationForRow(row);
@@ -784,7 +797,7 @@
   }
 
   function toggleTeamMemberInlineEdit(membershipId) {
-    var row = document.querySelector('[data-membership-id="' + membershipId + '"]');
+    var row = document.querySelector('.ta-member-history-group-row[data-membership-id="' + membershipId + '"]');
     if (!row) return;
     var shouldOpen = !row.classList.contains('is-editing');
     document.querySelectorAll('.ta-member-history-group-row.is-editing').forEach(function(editRow) {
@@ -1053,7 +1066,8 @@
     userName: null,
     sourceTeamId: null,
     targetTeamId: null,
-    targetTeamName: null
+    targetTeamName: null,
+    memberStartDate: null
   };
 
   function teamManagementHandleDragStart(event) {
@@ -1062,7 +1076,8 @@
       membershipId: target.dataset.membershipId,
       userId: target.dataset.userId,
       userName: target.dataset.userName,
-      teamId: target.dataset.teamId
+      teamId: target.dataset.teamId,
+      startDate: target.dataset.startDate || ''
     };
     event.dataTransfer.setData('application/json', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'move';
@@ -1113,10 +1128,65 @@
       userName: data.userName,
       sourceTeamId: data.teamId,
       targetTeamId: targetTeamId,
-      targetTeamName: targetTeamName
+      targetTeamName: targetTeamName,
+      memberStartDate: data.startDate || ''
     };
 
     teamManagementOpenMoveModal();
+  }
+
+  function teamManagementGetTodayFormatted() {
+    var today = new Date();
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var dd = String(today.getDate()).padStart(2, '0');
+    var yyyy = today.getFullYear();
+    return mm + '/' + dd + '/' + yyyy;
+  }
+
+  function teamManagementUpdateMoveDateDefault() {
+    var checked = document.querySelector('input[name="ta_move_mode"]:checked');
+    var moveMode = checked ? checked.value : 'move';
+    var dateInput = document.getElementById('ta-move-start-date');
+    var hint = document.getElementById('ta-move-date-hint');
+    if (!dateInput) return;
+
+    var newDate;
+    if (moveMode === 'move') {
+      newDate = teamManagementMoveState.memberStartDate || teamManagementGetTodayFormatted();
+      if (hint) hint.textContent = 'Defaults to the member\'s previous start date. Change if needed.';
+    } else {
+      newDate = teamManagementGetTodayFormatted();
+      if (hint) hint.textContent = 'This date will also be set as the end date for the current team.';
+    }
+
+    dateInput.value = newDate;
+    if (dateInput.datepicker && dateInput.datepicker.setDate) {
+      try { dateInput.datepicker.setDate(newDate); } catch (e) {}
+    }
+  }
+
+  function teamManagementInitMoveDatepicker() {
+    var dateInput = document.getElementById('ta-move-start-date');
+    if (!dateInput) return;
+    if (dateInput.datepicker && dateInput.datepicker.setOptions) {
+      dateInput.datepicker.setOptions({ format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+      return;
+    }
+    if (window.Datepicker) {
+      new window.Datepicker(dateInput, { format: 'mm/dd/yyyy', autohide: true, orientation: 'top auto' });
+    }
+    if (!dateInput.dataset.moveDatepickerLayerBound) {
+      ['focus', 'click'].forEach(function(eventName) {
+        dateInput.addEventListener(eventName, function() {
+          setTimeout(function() {
+            document.querySelectorAll('.datepicker, .datepicker-dropdown, .datepicker-picker').forEach(function(el) {
+              el.style.zIndex = '12000';
+            });
+          }, 0);
+        });
+      });
+      dateInput.dataset.moveDatepickerLayerBound = '1';
+    }
   }
 
   function teamManagementOpenMoveModal() {
@@ -1125,6 +1195,13 @@
 
     document.getElementById('ta-move-member-name').textContent = teamManagementMoveState.userName;
     document.getElementById('ta-move-target-team-name').textContent = teamManagementMoveState.targetTeamName;
+
+    // Reset to default mode (Remove and Move)
+    var defaultRadio = modal.querySelector('input[name="ta_move_mode"][value="move"]');
+    if (defaultRadio) defaultRadio.checked = true;
+
+    teamManagementUpdateMoveDateDefault();
+    teamManagementInitMoveDatepicker();
 
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -1151,10 +1228,13 @@
     var targetTeamId = teamManagementMoveState.targetTeamId;
     var sourceTeamId = teamManagementMoveState.sourceTeamId;
 
+    var dateInput = document.getElementById('ta-move-start-date');
+    var startDate = dateInput ? normalizeTeamMemberDate(dateInput.value.trim()) : '';
+
     var form = document.createElement('form');
     form.method = 'POST';
     form.action = '/admin/ta_teams/' + sourceTeamId + '/memberships/' + membershipId + '/move';
-    
+
     var tokenInput = document.createElement('input');
     tokenInput.type = 'hidden';
     tokenInput.name = 'authenticity_token';
@@ -1172,6 +1252,14 @@
     moveModeInput.name = 'move_mode';
     moveModeInput.value = moveMode;
     form.appendChild(moveModeInput);
+
+    if (startDate) {
+      var startDateInput = document.createElement('input');
+      startDateInput.type = 'hidden';
+      startDateInput.name = 'start_date';
+      startDateInput.value = startDate;
+      form.appendChild(startDateInput);
+    }
 
     document.body.appendChild(form);
     form.submit();
@@ -2172,6 +2260,9 @@
     setupTeamMemberToggles();
     setupTeamSplitLayout();
     initTeamMemberAddDatepickers();
+    document.querySelectorAll('input[name="ta_move_mode"]').forEach(function(radio) {
+      radio.addEventListener('change', teamManagementUpdateMoveDateDefault);
+    });
     applyTeamHistoryPagination('vacancy', false);
     applyTeamHistoryPagination('member', true);
     switchTeamMainTab('<%= @active_main_tab == 'members' ? 'team-main-panel-members' : 'team-main-panel-structure' %>');
