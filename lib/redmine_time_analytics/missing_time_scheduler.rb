@@ -63,6 +63,7 @@ module RedmineTimeAnalytics
 
         settings = TaTeamSetting.missing_time_settings
         return unless settings[:enabled]
+        return if settings[:cron].blank?
 
         @job = @scheduler.cron settings[:cron] do
           run_notification!

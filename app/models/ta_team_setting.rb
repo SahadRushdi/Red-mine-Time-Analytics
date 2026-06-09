@@ -12,7 +12,6 @@ class TaTeamSetting < ActiveRecord::Base
   LEAVE_APPROACHES = %w[oauth].freeze
   AI_PROVIDERS = %w[google].freeze
   DEFAULT_LEAVE_SYNC_CRON = '*/10 * * * *'
-  DEFAULT_MISSING_TIME_CRON = '0 * * * 2-6'
   DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
 
   # Associations
@@ -201,7 +200,7 @@ class TaTeamSetting < ActiveRecord::Base
 
     {
       enabled: raw['leave_sync_enabled'].to_s == '1',
-      recipient_email: raw['leave_sync_recipient_email'].to_s.strip.presence || 'vacation-group@entgra.io',
+      recipient_email: raw['leave_sync_recipient_email'].to_s.strip,
       historical_sync_start_date: parse_date_setting(raw['leave_sync_start_date']),
       historical_sync_end_date: parse_date_setting(raw['leave_sync_end_date']),
       leave_approach: approach,
@@ -252,8 +251,8 @@ class TaTeamSetting < ActiveRecord::Base
     recipients_raw = raw['missing_time_recipients'].to_s.strip
     {
       enabled: enabled_setting == '1',
-      cron: raw['missing_time_cron'].to_s.strip.presence || DEFAULT_MISSING_TIME_CRON,
-      recipients: parse_recipient_list(recipients_raw.presence || 'sahad@entgra.io'),
+      cron: raw['missing_time_cron'].to_s.strip,
+      recipients: parse_recipient_list(recipients_raw),
       from_name: raw['missing_time_from_name'].to_s.strip.presence || 'Time Analytics System',
       timezone: raw['missing_time_timezone'].to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
     }
@@ -269,7 +268,7 @@ class TaTeamSetting < ActiveRecord::Base
       raise ArgumentError, "Invalid recipient email: #{email}"
     end
 
-    cron_expression = cron.to_s.strip.presence || DEFAULT_MISSING_TIME_CRON
+    cron_expression = cron.to_s.strip
     validate_missing_time_cron!(cron_expression)
 
     normalized_timezone = timezone.to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE

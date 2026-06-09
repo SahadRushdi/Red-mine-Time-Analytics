@@ -424,8 +424,9 @@
           return;
         }
 
-        var targetUrl = new URL(teamDashboardBaseUrl, window.location.origin);
+        var targetUrl = new URL(window.location.href);
         targetUrl.searchParams.set('team_id', teamId);
+        targetUrl.searchParams.delete('page');
         window.location.assign(targetUrl.toString());
         return;
       }
@@ -712,6 +713,7 @@
                   data-chart='<%= @chart_data %>' 
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
+        <div id="team-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
       </div>
     <% else %>
       <div id="chart-container" style="display: block;">
@@ -807,11 +809,15 @@
       
       <%# Summary View: Simple Activity Table (Hidden by default) %>
       <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="flex items-center gap-2 px-2 pt-3 pb-0">
+          <button type="button" id="sort-name-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+        </div>
         <div class="space-y-6 px-2">
           <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
               <div class="flex items-center justify-between mb-2 gap-3">
                 <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                 <div class="flex items-center gap-3">
@@ -944,11 +950,15 @@
       
       <%# Summary View: Simple Project Table (Hidden by default) %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="flex items-center gap-2 px-2 pt-3 pb-0">
+          <button type="button" id="sort-name-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+        </div>
         <div class="space-y-6 px-2">
           <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
               <div class="flex items-center justify-between mb-2 gap-3">
                 <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                 <div class="flex items-center gap-3">
@@ -1083,12 +1093,16 @@
       
       <%# Summary View: Simple Member Table (Hidden by default) %>
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
+        <div class="flex items-center gap-2 px-2 pt-3 pb-0">
+          <button type="button" id="sort-name-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+          <button type="button" id="sort-hours-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+        </div>
         <div class="space-y-6 px-2">
           <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
             <% member = @members.find { |m| m[:name] == member_name } %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(member_name) %>">
               <div class="flex items-center justify-between mb-2 gap-3">
                 <h3 class="text-base font-medium text-gray-900">
                   <% if member %>
@@ -1405,9 +1419,68 @@
       teamChart = new Chart(chartElement, config);
       console.log('Chart created successfully');
       
+      // Render custom legend for bar charts (Stacked views)
+      if (config.type === 'bar') {
+        renderCustomTeamLegend(teamChart);
+      }
+      
     } catch (error) {
       console.error('Error creating chart:', error);
     }
+  }
+
+  function renderCustomTeamLegend(chart) {
+    var legendContainer = document.getElementById('team-chart-legend');
+    if (!legendContainer || !chart || !chart.data || !chart.data.datasets) return;
+
+    legendContainer.innerHTML = '';
+    var list = document.createElement('div');
+    list.className = 'flex flex-wrap gap-x-4 gap-y-2 justify-start';
+
+    chart.data.datasets.forEach(function(dataset, index) {
+      var item = document.createElement('div');
+      item.className = 'flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-200 group';
+      item.style.border = '1px solid transparent';
+      item.style.flex = '1 0 30%'; // Target ~3 items per row if space allows
+      item.style.minWidth = '140px'; // Prevent getting too squashed
+      
+      var colorBox = document.createElement('div');
+      colorBox.className = 'w-3 h-3 rounded-sm flex-shrink-0 transition-opacity';
+      colorBox.style.backgroundColor = dataset.backgroundColor;
+      
+      var label = document.createElement('span');
+      label.className = 'text-[12px] font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors';
+      label.textContent = dataset.label;
+      
+      item.appendChild(colorBox);
+      item.appendChild(label);
+
+      // Add click handler to toggle visibility
+      item.onclick = function() {
+        var meta = chart.getDatasetMeta(index);
+        meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+        
+        if (meta.hidden) {
+          item.classList.add('opacity-40');
+          label.classList.add('line-through');
+        } else {
+          item.classList.remove('opacity-40');
+          label.classList.remove('line-through');
+        }
+        
+        chart.update();
+      };
+
+      // Initial state
+      if (chart.getDatasetMeta(index).hidden) {
+        item.classList.add('opacity-40');
+        label.classList.add('line-through');
+      }
+
+      list.appendChild(item);
+    });
+
+    legendContainer.appendChild(list);
   }
 
   var TEAM_VIEW_CONFIG = {
@@ -1557,7 +1630,7 @@
     // Show loading state
     title.textContent = 'Loading...';
     subtitle.textContent = '';
-    tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Fetching member details...</td></tr>';
+    tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">Fetching member details...</td></tr>';
 
     // Show modal using Flowbite
     const modalOptions = {
@@ -1583,38 +1656,89 @@
       .then(response => response.json())
       .then(data => {
         if (data.error) {
-          tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">${data.error}</td></tr>`;
+          tableBody.innerHTML = `<tr><td class="px-6 py-8 text-center text-red-500">${data.error}</td></tr>`;
           return;
         }
 
         title.textContent = `${data.team_name} Members`;
         subtitle.textContent = data.period_label;
 
-        if (!data.members || data.members.length === 0) {
-          tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
-          return;
+        if (data.grouped) {
+          if (!data.groups || data.groups.length === 0) {
+            tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
+            return;
+          }
+          tableBody.innerHTML = data.groups.map((group, gIdx) => {
+            const memberRows = group.members.map(m =>
+              `<tr class="bg-white border-b hover:bg-gray-50 transition-colors tm-group-row-${gIdx}" style="display:none">
+                <td style="padding-left:52px;padding-right:24px;padding-top:12px;padding-bottom:12px;" class="text-gray-700">${m.name}</td>
+              </tr>`
+            ).join('');
+            const count = group.members.length;
+            return `<tr class="bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleTeamMemberGroup(${gIdx})">
+              <td class="px-6 py-3 font-semibold text-gray-800">
+                <span class="flex items-center gap-2">
+                  <span class="material-symbols-outlined !text-[16px] leading-none select-none tm-group-icon-${gIdx}">chevron_right</span>
+                  ${group.team_name}
+                  <span class="ml-1 text-xs font-normal text-gray-500">(${count} member${count !== 1 ? 's' : ''})</span>
+                </span>
+              </td>
+            </tr>${memberRows}`;
+          }).join('');
+        } else {
+          if (!data.members || data.members.length === 0) {
+            tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
+            return;
+          }
+          tableBody.innerHTML = data.members.map(member => `
+            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
+              <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
+            </tr>
+          `).join('');
         }
-
-        tableBody.innerHTML = data.members.map(member => `
-          <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
-            <td class="px-6 py-4 text-right text-gray-900 font-mono">${formatTeamHours(member.hours)}</td>
-            <td class="px-6 py-4 text-right text-gray-900">${parseFloat(member.leave_days || 0).toFixed(1)} days</td>
-          </tr>
-        `).join('');
       })
       .catch(error => {
         console.error('Error fetching member details:', error);
-        tableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">Error loading member details.</td></tr>';
+        tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-red-500">Error loading member details.</td></tr>';
       });
+  }
 
+  function toggleTeamMemberGroup(gIdx) {
+    var rows = document.querySelectorAll('.tm-group-row-' + gIdx);
+    var icon = document.querySelector('.tm-group-icon-' + gIdx);
+    var isCollapsed = rows.length > 0 && rows[0].style.display === 'none';
+    rows.forEach(function(row) { row.style.display = isCollapsed ? '' : 'none'; });
+    if (icon) icon.textContent = isCollapsed ? 'expand_more' : 'chevron_right';
+  }
+
+  function sortSummaryCards(containerId, sortBy) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var cardsContainer = container.querySelector('.space-y-6');
+    if (!cardsContainer) return;
+    var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
+    cards.sort(function(a, b) {
+      if (sortBy === 'name') {
+        return (a.getAttribute('data-name') || '').toLowerCase()
+          .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
+      }
+      return parseFloat(b.getAttribute('data-hours') || '0') -
+             parseFloat(a.getAttribute('data-hours') || '0');
+    });
+    cards.forEach(function(card) { cardsContainer.appendChild(card); });
+    var hoursBtn = document.getElementById('sort-hours-' + containerId);
+    var nameBtn  = document.getElementById('sort-name-'  + containerId);
+    var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
+    var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
+    if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
+    if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
   }
 
 </script>
 
 <!-- Team Member Details Modal -->
 <div id="team-member-details-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto h-[calc(100%-1rem)] max-h-full">
-  <div class="relative w-full max-w-3xl max-h-full">
+  <div class="relative w-full max-w-lg max-h-full">
     <!-- Modal content -->
     <div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
       <!-- Modal header -->
@@ -1636,13 +1760,6 @@
       <div class="p-0">
         <div class="relative overflow-x-auto sm:rounded-lg max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           <table class="w-full text-sm text-left text-gray-500 sticky-header">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10">
-              <tr>
-                <th scope="col" class="px-6 py-3 font-bold border-b border-gray-200">Member Name</th>
-                <th scope="col" class="px-6 py-3 text-right font-bold border-b border-gray-200">Hours</th>
-                <th scope="col" class="px-6 py-3 text-right font-bold border-b border-gray-200">Leave Days</th>
-              </tr>
-            </thead>
             <tbody id="team-member-details-table-body">
               <!-- Content populated via JavaScript -->
             </tbody>

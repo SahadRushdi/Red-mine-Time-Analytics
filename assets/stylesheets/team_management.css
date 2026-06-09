@@ -830,10 +830,13 @@ button.ta-btn-danger,
 
 #taTeamMembersAddModal .datepicker,
 #taTeamProjectsAddModal .datepicker,
+#taTeamMemberMoveModal .datepicker,
 #taTeamMembersAddModal .datepicker-dropdown,
 #taTeamProjectsAddModal .datepicker-dropdown,
+#taTeamMemberMoveModal .datepicker-dropdown,
 #taTeamProjectsAddModal .datepicker-picker,
-#taTeamMembersAddModal .datepicker-picker {
+#taTeamMembersAddModal .datepicker-picker,
+#taTeamMemberMoveModal .datepicker-picker {
   z-index: 12000 !important;
 }
 

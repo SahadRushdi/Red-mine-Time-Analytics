@@ -47,26 +47,30 @@ class AdminTaTeamMembershipsController < ApplicationController
     @target_team = TaTeam.find(target_team_id)
     move_mode = params[:move_mode] # 'move' or 'inactivate_and_add'
 
+    start_date = params[:start_date].presence ? Date.parse(params[:start_date]) : nil
+
     ActiveRecord::Base.transaction do
       if move_mode == 'move'
-        # Requirement 1: Delete from current team and add to new team
+        # Delete from current team and add to new team, preserving previous start date by default
         user_id = @membership.user_id
         role = @membership.role
+        new_start_date = start_date || @membership.start_date || Date.today
         @membership.destroy!
 
         @new_membership = @target_team.ta_team_memberships.create!(
           user_id: user_id,
           role: role,
-          start_date: Date.today
+          start_date: new_start_date
         )
       else
-        # Requirement 2: Inactivate in current team and add to new team
-        @membership.update!(end_date: Date.today)
+        # Inactivate in current team (using chosen date as end date) and add to new team
+        transition_date = start_date || Date.today
+        @membership.update!(end_date: transition_date)
 
         @new_membership = @target_team.ta_team_memberships.create!(
           user_id: @membership.user_id,
           role: @membership.role,
-          start_date: Date.today
+          start_date: transition_date
         )
       end
     end
