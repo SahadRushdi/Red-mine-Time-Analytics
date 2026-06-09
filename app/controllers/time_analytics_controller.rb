@@ -300,8 +300,23 @@ class TimeAnalyticsController < ApplicationController
       @from = Date.current.beginning_of_month
       @to = Date.current.end_of_month
     when 'custom'
-      @from = parse_custom_date(params[:from]) || (Date.current - 6.days)
-      @to = parse_custom_date(params[:to]) || Date.current
+      from_param = params[:from].presence
+      to_param = params[:to].presence
+      if from_param || to_param
+        @from = parse_custom_date(from_param) || (Date.current - 6.days)
+        @to   = parse_custom_date(to_param)   || Date.current
+        # Persist so that subsequent reloads without params (datepicker cleared them) still work
+        user_key = params[:user_id].presence || 'self'
+        session[:ta_my_time_from] = { user_key => @from.strftime('%Y-%m-%d') }
+        session[:ta_my_time_to]   = { user_key => @to.strftime('%Y-%m-%d') }
+      else
+        # Params missing (Flowbite may have cleared inputs) — restore from session
+        user_key  = params[:user_id].presence || 'self'
+        saved_from = session[:ta_my_time_from]&.fetch(user_key, nil)
+        saved_to   = session[:ta_my_time_to]&.fetch(user_key, nil)
+        @from = saved_from ? Date.parse(saved_from) : (Date.current - 6.days)
+        @to   = saved_to   ? Date.parse(saved_to)   : Date.current
+      end
     else
       # Default to last 7 days
       @filter = 'last_7_days'

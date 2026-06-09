@@ -27,8 +27,8 @@ class TeamAnalyticsController < ApplicationController
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
-    # Get direct team members only (no bubble up from child teams)
-    @team_members = @selected_team.active_members(@from, @to).to_a
+    # Get all team members including sub-team members (bubble up from child teams)
+    @team_members = @selected_team.hierarchical_members(@from, @to).to_a
     
     @member_ids = @team_members.map(&:user_id).uniq
     
@@ -195,8 +195,8 @@ class TeamAnalyticsController < ApplicationController
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
     
-    # Include selected team members only (no descendants)
-    @team_members = @selected_team.active_members(@from, @to).to_a
+    # Include all team members including sub-team members (bubble up from child teams)
+    @team_members = @selected_team.hierarchical_members(@from, @to).to_a
     
     @member_ids = @team_members.map(&:user_id)
     @active_member_ids = @member_ids - excluded_ids
@@ -259,37 +259,41 @@ class TeamAnalyticsController < ApplicationController
                    period_start.end_of_week(:monday)
                  end
 
-    # Get direct members active during this period
-    memberships = team.active_members(period_start, period_end)
-    member_ids = memberships.map(&:user_id).compact.uniq
+    period_label = helpers.format_period_for_table(period_start, grouping, period_start, period_end)
 
-    # Fetch hours logged by these members in this specific period
-    period_hours = TimeEntry.where(user_id: member_ids, spent_on: period_start..period_end)
-                             .group(:user_id)
-                             .sum(:hours)
-    
-    member_data = memberships.map do |membership|
-      user = membership.user
-      next nil unless user
+    if team.child_teams.any?
+      # Root/parent team: group members by sub-team (collapsed groups)
+      groups = []
 
-      leave_days = TaLeaveRecord.total_leave_days_for_user(
-        user_id: user.id,
-        from_date: period_start,
-        to_date: period_end
-      )
+      direct_memberships = team.active_members(period_start, period_end)
+      direct_members = direct_memberships.map { |m| m.user&.name }.compact.sort
+      groups << { team_name: team.name, members: direct_members.map { |n| { name: n } } } if direct_members.any?
 
-      {
-        name: user.name,
-        hours: (period_hours[user.id] || 0.0).to_f,
-        leave_days: leave_days
+      team.all_descendants.each do |sub_team|
+        sub_members = sub_team.active_members(period_start, period_end)
+                              .map { |m| m.user&.name }.compact.sort
+        groups << { team_name: sub_team.name, members: sub_members.map { |n| { name: n } } } if sub_members.any?
+      end
+
+      render json: {
+        team_name: team.name,
+        period_label: period_label,
+        grouped: true,
+        groups: groups
       }
-    end.compact.sort_by { |m| -m[:hours] }
+    else
+      # Leaf team: simple flat list of direct members
+      members = team.active_members(period_start, period_end)
+                    .map { |m| m.user&.name }.compact.sort
+                    .map { |n| { name: n } }
 
-    render json: {
-      team_name: team.name,
-      period_label: helpers.format_period_for_table(period_start, grouping, period_start, period_end),
-      members: member_data
-    }
+      render json: {
+        team_name: team.name,
+        period_label: period_label,
+        grouped: false,
+        members: members
+      }
+    end
   end
 
   # Recursively build team node with sub-teams and members
