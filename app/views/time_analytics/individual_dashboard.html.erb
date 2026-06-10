@@ -640,10 +640,19 @@ function switchChartType(chartType) {
             </div>
           </div>
           
-          <!-- Right: Hours and Per Page -->
+          <!-- Right: Sort Buttons and Per Page -->
           <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
-            <%= form_tag my_time_path, method: :get, local: true, 
+            <% summary_view_id = @view_mode == 'activity' ? 'daily-summary-view' : "#{@view_mode}-summary-view" %>
+            <% current_view_state = case @view_mode
+                 when 'activity' then @activity_view_state
+                 when 'project' then @project_view_state
+                 when 'issue' then @issue_view_state
+               end %>
+            <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_view_state == 'summary' ? '' : 'display: none;' %>">
+              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+            </div>
+            <%= form_tag my_time_path, method: :get, local: true,
                 class: 'flex items-center gap-2' do %>
               <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
               <%= hidden_field_tag :filter, params[:filter] %>
@@ -707,10 +716,6 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-            <button type="button" id="sort-name-daily-summary-view" onclick="sortSummaryCards('daily-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-            <button type="button" id="sort-hours-daily-summary-view" onclick="sortSummaryCards('daily-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-          </div>
           <div class="space-y-6 px-2 pt-4">
             <%
               # Sort activities by hours (highest to lowest)
@@ -775,10 +780,6 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-            <button type="button" id="sort-name-daily-summary-view" onclick="sortSummaryCards('daily-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-            <button type="button" id="sort-hours-daily-summary-view" onclick="sortSummaryCards('daily-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-          </div>
           <div class="space-y-6 px-2 pt-4">
             <%
               # Sort activities by hours (highest to lowest)
@@ -845,10 +846,6 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-            <button type="button" id="sort-name-project-summary-view" onclick="sortSummaryCards('project-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-            <button type="button" id="sort-hours-project-summary-view" onclick="sortSummaryCards('project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-          </div>
           <div class="space-y-6 px-2 pt-4">
             <%
               # Sort projects by hours (highest to lowest)
@@ -913,10 +910,6 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-            <button type="button" id="sort-name-project-summary-view" onclick="sortSummaryCards('project-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-            <button type="button" id="sort-hours-project-summary-view" onclick="sortSummaryCards('project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-          </div>
           <div class="space-y-6 px-2 pt-4">
             <%
               # Sort projects by hours (highest to lowest)
@@ -995,10 +988,6 @@ function switchChartType(chartType) {
         
         <%# Summary View: Simple Issue Table (Hidden by default) %>
         <div id="issue-summary-view" style="display: none;">
-          <div class="flex items-center gap-2 px-2 pt-3 pb-0">
-            <button type="button" id="sort-name-issue-summary-view" onclick="sortSummaryCards('issue-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-            <button type="button" id="sort-hours-issue-summary-view" onclick="sortSummaryCards('issue-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-          </div>
           <div class="space-y-6 px-2 pt-4">
             <%
               # Sort issues by hours (highest to lowest)
@@ -1521,7 +1510,11 @@ function showDetailedView(viewType) {
   // Show detailed view, hide summary view
   detailedView.style.display = 'block';
   summaryView.style.display = 'none';
-  
+
+  // Hide the summary sort buttons
+  var sortButtons = document.getElementById('summary-sort-buttons');
+  if (sortButtons) sortButtons.style.display = 'none';
+
   // Update button styling - Detail button blue, Summary button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
@@ -1560,7 +1553,11 @@ function showSummaryView(viewType) {
   // Show summary view, hide detailed view
   detailedView.style.display = 'none';
   summaryView.style.display = 'block';
-  
+
+  // Show the summary sort buttons
+  var sortButtons = document.getElementById('summary-sort-buttons');
+  if (sortButtons) sortButtons.style.display = 'flex';
+
   // Update button styling - Summary button blue, Detail button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
