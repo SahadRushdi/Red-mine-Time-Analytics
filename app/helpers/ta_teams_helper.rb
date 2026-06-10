@@ -121,7 +121,8 @@ module TaTeamsHelper
         user_id: user.id,
         user_name: user.name,
         team_id: team.id,
-        team_name: team.name
+        team_name: team.name,
+        start_date: membership.start_date&.strftime('%m/%d/%Y') || ''
       },
       ondragstart: 'teamManagementHandleDragStart(event)'
     )

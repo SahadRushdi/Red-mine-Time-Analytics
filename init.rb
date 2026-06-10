@@ -25,7 +25,11 @@ Redmine::Plugin.register :redmine_time_analytics do
   description 'Comprehensive time tracking analytics and reporting for Redmine'
   version '3.0.0'
   url 'https://github.com/SahadRushdi/Red-mine-Time-Analytics'
-  settings default: {}
+  settings partial: 'redmine_time_analytics_settings',
+           default: {
+             'missing_time_recipients' => '',
+             'missing_time_cron'       => ''
+           }
 
   # Add to top menu
   menu :top_menu, :time_analytics, { controller: 'time_analytics', action: 'index' }, 
@@ -71,5 +75,11 @@ Redmine::Plugin.register :redmine_time_analytics do
   Rails.application.config.after_initialize do
     RedmineTimeAnalytics::LeaveSyncScheduler.start
     RedmineTimeAnalytics::MissingTimeScheduler.start
+
+    Setting.after_commit(on: %i[create update]) do
+      if name == 'plugin_redmine_time_analytics'
+        RedmineTimeAnalytics::MissingTimeScheduler.refresh!
+      end
+    end
   end
 end

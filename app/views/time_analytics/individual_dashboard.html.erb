@@ -110,15 +110,76 @@
 </div>
 
 <script type="text/javascript">
+  // Convert yyyy-mm-dd → mm/dd/yyyy for display inputs
+  function myTimeConvertDate(dateStr) {
+    if (!dateStr) return '';
+    var m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? (m[2] + '/' + m[3] + '/' + m[1]) : dateStr;
+  }
+
+  // Store custom dates in sessionStorage so they survive grouping/tab reloads
+  function myTimeSaveDatesToSession() {
+    var filterEl = document.getElementById('filter_hidden');
+    if (!filterEl || filterEl.value !== 'custom') return;
+    var urlParams = new URLSearchParams(window.location.search);
+    var userId = urlParams.get('user_id');
+    if (!userId) return; // Only preserve when viewing another user (from team dashboard)
+    var fromParam = urlParams.get('from');
+    var toParam = urlParams.get('to');
+    if (!fromParam || !toParam) return;
+    var fromDisplay = myTimeConvertDate(fromParam);
+    var toDisplay = myTimeConvertDate(toParam);
+    if (fromDisplay && toDisplay) {
+      try {
+        sessionStorage.setItem('ta_my_time_dates_' + userId, JSON.stringify({ from: fromDisplay, to: toDisplay }));
+      } catch (e) {}
+    }
+  }
+
+  // Restore from/to inputs from URL or sessionStorage if cleared by datepicker init
+  function myTimeEnsureCustomDates() {
+    var filterHidden = document.getElementById('filter_hidden');
+    if (!filterHidden || filterHidden.value !== 'custom') return;
+    var startInput = document.getElementById('my-time-date-range-start');
+    var endInput = document.getElementById('my-time-date-range-end');
+    if (!startInput || !endInput) return;
+    if (startInput.value && endInput.value) return;
+    var urlParams = new URLSearchParams(window.location.search);
+    var userId = urlParams.get('user_id');
+    var fromVal = myTimeConvertDate(urlParams.get('from') || '');
+    var toVal = myTimeConvertDate(urlParams.get('to') || '');
+    // Fall back to sessionStorage if URL doesn't have dates
+    if ((!fromVal || !toVal) && userId) {
+      try {
+        var stored = sessionStorage.getItem('ta_my_time_dates_' + userId);
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          if (!fromVal) fromVal = parsed.from || '';
+          if (!toVal) toVal = parsed.to || '';
+        }
+      } catch (e) {}
+    }
+    if (fromVal && !startInput.value) startInput.value = fromVal;
+    if (toVal && !endInput.value) endInput.value = toVal;
+  }
+
   // Filter period selection
   function setFilterAndSubmit(filterValue) {
+    if (filterValue !== 'custom') {
+      // Clear stored dates when user explicitly picks a different period
+      try {
+        var userId = new URLSearchParams(window.location.search).get('user_id');
+        if (userId) sessionStorage.removeItem('ta_my_time_dates_' + userId);
+      } catch (e) {}
+    }
     document.getElementById('filter_hidden').value = filterValue;
     document.getElementById('time-analytics-form').submit();
   }
-  
+
   // Grouping dropdown selection
   function setGroupingAndSubmit(groupingValue) {
     document.getElementById('grouping_hidden').value = groupingValue;
+    myTimeEnsureCustomDates();
     document.getElementById('time-analytics-form').submit();
   }
   
@@ -230,6 +291,8 @@
 
     setTimeout(suppressAutoOpen, 0);
     setTimeout(suppressAutoOpen, 120);
+    // Restore custom dates in case datepicker init cleared the input values
+    setTimeout(myTimeEnsureCustomDates, 300);
 
     if (!window.__myTimeRangeOutsideCloseBound) {
       document.addEventListener('mousedown', function(event) {
@@ -270,9 +333,13 @@
   });
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bindCustomDateRangeEvents);
+    document.addEventListener('DOMContentLoaded', function() {
+      bindCustomDateRangeEvents();
+      myTimeSaveDatesToSession();
+    });
   } else {
     bindCustomDateRangeEvents();
+    myTimeSaveDatesToSession();
   }
 </script>
 
@@ -573,10 +640,19 @@ function switchChartType(chartType) {
             </div>
           </div>
           
-          <!-- Right: Hours and Per Page -->
+          <!-- Right: Sort Buttons and Per Page -->
           <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <span class="text-sm text-gray-600 whitespace-nowrap">Hours: <strong class="text-gray-900"><%= format_hours(@grand_total || 0) %></strong></span>
-            <%= form_tag my_time_path, method: :get, local: true, 
+            <% summary_view_id = @view_mode == 'activity' ? 'daily-summary-view' : "#{@view_mode}-summary-view" %>
+            <% current_view_state = case @view_mode
+                 when 'activity' then @activity_view_state
+                 when 'project' then @project_view_state
+                 when 'issue' then @issue_view_state
+               end %>
+            <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_view_state == 'summary' ? '' : 'display: none;' %>">
+              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+            </div>
+            <%= form_tag my_time_path, method: :get, local: true,
                 class: 'flex items-center gap-2' do %>
               <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
               <%= hidden_field_tag :filter, params[:filter] %>
@@ -641,15 +717,15 @@ function switchChartType(chartType) {
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
           <div class="space-y-6 px-2 pt-4">
-            <% 
+            <%
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index| 
+              sorted_activities.each_with_index do |activity, index|
             %>
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
@@ -705,15 +781,15 @@ function switchChartType(chartType) {
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
           <div class="space-y-6 px-2 pt-4">
-            <% 
+            <%
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index| 
+              sorted_activities.each_with_index do |activity, index|
             %>
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
                 <!-- Activity name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
@@ -771,15 +847,15 @@ function switchChartType(chartType) {
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
           <div class="space-y-6 px-2 pt-4">
-            <% 
+            <%
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index| 
+              sorted_projects.each_with_index do |project, index|
             %>
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
@@ -835,15 +911,15 @@ function switchChartType(chartType) {
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
           <div class="space-y-6 px-2 pt-4">
-            <% 
+            <%
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index| 
+              sorted_projects.each_with_index do |project, index|
             %>
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
                 <!-- Project name and hours -->
                 <div class="flex items-center justify-between mb-2">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
@@ -913,15 +989,15 @@ function switchChartType(chartType) {
         <%# Summary View: Simple Issue Table (Hidden by default) %>
         <div id="issue-summary-view" style="display: none;">
           <div class="space-y-6 px-2 pt-4">
-            <% 
+            <%
               # Sort issues by hours (highest to lowest)
               sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
-              sorted_issues.each_with_index do |issue_info, index| 
+              sorted_issues.each_with_index do |issue_info, index|
             %>
               <% hours = @issue_totals[issue_info[:key]] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200">
+              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(issue_info[:display]) %>">
                 <!-- Issue name and hours -->
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
@@ -1434,7 +1510,11 @@ function showDetailedView(viewType) {
   // Show detailed view, hide summary view
   detailedView.style.display = 'block';
   summaryView.style.display = 'none';
-  
+
+  // Hide the summary sort buttons
+  var sortButtons = document.getElementById('summary-sort-buttons');
+  if (sortButtons) sortButtons.style.display = 'none';
+
   // Update button styling - Detail button blue, Summary button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
@@ -1473,7 +1553,11 @@ function showSummaryView(viewType) {
   // Show summary view, hide detailed view
   detailedView.style.display = 'none';
   summaryView.style.display = 'block';
-  
+
+  // Show the summary sort buttons
+  var sortButtons = document.getElementById('summary-sort-buttons');
+  if (sortButtons) sortButtons.style.display = 'flex';
+
   // Update button styling - Summary button blue, Detail button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
@@ -1816,10 +1900,14 @@ document.addEventListener('DOMContentLoaded', function() {
   // Auto-scroll to table when switching views
   if (sessionStorage.getItem('scrollToTable') === 'true') {
     sessionStorage.removeItem('scrollToTable');
-    var tableElement = document.getElementById('view-mode-table');
-    if (tableElement) {
-      tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
-    }
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        var tableElement = document.getElementById('view-mode-table');
+        if (tableElement) {
+          tableElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      });
+    });
   }
   
   // Initialize chart after a small delay to ensure DOM is fully rendered
@@ -1867,6 +1955,30 @@ function initSummarySorting(tableContainerId) {
   if (indicator) {
     indicator.textContent = '▼';
   }
+}
+
+// Sort card-based summary views by hours (desc) or name (A-Z)
+function sortSummaryCards(containerId, sortBy) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var cardsContainer = container.querySelector('.space-y-6');
+  if (!cardsContainer) return;
+  var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
+  cards.sort(function(a, b) {
+    if (sortBy === 'name') {
+      return (a.getAttribute('data-name') || '').toLowerCase()
+        .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
+    }
+    return parseFloat(b.getAttribute('data-hours') || '0') -
+           parseFloat(a.getAttribute('data-hours') || '0');
+  });
+  cards.forEach(function(card) { cardsContainer.appendChild(card); });
+  var hoursBtn = document.getElementById('sort-hours-' + containerId);
+  var nameBtn  = document.getElementById('sort-name-'  + containerId);
+  var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
+  var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
+  if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
+  if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
 }
 
 // Table sorting function for summary views

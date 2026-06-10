@@ -1,0 +1,34 @@
+<%# Pass through every key we don't explicitly render so Redmine's full-replace doesn't wipe other plugin settings (e.g. leave_sync_*) %>
+<% managed_keys = %w[missing_time_recipients missing_time_cron] %>
+<% (settings.keys - managed_keys).each do |key| %>
+  <%= hidden_field_tag "settings[#{key}]", settings[key] %>
+<% end %>
+
+<fieldset class="box tabular">
+  <legend><strong>Missing Time Notifications</strong></legend>
+
+  <p>
+    <%= label_tag :settings_missing_time_recipients, 'Notification Recipients' %>
+    <%= text_field_tag 'settings[missing_time_recipients]',
+                       settings['missing_time_recipients'],
+                       id: 'settings_missing_time_recipients',
+                       size: 60,
+                       placeholder: 'e.g. admin@example.com, manager@example.com' %>
+    <br><em class="info">Comma-separated list of email addresses that receive missing time alerts. Required for notifications to run.</em>
+  </p>
+
+  <p>
+    <%= label_tag :settings_missing_time_cron, 'Notification Schedule (Cron Expression)' %>
+    <%= text_field_tag 'settings[missing_time_cron]',
+                       settings['missing_time_cron'],
+                       id: 'settings_missing_time_cron',
+                       size: 30,
+                       placeholder: 'e.g. 0 * * * 2-6' %>
+    <br><em class="info">
+      Controls when the missing time mailer runs. Required for notifications to run.
+      Format: <code>minute hour day month weekday</code>.
+      Example: <code>0 * * * 1-5</code> = top of every hour, Monday–Friday.
+      Changes take effect on the next scheduler tick — no restart needed.
+    </em>
+  </p>
+</fieldset>

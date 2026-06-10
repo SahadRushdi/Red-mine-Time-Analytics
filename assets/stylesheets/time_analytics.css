@@ -113,10 +113,32 @@
 .chart-wrapper {
   position: relative;
   flex-grow: 1;
-  height: 100%;
+  height: 300px !important;
   margin: 0;
   width: 100%;
   min-width: 0;
+}
+
+.ts-chart-legend-scroll {
+  max-height: 75px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+
+.ts-chart-legend-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ts-chart-legend-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ts-chart-legend-scroll::-webkit-scrollbar-thumb {
+  background-color: #e2e8f0;
+  border-radius: 20px;
 }
 
 .chart-wrapper canvas {

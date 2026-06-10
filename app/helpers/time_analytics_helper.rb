@@ -13,9 +13,9 @@ module TimeAnalyticsHelper
 
   def format_hours(hours)
     return "" if hours.nil?
-    
-    h = hours.floor
-    m = ((hours - h) * 60).round
+
+    total_minutes = (hours.to_f * 60).round
+    h, m = total_minutes.divmod(60)
     "%d:%02d" % [h, m]
   end
 

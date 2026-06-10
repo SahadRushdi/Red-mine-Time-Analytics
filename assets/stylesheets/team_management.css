@@ -803,6 +803,7 @@ button.ta-btn-danger,
 #taTeamProjectsAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
 #taTeamMemberMoveModal .ta-modal-close-btn,
+#taTeamAssignModal .ta-modal-close-btn,
 #taTeamDeleteModal .tep-delete-close,
 #taTeamProjectsDeleteModal .tep-delete-close,
 #taHiringCreateModal .tep-delete-close,
@@ -817,6 +818,7 @@ button.ta-btn-danger,
 #taTeamProjectsAddModal .tep-delete-close:hover,
 #taTeamMembersDeleteModal .tep-delete-close:hover,
 #taTeamMemberMoveModal .ta-modal-close-btn:hover,
+#taTeamAssignModal .ta-modal-close-btn:hover,
 #taTeamDeleteModal .tep-delete-close:hover,
 #taTeamProjectsDeleteModal .tep-delete-close:hover,
 #taHiringCreateModal .tep-delete-close:hover,
@@ -830,10 +832,16 @@ button.ta-btn-danger,
 
 #taTeamMembersAddModal .datepicker,
 #taTeamProjectsAddModal .datepicker,
+#taTeamMemberMoveModal .datepicker,
+#taTeamAssignModal .datepicker,
 #taTeamMembersAddModal .datepicker-dropdown,
 #taTeamProjectsAddModal .datepicker-dropdown,
+#taTeamMemberMoveModal .datepicker-dropdown,
+#taTeamAssignModal .datepicker-dropdown,
 #taTeamProjectsAddModal .datepicker-picker,
-#taTeamMembersAddModal .datepicker-picker {
+#taTeamMembersAddModal .datepicker-picker,
+#taTeamMemberMoveModal .datepicker-picker,
+#taTeamAssignModal .datepicker-picker {
   z-index: 12000 !important;
 }
 
@@ -1111,4 +1119,40 @@ button.ta-btn-danger,
   .ta-inline-assignment-form {
     grid-template-columns: 1fr;
   }
+}
+
+#ta-team-members-per-page-button,
+#ta-team-members-per-page-button:hover,
+#ta-team-members-per-page-button:focus,
+#ta-team-members-per-page-button:focus-visible,
+#ta-team-members-per-page-button:active {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+#ta-team-members-per-page-button:hover {
+  background-color: #f9fafb !important;
+}
+
+.ta-team-members-per-page-option,
+.ta-team-members-per-page-option:hover,
+.ta-team-members-per-page-option:focus,
+.ta-team-members-per-page-option:focus-visible,
+.ta-team-members-per-page-option:active {
+  color: #374151 !important;
+  background: #ffffff !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
+
+.ta-team-members-per-page-option:hover,
+.ta-team-members-per-page-option:focus-visible {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
 }
