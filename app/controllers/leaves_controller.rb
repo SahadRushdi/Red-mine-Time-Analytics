@@ -6,6 +6,7 @@ class LeavesController < ApplicationController
 
   def index
     @users = User.active.sorted
+    @locked_filter_users = User.where(status: User::STATUS_LOCKED).sorted
     @default_from = parse_date(params[:from]) || Date.current.beginning_of_month
     @default_to = parse_date(params[:to]) || Date.current
     @filter_status = params[:status].to_s.presence

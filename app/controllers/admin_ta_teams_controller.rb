@@ -27,6 +27,8 @@ class AdminTaTeamsController < ApplicationController
     @team_active_memberships_map = @active_memberships.group_by(&:team_id)
     @allocated_user_ids = @active_memberships.map(&:user_id).uniq
     @unallocated_users = User.active.sorted.where.not(id: @allocated_user_ids)
+    @locked_users = User.where(status: User::STATUS_LOCKED).sorted.where.not(id: @allocated_user_ids)
+    @locked_user_lock_dates = TaTeamMembership.where(user_id: @locked_users.map(&:id)).group(:user_id).maximum(:end_date)
     @open_hiring_needs = TaHiringNeed.open.includes(:team).ordered_priority
     @member_history_groups = build_member_history_groups
   end
@@ -142,7 +144,7 @@ class AdminTaTeamsController < ApplicationController
   end
 
   def assign_member
-    user = User.active.find(params[:user_id])
+    user = User.where(status: [User::STATUS_ACTIVE, User::STATUS_LOCKED]).find(params[:user_id])
     team = TaTeam.find(params[:team_id])
     role = params[:role].presence
     role = TaTeamMembership::ROLES.include?(role) ? role : 'member'
@@ -150,7 +152,8 @@ class AdminTaTeamsController < ApplicationController
     membership = team.ta_team_memberships.build(
       user: user,
       role: role,
-      start_date: Date.today
+      start_date: parse_assign_date(params[:start_date]) || Date.today,
+      end_date: parse_assign_date(params[:end_date])
     )
 
     if membership.save
@@ -161,7 +164,7 @@ class AdminTaTeamsController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     flash[:error] = l(:label_no_data)
   ensure
-    redirect_to admin_ta_teams_path
+    redirect_to admin_ta_teams_path(sidebar_tab: params[:sidebar_tab].presence)
   end
 
   def payload
@@ -317,6 +320,14 @@ class AdminTaTeamsController < ApplicationController
     @team = TaTeam.find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render_404
+  end
+
+  def parse_assign_date(value)
+    return nil if value.blank?
+
+    Date.parse(value)
+  rescue ArgumentError, TypeError
+    nil
   end
 
   def build_member_history_groups

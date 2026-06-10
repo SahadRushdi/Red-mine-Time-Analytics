@@ -66,12 +66,26 @@
     <div class="flex flex-col gap-3 border-b border-gray-200 px-6 py-3 md:flex-row md:items-center md:justify-between">
       <div>
         <h3 class="font-semibold text-gray-900">Team Members (<%= @memberships.count %>)</h3>
-        <p class="text-xs text-gray-500">Showing latest 10 memberships</p>
+        <p class="text-xs text-gray-500">All assigned members, active and inactive</p>
       </div>
       <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
         <input type="text" id="ta-team-members-search" placeholder="Search name, email, role, or status..."
                class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
                oninput="filterTeamMembersRows()">
+        <div class="relative">
+          <button type="button" id="ta-team-members-per-page-button"
+                  class="inline-flex !h-[44px] w-full items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0 md:w-24">
+            <span id="ta-team-members-per-page-label">10</span>
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div id="ta-team-members-per-page-menu" class="hidden absolute right-0 z-20 mt-1 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <% [10, 25, 50, 100].each do |value| %>
+              <button type="button" class="ta-team-members-per-page-option block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100" data-per-page="<%= value %>"><%= value %></button>
+            <% end %>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -104,7 +118,7 @@
             </tr>
           </thead>
           <tbody>
-            <% @memberships.limit(10).each do |membership| %>
+            <% @memberships.each do |membership| %>
               <% role_label = membership.lead? ? 'Team Lead' : 'Team Member' %>
               <% status_label = membership.active? ? 'Active' : 'Inactive' %>
               <% search_text = [membership.user.name, membership.user.mail, role_label, status_label].join(' ').downcase %>
@@ -231,18 +245,16 @@
         </table>
       </div>
       <div class="hidden">
-        <% @memberships.limit(10).each do |membership| %>
+        <% @memberships.each do |membership| %>
           <% form_id = "ta-team-member-form-#{membership.id}" %>
           <%= form_tag admin_ta_team_membership_path(@team, membership), method: :patch, id: form_id, onsubmit: "return submitTeamMemberInlineEdit(#{membership.id})" do %>
           <% end %>
         <% end %>
       </div>
-      <% if @memberships.count > 10 %>
-        <div class="border-t border-gray-100 px-6 py-3 text-sm text-gray-600">
-          Showing 10 of <%= @memberships.count %> memberships.
-          <%= link_to 'Open Team Management', admin_ta_teams_path(main_tab: 'members'), class: 'ml-1 text-blue-600 hover:text-blue-700 hover:underline' %>
-        </div>
-      <% end %>
+      <nav id="ta-team-members-pagination" class="hidden flex-col gap-2 border-t border-gray-100 px-6 py-3 sm:flex-row sm:items-center sm:justify-between" aria-label="Team members pagination">
+        <span id="ta-team-members-pagination-info" class="text-sm text-gray-600"></span>
+        <ul id="ta-team-members-pagination-links" class="inline-flex h-8 -space-x-px text-sm"></ul>
+      </nav>
     <% else %>
       <div class="px-6 py-10 text-center text-sm text-gray-500">No team members found.</div>
     <% end %>
@@ -749,6 +761,10 @@
     delete sortIcon.dataset.order;
     sortIcon.dataset.order = nextOrder;
     resetTeamDetailsTableSortIcons(tableKey, columns, column);
+
+    if (tableKey === 'team-members') {
+      applyTeamMembersPagination(true);
+    }
   }
 
   document.addEventListener('click', function(e) {
@@ -763,11 +779,173 @@
   });
 
   function filterTeamMembersRows() {
-    filterRowsByInput('ta-team-members-search', '.ta-team-members-row');
+    applyTeamMembersPagination(false);
   }
 
   function filterTeamProjectsRows() {
     filterRowsByInput('ta-team-projects-search', '.ta-team-projects-row');
+  }
+
+  var teamMembersPaginationState = { currentPage: 1, perPage: 10 };
+
+  function getTeamMembersRows() {
+    return Array.from(document.querySelectorAll('.ta-team-members-row'));
+  }
+
+  function createTeamMembersPageButton(config) {
+    var li = document.createElement('li');
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = config.label;
+    button.className = config.className;
+    button.setAttribute('aria-label', config.ariaLabel || config.label);
+    if (config.current) button.setAttribute('aria-current', 'page');
+    if (config.disabled) {
+      button.disabled = true;
+    } else {
+      button.addEventListener('click', config.onClick);
+    }
+    li.appendChild(button);
+    return li;
+  }
+
+  function renderTeamMembersPaginationControls(totalMatched, totalPages, startIndex, endIndex) {
+    var nav = document.getElementById('ta-team-members-pagination');
+    var info = document.getElementById('ta-team-members-pagination-info');
+    var links = document.getElementById('ta-team-members-pagination-links');
+    if (!nav || !info || !links) return;
+
+    if (totalMatched === 0) {
+      nav.classList.add('hidden');
+      info.textContent = '';
+      links.innerHTML = '';
+      return;
+    }
+
+    var state = teamMembersPaginationState;
+    nav.classList.remove('hidden');
+    info.textContent = 'Showing ' + startIndex + '-' + endIndex + ' of ' + totalMatched + ' members';
+    links.innerHTML = '';
+
+    var prevClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-s-lg ' +
+      (state.currentPage === 1
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamMembersPageButton({
+      label: 'Previous',
+      ariaLabel: 'Previous page',
+      className: prevClass,
+      disabled: state.currentPage === 1,
+      onClick: function() {
+        state.currentPage -= 1;
+        applyTeamMembersPagination(true);
+      }
+    }));
+
+    for (var page = 1; page <= totalPages; page++) {
+      (function(pageNumber) {
+        var isCurrent = pageNumber === state.currentPage;
+        var pageClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 ' +
+          (isCurrent
+            ? 'text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700'
+            : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(createTeamMembersPageButton({
+          label: String(pageNumber),
+          ariaLabel: 'Page ' + pageNumber,
+          className: pageClass,
+          current: isCurrent,
+          onClick: function() {
+            state.currentPage = pageNumber;
+            applyTeamMembersPagination(true);
+          }
+        }));
+      })(page);
+    }
+
+    var nextClass = 'flex items-center justify-center px-3 h-8 leading-tight border border-gray-300 rounded-e-lg ' +
+      (state.currentPage === totalPages
+        ? 'text-gray-300 bg-gray-50 cursor-not-allowed'
+        : 'text-gray-500 bg-white hover:bg-gray-100 hover:text-gray-700');
+    links.appendChild(createTeamMembersPageButton({
+      label: 'Next',
+      ariaLabel: 'Next page',
+      className: nextClass,
+      disabled: state.currentPage === totalPages,
+      onClick: function() {
+        state.currentPage += 1;
+        applyTeamMembersPagination(true);
+      }
+    }));
+  }
+
+  function applyTeamMembersPagination(preservePage) {
+    var searchInput = document.getElementById('ta-team-members-search');
+    var query = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    var rows = getTeamMembersRows();
+    var state = teamMembersPaginationState;
+
+    var matchedRows = rows.filter(function(row) {
+      var text = row.getAttribute('data-search-text') || '';
+      return !query || text.indexOf(query) !== -1;
+    });
+
+    var totalPages = Math.max(1, Math.ceil(matchedRows.length / state.perPage));
+    if (!preservePage) {
+      state.currentPage = 1;
+    } else if (state.currentPage > totalPages) {
+      state.currentPage = totalPages;
+    }
+
+    var start = (state.currentPage - 1) * state.perPage;
+    var end = start + state.perPage;
+    var visibleSet = new Set(matchedRows.slice(start, end));
+
+    rows.forEach(function(row) {
+      var visible = visibleSet.has(row);
+      row.style.display = visible ? '' : 'none';
+      if (!visible && row.classList.contains('is-editing')) {
+        row.classList.remove('is-editing');
+        row.querySelectorAll('.ta-team-member-view').forEach(function(viewEl) {
+          viewEl.classList.remove('hidden');
+        });
+        row.querySelectorAll('.ta-team-member-edit').forEach(function(editEl) {
+          editEl.classList.add('hidden');
+        });
+        teamMembersCloseRoleDropdownByRow(row);
+      }
+    });
+
+    var startIndex = matchedRows.length ? (start + 1) : 0;
+    var endIndex = matchedRows.length ? Math.min(end, matchedRows.length) : 0;
+    renderTeamMembersPaginationControls(matchedRows.length, totalPages, startIndex, endIndex);
+  }
+
+  function setupTeamMembersPerPageDropdown() {
+    var button = document.getElementById('ta-team-members-per-page-button');
+    var menu = document.getElementById('ta-team-members-per-page-menu');
+    var label = document.getElementById('ta-team-members-per-page-label');
+    if (!button || !menu || !label) return;
+
+    button.addEventListener('click', function(event) {
+      event.stopPropagation();
+      menu.classList.toggle('hidden');
+    });
+
+    menu.querySelectorAll('.ta-team-members-per-page-option').forEach(function(option) {
+      option.addEventListener('click', function() {
+        var value = parseInt(option.getAttribute('data-per-page'), 10) || 10;
+        teamMembersPaginationState.perPage = value;
+        label.textContent = String(value);
+        menu.classList.add('hidden');
+        applyTeamMembersPagination(false);
+      });
+    });
+
+    document.addEventListener('click', function(event) {
+      if (!menu.classList.contains('hidden') && !button.contains(event.target) && !menu.contains(event.target)) {
+        menu.classList.add('hidden');
+      }
+    });
   }
 
   // Prevent default first-input autofocus from selecting the Team Members search field on initial page load.
@@ -780,4 +958,7 @@
   }
   setTimeout(clearInitialTeamMembersSearchFocus, 0);
   setTimeout(clearInitialTeamMembersSearchFocus, 100);
+
+  setupTeamMembersPerPageDropdown();
+  applyTeamMembersPagination(false);
 </script>
