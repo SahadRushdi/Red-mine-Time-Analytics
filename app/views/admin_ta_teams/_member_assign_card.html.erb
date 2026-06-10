@@ -1,0 +1,59 @@
+<div class="ta-unallocated-member-card rounded-lg border border-[#3b82f6] bg-blue-50/70 p-3"
+      draggable="true"
+      data-user-id="<%= user.id %>"
+      data-user-name="<%= h(user.name) %>"
+      data-default-role="member"
+      data-default-start-date="<%= default_start_date %>"
+      data-default-end-date="<%= default_end_date %>"
+      data-sidebar-tab="<%= sidebar_tab %>">
+  <button type="button"
+          class="ta-member-card-toggle w-full flex items-center justify-between gap-2 text-left"
+          onclick="event.stopPropagation(); toggleMemberAssignCard('<%= idx %>')">
+    <span class="min-w-0">
+      <span class="block text-sm font-semibold text-gray-900"><%= h(user.name) %></span>
+      <span class="block text-xs text-gray-500"><%= h(user.mail) %></span>
+    </span>
+    <svg id="ta-member-assign-chevron-<%= idx %>" class="w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+    </svg>
+  </button>
+  <div id="ta-member-assign-expand-<%= idx %>" class="hidden mt-2">
+    <div class="ta-inline-assignment-form grid grid-cols-[minmax(0,1fr)_160px_auto] items-end gap-2">
+      <div class="relative min-w-0">
+        <button type="button" id="assign-team-button-<%= idx %>" data-ta-dropdown-toggle="assign-team-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <span class="assign-team-label truncate" data-default-text="Select team">Select team</span>
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+        <div id="assign-team-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+          <ul class="max-h-48 overflow-y-auto overflow-x-hidden py-1 text-sm text-gray-700">
+            <% all_teams.each do |team| %>
+              <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+              <li>
+                <button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="<%= team.id %>" data-ta-dropdown-label="<%= h(team.name) %>" data-ta-dropdown-target="assign_team_<%= idx %>" data-ta-dropdown-label-target="assign-team-button-<%= idx %>">
+                  <%= indent.html_safe %><%= h(team.name) %>
+                </button>
+              </li>
+            <% end %>
+          </ul>
+        </div>
+        <%= hidden_field_tag :team_id, '', id: "assign_team_#{idx}" %>
+      </div>
+
+      <div class="relative w-full">
+        <button type="button" id="assign-role-button-<%= idx %>" data-ta-dropdown-toggle="assign-role-dropdown-<%= idx %>" class="inline-flex items-center justify-between w-full px-4 py-2 text-sm font-medium !text-gray-900 !bg-white border border-gray-300 rounded-lg hover:!bg-gray-50 hover:!text-gray-900 focus:ring-2 focus:ring-[#3b82f6] focus:border-[#3b82f6] transition-colors">
+          <span class="assign-role-label" data-default-text="Team Member">Team Member</span>
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </button>
+        <div id="assign-role-dropdown-<%= idx %>" data-ta-dropdown-menu="true" class="hidden absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+          <ul class="py-1 text-sm text-gray-700">
+            <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="member" data-ta-dropdown-label="Team Member" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Member</button></li>
+            <li><button type="button" class="w-full text-left px-4 py-2 hover:!bg-gray-100 hover:!text-gray-900 !text-gray-700" data-ta-dropdown-value="lead" data-ta-dropdown-label="Team Lead" data-ta-dropdown-target="assign_role_<%= idx %>" data-ta-dropdown-label-target="assign-role-button-<%= idx %>">Team Lead</button></li>
+          </ul>
+        </div>
+        <%= hidden_field_tag :role, 'member', id: "assign_role_#{idx}" %>
+      </div>
+
+      <button type="button" onclick="openAssignModalFromCard('<%= idx %>')" class="h-10 rounded-lg bg-blue-500 px-3 text-sm font-medium text-white hover:bg-blue-600 whitespace-nowrap">Add to Team</button>
+    </div>
+  </div>
+</div>
