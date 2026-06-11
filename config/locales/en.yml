@@ -34,7 +34,12 @@ en:
   label_weekly: "Week"
   label_monthly: "Month"
   label_yearly: "Year"
-  
+
+  # Team grouping labels (My Team page — distinct wording from My Time's label_daily/weekly/monthly)
+  label_team_grouping_daily: "Daily"
+  label_team_grouping_weekly: "Weekly"
+  label_team_grouping_monthly: "Monthly"
+
   # Chart types
   label_bar_chart: "Bar Chart"
   label_line_chart: "Line Chart"

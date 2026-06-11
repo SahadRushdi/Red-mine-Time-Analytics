@@ -99,6 +99,8 @@ module RedmineTimeAnalytics
 
     def period_key_for_date(date, grouping)
       case grouping
+      when 'daily'
+        date
       when 'monthly'
         [date.year, date.month]
       else

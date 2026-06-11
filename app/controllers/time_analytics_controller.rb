@@ -684,8 +684,8 @@ class TimeAnalyticsController < ApplicationController
         }
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,
@@ -1097,8 +1097,8 @@ class TimeAnalyticsController < ApplicationController
         }
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,
@@ -1205,8 +1205,8 @@ class TimeAnalyticsController < ApplicationController
         }
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,

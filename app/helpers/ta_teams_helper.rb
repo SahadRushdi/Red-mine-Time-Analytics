@@ -177,12 +177,24 @@ module TaTeamsHelper
     ]
   end
 
-  # Team-specific grouping options (only Week and Month)
+  # Team-specific grouping options (Daily, Weekly, Month)
   def team_grouping_options
     [
-      [l(:label_weekly), 'weekly'],
-      [l(:label_monthly), 'monthly']
+      [l(:label_team_grouping_daily), 'daily'],
+      [l(:label_team_grouping_weekly), 'weekly'],
+      [l(:label_team_grouping_monthly), 'monthly']
     ]
+  end
+
+  def team_grouping_label(grouping)
+    case grouping
+    when 'daily'
+      l(:label_team_grouping_daily)
+    when 'monthly'
+      l(:label_team_grouping_monthly)
+    else
+      l(:label_team_grouping_weekly)
+    end
   end
 
   def ta_team_action_icon(type)

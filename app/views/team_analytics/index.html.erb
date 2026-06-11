@@ -854,7 +854,7 @@
             <span class="text-xs text-gray-500">Total Hours</span>
           </div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
       </div>
     </div>
   <% else %>
@@ -994,7 +994,7 @@
             <span class="text-xs text-gray-500">Total Hours</span>
           </div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
       </div>
     </div>
   <% else %>
@@ -1095,7 +1095,7 @@
       <%# Summary View: Simple Member Table (Hidden by default) %>
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
         <div class="space-y-6 px-2">
-          <% @member_totals.sort_by { |_, hours| -hours }.each_with_index do |(member_name, hours), index| %>
+          <% @member_totals.sort_by { |name, hours| [-hours, name] }.each_with_index do |(member_name, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
             <% member = @members.find { |m| m[:name] == member_name } %>
@@ -1143,7 +1143,7 @@
             <span class="text-xs text-gray-500">Total Hours</span>
           </div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm"></div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
       </div>
     </div>
   <% else %>
@@ -1257,7 +1257,7 @@
         values.push(<%= hours.to_f %>);
       <% end %>
     <% elsif @view_mode == 'members' && @member_totals.present? %>
-      <% @member_totals.sort_by { |_, hours| -hours }.each do |member_name, hours| %>
+      <% @member_totals.select { |_, hours| hours > 0 }.sort_by { |name, hours| [-hours, name] }.each do |member_name, hours| %>
         labels.push('<%= j member_name %>');
         values.push(<%= hours.to_f %>);
       <% end %>

@@ -61,6 +61,9 @@ class TeamAnalyticsController < ApplicationController
     
     # Calculate summary statistics based on grouping
     case @grouping
+    when 'daily'
+      @max_period_hours, _ = calculate_max_daily_hours
+      @min_period_hours, _ = calculate_min_daily_hours
     when 'weekly'
       @max_period_hours = calculate_max_weekly_hours
       @min_period_hours = calculate_min_weekly_hours
@@ -253,11 +256,14 @@ class TeamAnalyticsController < ApplicationController
     return render json: { error: 'Team not found' }, status: 404 unless team
 
     # Calculate period end
-    period_end = if grouping == 'monthly'
-                   period_start.end_of_month
-                 else
-                   period_start.end_of_week(:monday)
-                 end
+    period_end = case grouping
+                  when 'daily'
+                    period_start
+                  when 'monthly'
+                    period_start.end_of_month
+                  else
+                    period_start.end_of_week(:monday)
+                  end
 
     period_label = helpers.format_period_for_table(period_start, grouping, period_start, period_end)
 
@@ -433,7 +439,7 @@ class TeamAnalyticsController < ApplicationController
   def set_grouping
     # Default to weekly grouping for team dashboard
     @grouping = params[:grouping].presence || 'weekly'
-    @grouping = 'weekly' unless %w[weekly monthly].include?(@grouping)
+    @grouping = 'weekly' unless %w[daily weekly monthly].include?(@grouping)
   end
 
   def build_member_dashboard_params
@@ -450,6 +456,21 @@ class TeamAnalyticsController < ApplicationController
         to: @to.strftime('%Y-%m-%d')
       )
     end
+  end
+
+  # Daily grouping calculations
+  def calculate_max_daily_hours
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    max_entry = daily_totals.max_by { |_, hours| hours }
+    [max_entry[1], max_entry[0]]
+  end
+
+  def calculate_min_daily_hours
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    min_entry = daily_totals.min_by { |_, hours| hours }
+    [min_entry[1], min_entry[0]]
   end
 
   # Weekly grouping calculations
@@ -504,6 +525,8 @@ class TeamAnalyticsController < ApplicationController
     
     entries.each do |entry|
       period_key = case grouping
+                   when 'daily'
+                     entry.spent_on
                    when 'weekly'
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
@@ -512,13 +535,15 @@ class TeamAnalyticsController < ApplicationController
                      # Default to weekly
                      entry.spent_on.beginning_of_week(:monday)
                    end
-      
+
       data[period_key] ||= 0
       data[period_key] += entry.hours
     end
-    
-    # Fill missing periods to show unlogged weeks/months as 0.00h
-    if grouping == 'weekly'
+
+    # Fill missing periods to show unlogged days/weeks/months as 0.00h
+    if grouping == 'daily'
+      data = fill_missing_working_days_team(data, @from, @to)
+    elsif grouping == 'weekly'
       data = fill_missing_weeks_team(data, @from, @to)
     elsif grouping == 'monthly'
       data = fill_missing_months_team(data, @from, @to)
@@ -610,7 +635,10 @@ class TeamAnalyticsController < ApplicationController
   def period_keys_for_overview_data(grouping)
     grouped = {}
     @time_entries.each do |entry|
-      key = if grouping == 'monthly'
+      key = case grouping
+            when 'daily'
+              entry.spent_on
+            when 'monthly'
               [entry.spent_on.year, entry.spent_on.month]
             else
               entry.spent_on.beginning_of_week(:monday)
@@ -619,6 +647,7 @@ class TeamAnalyticsController < ApplicationController
       grouped[key] += entry.hours
     end
 
+    grouped = fill_missing_working_days_team(grouped, @from, @to) if grouping == 'daily'
     grouped = fill_missing_weeks_team(grouped, @from, @to) if grouping == 'weekly'
     grouped = fill_missing_months_team(grouped, @from, @to) if grouping == 'monthly'
     grouped.sort_by { |key, _| key }.reverse.map(&:first)
@@ -634,6 +663,8 @@ class TeamAnalyticsController < ApplicationController
     
     entries.each do |entry|
       period_key = case grouping
+                   when 'daily'
+                     entry.spent_on
                    when 'weekly'
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
@@ -642,13 +673,15 @@ class TeamAnalyticsController < ApplicationController
                      # Default to weekly
                      entry.spent_on.beginning_of_week(:monday)
                    end
-      
+
       grouped_data[period_key] ||= 0
       grouped_data[period_key] += entry.hours
     end
-    
+
     # Fill missing periods for proper date range handling (show unlogged periods as 0.00)
-    if grouping == 'weekly'
+    if grouping == 'daily'
+      grouped_data = fill_missing_working_days_team(grouped_data, @from, @to)
+    elsif grouping == 'weekly'
       grouped_data = fill_missing_weeks_team(grouped_data, @from, @to)
     elsif grouping == 'monthly'
       grouped_data = fill_missing_months_team(grouped_data, @from, @to)
@@ -772,6 +805,8 @@ class TeamAnalyticsController < ApplicationController
   # Get period key for activity grouping (matches Time Entries format)
   def get_activity_period_key(date, grouping)
     case grouping
+    when 'daily'
+      date
     when 'weekly'
       # Use Monday-based week start to match Time Entries format
       days_since_monday = (date.wday - 1) % 7
@@ -790,6 +825,8 @@ class TeamAnalyticsController < ApplicationController
   # Format period display for activity tables
   def format_activity_period_display(period_key, grouping)
     case grouping
+    when 'daily'
+      helpers.format_period_for_table(period_key, grouping, @from, @to)
     when 'weekly'
       # Reuse the same logic as Time Entries section for consistency
       helpers.format_period_for_table(period_key, grouping, @from, @to)
@@ -1073,8 +1110,15 @@ class TeamAnalyticsController < ApplicationController
     
     # Get unique periods and members (temporarily without sorting members)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    members_unsorted = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
-    
+    members_with_entries = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
+
+    # Include all active team members so those with 0 logged hours still appear
+    active_members = @team_members
+      .select { |m| @active_member_ids.include?(m.user_id) }
+      .map { |m| { id: m.user_id, name: m.user.name } }
+
+    members_unsorted = (active_members + members_with_entries).uniq { |m| m[:id] }
+
     # Initialize matrix with zeros (use member name as key for lookup)
     matrix_data = {}
     periods.each { |period| matrix_data[period] = {} }
@@ -1095,8 +1139,8 @@ class TeamAnalyticsController < ApplicationController
       member_totals[member_data[:name]] = sql_user_totals[member_data[:id]] || 0
     end
 
-    # Sort members by total hours descending (largest to smallest)
-    members = members_unsorted.sort_by { |member_data| -member_totals[member_data[:name]] }
+    # Sort members by total hours descending (largest to smallest), then by name
+    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:name]], member_data[:name]] }
 
     # Calculate period totals and grand total
     period_totals = {}
@@ -1133,7 +1177,9 @@ class TeamAnalyticsController < ApplicationController
     return empty_chart_data('bar') if period_keys.blank? || categories.blank?
 
     sorted_periods = period_keys.uniq.sort
-    sorted_periods = if grouping == 'weekly'
+    sorted_periods = if grouping == 'daily'
+      fill_missing_working_days_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
+    elsif grouping == 'weekly'
       fill_missing_weeks_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
     else
       fill_missing_months_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
@@ -1175,8 +1221,8 @@ class TeamAnalyticsController < ApplicationController
           display: false
         },
         tooltips: {
-          mode: 'index',
-          intersect: false,
+          mode: 'nearest',
+          intersect: true,
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
           padding: 12,
           titleFontSize: 14,
@@ -1263,6 +1309,17 @@ class TeamAnalyticsController < ApplicationController
     "rgba(#{r}, #{g}, #{b}, #{alpha})"
   end
 
+  # Fill missing days for team dashboard (one entry per calendar date in range)
+  def fill_missing_working_days_team(grouped_data, from_date, to_date)
+    result = {}
+
+    (from_date..to_date).each do |date|
+      result[date] = grouped_data[date] || 0
+    end
+
+    result
+  end
+
   # Fill missing weeks for team dashboard (includes weeks overlapping with date range)
   def fill_missing_weeks_team(grouped_data, from_date, to_date)
     # Include weeks that overlap with the date range (like Individual Dashboard)
@@ -1333,6 +1390,8 @@ class TeamAnalyticsController < ApplicationController
   def calculate_team_size_for_period(period_date, grouping)
     # Determine period start and end dates based on grouping
     period_start, period_end = case grouping
+                                when 'daily'
+                                  [period_date, period_date]
                                 when 'weekly'
                                   week_start = period_date.beginning_of_week(:monday)
                                   week_end = week_start + 6.days
@@ -1398,6 +1457,9 @@ class TeamAnalyticsController < ApplicationController
   # Format chart label for team dashboard (proper week format: YYYY-WW)
   def format_chart_label_for_team(period, grouping)
     case grouping
+    when 'daily'
+      # Format as "Mon DD, YYYY" (matches Individual Dashboard daily chart labels)
+      period.strftime('%b %d, %Y')
     when 'weekly'
       # Format as YYYY-WW (ISO week number)
       year = period.cwyear
