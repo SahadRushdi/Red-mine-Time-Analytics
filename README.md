@@ -44,7 +44,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
   - Gmail OAuth 2.0 (recommended default)
   - Domain-Wide Delegation (DWD)
   - Google Apps Script webhook push
-- **Dedicated Leave Config Page**: Configure leave ingestion from **Administration → Leave Count**
+- **Dedicated Leave Config Page**: Configure leave ingestion from **Administration → Leave Sync**
 - **Admin Leaves Operations Page**: Use top-menu **Leaves** (admins only) for filtering, totals, grouped daily views, and unflagging records
 - **Historical + Incremental Sync**: Available for OAuth and DWD approaches
 - **Leave-aware Active Days**: Individual dashboard active days now uses `Working Days - Leave Days`
@@ -136,7 +136,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
 
 ### Leave Mailbox Setup
-1. Go to **Administration → Leave Count**
+1. Go to **Administration → Leave Sync**
 2. Configure common fields:
    - Leave recipient email
    - Historical sync start date
