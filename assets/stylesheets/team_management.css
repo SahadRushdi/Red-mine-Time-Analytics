@@ -799,6 +799,29 @@ button.ta-btn-danger,
   border: none !important;
 }
 
+#taTeamMembersAddModal #ta-add-team-member-role-btn,
+#taTeamMembersAddModal #ta-add-team-member-role-btn:hover,
+#taTeamMembersAddModal #ta-add-team-member-role-btn:active,
+#taHiringCreateModal #ta-hiring-create-title-button,
+#taHiringCreateModal #ta-hiring-create-title-button:hover,
+#taHiringCreateModal #ta-hiring-create-title-button:active,
+#taHiringCreateModal #ta-hiring-create-team-button,
+#taHiringCreateModal #ta-hiring-create-team-button:hover,
+#taHiringCreateModal #ta-hiring-create-team-button:active,
+#taHiringCreateModal #ta-hiring-create-priority-button,
+#taHiringCreateModal #ta-hiring-create-priority-button:hover,
+#taHiringCreateModal #ta-hiring-create-priority-button:active {
+  border: 1px solid #d1d5db !important;
+}
+
+#taTeamMembersAddModal #ta-add-team-member-role-btn:focus,
+#taHiringCreateModal #ta-hiring-create-title-button:focus,
+#taHiringCreateModal #ta-hiring-create-team-button:focus,
+#taHiringCreateModal #ta-hiring-create-priority-button:focus {
+  border: 1px solid #3b82f6 !important;
+  box-shadow: 0 0 0 1px #3b82f6 !important;
+}
+
 #taTeamMembersAddModal .tep-delete-close,
 #taTeamProjectsAddModal .tep-delete-close,
 #taTeamMembersDeleteModal .tep-delete-close,
