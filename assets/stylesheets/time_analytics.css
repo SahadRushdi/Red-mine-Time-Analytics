@@ -2028,3 +2028,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 .peer:focus + .ta-custom-toggle-track {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
 }
+
+/* Indeterminate "Refreshing…" bar for the Leaves page (single AJAX fetch, no real % to report) */
+.leaves-refresh-indeterminate {
+  width: 40% !important;
+  animation: leavesRefreshSlide 1.1s ease-in-out infinite;
+}
+
+@keyframes leavesRefreshSlide {
+  0% { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}

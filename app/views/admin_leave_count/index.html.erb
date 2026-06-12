@@ -183,13 +183,13 @@
           </div>
           <label class="inline-flex items-center cursor-pointer">
             <%= hidden_field_tag :leave_sync_enabled, '0' %>
-            <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], class: 'sr-only peer' %>
+            <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], id: 'leave-sync-enabled-toggle', class: 'sr-only peer' %>
             <div class="ta-custom-toggle-track"></div>
           </label>
         </div>
       </div>
 
-      <% if @leave_sync_settings[:enabled] %>
+      <div id="leave-sync-schedule-section" class="space-y-4 <%= 'hidden' unless @leave_sync_settings[:enabled] %>">
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <%= label_tag :leave_sync_freq_type, l(:label_frequency_type), class: 'mb-1 block text-sm font-medium text-gray-700' %>
@@ -296,9 +296,10 @@
             </div>
           </div>
         </div>
-      <% else %>
+      </div>
+      <div id="leave-sync-cron-disabled" class="<%= 'hidden' if @leave_sync_settings[:enabled] %>">
         <p class="text-sm text-gray-600"><%= l(:text_leave_sync_cron_disabled) %></p>
-      <% end %>
+      </div>
     </div>
 
     <div class="flex justify-end">
@@ -500,5 +501,17 @@
       if (freqList) freqList.classList.add('hidden');
       if (unitList) unitList.classList.add('hidden');
     });
+
+    // Show/hide the schedule section live when the "Enable automatic sync" toggle changes,
+    // without requiring a save. Persistence still happens on form submit.
+    const enableToggle = document.getElementById('leave-sync-enabled-toggle');
+    const scheduleSection = document.getElementById('leave-sync-schedule-section');
+    const cronDisabled = document.getElementById('leave-sync-cron-disabled');
+    if (enableToggle && scheduleSection && cronDisabled) {
+      enableToggle.addEventListener('change', function () {
+        scheduleSection.classList.toggle('hidden', !enableToggle.checked);
+        cronDisabled.classList.toggle('hidden', enableToggle.checked);
+      });
+    }
   });
 </script>

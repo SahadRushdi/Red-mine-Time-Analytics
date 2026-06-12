@@ -185,6 +185,15 @@
     </div>
   </div>
 
+  <div id="leaves-refresh-bar" class="hidden">
+    <div class="mb-1 flex items-center justify-between">
+      <span id="leaves-refresh-text" class="text-xs font-medium text-blue-700">Refreshing…</span>
+    </div>
+    <div class="w-full overflow-hidden rounded-full bg-gray-200" style="height: 6px;">
+      <div id="leaves-refresh-fill" class="h-full rounded-full bg-blue-600 leaves-refresh-indeterminate"></div>
+    </div>
+  </div>
+
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
     <div class="ts-summary-card ts-summary-card--total flex items-center gap-4">
       <div class="ts-summary-card-icon">
@@ -1341,6 +1350,50 @@
       elements.deleteAllButton.classList.toggle('opacity-50', disabled);
     }
 
+    var refreshHideTimer = null;
+
+    function showRefreshBar() {
+      var bar = document.getElementById('leaves-refresh-bar');
+      var text = document.getElementById('leaves-refresh-text');
+      var fill = document.getElementById('leaves-refresh-fill');
+      if (!bar || !text || !fill) return;
+      if (refreshHideTimer) { window.clearTimeout(refreshHideTimer); refreshHideTimer = null; }
+      text.textContent = 'Refreshing…';
+      text.className = 'text-xs font-medium text-blue-700';
+      fill.className = 'h-full rounded-full bg-blue-600 leaves-refresh-indeterminate';
+      fill.style.width = '';
+      fill.style.marginLeft = '';
+      bar.classList.remove('hidden');
+    }
+
+    function finishRefreshBar(startedAt, ok) {
+      var bar = document.getElementById('leaves-refresh-bar');
+      var text = document.getElementById('leaves-refresh-text');
+      var fill = document.getElementById('leaves-refresh-fill');
+      if (!bar || !text || !fill) return;
+      // Keep the bar visible for a short minimum so very fast loads still register visually.
+      var elapsed = Date.now() - (startedAt || Date.now());
+      var delay = Math.max(0, 400 - elapsed);
+      window.setTimeout(function () {
+        if (ok) {
+          text.textContent = 'Refreshed ✓';
+          text.className = 'text-xs font-medium text-emerald-600';
+          fill.className = 'h-full rounded-full bg-emerald-500';
+        } else {
+          text.textContent = 'Refresh failed';
+          text.className = 'text-xs font-medium text-red-600';
+          fill.className = 'h-full rounded-full bg-red-500';
+        }
+        fill.style.width = '100%';
+        fill.style.marginLeft = '0';
+        refreshHideTimer = window.setTimeout(function () {
+          bar.classList.add('hidden');
+          fill.style.width = '';
+          fill.style.marginLeft = '';
+        }, 1000);
+      }, delay);
+    }
+
     function loadData() {
       var params = new URLSearchParams({
         from: elements.from.value,
@@ -1348,6 +1401,10 @@
         user_id: elements.userInput.value,
         status: elements.statusInput.value
       });
+
+      showRefreshBar();
+      var refreshStartedAt = Date.now();
+      var refreshOk = true;
 
       return fetch('<%= leaves_data_path %>?' + params.toString(), { headers: { Accept: 'application/json' } })
         .then(function (response) { return response.json(); })
@@ -1371,8 +1428,12 @@
           setDeleteAllButtonState(state.totalCount);
         })
         .catch(function (error) {
+          refreshOk = false;
           elements.dailyBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
           elements.summaryBody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+        })
+        .then(function () {
+          finishRefreshBar(refreshStartedAt, refreshOk);
         });
     }
 
