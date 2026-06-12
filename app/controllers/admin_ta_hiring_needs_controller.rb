@@ -3,6 +3,8 @@ class AdminTaHiringNeedsController < ApplicationController
   menu_item :positions_hiring
   self.main_menu = false
 
+  helper :ta_teams
+
   before_action :require_admin
   before_action :find_hiring_need, only: [:update, :destroy, :mark_filled, :mark_open]
 
