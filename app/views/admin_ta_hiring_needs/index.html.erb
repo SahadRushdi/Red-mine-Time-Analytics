@@ -128,8 +128,8 @@
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                        <% @all_teams.each do |team| %>
-                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                        <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                          <% indent = '&nbsp;&nbsp;' * level %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
@@ -292,8 +292,8 @@
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                        <% @all_teams.each do |team| %>
-                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                        <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                          <% indent = '&nbsp;&nbsp;' * level %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
@@ -457,8 +457,8 @@
                    data-ta-hiring-create-team-menu="true"
                    class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
                 <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
-                  <% @all_teams.each do |team| %>
-                    <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                  <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                    <% indent = '&nbsp;&nbsp;' * level %>
                     <li>
                       <button type="button"
                               class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"

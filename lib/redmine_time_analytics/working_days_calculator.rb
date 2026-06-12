@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'set'
 require_relative 'holidays'
 
 module RedmineTimeAnalytics
@@ -30,6 +31,16 @@ module RedmineTimeAnalytics
       # Check if a date is a working day
       def working_day?(date)
         !weekend?(date) && !Holidays.holiday?(date)
+      end
+
+      # Build a working-day predicate for the [from_date, to_date] range that performs the
+      # custom-holiday lookup ONCE (via Holidays.holidays_between) instead of one DB query per
+      # date. Returns a lambda usable as a per-record filter, e.g.
+      #   is_working_day = WorkingDaysCalculator.working_day_checker(from, to)
+      #   records.select! { |r| is_working_day.call(r.leave_date) }
+      def working_day_checker(from_date, to_date)
+        holiday_dates = Holidays.holidays_between(from_date, to_date).to_set
+        ->(date) { !weekend?(date) && !holiday_dates.include?(date) }
       end
 
       # Check if a date is a weekend

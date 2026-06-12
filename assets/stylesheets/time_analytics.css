@@ -636,7 +636,12 @@ button[data-table-sort]:active {
 #leaves-per-page-dropdown-button:hover,
 #leaves-per-page-dropdown-button:focus,
 #leaves-per-page-dropdown-button:focus-visible,
-#leaves-per-page-dropdown-button:active {
+#leaves-per-page-dropdown-button:active,
+#per-page-dropdown-button,
+#per-page-dropdown-button:hover,
+#per-page-dropdown-button:focus,
+#per-page-dropdown-button:focus-visible,
+#per-page-dropdown-button:active {
   color: #111827 !important;
   background-color: #ffffff !important;
   border-color: #d1d5db !important;
@@ -647,7 +652,8 @@ button[data-table-sort]:active {
 
 #leaves-user-dropdown-button:hover,
 #leaves-status-dropdown-button:hover,
-#leaves-per-page-dropdown-button:hover {
+#leaves-per-page-dropdown-button:hover,
+#per-page-dropdown-button:hover {
   background-color: #f9fafb !important;
 }
 
@@ -1982,31 +1988,6 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   color: inherit !important;
 }
 
-/* === Leave Sync Date Picker Fields === */
-/* Override Redmine's purple border on datepicker fields with blue */
-#leave-sync-start-date,
-#leave-sync-end-date {
-  border-color: #60a5fa !important;
-}
-
-#leave-sync-start-date:focus,
-#leave-sync-end-date:focus {
-  border-color: #3b82f6 !important;
-  outline: none !important;
-  ring: 0 !important;
-}
-
-/* Override Redmine input field ring styles */
-#leave-sync-start-date,
-#leave-sync-end-date {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-}
-
-#leave-sync-start-date:focus,
-#leave-sync-end-date:focus {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-}
-
 /* === Dedicated Team Analytics Toggle Fix === */
 .ta-custom-toggle-track {
   width: 36px !important;
@@ -2052,4 +2033,15 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 
 .peer:focus + .ta-custom-toggle-track {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Indeterminate "Refreshing…" bar for the Leaves page (single AJAX fetch, no real % to report) */
+.leaves-refresh-indeterminate {
+  width: 40% !important;
+  animation: leavesRefreshSlide 1.1s ease-in-out infinite;
+}
+
+@keyframes leavesRefreshSlide {
+  0% { margin-left: -40%; }
+  100% { margin-left: 100%; }
 }

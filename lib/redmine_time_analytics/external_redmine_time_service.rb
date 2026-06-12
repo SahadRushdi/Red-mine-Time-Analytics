@@ -31,7 +31,9 @@ module RedmineTimeAnalytics
         end
 
         begin
-          entries = fetch_time_entries(project_identifier: identifier, from: from, to: to)
+          entries = TaExternalTimeCache.fetch_or_store(base_url: @base_url, identifier: identifier, from: from, to: to) do
+            fetch_entries(project_identifier: identifier, from: from, to: to)
+          end
           accumulate_entries(hours_by_period, entries, project_assignments, grouping)
         rescue StandardError => e
           errors << "Failed to fetch external project #{identifier}: #{e.message}"
@@ -39,6 +41,15 @@ module RedmineTimeAnalytics
       end
 
       Result.new(hours_by_period: hours_by_period, errors: errors)
+    end
+
+    # Fetches and normalizes time entries for a single external project + range.
+    # Returns a compact, JSON/cache-friendly array of string-keyed hashes so the result can be
+    # cached in TaExternalTimeCache and replayed through #accumulate_entries unchanged.
+    def fetch_entries(project_identifier:, from:, to:)
+      fetch_time_entries(project_identifier: project_identifier, from: from, to: to).map do |entry|
+        { 'spent_on' => entry['spent_on'].to_s, 'hours' => entry['hours'].to_f }
+      end
     end
 
     private
@@ -99,6 +110,8 @@ module RedmineTimeAnalytics
 
     def period_key_for_date(date, grouping)
       case grouping
+      when 'daily'
+        date
       when 'monthly'
         [date.year, date.month]
       else

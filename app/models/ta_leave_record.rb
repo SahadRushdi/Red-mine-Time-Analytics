@@ -161,8 +161,10 @@ class TaLeaveRecord < ActiveRecord::Base
       totals = Hash.new(0.0)
       return totals if user_ids.blank?
 
+      # Batch the holiday lookup once for the whole range instead of one query per record.
+      is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(from_date, to_date)
       confirmed.where(user_id: user_ids).within_range(from_date, to_date).find_each do |record|
-        next unless RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(record.leave_date)
+        next unless is_working_day.call(record.leave_date)
 
         totals[record.user_id] += record.leave_fraction.to_f
       end

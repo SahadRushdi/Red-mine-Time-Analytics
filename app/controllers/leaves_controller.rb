@@ -203,7 +203,15 @@ class LeavesController < ApplicationController
     scope = scope.where(status: filters[:status].to_s) if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
 
     records = scope.order(leave_date: :asc, user_id: :asc, source_sent_at: :asc).to_a
-    records.select! { |r| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(r.leave_date) }
+
+    # Filter to working days using a single batched holiday lookup (avoids one DB query per record).
+    is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(from_date, to_date)
+    records.select! { |r| is_working_day.call(r.leave_date) }
+
+    # Compute each record's effective leave fraction once and reuse it across all passes below.
+    fraction_by_record = records.each_with_object({}) { |record, memo| memo[record] = effective_leave_fraction(record) }
+    # The :user association is already eager-loaded (includes(:user)); index it for user_summary.
+    user_by_id = records.each_with_object({}) { |record, memo| memo[record.user_id] ||= record.user if record.user }
 
     grouped_by_date = records.group_by(&:leave_date)
     user_totals = Hash.new(0.0)
@@ -211,13 +219,13 @@ class LeavesController < ApplicationController
       next if record.user_id.blank?
       next if record.status == 'flagged'
 
-      user_totals[record.user_id] += effective_leave_fraction(record)
+      user_totals[record.user_id] += fraction_by_record[record]
     end
 
     {
       filters: { from: from_date, to: to_date, user_id: filters[:user_id].to_s, status: filters[:status].to_s },
       totals: {
-        overall_leave_days: records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
+        overall_leave_days: records.select { |r| r.status == 'confirmed' }.sum { |record| fraction_by_record[record] }.round(2),
         users_with_leave: user_totals.keys.compact.count,
         flagged_records: records.count { |record| record.status == 'flagged' },
         total_records: records.count
@@ -225,12 +233,12 @@ class LeavesController < ApplicationController
       daily_groups: grouped_by_date.map do |date, group_records|
         {
           date: date,
-          total_leave_days: group_records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
-          records: group_records.map { |record| serialize_record(record) }
+          total_leave_days: group_records.select { |r| r.status == 'confirmed' }.sum { |record| fraction_by_record[record] }.round(2),
+          records: group_records.map { |record| serialize_record(record, fraction_by_record[record]) }
         }
       end,
       user_summary: user_totals.map do |user_id, total|
-        user = records.find { |record| record.user_id == user_id }&.user
+        user = user_by_id[user_id]
         {
           user_id: user_id,
           user_name: user&.name || 'Unknown User',
@@ -240,9 +248,9 @@ class LeavesController < ApplicationController
     }
   end
 
-  def serialize_record(record)
+  def serialize_record(record, leave_fraction = nil)
     mapped_user = record.user || TaLeaveRecord.find_active_user_by_sender(record.sender_email)
-    leave_fraction = effective_leave_fraction(record)
+    leave_fraction ||= effective_leave_fraction(record)
       {
         id: record.id,
         user_id: mapped_user&.id,
