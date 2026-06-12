@@ -636,7 +636,12 @@ button[data-table-sort]:active {
 #leaves-per-page-dropdown-button:hover,
 #leaves-per-page-dropdown-button:focus,
 #leaves-per-page-dropdown-button:focus-visible,
-#leaves-per-page-dropdown-button:active {
+#leaves-per-page-dropdown-button:active,
+#per-page-dropdown-button,
+#per-page-dropdown-button:hover,
+#per-page-dropdown-button:focus,
+#per-page-dropdown-button:focus-visible,
+#per-page-dropdown-button:active {
   color: #111827 !important;
   background-color: #ffffff !important;
   border-color: #d1d5db !important;
@@ -647,7 +652,8 @@ button[data-table-sort]:active {
 
 #leaves-user-dropdown-button:hover,
 #leaves-status-dropdown-button:hover,
-#leaves-per-page-dropdown-button:hover {
+#leaves-per-page-dropdown-button:hover,
+#per-page-dropdown-button:hover {
   background-color: #f9fafb !important;
 }
 
