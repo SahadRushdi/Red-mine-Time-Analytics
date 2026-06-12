@@ -89,7 +89,7 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
       
       # Also generate simple activity summary for daily toggle view
       if @grouping == 'daily'
@@ -113,7 +113,7 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
       
       # Also generate simple project summary for daily toggle view
       if @grouping == 'daily'
@@ -137,7 +137,7 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
       
       # Also generate simple issue summary for daily toggle view
       if @grouping == 'daily'

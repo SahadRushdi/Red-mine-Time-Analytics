@@ -771,10 +771,7 @@
             <%= hidden_field_tag :view_mode, @view_mode %>
             <%= hidden_field_tag :team_id, params[:team_id] %>
             <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
-            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
-            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
-                onchange: 'this.form.submit()',
-                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+            <%= render 'per_page_dropdown' %>
               <% end %>
             </div>
           </div>
@@ -836,8 +833,10 @@
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state) %>
-        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
-        
+        <span id="team-activity-pagination-links" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
+          <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        </span>
+
         <div class="pagination-info" id="team-activity-pagination-info"
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
              data-summary-count="<%= @activity_totals&.count || 0 %>">
@@ -911,10 +910,7 @@
             <%= hidden_field_tag :view_mode, @view_mode %>
             <%= hidden_field_tag :team_id, params[:team_id] %>
             <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
-            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
-            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
-                onchange: 'this.form.submit()',
-                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+            <%= render 'per_page_dropdown' %>
               <% end %>
             </div>
           </div>
@@ -976,8 +972,10 @@
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state) %>
-        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
-        
+        <span id="team-project-pagination-links" style="<%= @project_view_state == 'summary' ? 'display: none;' : '' %>">
+          <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        </span>
+
         <div class="pagination-info" id="team-project-pagination-info"
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
              data-summary-count="<%= @project_totals&.count || 0 %>">
@@ -1051,10 +1049,7 @@
             <%= hidden_field_tag :view_mode, @view_mode %>
             <%= hidden_field_tag :team_id, params[:team_id] %>
             <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' %>
-            <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
-            <%= select_tag :per_page, options_for_select(per_page_options, @limit),
-                onchange: 'this.form.submit()',
-                class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+            <%= render 'per_page_dropdown' %>
               <% end %>
             </div>
           </div>
@@ -1125,8 +1120,10 @@
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
         <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state) %>
-        <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
-        
+        <span id="team-member-pagination-links" style="<%= @member_view_state == 'summary' ? 'display: none;' : '' %>">
+          <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
+        </span>
+
         <div class="pagination-info" id="team-member-pagination-info"
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
              data-summary-count="<%= @member_totals&.count || 0 %>">
@@ -1485,19 +1482,22 @@
       prefix: 'team-activity',
       storageKey: 'team_activity_view_mode',
       hiddenFieldId: 'activity_view_state_field',
-      paginationInfoId: 'team-activity-pagination-info'
+      paginationInfoId: 'team-activity-pagination-info',
+      paginationLinksId: 'team-activity-pagination-links'
     },
     project: {
       prefix: 'team-project',
       storageKey: 'team_project_view_mode',
       hiddenFieldId: 'project_view_state_field',
-      paginationInfoId: 'team-project-pagination-info'
+      paginationInfoId: 'team-project-pagination-info',
+      paginationLinksId: 'team-project-pagination-links'
     },
     member: {
       prefix: 'team-member',
       storageKey: 'team_member_view_mode',
       hiddenFieldId: 'member_view_state_field',
-      paginationInfoId: 'team-member-pagination-info'
+      paginationInfoId: 'team-member-pagination-info',
+      paginationLinksId: 'team-member-pagination-links'
     }
   };
 
@@ -1525,10 +1525,42 @@
     }
   }
 
+  // Per-page Flowbite dropdown
+  function togglePerPageDropdown() {
+    var menu = document.getElementById('per-page-dropdown');
+    if (menu) menu.classList.toggle('hidden');
+  }
+
+  function selectPerPage(value) {
+    var field = document.getElementById('per-page-field');
+    var label = document.getElementById('per-page-label');
+    if (label) label.textContent = value;
+    if (field) {
+      field.value = value;
+      field.closest('form').submit();
+    }
+  }
+
+  document.addEventListener('click', function(event) {
+    var menu = document.getElementById('per-page-dropdown');
+    var button = document.getElementById('per-page-dropdown-button');
+    if (menu && !menu.classList.contains('hidden')) {
+      if (!menu.contains(event.target) && button && !button.contains(event.target)) {
+        menu.classList.add('hidden');
+      }
+    }
+  });
+
   function updateTeamPaginationInfo(viewType, viewState) {
     var config = TEAM_VIEW_CONFIG[viewType];
     if (!config) return;
     var paginationInfo = document.getElementById(config.paginationInfoId);
+    var paginationLinks = document.getElementById(config.paginationLinksId);
+
+    if (paginationLinks) {
+      paginationLinks.style.display = viewState === 'detailed' ? '' : 'none';
+    }
+
     if (!paginationInfo) return;
 
     if (viewState === 'detailed') {
