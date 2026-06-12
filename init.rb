@@ -17,6 +17,7 @@ require File.expand_path('lib/redmine_time_analytics/leave_sync_scheduler', __di
 require File.expand_path('lib/redmine_time_analytics/missing_time_email_template', __dir__)
 require File.expand_path('lib/redmine_time_analytics/missing_time_notification_service', __dir__)
 require File.expand_path('lib/redmine_time_analytics/missing_time_scheduler', __dir__)
+require File.expand_path('lib/redmine_time_analytics/external_time_cache_scheduler', __dir__)
 require File.expand_path('app/mailers/missing_time_mailer', __dir__)
 
 Redmine::Plugin.register :redmine_time_analytics do
@@ -75,6 +76,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   Rails.application.config.after_initialize do
     RedmineTimeAnalytics::LeaveSyncScheduler.start
     RedmineTimeAnalytics::MissingTimeScheduler.start
+    RedmineTimeAnalytics::ExternalTimeCacheScheduler.start
 
     Setting.after_commit(on: %i[create update]) do
       if name == 'plugin_redmine_time_analytics'
