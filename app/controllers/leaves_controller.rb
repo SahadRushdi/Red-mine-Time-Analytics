@@ -274,7 +274,14 @@ class LeavesController < ApplicationController
     return stored if stored.positive?
 
     parsed = parse_leave_record(record)
-    parsed.leave_fraction.to_f
+    parsed_fraction = parsed&.leave_fraction.to_f
+    return parsed_fraction if parsed_fraction.positive?
+
+    # Flagged records are usually a now-locked sender (user_not_found), so the parser bails
+    # before computing a fraction. Recover the real Half/Full Day count from the email text,
+    # which does not depend on the sender still being an active user.
+    subject = record.raw_subject.to_s.sub(/\A\[FLAGGED:[^\]]+\]\s*/, '')
+    RedmineTimeAnalytics::LeaveEmailParser.fraction_from_email(subject: subject, body: record.raw_body.to_s)
   end
 
   def parse_leave_record(record)

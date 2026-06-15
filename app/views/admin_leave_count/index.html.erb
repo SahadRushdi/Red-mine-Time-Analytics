@@ -125,33 +125,59 @@
     </div>
 
     <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
-      <div class="flex items-start gap-3">
-        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-gray-900"><%= l(:label_leave_ai_extraction_mode) %></h3>
+            <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_leave_ai_description) %></p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
-        </div>
-        <div>
-          <h3 class="text-base font-semibold text-gray-900"><%= l(:label_leave_ai_extraction_mode) %></h3>
-          <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_leave_ai_description) %></p>
-        </div>
+          Google AI Studio (Gemini)
+        </span>
       </div>
 
       <%= hidden_field_tag :leave_ai_extraction_enabled, '1' %>
+      <%= hidden_field_tag :leave_ai_provider, 'google' %>
       <div id="leave-ai-model-panel" class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <%= label_tag :leave_ai_provider, l(:label_leave_ai_provider), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-          <%= hidden_field_tag :leave_ai_provider, 'google' %>
-          <input type="text" value="Google AI Studio (Gemini)" disabled class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900" />
+          <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
         </div>
         <div>
           <%= label_tag :leave_ai_model, l(:label_leave_ai_model), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-          <%= text_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], placeholder: 'gemini-2.0-flash', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          <% if @leave_ai_api_key_present %>
+            <div class="relative" id="leave-ai-model-wrapper">
+              <button type="button"
+                      id="leave-ai-model-btn"
+                      class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <span id="leave-ai-model-text" class="text-gray-700 truncate flex-1 text-left">
+                  <%= @leave_sync_settings[:ai_model].presence || l(:text_leave_ai_model_loading) %>
+                </span>
+                <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <%= hidden_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], id: 'leave-ai-model-value' %>
+              <div id="leave-ai-model-list"
+                   class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full max-h-64 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                <ul class="py-1 text-sm text-gray-700"></ul>
+              </div>
+            </div>
+            <p id="leave-ai-model-notice" class="mt-1 hidden text-xs"></p>
+          <% else %>
+            <%= text_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], placeholder: 'gemini-2.0-flash', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+            <p class="mt-1 text-xs text-gray-500"><%= l(:text_leave_ai_model_save_key_first) %></p>
+          <% end %>
         </div>
-      </div>
-      <div>
-        <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-        <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
       </div>
     </div>
 
@@ -198,7 +224,8 @@
                       id="leave-sync-freq-type-btn"
                       class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
                 <span id="leave-sync-freq-type-text" class="text-gray-700 truncate flex-1 text-left">
-                  <%= @leave_sync_settings[:freq_type] == 'daily' ? l(:label_freq_daily) : l(:label_freq_interval) %>
+                  <% freq_type_labels = { 'interval' => l(:label_freq_interval), 'everyday' => l(:label_freq_everyday), 'daily' => l(:label_freq_daily) } %>
+                  <%= freq_type_labels[@leave_sync_settings[:freq_type]] || l(:label_freq_interval) %>
                 </span>
                 <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -218,6 +245,13 @@
                   <li>
                     <button type="button"
                             class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                            onclick="selectFreqType('everyday', '<%= l(:label_freq_everyday) %>')">
+                      <%= l(:label_freq_everyday) %>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button"
+                            class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
                             onclick="selectFreqType('daily', '<%= l(:label_freq_daily) %>')">
                       <%= l(:label_freq_daily) %>
                     </button>
@@ -229,11 +263,13 @@
           <div>
             <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_next_run_at) %></span>
             <div class="flex h-[43px] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
-              <% if @leave_sync_scheduler_active && @leave_sync_next_run_at.present? %>
-                <%= format_time(@leave_sync_next_run_at) %>
-              <% else %>
-                <%= l(:label_not_scheduled) %>
-              <% end %>
+              <span id="leave-sync-next-run-text">
+                <% if @leave_sync_scheduler_active && @leave_sync_next_run_at.present? %>
+                  <%= format_time(@leave_sync_next_run_at) %>
+                <% else %>
+                  <%= l(:label_not_scheduled) %>
+                <% end %>
+              </span>
             </div>
           </div>
         </div>
@@ -274,6 +310,13 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div id="freq-panel-everyday" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'everyday' %> space-y-4 pt-2">
+          <div>
+            <%= label_tag :leave_sync_everyday_time, l(:label_specific_time), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= time_field_tag :leave_sync_everyday_time, @leave_sync_settings[:everyday_time], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
           </div>
         </div>
 
@@ -441,22 +484,121 @@
     document.getElementById('leave-sync-freq-type-text').textContent = label;
     document.getElementById('leave-sync-freq-type-list').classList.add('hidden');
 
-    const intervalPanel = document.getElementById('freq-panel-interval');
-    const dailyPanel = document.getElementById('freq-panel-daily');
+    const panels = {
+      interval: document.getElementById('freq-panel-interval'),
+      everyday: document.getElementById('freq-panel-everyday'),
+      daily: document.getElementById('freq-panel-daily')
+    };
 
-    if (val === 'interval') {
-      intervalPanel.classList.remove('hidden');
-      dailyPanel.classList.add('hidden');
-    } else {
-      intervalPanel.classList.add('hidden');
-      dailyPanel.classList.remove('hidden');
-    }
+    Object.keys(panels).forEach(function (key) {
+      if (panels[key]) panels[key].classList.toggle('hidden', key !== val);
+    });
+    updateNextRun();
   }
 
   function selectIntervalUnit(val, label) {
     document.getElementById('leave-sync-interval-unit-value').value = val;
     document.getElementById('leave-sync-interval-unit-text').textContent = label;
     document.getElementById('leave-sync-interval-unit-list').classList.add('hidden');
+    updateNextRun();
+  }
+
+  // Recompute the "Next Run At" preview from the current (unsaved) schedule inputs.
+  function updateNextRun() {
+    const field = document.getElementById('leave-sync-next-run-text');
+    if (!field) return;
+
+    const notScheduled = '<%= j l(:label_not_scheduled) %>';
+    const enableToggle = document.getElementById('leave-sync-enabled-toggle');
+    if (enableToggle && !enableToggle.checked) {
+      field.textContent = notScheduled;
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append('leave_sync_freq_type', document.getElementById('leave-sync-freq-type-value').value);
+    params.append('leave_sync_interval_unit', document.getElementById('leave-sync-interval-unit-value').value);
+    const intervalValue = document.getElementById('leave_sync_interval_value');
+    if (intervalValue) params.append('leave_sync_interval_value', intervalValue.value);
+    const dailyTime = document.getElementById('leave_sync_daily_time');
+    if (dailyTime) params.append('leave_sync_daily_time', dailyTime.value);
+    const everydayTime = document.getElementById('leave_sync_everyday_time');
+    if (everydayTime) params.append('leave_sync_everyday_time', everydayTime.value);
+    document.querySelectorAll('input[name="leave_sync_daily_days[]"]:checked').forEach(function (cb) {
+      params.append('leave_sync_daily_days[]', cb.value);
+    });
+
+    fetch('<%= admin_leave_count_next_run_path %>?' + params.toString(), { headers: { 'Accept': 'application/json' } })
+      .then(response => response.ok ? response.json() : Promise.reject(response))
+      .then(data => { field.textContent = data.next_run || notScheduled; })
+      .catch(() => {});
+  }
+
+  function selectAiModel(val) {
+    document.getElementById('leave-ai-model-value').value = val;
+    document.getElementById('leave-ai-model-text').textContent = val;
+    document.getElementById('leave-ai-model-list').classList.add('hidden');
+  }
+
+  function loadAiModels() {
+    const wrapper = document.getElementById('leave-ai-model-wrapper');
+    if (!wrapper) return;
+
+    const listEl = document.querySelector('#leave-ai-model-list ul');
+    const notice = document.getElementById('leave-ai-model-notice');
+    const textEl = document.getElementById('leave-ai-model-text');
+    const currentModel = document.getElementById('leave-ai-model-value').value;
+
+    const messages = {
+      loadFailed: '<%= j l(:text_leave_ai_model_load_failed) %>',
+      deprecated: '<%= j l(:text_leave_ai_model_deprecated) %>',
+      none: '<%= j l(:text_leave_ai_model_none) %>'
+    };
+
+    const showNotice = (msg, tone) => {
+      notice.textContent = msg;
+      notice.className = 'mt-1 text-xs ' + (tone === 'error' ? 'text-red-600' : 'text-amber-600');
+      notice.classList.remove('hidden');
+    };
+
+    const addOption = (model, deprecated) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tep-activity-option w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 '
+        + (deprecated ? '!text-red-600' : '!text-gray-700');
+      btn.textContent = deprecated ? (model + ' ⚠') : model;
+      btn.addEventListener('click', () => selectAiModel(model));
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    };
+
+    fetch('<%= admin_leave_count_ai_models_path %>', { headers: { 'Accept': 'application/json' } })
+      .then(response => response.ok ? response.json() : Promise.reject(response))
+      .then(data => {
+        const models = Array.isArray(data.models) ? data.models : [];
+        listEl.innerHTML = '';
+
+        if (models.length === 0) {
+          showNotice(messages.none, 'error');
+          return;
+        }
+
+        // Edge case 3: saved model not in the live list -> flag as deprecated.
+        if (currentModel && !models.includes(currentModel)) {
+          addOption(currentModel, true);
+          showNotice(messages.deprecated, 'error');
+        } else if (!currentModel) {
+          textEl.textContent = models[0];
+          document.getElementById('leave-ai-model-value').value = models[0];
+        }
+
+        models.forEach(model => addOption(model, false));
+      })
+      .catch(() => {
+        // Edge case 2: keep the last known value, surface an error notice.
+        showNotice(messages.loadFailed, 'error');
+      });
   }
 
   // Flowbite's datepicker can render itself open on page load when the
@@ -480,6 +622,18 @@
     const freqList = document.getElementById('leave-sync-freq-type-list');
     const unitBtn = document.getElementById('leave-sync-interval-unit-btn');
     const unitList = document.getElementById('leave-sync-interval-unit-list');
+    const aiModelBtn = document.getElementById('leave-ai-model-btn');
+    const aiModelList = document.getElementById('leave-ai-model-list');
+
+    if (aiModelBtn) {
+      aiModelBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        aiModelList.classList.toggle('hidden');
+        if (freqList) freqList.classList.add('hidden');
+        if (unitList) unitList.classList.add('hidden');
+      });
+      loadAiModels();
+    }
 
     if (freqBtn) {
       freqBtn.addEventListener('click', function(e) {
@@ -500,6 +654,7 @@
     document.addEventListener('click', function() {
       if (freqList) freqList.classList.add('hidden');
       if (unitList) unitList.classList.add('hidden');
+      if (aiModelList) aiModelList.classList.add('hidden');
     });
 
     // Show/hide the schedule section live when the "Enable automatic sync" toggle changes,
@@ -511,7 +666,17 @@
       enableToggle.addEventListener('change', function () {
         scheduleSection.classList.toggle('hidden', !enableToggle.checked);
         cronDisabled.classList.toggle('hidden', enableToggle.checked);
+        updateNextRun();
       });
     }
+
+    // Live "Next Run At" preview: recompute whenever any schedule input changes.
+    ['leave_sync_interval_value', 'leave_sync_daily_time', 'leave_sync_everyday_time'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateNextRun);
+    });
+    document.querySelectorAll('input[name="leave_sync_daily_days[]"]').forEach(function (cb) {
+      cb.addEventListener('change', updateNextRun);
+    });
   });
 </script>
