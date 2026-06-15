@@ -39,6 +39,13 @@ module RedmineTimeAnalytics
                    'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
                    'nov(?:ember)?|dec(?:ember)?)'.freeze
 
+    # Detect the leave fraction (0.5 / 1.0) straight from the email text using keyword
+    # matching only. Unlike #parse this needs no user lookup, so it can recover the real
+    # count for flagged records whose sender is no longer an active (e.g. locked) user.
+    def self.fraction_from_email(subject:, body:)
+      new.send(:determine_leave_fraction, subject_text: subject.to_s, body_text: body.to_s)
+    end
+
     def parse(message:, recipient_email:)
       sender_email = normalize_email(message[:from])
       recipient = normalize_email(recipient_email)
