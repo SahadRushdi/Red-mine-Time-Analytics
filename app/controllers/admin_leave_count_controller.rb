@@ -14,6 +14,7 @@ class AdminLeaveCountController < ApplicationController
 
   def index
     @leave_sync_settings = TaTeamSetting.leave_sync_settings
+    @leave_ai_api_key_present = @leave_sync_settings[:ai_api_key].present?
     @leave_sync_configured = TaTeamSetting.leave_sync_configured?
     @manual_pull_available = TaTeamSetting.leave_sync_manual_pull?
     @leave_sync_enabled = @leave_sync_settings[:enabled]
@@ -84,6 +85,18 @@ class AdminLeaveCountController < ApplicationController
     sync_id = params[:sync_id]
     progress = RedmineTimeAnalytics::SyncTracker.get(sync_id) || { status: 'starting', message: 'Initializing...', progress: 0 }
     render json: progress
+  end
+
+  def ai_models
+    api_key = TaTeamSetting.leave_sync_settings[:ai_api_key].to_s
+    if api_key.blank?
+      return render json: { error: 'no_api_key' }, status: :unprocessable_entity
+    end
+
+    render json: { models: fetch_google_models(api_key) }
+  rescue StandardError => e
+    Rails.logger.warn("[LeaveAI] model list fetch failed: #{e.class}: #{e.message}")
+    render json: { error: 'fetch_failed' }, status: :bad_gateway
   end
 
   def oauth_start
@@ -171,6 +184,27 @@ class AdminLeaveCountController < ApplicationController
       :leave_ai_api_key,
       leave_sync_daily_days: []
     )
+  end
+
+  def fetch_google_models(api_key)
+    uri = URI.parse("https://generativelanguage.googleapis.com/v1beta/models?key=#{URI.encode_www_form_component(api_key)}&pageSize=200")
+    request = Net::HTTP::Get.new(uri)
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 8) do |http|
+      http.request(request)
+    end
+    payload = JSON.parse(response.body.to_s)
+    unless response.code.to_i.between?(200, 299)
+      error_message = payload['error'].is_a?(Hash) ? payload['error']['message'] : payload['error']
+      raise(error_message.presence || "Model list request failed with HTTP #{response.code}")
+    end
+
+    Array(payload['models']).filter_map do |model|
+      methods = Array(model['supportedGenerationMethods'])
+      next unless methods.include?('generateContent')
+
+      model['name'].to_s.sub(%r{\Amodels/}, '').presence
+    end.uniq.sort
   end
 
   def exchange_oauth_code_for_tokens!(code:, client_id:, client_secret:, redirect_uri:)
