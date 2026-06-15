@@ -219,6 +219,7 @@ class TaTeamSetting < ActiveRecord::Base
       interval_value: raw['leave_sync_interval_value'].to_s.presence || '10',
       interval_unit: raw['leave_sync_interval_unit'].to_s.presence || 'minutes',
       daily_time: raw['leave_sync_daily_time'].to_s.presence || '09:00',
+      everyday_time: raw['leave_sync_everyday_time'].to_s.presence || '09:00',
       daily_days: (raw['leave_sync_daily_days'].to_s.split(',').presence || %w[1 2 3 4 5])
     }
   end
@@ -234,6 +235,10 @@ class TaTeamSetting < ActiveRecord::Base
       when 'days'    then "0 0 */#{val} * *"
       else DEFAULT_LEAVE_SYNC_CRON
       end
+    elsif freq_type == 'everyday'
+      time = params[:leave_sync_everyday_time].to_s # HH:MM
+      hour, min = time.split(':')
+      "#{min.to_i} #{hour.to_i} * * * Asia/Kolkata"
     elsif freq_type == 'daily'
       time = params[:leave_sync_daily_time].to_s # HH:MM
       days = Array(params[:leave_sync_daily_days]).reject(&:blank?).join(',')
@@ -305,6 +310,7 @@ class TaTeamSetting < ActiveRecord::Base
     leave_sync_interval_value: nil,
     leave_sync_interval_unit: nil,
     leave_sync_daily_time: nil,
+    leave_sync_everyday_time: nil,
     leave_sync_daily_days: nil,
     ai_extraction_enabled: nil,
     ai_provider: 'google',
@@ -352,6 +358,7 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_interval_value'] = leave_sync_interval_value.to_s if leave_sync_interval_value.present?
     settings['leave_sync_interval_unit'] = leave_sync_interval_unit.to_s if leave_sync_interval_unit.present?
     settings['leave_sync_daily_time'] = leave_sync_daily_time.to_s if leave_sync_daily_time.present?
+    settings['leave_sync_everyday_time'] = leave_sync_everyday_time.to_s if leave_sync_everyday_time.present?
     if leave_sync_daily_days.present?
       settings['leave_sync_daily_days'] = Array(leave_sync_daily_days).reject(&:blank?).join(',')
     end

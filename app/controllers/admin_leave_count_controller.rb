@@ -51,6 +51,7 @@ class AdminLeaveCountController < ApplicationController
       leave_sync_interval_value: sync_params[:leave_sync_interval_value],
       leave_sync_interval_unit: sync_params[:leave_sync_interval_unit],
       leave_sync_daily_time: sync_params[:leave_sync_daily_time],
+      leave_sync_everyday_time: sync_params[:leave_sync_everyday_time],
       leave_sync_daily_days: sync_params[:leave_sync_daily_days],
       ai_extraction_enabled: ai_enabled,
       ai_provider: 'google',
@@ -97,6 +98,16 @@ class AdminLeaveCountController < ApplicationController
   rescue StandardError => e
     Rails.logger.warn("[LeaveAI] model list fetch failed: #{e.class}: #{e.message}")
     render json: { error: 'fetch_failed' }, status: :bad_gateway
+  end
+
+  def next_run
+    cron = TaTeamSetting.generate_cron_from_ui(next_run_params)
+    cron_line = RedmineTimeAnalytics::LeaveSyncScheduler.cron_line_for(cron)
+    next_time = cron_line&.next_time(Time.zone.now)
+    formatted = next_time ? helpers.format_time(next_time.to_t) : nil
+    render json: { next_run: formatted }
+  rescue StandardError
+    render json: { next_run: nil }
   end
 
   def oauth_start
@@ -179,6 +190,7 @@ class AdminLeaveCountController < ApplicationController
       :leave_sync_interval_value,
       :leave_sync_interval_unit,
       :leave_sync_daily_time,
+      :leave_sync_everyday_time,
       :leave_ai_extraction_enabled,
       :leave_ai_model,
       :leave_ai_api_key,
@@ -205,6 +217,17 @@ class AdminLeaveCountController < ApplicationController
 
       model['name'].to_s.sub(%r{\Amodels/}, '').presence
     end.uniq.sort
+  end
+
+  def next_run_params
+    params.permit(
+      :leave_sync_freq_type,
+      :leave_sync_interval_value,
+      :leave_sync_interval_unit,
+      :leave_sync_daily_time,
+      :leave_sync_everyday_time,
+      leave_sync_daily_days: []
+    )
   end
 
   def exchange_oauth_code_for_tokens!(code:, client_id:, client_secret:, redirect_uri:)
