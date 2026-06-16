@@ -89,7 +89,14 @@
   <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
     <div>
       <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leaves) %></h2>
-      <p class="text-sm text-gray-500"><%= l(:text_leaves_admin_description) %></p>
+      <% if @leave_last_synced_label.present? %>
+        <p class="mt-1 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+          <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span><%= l(:label_last_synced) %>: <%= @leave_last_synced_label %></span>
+        </p>
+      <% end %>
     </div>
 
     <div class="flex flex-col gap-3 xl:items-end">
@@ -1391,12 +1398,9 @@
       });
     }
 
-    // Aggregate confirmed leave records into a user × month/date pivot.
-    // Each user keeps per-month totals (+ their dates) and per-date totals, so the same
-    // structure drives both the multi-month and the single-month (date columns) layouts.
+    // Aggregate confirmed leave records into a user × month pivot (one column per selected month).
     function buildSummaryPivot(query) {
       var monthCols = summaryMonthKeys();
-      var singleMonth = monthCols.length === 1;
       var users = {};
 
       state.dailyRecords.forEach(function (record) {
@@ -1407,11 +1411,9 @@
         var name = record.user_name || '';
         if (query && name.toLowerCase().indexOf(query) === -1) return;
 
-        var iso = formatLeaveDateForDisplay(record.leave_date);
-        var monthKey = iso.slice(0, 7);
-        var user = users[name] || (users[name] = { name: name, byMonth: {}, byDate: {}, total: 0 });
+        var monthKey = formatLeaveDateForDisplay(record.leave_date).slice(0, 7);
+        var user = users[name] || (users[name] = { name: name, byMonth: {}, total: 0 });
         user.total += fraction;
-        user.byDate[iso] = (user.byDate[iso] || 0) + fraction;
         var bucket = user.byMonth[monthKey] || (user.byMonth[monthKey] = { total: 0 });
         bucket.total += fraction;
       });
@@ -1419,16 +1421,7 @@
       var userList = Object.keys(users).map(function (name) { return users[name]; });
       userList.sort(function (a, b) { return (b.total - a.total) || a.name.localeCompare(b.name); });
 
-      var dateCols = [];
-      if (singleMonth) {
-        var dateSet = {};
-        userList.forEach(function (user) {
-          Object.keys(user.byDate).forEach(function (date) { dateSet[date] = true; });
-        });
-        dateCols = Object.keys(dateSet).sort();
-      }
-
-      return { monthCols: monthCols, dateCols: dateCols, singleMonth: singleMonth, users: userList };
+      return { monthCols: monthCols, users: userList };
     }
 
     function summaryInfoButton(userName, monthKey, monthLabel) {
@@ -1447,10 +1440,9 @@
         .replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Per-user value for a given summary sort key (column key, 'total', or 'user_name').
-    function summarySortValue(user, sortKey, singleMonth) {
+    // Per-user value for a given summary sort key (month column key, 'total', or 'user_name').
+    function summarySortValue(user, sortKey) {
       if (sortKey === 'total') return user.total;
-      if (singleMonth) return user.byDate[sortKey] || 0;
       return (user.byMonth[sortKey] || {}).total || 0;
     }
 
@@ -1465,10 +1457,8 @@
     function renderSummaryRows() {
       var query = normalize(elements.search.value);
       var pivot = buildSummaryPivot(query);
-      var columns = pivot.singleMonth
-        ? pivot.dateCols.map(function (date) { return { key: date, label: date }; })
-        : pivot.monthCols;
-      var totalColumns = columns.length + 2; // user + value columns + total
+      var columns = pivot.monthCols;
+      var totalColumns = columns.length + 2; // user + month columns + total
 
       // Keep the active sort key valid as the column set changes (e.g. month bar edits).
       var validKeys = ['user_name', 'total'].concat(columns.map(function (column) { return column.key; }));
@@ -1483,15 +1473,15 @@
         if (state.summarySort === 'user_name') {
           return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * direction;
         }
-        var av = summarySortValue(a, state.summarySort, pivot.singleMonth);
-        var bv = summarySortValue(b, state.summarySort, pivot.singleMonth);
+        var av = summarySortValue(a, state.summarySort);
+        var bv = summarySortValue(b, state.summarySort);
         if (av !== bv) return (av - bv) * direction;
         return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       });
 
-      // Header
+      // Header (the User column is frozen via sticky left-0 so it stays visible on x-scroll)
       var headerHtml = '<tr>' +
-        '<th scope="col" class="px-6 py-3 border-r-2 border-gray-300">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
+        '<th scope="col" class="sticky left-0 z-20 bg-gray-50 px-6 py-3 border-r-2 border-gray-300">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
       columns.forEach(function (column) {
         headerHtml += '<th scope="col" class="px-6 py-3 text-center border-r border-gray-200">' + summarySortHeader(column.key, column.label) + '</th>';
       });
@@ -1510,11 +1500,11 @@
       } else {
         page.items.forEach(function (user) {
           var row = '<tr class="bg-white border-b hover:bg-gray-50 transition-colors">' +
-            '<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">' + escapeHtmlAttr(user.name) + '</td>';
+            '<td class="sticky left-0 z-10 bg-white px-6 py-4 font-medium text-gray-900 whitespace-nowrap border-r border-gray-200">' + escapeHtmlAttr(user.name) + '</td>';
           columns.forEach(function (column) {
-            var value = pivot.singleMonth ? (user.byDate[column.key] || 0) : ((user.byMonth[column.key] || {}).total || 0);
+            var value = (user.byMonth[column.key] || {}).total || 0;
             if (value > 0) {
-              var info = pivot.singleMonth ? '' : summaryInfoButton(user.name, column.key, column.label);
+              var info = summaryInfoButton(user.name, column.key, column.label);
               row += '<td class="px-6 py-4 text-center text-gray-900"><div class="inline-flex items-center justify-center gap-1"><span>' + formatNumber(value) + '</span>' + info + '</div></td>';
             } else {
               row += '<td class="px-6 py-4 text-center text-gray-400">—</td>';
@@ -1527,11 +1517,11 @@
         // Footer totals across all filtered users (not just the current page)
         var columnTotals = columns.map(function (column) {
           return pivot.users.reduce(function (sum, user) {
-            return sum + (pivot.singleMonth ? (user.byDate[column.key] || 0) : ((user.byMonth[column.key] || {}).total || 0));
+            return sum + ((user.byMonth[column.key] || {}).total || 0);
           }, 0);
         });
         var grandTotal = pivot.users.reduce(function (sum, user) { return sum + user.total; }, 0);
-        var footHtml = '<tr class="bg-gray-50"><td class="px-6 py-4 font-bold text-gray-900 whitespace-nowrap"><%= j l(:label_total) %></td>';
+        var footHtml = '<tr class="bg-gray-50"><td class="sticky left-0 z-10 bg-gray-50 px-6 py-4 font-bold text-gray-900 whitespace-nowrap border-r border-gray-200"><%= j l(:label_total) %></td>';
         columnTotals.forEach(function (total) {
           footHtml += '<td class="px-6 py-4 text-center font-bold text-gray-900">' + (total > 0 ? formatNumber(total) : '—') + '</td>';
         });

@@ -174,6 +174,7 @@ en:
   label_day_sun: "Sun"
   label_next_run_at: "Next Run At"
   label_last_sync_at: "Last Sync At"
+  label_last_synced: "Last Synced"
   label_never_synced: "Never synced"
   label_not_scheduled: "Not scheduled"
   label_oauth_connected: "OAuth Connected"
@@ -197,7 +198,6 @@ en:
   error_leave_oauth_missing_code: "OAuth callback is missing authorization code."
   error_leave_oauth_refresh_token_missing: "OAuth callback did not return a refresh token. Re-run consent with prompt=consent."
 
-  text_leaves_admin_description: "Find leaves quickly, review totals, and resolve flagged leave records."
   text_add_leave_description: "Add a new leave record for a user. The status will be automatically set to confirmed."
   text_leave_count_settings_description: "Set up how leave emails are captured, processed, and synced."
   text_leave_oauth_description: "OAuth 2.0 user-consent flow."

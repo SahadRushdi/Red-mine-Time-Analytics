@@ -12,6 +12,15 @@ class LeavesController < ApplicationController
     @filter_status = params[:status].to_s.presence
     @filter_user_id = params[:user_id].to_s.presence
     @selected_user = @filter_user_id.present? ? User.find_by(id: @filter_user_id) : nil
+
+    last_synced_at = TaTeamSetting.leave_sync_settings[:last_synced_at]
+    if last_synced_at.present?
+      # Match how the Leave Sync admin page renders the time: convert to the viewing user's
+      # time zone (falling back to the local zone) before formatting, like Redmine's format_time.
+      zone = User.current.time_zone
+      local_time = zone ? last_synced_at.in_time_zone(zone) : last_synced_at.localtime
+      @leave_last_synced_label = local_time.strftime('%b %-d, %Y, %-I:%M %p')
+    end
   end
 
   def data
