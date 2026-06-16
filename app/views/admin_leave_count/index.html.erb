@@ -216,7 +216,7 @@
       </div>
 
       <div id="leave-sync-schedule-section" class="space-y-4 <%= 'hidden' unless @leave_sync_settings[:enabled] %>">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
             <%= label_tag :leave_sync_freq_type, l(:label_frequency_type), class: 'mb-1 block text-sm font-medium text-gray-700' %>
             <div class="relative" id="leave-sync-freq-type-wrapper">
@@ -268,6 +268,18 @@
                   <%= format_time(@leave_sync_next_run_at) %>
                 <% else %>
                   <%= l(:label_not_scheduled) %>
+                <% end %>
+              </span>
+            </div>
+          </div>
+          <div>
+            <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_last_sync_at) %></span>
+            <div class="flex h-[43px] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
+              <span id="leave-sync-last-sync-text">
+                <% if @leave_sync_settings[:last_synced_at].present? %>
+                  <%= format_time(@leave_sync_settings[:last_synced_at]) %>
+                <% else %>
+                  <%= l(:label_never_synced) %>
                 <% end %>
               </span>
             </div>

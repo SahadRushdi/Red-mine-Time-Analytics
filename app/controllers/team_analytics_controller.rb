@@ -237,10 +237,10 @@ class TeamAnalyticsController < ApplicationController
     tree_nodes = []
     
     root_teams.each do |team|
-      team_node = build_team_node(team, excluded_ids, from_date, to_date)
+      team_node, _subtree_user_ids = build_team_node(team, excluded_ids, from_date, to_date)
       tree_nodes << team_node
     end
-    
+
     render json: tree_nodes
   end
 
@@ -267,17 +267,22 @@ class TeamAnalyticsController < ApplicationController
 
     period_label = helpers.format_period_for_table(period_start, grouping, period_start, period_end)
 
+    # Exclude analytics-excluded users so this modal matches the "Team Size" column count.
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
+    member_names = lambda do |memberships|
+      memberships.reject { |m| excluded_ids.include?(m.user_id) }
+                 .map { |m| m.user&.name }.compact.sort
+    end
+
     if team.child_teams.any?
       # Root/parent team: group members by sub-team (collapsed groups)
       groups = []
 
-      direct_memberships = team.active_members(period_start, period_end)
-      direct_members = direct_memberships.map { |m| m.user&.name }.compact.sort
+      direct_members = member_names.call(team.active_members(period_start, period_end))
       groups << { team_name: team.name, members: direct_members.map { |n| { name: n } } } if direct_members.any?
 
       team.all_descendants.each do |sub_team|
-        sub_members = sub_team.active_members(period_start, period_end)
-                              .map { |m| m.user&.name }.compact.sort
+        sub_members = member_names.call(sub_team.active_members(period_start, period_end))
         groups << { team_name: sub_team.name, members: sub_members.map { |n| { name: n } } } if sub_members.any?
       end
 
@@ -289,9 +294,8 @@ class TeamAnalyticsController < ApplicationController
       }
     else
       # Leaf team: simple flat list of direct members
-      members = team.active_members(period_start, period_end)
-                    .map { |m| m.user&.name }.compact.sort
-                    .map { |n| { name: n } }
+      members = member_names.call(team.active_members(period_start, period_end))
+                            .map { |n| { name: n } }
 
       render json: {
         team_name: team.name,
@@ -302,13 +306,15 @@ class TeamAnalyticsController < ApplicationController
     end
   end
 
-  # Recursively build team node with sub-teams and members
+  # Recursively build team node with sub-teams and members.
+  # Returns [node_hash, subtree_user_ids] where subtree_user_ids is the Set of distinct
+  # current active members across this team and all its descendants (team composition).
   def build_team_node(team, excluded_ids, from_date, to_date)
     # Get direct members for this team only (currently active only)
     memberships = TaTeamMembership.where(team: team)
                                  .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', Date.today, Date.today)
                                  .includes(:user)
-    
+
     # Build team node
     team_node = {
       id: "team_#{team.id}",
@@ -324,18 +330,26 @@ class TeamAnalyticsController < ApplicationController
       },
       children: []
     }
-    
+
+    # Distinct active members across this team's whole subtree (includes excluded users —
+    # this is the full team composition, unlike the analytics "Team Size" which drops excluded).
+    subtree_user_ids = Set.new
+
     # Add sub-teams first (hierarchical)
     team.child_teams.ordered_by_name.each do |child_team|
-      child_node = build_team_node(child_team, excluded_ids, from_date, to_date)
+      child_node, child_user_ids = build_team_node(child_team, excluded_ids, from_date, to_date)
       team_node[:children] << child_node
+      subtree_user_ids.merge(child_user_ids)
     end
-    
+
     # Add direct members after sub-teams
     memberships.each do |membership|
-      is_excluded = excluded_ids.include?(membership.user_id)
       user = membership.user
-      
+      next unless user
+
+      is_excluded = excluded_ids.include?(membership.user_id)
+      subtree_user_ids << membership.user_id
+
       # Member node
       member_node = {
         id: "member_#{team.id}_#{user.id}",
@@ -355,8 +369,14 @@ class TeamAnalyticsController < ApplicationController
       
       team_node[:children] << member_node
     end
-    
-    team_node
+
+    # Append the total team-composition count as a styled badge after the team name.
+    # jsTree renders node text as HTML, so escape the name and inject the badge span.
+    team_node[:text] =
+      "#{ERB::Util.html_escape(team.name)}" \
+      "<span class=\"team-tree-count-badge\">#{subtree_user_ids.size}</span>"
+
+    [team_node, subtree_user_ids]
   end
 
   private

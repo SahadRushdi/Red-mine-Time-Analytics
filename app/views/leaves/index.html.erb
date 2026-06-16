@@ -51,6 +51,29 @@
       box-shadow: none !important;
       background: transparent !important;
     }
+    /* Info icon inside Summary-by-User pivot cells (matches My Team .ta-info-icon-btn) */
+    .leaves-cell-info-btn {
+      color: #3b82f6 !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      outline: none !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .leaves-cell-info-btn:hover, .leaves-cell-info-btn:focus {
+      color: #2563eb !important;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    /* Keep pivot columns from wrapping so horizontal scroll kicks in when wide */
+    .leaves-summary-table th, .leaves-summary-table td { white-space: nowrap; }
   </style>
 <% end %>
 
@@ -66,7 +89,14 @@
   <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
     <div>
       <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leaves) %></h2>
-      <p class="text-sm text-gray-500"><%= l(:text_leaves_admin_description) %></p>
+      <% if @leave_last_synced_label.present? %>
+        <p class="mt-1 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+          <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span><%= l(:label_last_synced) %>: <%= @leave_last_synced_label %></span>
+        </p>
+      <% end %>
     </div>
 
     <div class="flex flex-col gap-3 xl:items-end">
@@ -345,25 +375,11 @@
       </div>
 
       <div id="leaves-summary-panel" class="hidden">
-        <div class="overflow-x-auto rounded-xl border border-gray-200">
-          <table class="w-full text-left text-sm text-gray-600">
-            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
-              <tr class="border-b border-gray-200">
-                <th class="px-4 py-3">
-                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="user_name" data-sort-label="<%= j l(:label_user) %>">
-                    <span><%= l(:label_user) %></span>
-                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right">
-                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="total_leave_days" data-sort-label="<%= j l(:label_total_leave_days) %>">
-                    <span><%= l(:label_total_leave_days) %></span>
-                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
-                  </button>
-                </th>
-              </tr>
-            </thead>
+        <div class="overflow-x-auto rounded-xl border border-gray-200 leaves-summary-scroll">
+          <table class="w-full text-sm text-left text-gray-500 leaves-summary-table">
+            <thead id="leaves-summary-thead" class="text-sm text-gray-700 bg-gray-50"></thead>
             <tbody id="leaves-summary-tbody" class="divide-y divide-gray-100"></tbody>
+            <tfoot id="leaves-summary-tfoot" class="bg-gray-50"></tfoot>
           </table>
         </div>
 
@@ -514,6 +530,42 @@
   </div>
 </div>
 
+<%# Leave dates modal — lists a user's leave dates for a month (Summary-by-User info icon) %>
+<div id="leaves-dates-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/50 p-4 sm:items-center">
+  <div class="relative w-full max-w-lg">
+    <div class="relative rounded-xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex flex-col">
+          <h3 id="leaves-dates-modal-title" class="text-xl font-bold text-gray-900"><%= l(:label_user) %></h3>
+          <p id="leaves-dates-modal-subtitle" class="text-sm text-gray-500 mt-1 font-medium"></p>
+        </div>
+        <button type="button" id="leaves-dates-modal-close" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="p-0">
+        <div class="relative overflow-x-auto max-h-80 overflow-y-auto">
+          <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3"><%= l(:label_date) %></th>
+                <th scope="col" class="px-6 py-3 text-right"><%= l(:label_total) %></th>
+              </tr>
+            </thead>
+            <tbody id="leaves-dates-modal-body" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-end">
+        <button type="button" id="leaves-dates-modal-close-footer" class="!text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var csrfToken = '<%= form_authenticity_token %>';
@@ -532,7 +584,7 @@
       summaryPage: 1,
       dailySort: 'leave_date',
       dailyDirection: 'desc',
-      summarySort: 'total_leave_days',
+      summarySort: 'total',
       summaryDirection: 'desc',
       dailyRecords: [],
       summaryRecords: [],
@@ -575,6 +627,8 @@
       summaryPanel: document.getElementById('leaves-summary-panel'),
       dailyBody: document.getElementById('leaves-daily-tbody'),
       summaryBody: document.getElementById('leaves-summary-tbody'),
+      summaryHead: document.getElementById('leaves-summary-thead'),
+      summaryFoot: document.getElementById('leaves-summary-tfoot'),
       dailyInfo: document.getElementById('leaves-daily-pagination-info'),
       summaryInfo: document.getElementById('leaves-summary-pagination-info'),
       dailyPagination: document.getElementById('leaves-daily-pagination'),
@@ -586,7 +640,9 @@
     var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
     var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var monthState = { year: null, month: null };
+    // months: Set of selected month indices (0-11) within `year`; anchor: last plain/ctrl-clicked
+    // month, used as the base for Shift+Click range selection.
+    var monthState = { year: null, months: new Set(), anchor: null };
     var manualUserState = { activeIndex: -1 };
     var manualElements = {
       modal: document.getElementById('leaves-manual-modal'),
@@ -694,7 +750,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_destroy_all_path %>', {
           method: 'DELETE',
@@ -720,7 +777,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_bulk_destroy_path %>', {
           method: 'DELETE',
@@ -782,23 +840,70 @@
       if (elements.to) elements.to.value = formatDateForInput(toDate);
     }
 
+    function sortedSelectedMonths() {
+      return Array.from(monthState.months).sort(function (a, b) { return a - b; });
+    }
+
+    // Comma-separated "YYYY-MM" list of the currently selected months, sent to the server
+    // so non-contiguous selections (e.g. Feb + Aug) are filtered exactly.
+    function selectedMonthsParam() {
+      return sortedSelectedMonths().map(function (month) {
+        return monthState.year + '-' + String(month + 1).padStart(2, '0');
+      }).join(',');
+    }
+
+    // Derive the selected month set from the current From/To inputs. Does NOT overwrite the
+    // inputs, so a manual fine-grained range (e.g. Jun 5-20) is preserved while the bar
+    // highlights the months it spans.
     function syncMonthPickerFromInputs() {
       var fromDate = parseDateFromInput(elements.from.value);
+      var toDate = parseDateFromInput(elements.to.value);
       var baseDate = fromDate || new Date();
       monthState.year = baseDate.getFullYear();
-      monthState.month = baseDate.getMonth();
+
+      var startMonth = baseDate.getMonth();
+      var endMonth = startMonth;
+      if (toDate && toDate.getFullYear() === monthState.year) {
+        endMonth = toDate.getMonth();
+      } else if (toDate && toDate.getFullYear() > monthState.year) {
+        endMonth = 11;
+      }
+      if (endMonth < startMonth) endMonth = startMonth;
+
+      monthState.months = new Set();
+      for (var month = startMonth; month <= endMonth; month += 1) {
+        monthState.months.add(month);
+      }
+      monthState.anchor = startMonth;
       updateMonthPickerUI();
+    }
+
+    function isContiguousSelection(months) {
+      if (months.length <= 1) return true;
+      return months[months.length - 1] - months[0] === months.length - 1;
+    }
+
+    function selectedMonthsLabel() {
+      var months = sortedSelectedMonths();
+      if (!months.length) return String(monthState.year);
+      if (months.length === 1) {
+        return monthLabels[months[0]] + ' ' + monthState.year;
+      }
+      if (isContiguousSelection(months)) {
+        return monthLabels[months[0]] + ' – ' + monthLabels[months[months.length - 1]] + ' ' + monthState.year;
+      }
+      return months.length + ' months · ' + monthState.year;
     }
 
     function updateMonthPickerUI() {
       if (!elements.yearLabel || !elements.selectedLabel || !elements.monthButtons.length) return;
       var current = new Date();
       elements.yearLabel.textContent = String(monthState.year);
-      elements.selectedLabel.textContent = monthLabels[monthState.month] + ' ' + monthState.year;
+      elements.selectedLabel.textContent = selectedMonthsLabel();
 
       elements.monthButtons.forEach(function (button) {
         var buttonMonth = parseInt(button.getAttribute('data-leaves-month'), 10);
-        var isActive = buttonMonth === monthState.month;
+        var isActive = monthState.months.has(buttonMonth);
         var dot = button.querySelector('.leaves-month-dot');
         button.classList.toggle('leaves-month-button--active', isActive);
         if (dot) {
@@ -808,11 +913,13 @@
       });
     }
 
-    function setMonthSelection(year, month, shouldLoad) {
-      monthState.year = year;
-      monthState.month = month;
-      var fromDate = new Date(year, month, 1);
-      var toDate = new Date(year, month + 1, 0);
+    // Sync the From/To inputs to the bounding box of the selected months, refresh the UI,
+    // and (optionally) reload. The exact selected set travels separately via selectedMonthsParam().
+    function applyMonthSelection(shouldLoad) {
+      var months = sortedSelectedMonths();
+      if (!months.length) return;
+      var fromDate = new Date(monthState.year, months[0], 1);
+      var toDate = new Date(monthState.year, months[months.length - 1] + 1, 0);
       setDateRange(fromDate, toDate);
       updateMonthPickerUI();
       if (shouldLoad !== false) {
@@ -1191,6 +1298,7 @@
         page.items.forEach(function (record) {
           var isChecked = state.selectedIds.has(String(record.id));
           var leaveDateValue = formatLeaveDateForInput(record.leave_date);
+          var leaveDateDisplay = formatLeaveDateForDisplay(record.leave_date);
           var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
           var actionHtml = '<div class="inline-flex items-center gap-2">' +
             '<button type="button" title="<%= j l(:button_edit) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--edit inline-flex h-8 w-8 items-center justify-center" data-edit-id="' + record.id + '">' +
@@ -1218,7 +1326,7 @@
 
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
             '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
-            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
+            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateDisplay + '</td>' +
             '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
             '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
@@ -1279,34 +1387,156 @@
       );
     }
 
+    // Month columns for the Summary-by-User pivot, taken from the current month-bar selection.
+    function summaryMonthKeys() {
+      return sortedSelectedMonths().map(function (monthIndex) {
+        return {
+          index: monthIndex,
+          key: monthState.year + '-' + String(monthIndex + 1).padStart(2, '0'),
+          label: monthLabels[monthIndex] + ' ' + monthState.year
+        };
+      });
+    }
+
+    // Aggregate confirmed leave records into a user × month pivot (one column per selected month).
+    function buildSummaryPivot(query) {
+      var monthCols = summaryMonthKeys();
+      var users = {};
+
+      state.dailyRecords.forEach(function (record) {
+        if (record.status !== 'confirmed') return;
+        if (record.user_id === null || record.user_id === undefined || record.user_id === '') return;
+        var fraction = Number(record.leave_fraction) || 0;
+        if (fraction <= 0) return;
+        var name = record.user_name || '';
+        if (query && name.toLowerCase().indexOf(query) === -1) return;
+
+        var monthKey = formatLeaveDateForDisplay(record.leave_date).slice(0, 7);
+        var user = users[name] || (users[name] = { name: name, byMonth: {}, total: 0 });
+        user.total += fraction;
+        var bucket = user.byMonth[monthKey] || (user.byMonth[monthKey] = { total: 0 });
+        bucket.total += fraction;
+      });
+
+      var userList = Object.keys(users).map(function (name) { return users[name]; });
+      userList.sort(function (a, b) { return (b.total - a.total) || a.name.localeCompare(b.name); });
+
+      return { monthCols: monthCols, users: userList };
+    }
+
+    function summaryInfoButton(userName, monthKey, monthLabel) {
+      return ' <button type="button" class="leaves-cell-info-btn" title="<%= j l(:label_date) %>"' +
+        ' data-summary-info-user="' + escapeHtmlAttr(userName) + '"' +
+        ' data-summary-info-month="' + monthKey + '"' +
+        ' data-summary-info-label="' + escapeHtmlAttr(monthLabel) + '">' +
+        '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' +
+        '</button>';
+    }
+
+    function escapeHtmlAttr(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Per-user value for a given summary sort key (month column key, 'total', or 'user_name').
+    function summarySortValue(user, sortKey) {
+      if (sortKey === 'total') return user.total;
+      return (user.byMonth[sortKey] || {}).total || 0;
+    }
+
+    // A sortable column header button styled like the Daily Leaves headers.
+    function summarySortHeader(sortKey, label) {
+      return '<button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="' + escapeHtmlAttr(sortKey) + '" data-sort-label="' + escapeHtmlAttr(label) + '">' +
+        '<span>' + escapeHtmlAttr(label) + '</span>' +
+        '<span class="leaves-sort-indicator text-[10px] text-gray-400"></span>' +
+        '</button>';
+    }
+
     function renderSummaryRows() {
       var query = normalize(elements.search.value);
-      var filtered = state.summaryRecords.filter(function (record) { return matchesSearch({ user_name: record.user_name }, query); });
-      filtered.sort(function (a, b) { return compareRecords(a, b, state.summarySort, state.summaryDirection); });
+      var pivot = buildSummaryPivot(query);
+      var columns = pivot.monthCols;
+      var totalColumns = columns.length + 2; // user + month columns + total
 
-      var page = paginate(filtered, state.summaryPage, state.perPage);
-      state.summaryPage = page.currentPage;
-
-      var html = '';
-      if (!page.items.length) {
-        html = '<tr><td colspan="2" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
-      } else {
-        page.items.forEach(function (record) {
-          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50">' +
-            '<td class="px-4 py-3 text-gray-700">' + record.user_name + '</td>' +
-            '<td class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.total_leave_days) + '</td>' +
-          '</tr>';
-        });
+      // Keep the active sort key valid as the column set changes (e.g. month bar edits).
+      var validKeys = ['user_name', 'total'].concat(columns.map(function (column) { return column.key; }));
+      if (validKeys.indexOf(state.summarySort) === -1) {
+        state.summarySort = 'total';
+        state.summaryDirection = 'desc';
       }
 
-      elements.summaryBody.innerHTML = html;
+      // Sort users by the active column/direction (numeric columns tiebreak by name asc).
+      var direction = state.summaryDirection === 'asc' ? 1 : -1;
+      pivot.users.sort(function (a, b) {
+        if (state.summarySort === 'user_name') {
+          return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * direction;
+        }
+        var av = summarySortValue(a, state.summarySort);
+        var bv = summarySortValue(b, state.summarySort);
+        if (av !== bv) return (av - bv) * direction;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      });
+
+      // Header (the User column is frozen via sticky left-0 so it stays visible on x-scroll)
+      var headerHtml = '<tr>' +
+        '<th scope="col" class="sticky left-0 z-20 bg-gray-50 px-6 py-3 border-r-2 border-gray-300">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
+      columns.forEach(function (column) {
+        headerHtml += '<th scope="col" class="px-6 py-3 text-center border-r border-gray-200">' + summarySortHeader(column.key, column.label) + '</th>';
+      });
+      headerHtml += '<th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">' + summarySortHeader('total', '<%= j l(:label_total) %>') + '</th></tr>';
+      elements.summaryHead.innerHTML = headerHtml;
+      updateSortIndicators();
+
+      // Body (paginated users)
+      var page = paginate(pivot.users, state.summaryPage, state.perPage);
+      state.summaryPage = page.currentPage;
+
+      var bodyHtml = '';
+      if (!page.items.length) {
+        bodyHtml = '<tr><td colspan="' + totalColumns + '" class="px-6 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+        elements.summaryFoot.innerHTML = '';
+      } else {
+        page.items.forEach(function (user) {
+          var row = '<tr class="bg-white border-b hover:bg-gray-50 transition-colors">' +
+            '<td class="sticky left-0 z-10 bg-white px-6 py-4 font-medium text-gray-900 whitespace-nowrap border-r border-gray-200">' + escapeHtmlAttr(user.name) + '</td>';
+          columns.forEach(function (column) {
+            var value = (user.byMonth[column.key] || {}).total || 0;
+            if (value > 0) {
+              var info = summaryInfoButton(user.name, column.key, column.label);
+              row += '<td class="px-6 py-4 text-center text-gray-900"><div class="inline-flex items-center justify-center gap-1"><span>' + formatNumber(value) + '</span>' + info + '</div></td>';
+            } else {
+              row += '<td class="px-6 py-4 text-center text-gray-400">—</td>';
+            }
+          });
+          row += '<td class="px-6 py-4 text-right font-semibold text-gray-900">' + formatNumber(user.total) + '</td></tr>';
+          bodyHtml += row;
+        });
+
+        // Footer totals across all filtered users (not just the current page)
+        var columnTotals = columns.map(function (column) {
+          return pivot.users.reduce(function (sum, user) {
+            return sum + ((user.byMonth[column.key] || {}).total || 0);
+          }, 0);
+        });
+        var grandTotal = pivot.users.reduce(function (sum, user) { return sum + user.total; }, 0);
+        var footHtml = '<tr class="bg-gray-50"><td class="sticky left-0 z-10 bg-gray-50 px-6 py-4 font-bold text-gray-900 whitespace-nowrap border-r border-gray-200"><%= j l(:label_total) %></td>';
+        columnTotals.forEach(function (total) {
+          footHtml += '<td class="px-6 py-4 text-center font-bold text-gray-900">' + (total > 0 ? formatNumber(total) : '—') + '</td>';
+        });
+        footHtml += '<td class="px-6 py-4 text-right font-bold text-gray-900 border-l-2 border-gray-300">' + formatNumber(grandTotal) + '</td></tr>';
+        elements.summaryFoot.innerHTML = footHtml;
+      }
+
+      elements.summaryBody.innerHTML = bodyHtml;
       renderPagination(
         elements.summaryPagination,
         elements.summaryLinks,
         elements.summaryInfo,
         page.currentPage,
         page.totalPages,
-        filtered.length,
+        pivot.users.length,
         page.startIndex,
         page.endIndex,
         function (nextPage) {
@@ -1314,6 +1544,45 @@
           renderSummaryRows();
         }
       );
+    }
+
+    function openLeaveDatesModal(userName, monthKey, monthLabel) {
+      var modal = document.getElementById('leaves-dates-modal');
+      var body = document.getElementById('leaves-dates-modal-body');
+      var title = document.getElementById('leaves-dates-modal-title');
+      var subtitle = document.getElementById('leaves-dates-modal-subtitle');
+      if (!modal || !body) return;
+
+      var rows = state.dailyRecords.filter(function (record) {
+        if (record.status !== 'confirmed') return false;
+        if ((record.user_name || '') !== userName) return false;
+        if ((Number(record.leave_fraction) || 0) <= 0) return false;
+        return formatLeaveDateForDisplay(record.leave_date).slice(0, 7) === monthKey;
+      }).map(function (record) {
+        return { date: formatLeaveDateForDisplay(record.leave_date), fraction: Number(record.leave_fraction) || 0 };
+      }).sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+
+      if (title) title.textContent = userName;
+      if (subtitle) subtitle.textContent = monthLabel;
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        body.innerHTML = rows.map(function (row) {
+          return '<tr class="bg-white hover:bg-gray-50 transition-colors">' +
+            '<td class="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">' + row.date + '</td>' +
+            '<td class="px-6 py-3 text-right text-gray-900">' + formatNumber(row.fraction) + '</td></tr>';
+        }).join('');
+      }
+
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeLeaveDatesModal() {
+      var modal = document.getElementById('leaves-dates-modal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
     }
 
     function renderTables() {
@@ -1399,7 +1668,8 @@
         from: elements.from.value,
         to: elements.to.value,
         user_id: elements.userInput.value,
-        status: elements.statusInput.value
+        status: elements.statusInput.value,
+        months: selectedMonthsParam()
       });
 
       showRefreshBar();
@@ -1466,6 +1736,18 @@
       if (text.indexOf('/') !== -1) return text;
       var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (parts) return parts[2] + '/' + parts[3] + '/' + parts[1];
+      return text;
+    }
+
+    // Display format for the table: YYYY-MM-DD. Server already sends ISO dates;
+    // convert any MM/DD/YYYY value defensively.
+    function formatLeaveDateForDisplay(value) {
+      var text = String(value || '');
+      if (!text) return '';
+      var iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return text;
+      var us = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (us) return us[3] + '-' + us[1] + '-' + us[2];
       return text;
     }
 
@@ -1657,7 +1939,12 @@
     }
 
     function handleSortClick(event) {
-      var button = event.currentTarget;
+      // Works both when bound directly to a header button (Daily) and via delegation on the
+      // dynamic Summary <thead> (where headers are rebuilt on every render).
+      var button = (event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-table-sort'))
+        ? event.currentTarget
+        : (event.target.closest ? event.target.closest('[data-table-sort]') : null);
+      if (!button) return;
       var table = button.getAttribute('data-table-sort');
       var sortKey = button.getAttribute('data-sort-key');
       if (state[table + 'Sort'] === sortKey) {
@@ -1671,6 +1958,38 @@
 
     elements.dailyTab.addEventListener('click', function () { setTab('daily'); });
     elements.summaryTab.addEventListener('click', function () { setTab('summary'); });
+
+    // Summary pivot: info icon opens the user's leave dates for that month.
+    elements.summaryBody.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-summary-info-user]');
+      if (!button) return;
+      openLeaveDatesModal(
+        button.getAttribute('data-summary-info-user'),
+        button.getAttribute('data-summary-info-month'),
+        button.getAttribute('data-summary-info-label')
+      );
+    });
+
+    // Summary pivot: column sorting (headers are rebuilt each render, so delegate on <thead>).
+    if (elements.summaryHead) {
+      elements.summaryHead.addEventListener('click', function (event) {
+        if (event.target.closest('[data-table-sort]')) handleSortClick(event);
+      });
+    }
+
+    var leaveDatesModal = document.getElementById('leaves-dates-modal');
+    var leaveDatesClose = document.getElementById('leaves-dates-modal-close');
+    var leaveDatesCloseFooter = document.getElementById('leaves-dates-modal-close-footer');
+    if (leaveDatesClose) leaveDatesClose.addEventListener('click', closeLeaveDatesModal);
+    if (leaveDatesCloseFooter) leaveDatesCloseFooter.addEventListener('click', closeLeaveDatesModal);
+    if (leaveDatesModal) {
+      leaveDatesModal.addEventListener('click', function (event) {
+        if (event.target === leaveDatesModal) closeLeaveDatesModal();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !leaveDatesModal.classList.contains('hidden')) closeLeaveDatesModal();
+      });
+    }
     elements.userButton.addEventListener('click', function () { toggleDropdown('leaves-user-dropdown'); });
     elements.statusButton.addEventListener('click', function () { toggleDropdown('leaves-status-dropdown'); });
     elements.perPageButton.addEventListener('click', function () { toggleDropdown('leaves-per-page-dropdown'); });
@@ -1705,6 +2024,9 @@
     function bindDateAutoReload(input) {
       input.addEventListener('change', scheduleLoadData);
       input.addEventListener('changeDate', function () {
+        // Re-sync the month bar before the (debounced) reload so selectedMonthsParam() reflects
+        // the newly picked range rather than the previous selection.
+        syncMonthPickerFromInputs();
         scheduleLoadData();
         hideDatePickers();
       });
@@ -2054,22 +2376,59 @@
 
     if (elements.monthButtons.length) {
       elements.monthButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
           var month = parseInt(button.getAttribute('data-leaves-month'), 10);
-          setMonthSelection(monthState.year, month);
+
+          if (event.shiftKey) {
+            // Contiguous range from the anchor to the clicked month (anchor unchanged).
+            var anchor = monthState.anchor == null ? month : monthState.anchor;
+            var start = Math.min(anchor, month);
+            var end = Math.max(anchor, month);
+            monthState.months = new Set();
+            for (var m = start; m <= end; m += 1) monthState.months.add(m);
+          } else if (event.ctrlKey || event.metaKey) {
+            // Toggle the clicked month, but never allow an empty selection.
+            if (monthState.months.has(month)) {
+              if (monthState.months.size > 1) monthState.months.delete(month);
+            } else {
+              monthState.months.add(month);
+            }
+            monthState.anchor = month;
+          } else {
+            // Plain click: single-month selection.
+            monthState.months = new Set([month]);
+            monthState.anchor = month;
+          }
+
+          applyMonthSelection();
         });
+      });
+    }
+
+    if (elements.yearLabel) {
+      elements.yearLabel.style.cursor = 'pointer';
+      elements.yearLabel.setAttribute('title', 'Select all months');
+      elements.yearLabel.addEventListener('click', function () {
+        // Select all 12 months of the displayed year.
+        monthState.months = new Set();
+        for (var m = 0; m < 12; m += 1) monthState.months.add(m);
+        monthState.anchor = 0;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearPrev) {
       elements.yearPrev.addEventListener('click', function () {
-        setMonthSelection(monthState.year - 1, monthState.month);
+        // Keep the same selected month set, shift to the previous year.
+        monthState.year -= 1;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearNext) {
       elements.yearNext.addEventListener('click', function () {
-        setMonthSelection(monthState.year + 1, monthState.month);
+        monthState.year += 1;
+        applyMonthSelection();
       });
     }
 
