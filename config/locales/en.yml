@@ -173,6 +173,8 @@ en:
   label_day_sat: "Sat"
   label_day_sun: "Sun"
   label_next_run_at: "Next Run At"
+  label_last_sync_at: "Last Sync At"
+  label_never_synced: "Never synced"
   label_not_scheduled: "Not scheduled"
   label_oauth_connected: "OAuth Connected"
   label_oauth_not_connected: "OAuth Not Connected"
