@@ -142,7 +142,8 @@ class LeavesController < ApplicationController
       if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
         scope = scope.where(status: filters[:status].to_s)
       end
-      
+      scope = apply_month_filter(scope, selected_months(filters))
+
       deleted_count = scope.delete_all
       return render json: { ok: true, deleted_count: deleted_count }, status: :ok
     end
@@ -174,6 +175,7 @@ class LeavesController < ApplicationController
     if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
       scope = scope.where(status: filters[:status].to_s)
     end
+    scope = apply_month_filter(scope, selected_months(filters))
 
     deleted = scope.delete_all
     render json: { ok: true, deleted: deleted }, status: :ok
@@ -186,7 +188,29 @@ class LeavesController < ApplicationController
   private
 
   def filter_params
-    params.permit(:from, :to, :user_id, :status)
+    params.permit(:from, :to, :user_id, :status, :months)
+  end
+
+  # Parses the comma-separated `months` filter param into an array of "YYYY-MM"
+  # strings. Returns nil when absent so callers can skip month filtering entirely.
+  def selected_months(filters)
+    raw = filters[:months].to_s.strip
+    return nil if raw.blank?
+
+    months = raw.split(',').map(&:strip).select { |m| m.match?(/\A\d{4}-\d{2}\z/) }
+    months.presence
+  end
+
+  # Restricts a leave-record scope to records whose leave_date falls in one of the
+  # selected "YYYY-MM" months. Done in Ruby because month extraction is not portable
+  # across databases. Returns the scope unchanged when no months are selected.
+  def apply_month_filter(scope, months)
+    return scope if months.blank?
+
+    ids = scope.pluck(:id, :leave_date)
+                .select { |_id, date| months.include?(date.strftime('%Y-%m')) }
+                .map(&:first)
+    TaLeaveRecord.where(id: ids)
   end
 
   def manual_leave_params
@@ -207,6 +231,11 @@ class LeavesController < ApplicationController
     # Filter to working days using a single batched holiday lookup (avoids one DB query per record).
     is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(from_date, to_date)
     records.select! { |r| is_working_day.call(r.leave_date) }
+
+    # Restrict to the exact set of selected months (the from/to range is only the bounding box,
+    # so non-contiguous selections like Feb + Aug would otherwise leak the in-between months).
+    months = selected_months(filters)
+    records.select! { |r| months.include?(r.leave_date.strftime('%Y-%m')) } if months.present?
 
     # Compute each record's effective leave fraction once and reuse it across all passes below.
     fraction_by_record = records.each_with_object({}) { |record, memo| memo[record] = effective_leave_fraction(record) }

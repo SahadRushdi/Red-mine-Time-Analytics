@@ -586,7 +586,9 @@
     var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
     var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var monthState = { year: null, month: null };
+    // months: Set of selected month indices (0-11) within `year`; anchor: last plain/ctrl-clicked
+    // month, used as the base for Shift+Click range selection.
+    var monthState = { year: null, months: new Set(), anchor: null };
     var manualUserState = { activeIndex: -1 };
     var manualElements = {
       modal: document.getElementById('leaves-manual-modal'),
@@ -694,7 +696,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_destroy_all_path %>', {
           method: 'DELETE',
@@ -720,7 +723,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_bulk_destroy_path %>', {
           method: 'DELETE',
@@ -782,23 +786,70 @@
       if (elements.to) elements.to.value = formatDateForInput(toDate);
     }
 
+    function sortedSelectedMonths() {
+      return Array.from(monthState.months).sort(function (a, b) { return a - b; });
+    }
+
+    // Comma-separated "YYYY-MM" list of the currently selected months, sent to the server
+    // so non-contiguous selections (e.g. Feb + Aug) are filtered exactly.
+    function selectedMonthsParam() {
+      return sortedSelectedMonths().map(function (month) {
+        return monthState.year + '-' + String(month + 1).padStart(2, '0');
+      }).join(',');
+    }
+
+    // Derive the selected month set from the current From/To inputs. Does NOT overwrite the
+    // inputs, so a manual fine-grained range (e.g. Jun 5-20) is preserved while the bar
+    // highlights the months it spans.
     function syncMonthPickerFromInputs() {
       var fromDate = parseDateFromInput(elements.from.value);
+      var toDate = parseDateFromInput(elements.to.value);
       var baseDate = fromDate || new Date();
       monthState.year = baseDate.getFullYear();
-      monthState.month = baseDate.getMonth();
+
+      var startMonth = baseDate.getMonth();
+      var endMonth = startMonth;
+      if (toDate && toDate.getFullYear() === monthState.year) {
+        endMonth = toDate.getMonth();
+      } else if (toDate && toDate.getFullYear() > monthState.year) {
+        endMonth = 11;
+      }
+      if (endMonth < startMonth) endMonth = startMonth;
+
+      monthState.months = new Set();
+      for (var month = startMonth; month <= endMonth; month += 1) {
+        monthState.months.add(month);
+      }
+      monthState.anchor = startMonth;
       updateMonthPickerUI();
+    }
+
+    function isContiguousSelection(months) {
+      if (months.length <= 1) return true;
+      return months[months.length - 1] - months[0] === months.length - 1;
+    }
+
+    function selectedMonthsLabel() {
+      var months = sortedSelectedMonths();
+      if (!months.length) return String(monthState.year);
+      if (months.length === 1) {
+        return monthLabels[months[0]] + ' ' + monthState.year;
+      }
+      if (isContiguousSelection(months)) {
+        return monthLabels[months[0]] + ' – ' + monthLabels[months[months.length - 1]] + ' ' + monthState.year;
+      }
+      return months.length + ' months · ' + monthState.year;
     }
 
     function updateMonthPickerUI() {
       if (!elements.yearLabel || !elements.selectedLabel || !elements.monthButtons.length) return;
       var current = new Date();
       elements.yearLabel.textContent = String(monthState.year);
-      elements.selectedLabel.textContent = monthLabels[monthState.month] + ' ' + monthState.year;
+      elements.selectedLabel.textContent = selectedMonthsLabel();
 
       elements.monthButtons.forEach(function (button) {
         var buttonMonth = parseInt(button.getAttribute('data-leaves-month'), 10);
-        var isActive = buttonMonth === monthState.month;
+        var isActive = monthState.months.has(buttonMonth);
         var dot = button.querySelector('.leaves-month-dot');
         button.classList.toggle('leaves-month-button--active', isActive);
         if (dot) {
@@ -808,11 +859,13 @@
       });
     }
 
-    function setMonthSelection(year, month, shouldLoad) {
-      monthState.year = year;
-      monthState.month = month;
-      var fromDate = new Date(year, month, 1);
-      var toDate = new Date(year, month + 1, 0);
+    // Sync the From/To inputs to the bounding box of the selected months, refresh the UI,
+    // and (optionally) reload. The exact selected set travels separately via selectedMonthsParam().
+    function applyMonthSelection(shouldLoad) {
+      var months = sortedSelectedMonths();
+      if (!months.length) return;
+      var fromDate = new Date(monthState.year, months[0], 1);
+      var toDate = new Date(monthState.year, months[months.length - 1] + 1, 0);
       setDateRange(fromDate, toDate);
       updateMonthPickerUI();
       if (shouldLoad !== false) {
@@ -1191,6 +1244,7 @@
         page.items.forEach(function (record) {
           var isChecked = state.selectedIds.has(String(record.id));
           var leaveDateValue = formatLeaveDateForInput(record.leave_date);
+          var leaveDateDisplay = formatLeaveDateForDisplay(record.leave_date);
           var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
           var actionHtml = '<div class="inline-flex items-center gap-2">' +
             '<button type="button" title="<%= j l(:button_edit) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--edit inline-flex h-8 w-8 items-center justify-center" data-edit-id="' + record.id + '">' +
@@ -1218,7 +1272,7 @@
 
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
             '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
-            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
+            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateDisplay + '</td>' +
             '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
             '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
@@ -1399,7 +1453,8 @@
         from: elements.from.value,
         to: elements.to.value,
         user_id: elements.userInput.value,
-        status: elements.statusInput.value
+        status: elements.statusInput.value,
+        months: selectedMonthsParam()
       });
 
       showRefreshBar();
@@ -1466,6 +1521,18 @@
       if (text.indexOf('/') !== -1) return text;
       var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (parts) return parts[2] + '/' + parts[3] + '/' + parts[1];
+      return text;
+    }
+
+    // Display format for the table: YYYY-MM-DD. Server already sends ISO dates;
+    // convert any MM/DD/YYYY value defensively.
+    function formatLeaveDateForDisplay(value) {
+      var text = String(value || '');
+      if (!text) return '';
+      var iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return text;
+      var us = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (us) return us[3] + '-' + us[1] + '-' + us[2];
       return text;
     }
 
@@ -1705,6 +1772,9 @@
     function bindDateAutoReload(input) {
       input.addEventListener('change', scheduleLoadData);
       input.addEventListener('changeDate', function () {
+        // Re-sync the month bar before the (debounced) reload so selectedMonthsParam() reflects
+        // the newly picked range rather than the previous selection.
+        syncMonthPickerFromInputs();
         scheduleLoadData();
         hideDatePickers();
       });
@@ -2054,22 +2124,59 @@
 
     if (elements.monthButtons.length) {
       elements.monthButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
           var month = parseInt(button.getAttribute('data-leaves-month'), 10);
-          setMonthSelection(monthState.year, month);
+
+          if (event.shiftKey) {
+            // Contiguous range from the anchor to the clicked month (anchor unchanged).
+            var anchor = monthState.anchor == null ? month : monthState.anchor;
+            var start = Math.min(anchor, month);
+            var end = Math.max(anchor, month);
+            monthState.months = new Set();
+            for (var m = start; m <= end; m += 1) monthState.months.add(m);
+          } else if (event.ctrlKey || event.metaKey) {
+            // Toggle the clicked month, but never allow an empty selection.
+            if (monthState.months.has(month)) {
+              if (monthState.months.size > 1) monthState.months.delete(month);
+            } else {
+              monthState.months.add(month);
+            }
+            monthState.anchor = month;
+          } else {
+            // Plain click: single-month selection.
+            monthState.months = new Set([month]);
+            monthState.anchor = month;
+          }
+
+          applyMonthSelection();
         });
+      });
+    }
+
+    if (elements.yearLabel) {
+      elements.yearLabel.style.cursor = 'pointer';
+      elements.yearLabel.setAttribute('title', 'Select all months');
+      elements.yearLabel.addEventListener('click', function () {
+        // Select all 12 months of the displayed year.
+        monthState.months = new Set();
+        for (var m = 0; m < 12; m += 1) monthState.months.add(m);
+        monthState.anchor = 0;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearPrev) {
       elements.yearPrev.addEventListener('click', function () {
-        setMonthSelection(monthState.year - 1, monthState.month);
+        // Keep the same selected month set, shift to the previous year.
+        monthState.year -= 1;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearNext) {
       elements.yearNext.addEventListener('click', function () {
-        setMonthSelection(monthState.year + 1, monthState.month);
+        monthState.year += 1;
+        applyMonthSelection();
       });
     }
 
