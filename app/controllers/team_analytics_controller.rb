@@ -26,14 +26,18 @@ class TeamAnalyticsController < ApplicationController
     @member_dashboard_query = @member_dashboard_params.to_query
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
-    
+
+    # Temporary, session-only exclusions toggled from the Members summary table.
+    # Not persisted — a refresh (no param) re-activates everyone.
+    @temp_excluded_ids = Array(params[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+
     # Get all team members including sub-team members (bubble up from child teams)
     @team_members = @selected_team.hierarchical_members(@from, @to).to_a
-    
+
     @member_ids = @team_members.map(&:user_id).uniq
-    
-    # Filter out excluded users
-    @active_member_ids = @member_ids - excluded_ids
+
+    # Filter out permanently and temporarily excluded users
+    @active_member_ids = @member_ids - (excluded_ids | @temp_excluded_ids)
     @team_size = @active_member_ids.count
     
     # Get sub-teams for dashboard display
@@ -43,11 +47,19 @@ class TeamAnalyticsController < ApplicationController
     
     @time_entries = team_time_entries_scope(@team_members, @from, @to)
 
+    # Drop temporarily-excluded members from every aggregate (Total Hours, Max/Min,
+    # Time Overview, member pivot, donut) before any aggregation runs.
+    @time_entries = @time_entries.where.not(user_id: @temp_excluded_ids) if @time_entries && @temp_excluded_ids.any?
+
     @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
                                  .order('time_entries.spent_on DESC, time_entries.created_on DESC') if @time_entries
-    
+
     # If no members or conditions, return empty relation
     @time_entries ||= TimeEntry.none
+
+    # Hours for temporarily-excluded members, used to still render their (struck-through)
+    # rows in the Members summary table without counting them in any aggregate.
+    @temp_excluded_members = build_temp_excluded_members
     
     Rails.logger.info "Team Analytics: Auto-discovered projects from member time logs"
     
@@ -164,7 +176,10 @@ class TeamAnalyticsController < ApplicationController
 
       # Track member view state for chart generation
       @member_view_state = params[:member_view_state] || 'detailed'
-      
+
+      # Monthly-avg table (Members tab) — only relevant with monthly grouping.
+      @member_monthly_avg = @grouping == 'monthly' ? generate_member_monthly_avg_table(@time_entries, @from, @to) : nil
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_member_pivot_chart_data(@member_pivot_data, chart_type, @member_view_state)
@@ -430,8 +445,9 @@ class TeamAnalyticsController < ApplicationController
 
     case @filter
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'last_month'
       @from = (Date.current - 1.month).beginning_of_month
       @to = (Date.current - 1.month).end_of_month
@@ -444,16 +460,16 @@ class TeamAnalyticsController < ApplicationController
       @from = parse_custom_date(params[:from]) || Date.current.beginning_of_month
       @to = parse_custom_date(params[:to]) || Date.current.end_of_month
     else
-      # Default to this month
+      # Default to this month (month-to-date)
       @filter = 'this_month'
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     end
   rescue ArgumentError
     # Handle invalid date format
     @filter = 'this_month'
     @from = Date.current.beginning_of_month
-    @to = Date.current.end_of_month
+    @to = Date.current
   end
 
   def set_grouping
@@ -957,8 +973,20 @@ class TeamAnalyticsController < ApplicationController
     else
       labels
     end
-    
+
     primary_color = '#36a2eb'
+
+    formatted_hours = data_values.map { |hours| helpers.format_hours(hours) }
+    single_point = data_values.length == 1
+
+    # Center a lone data point by padding a blank slot on each side, so it renders
+    # in the middle of the chart instead of hugging the left edge.
+    if single_point
+      labels          = ['', labels.first, '']
+      tooltip_labels  = ['', tooltip_labels.first, '']
+      formatted_hours = ['', formatted_hours.first, '']
+      data_values     = [nil, data_values.first, nil]
+    end
 
     chart_data = {
       labels: labels,
@@ -970,10 +998,14 @@ class TeamAnalyticsController < ApplicationController
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        # Solid dark dots so points stay clearly visible with one or many data points.
+        pointRadius: single_point ? 6 : 4,
+        pointHoverRadius: single_point ? 8 : 6,
+        pointBackgroundColor: '#1d4ed8',
+        pointBorderColor: '#1d4ed8',
+        pointBorderWidth: 1,
         tooltipLabels: tooltip_labels,
-        formattedHours: data_values.map { |hours| helpers.format_hours(hours) }
+        formattedHours: formatted_hours
       }]
     }
 
@@ -1178,6 +1210,68 @@ class TeamAnalyticsController < ApplicationController
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
+  end
+
+  # Per-member daily-average hours for each month in the period (Members tab "Monthly avg"
+  # table, only used with monthly grouping). Reuses the same daily-average definition as the
+  # individual dashboard: hours / (working days - leave days), clamped at 0 active days.
+  def generate_member_monthly_avg_table(time_entries, from, to)
+    members = @team_members
+                .select { |m| @active_member_ids.include?(m.user_id) }
+                .map { |m| { id: m.user_id, name: m.user&.name } }
+                .reject { |m| m[:name].blank? }
+                .uniq { |m| m[:id] }
+    member_ids = members.map { |m| m[:id] }
+
+    # Month buckets within the period, each clamped to the period bounds.
+    months = []
+    cursor = from.beginning_of_month
+    while cursor <= to
+      months << {
+        key:   cursor.strftime('%Y-%m'),
+        label: cursor.strftime('%b %Y'),
+        start: [cursor, from].max,
+        end:   [cursor.end_of_month, to].min
+      }
+      cursor = cursor.next_month
+    end
+
+    # Hours per member per month, bucketed in Ruby to stay DB-agnostic.
+    hours = Hash.new(0.0)
+    time_entries.each do |entry|
+      next unless entry.user_id && entry.spent_on
+      hours[[entry.user_id, entry.spent_on.strftime('%Y-%m')]] += entry.hours
+    end
+
+    # Working days + per-member leave days for each month and for the whole period.
+    working_days = {}
+    leave_by_month = {}
+    months.each do |mo|
+      working_days[mo[:key]]   = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(mo[:start], mo[:end])
+      leave_by_month[mo[:key]] = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: mo[:start], to_date: mo[:end])
+    end
+    total_working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from, to)
+    total_leave        = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: from, to_date: to)
+
+    daily_avg = lambda { |hrs, active_days| active_days > 0 ? (hrs / active_days).round(2) : 0.0 }
+
+    rows = members.map do |m|
+      monthly = {}
+      total_hours = 0.0
+      months.each do |mo|
+        hrs = hours[[m[:id], mo[:key]]]
+        total_hours += hrs
+        active_days = [working_days[mo[:key]] - (leave_by_month[mo[:key]][m[:id]] || 0.0), 0].max
+        monthly[mo[:key]] = daily_avg.call(hrs, active_days)
+      end
+      overall_active = [total_working_days - (total_leave[m[:id]] || 0.0), 0].max
+      { id: m[:id], name: m[:name], monthly: monthly, overall: daily_avg.call(total_hours, overall_active) }
+    end
+
+    # Default order: highest overall daily average first (matches the design).
+    rows.sort_by! { |r| [-r[:overall], r[:name]] }
+
+    { months: months.map { |mo| { key: mo[:key], label: mo[:label] } }, rows: rows }
   end
 
   # Generate chart data for member pivot table
@@ -1428,8 +1522,8 @@ class TeamAnalyticsController < ApplicationController
                                 end
 
     # Excluded users are still filtered by the period they overlap with
-    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
-    
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end) | Array(@temp_excluded_ids)
+
     # Count members who were active during this period (based on membership dates, not time entries)
     active_count = @team_members.count do |membership|
       user_id = membership.user_id
@@ -1449,7 +1543,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def calculate_team_leave_days_for_period(period_start, period_end)
-    excluded_ids = TaTeamSetting.excluded_user_ids
+    excluded_ids = TaTeamSetting.excluded_user_ids | Array(@temp_excluded_ids)
     seen_user_dates = {}
     total_leave_days = 0.0
 
@@ -1472,6 +1566,30 @@ class TeamAnalyticsController < ApplicationController
     end
 
     total_leave_days
+  end
+
+  # Build the list of temporarily-excluded members (id/name/hours) so their rows can still
+  # be shown in the Members summary table, struck-through, without affecting any aggregate.
+  def build_temp_excluded_members
+    return [] if @temp_excluded_ids.blank?
+
+    # Permanent-excluded users are already filtered out by team_time_entries_scope;
+    # here we deliberately keep the temp set so we can display their hours.
+    hours_by_user = team_time_entries_scope(@team_members, @from, @to)
+                      .where(user_id: @temp_excluded_ids)
+                      .reorder(nil)
+                      .group(:user_id)
+                      .sum(:hours)
+
+    names_by_user = @team_members.each_with_object({}) do |membership, acc|
+      acc[membership.user_id] ||= membership.user&.name
+    end
+
+    @temp_excluded_ids.map do |user_id|
+      next unless names_by_user.key?(user_id)
+
+      { id: user_id, name: names_by_user[user_id], hours: hours_by_user[user_id] || 0 }
+    end.compact
   end
 
   # Format chart label for team dashboard (proper week format: YYYY-WW)

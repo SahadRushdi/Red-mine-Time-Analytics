@@ -74,6 +74,14 @@
     }
     /* Keep pivot columns from wrapping so horizontal scroll kicks in when wide */
     .leaves-summary-table th, .leaves-summary-table td { white-space: nowrap; }
+    /* Flowbite date picker must float above the Add Leave modal (z-[10000]) */
+    .datepicker { z-index: 100000 !important; }
+    /* Bright blue focus border on all Add Leave fields, incl. the Leave Type button */
+    .leaves-modal-input:focus {
+      border-color: #3b82f6 !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
   </style>
 <% end %>
 
@@ -375,28 +383,30 @@
       </div>
 
       <div id="leaves-summary-panel" class="hidden">
-        <div class="overflow-x-auto rounded-xl border border-gray-200 leaves-summary-scroll">
-          <table class="w-full text-sm text-left text-gray-500 leaves-summary-table">
-            <thead id="leaves-summary-thead" class="text-sm text-gray-700 bg-gray-50"></thead>
-            <tbody id="leaves-summary-tbody" class="divide-y divide-gray-100"></tbody>
-            <tfoot id="leaves-summary-tfoot" class="bg-gray-50"></tfoot>
-          </table>
-        </div>
+        <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div class="overflow-x-auto leaves-summary-scroll">
+            <table class="w-full text-sm text-left text-gray-500 leaves-summary-table">
+              <thead id="leaves-summary-thead" class="text-sm text-gray-700 bg-gray-50"></thead>
+              <tbody id="leaves-summary-tbody"></tbody>
+              <tfoot id="leaves-summary-tfoot" class="bg-gray-50"></tfoot>
+            </table>
+          </div>
 
-        <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <span id="leaves-summary-pagination-info" class="text-sm text-gray-500"></span>
-          <nav id="leaves-summary-pagination" class="hidden" aria-label="Summary pagination">
-            <ul id="leaves-summary-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
-          </nav>
+          <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span id="leaves-summary-pagination-info" class="text-sm text-gray-500"></span>
+            <nav id="leaves-summary-pagination" class="hidden" aria-label="Summary pagination">
+              <ul id="leaves-summary-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
+            </nav>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/70 p-4 sm:items-center">
+<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-gray-900/70 p-4 sm:items-center">
   <div class="relative w-full max-w-3xl">
-    <div class="relative rounded-2xl bg-white shadow-xl flex flex-col min-h-[520px]">
+    <div class="relative rounded-2xl bg-white shadow-xl">
       <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
         <div>
           <h3 class="text-lg font-semibold text-gray-900"><%= l(:label_add_leave) %></h3>
@@ -412,8 +422,8 @@
         </button>
       </div>
 
-      <div class="px-5 py-5 flex-1">
-        <form id="leaves-manual-form" class="flex h-full flex-col space-y-4">
+      <div class="px-5 py-5">
+        <form id="leaves-manual-form" class="space-y-4">
           <div>
             <label for="leaves-manual-user-search" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
             <div class="relative min-w-0" id="leaves-manual-user-wrapper">
@@ -421,7 +431,7 @@
                      id="leaves-manual-user-search"
                      placeholder="Select a user"
                      autocomplete="off"
-                     class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                     class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
                      required>
               <input type="hidden" id="leaves-manual-user-id" value="">
               <div id="leaves-manual-user-list"
@@ -455,7 +465,7 @@
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
             <div>
@@ -468,7 +478,7 @@
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
           </div>
@@ -479,7 +489,7 @@
               <div class="relative" id="leaves-manual-fraction-wrapper">
                 <button type="button"
                         id="leaves-manual-fraction-button"
-                        class="leaves-modal-input inline-flex h-[44px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
+                        class="leaves-modal-input inline-flex h-12 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
                   <span id="leaves-manual-fraction-label">0.5</span>
                   <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -494,7 +504,7 @@
             </div>
           </div>
 
-          <div class="mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
             <button type="button" id="leaves-manual-cancel" class="leaves-modal-cancel inline-flex h-[44px] items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
             <button type="submit" class="leaves-modal-submit inline-flex h-[44px] items-center rounded-lg bg-[#3b82f6] px-4 text-sm font-semibold text-white hover:bg-[#2563eb]"><%= l(:label_add_leave) %></button>
           </div>
@@ -1338,11 +1348,11 @@
                 '<div class="flex flex-col gap-4 sm:flex-row sm:items-end">' +
                   '<div class="w-full sm:w-48">' +
                     '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_date) %></label>' +
-                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[43px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
+                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[44px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
                   '</div>' +
-                  '<div class="relative w-full sm:w-40" id="leaves-fraction-wrapper-' + record.id + '">' +
+                  '<div class="relative w-full sm:w-48" id="leaves-fraction-wrapper-' + record.id + '">' +
                     '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_total) %></label>' +
-                    '<button type="button" class="tep-field flex h-[40px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
+                    '<button type="button" class="tep-field flex h-[44px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
                       '<span data-leaves-fraction-label="' + record.id + '" class="text-gray-700 truncate flex-1">' + leaveFractionValue + '</span>' +
                       '<svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
                         '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>' +
@@ -1480,12 +1490,12 @@
       });
 
       // Header (the User column is frozen via sticky left-0 so it stays visible on x-scroll)
-      var headerHtml = '<tr>' +
-        '<th scope="col" class="sticky left-0 z-20 bg-gray-50 px-6 py-3 border-r-2 border-gray-300">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
+      var headerHtml = '<tr class="border-b border-gray-200">' +
+        '<th scope="col" class="sticky left-0 z-20 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide border-r border-gray-200">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
       columns.forEach(function (column) {
-        headerHtml += '<th scope="col" class="px-6 py-3 text-center border-r border-gray-200">' + summarySortHeader(column.key, column.label) + '</th>';
+        headerHtml += '<th scope="col" class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-center border-r border-gray-200">' + summarySortHeader(column.key, column.label) + '</th>';
       });
-      headerHtml += '<th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">' + summarySortHeader('total', '<%= j l(:label_total) %>') + '</th></tr>';
+      headerHtml += '<th scope="col" class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">' + summarySortHeader('total', '<%= j l(:label_total) %>') + '</th></tr>';
       elements.summaryHead.innerHTML = headerHtml;
       updateSortIndicators();
 
@@ -1499,18 +1509,18 @@
         elements.summaryFoot.innerHTML = '';
       } else {
         page.items.forEach(function (user) {
-          var row = '<tr class="bg-white border-b hover:bg-gray-50 transition-colors">' +
-            '<td class="sticky left-0 z-10 bg-white px-6 py-4 font-medium text-gray-900 whitespace-nowrap border-r border-gray-200">' + escapeHtmlAttr(user.name) + '</td>';
+          var row = '<tr class="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">' +
+            '<td class="sticky left-0 z-10 bg-white px-4 py-3 font-medium text-gray-900 whitespace-nowrap border-r border-gray-200">' + escapeHtmlAttr(user.name) + '</td>';
           columns.forEach(function (column) {
             var value = (user.byMonth[column.key] || {}).total || 0;
             if (value > 0) {
               var info = summaryInfoButton(user.name, column.key, column.label);
-              row += '<td class="px-6 py-4 text-center text-gray-900"><div class="inline-flex items-center justify-center gap-1"><span>' + formatNumber(value) + '</span>' + info + '</div></td>';
+              row += '<td class="px-4 py-3 text-center text-gray-900 border-r border-gray-200"><div class="inline-flex items-center justify-center gap-1"><span>' + formatNumber(value) + '</span>' + info + '</div></td>';
             } else {
-              row += '<td class="px-6 py-4 text-center text-gray-400">—</td>';
+              row += '<td class="px-4 py-3 text-center text-gray-400 border-r border-gray-200">—</td>';
             }
           });
-          row += '<td class="px-6 py-4 text-right font-semibold text-gray-900">' + formatNumber(user.total) + '</td></tr>';
+          row += '<td class="px-4 py-3 text-right font-semibold text-gray-900">' + formatNumber(user.total) + '</td></tr>';
           bodyHtml += row;
         });
 
@@ -1521,11 +1531,11 @@
           }, 0);
         });
         var grandTotal = pivot.users.reduce(function (sum, user) { return sum + user.total; }, 0);
-        var footHtml = '<tr class="bg-gray-50"><td class="sticky left-0 z-10 bg-gray-50 px-6 py-4 font-bold text-gray-900 whitespace-nowrap border-r border-gray-200"><%= j l(:label_total) %></td>';
+        var footHtml = '<tr class="bg-gray-50 border-t border-gray-200"><td class="sticky left-0 z-10 bg-gray-50 px-4 py-3 font-bold text-gray-900 whitespace-nowrap border-r border-gray-200"><%= j l(:label_total) %></td>';
         columnTotals.forEach(function (total) {
-          footHtml += '<td class="px-6 py-4 text-center font-bold text-gray-900">' + (total > 0 ? formatNumber(total) : '—') + '</td>';
+          footHtml += '<td class="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">' + (total > 0 ? formatNumber(total) : '—') + '</td>';
         });
-        footHtml += '<td class="px-6 py-4 text-right font-bold text-gray-900 border-l-2 border-gray-300">' + formatNumber(grandTotal) + '</td></tr>';
+        footHtml += '<td class="px-4 py-3 text-right font-bold text-gray-900">' + formatNumber(grandTotal) + '</td></tr>';
         elements.summaryFoot.innerHTML = footHtml;
       }
 
@@ -2213,6 +2223,9 @@
       manualElements.modal.setAttribute('aria-hidden', 'false');
       if (manualElements.from) manualElements.from.value = formatDateForInput(new Date());
       if (manualElements.to) manualElements.to.value = '';
+      // Default a fresh single-day leave to a half day; the user can switch it to 1.
+      if (manualElements.fraction) manualElements.fraction.value = '0.5';
+      if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = '0.5';
       setManualLeaveTypeMode('single');
       if (manualElements.userSearch) manualElements.userSearch.value = '';
       if (manualElements.userId) manualElements.userId.value = '';
@@ -2262,13 +2275,17 @@
     function setManualLeaveTypeMode(mode) {
       if (!manualElements.fraction || !manualElements.fractionButton || !manualElements.fractionLabel || !manualElements.fractionMenu) return;
       var isRange = mode === 'range';
-      manualElements.fraction.value = isRange ? '1' : '0.5';
-      manualElements.fractionLabel.textContent = isRange ? '1' : '0.5';
+      // A multi-day range is always full days, so lock the selector to 1. In single-day
+      // mode keep whatever the user picked (0.5 or 1) — never reset it on submit/sync.
+      if (isRange) {
+        manualElements.fraction.value = '1';
+        manualElements.fractionLabel.textContent = '1';
+        manualElements.fractionMenu.classList.add('hidden');
+      }
       manualElements.fractionButton.disabled = isRange;
       manualElements.fractionButton.classList.toggle('cursor-not-allowed', isRange);
       manualElements.fractionButton.classList.toggle('opacity-70', isRange);
       manualElements.fractionButton.classList.toggle('pointer-events-none', isRange);
-      manualElements.fractionMenu.classList.toggle('hidden', isRange);
     }
 
     function syncManualLeaveTypeMode() {
