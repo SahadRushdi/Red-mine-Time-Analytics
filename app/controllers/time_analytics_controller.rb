@@ -53,6 +53,16 @@ class TimeAnalyticsController < ApplicationController
     @leave_days_count = calculate_leave_days_count(@from, @to)
     @active_days_count = [@working_days_count - @leave_days_count, 0].max.round(2)
 
+    # Holiday/leave context for the Trend chart + Time Overview (daily grouping only):
+    # weekends, public/company holidays, and the user's confirmed leave dates. The toggle
+    # only affects the graph + Time Overview table; summary card values are unchanged.
+    @hide_holidays = params[:hide_holidays].to_s == '1'
+    @period_working_day_checker = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(@from, @to)
+    @period_leave_fractions = {}
+    TaLeaveRecord.confirmed.where(user_id: @user.id, leave_date: @from..@to).find_each do |rec|
+      @period_leave_fractions[rec.leave_date] = [@period_leave_fractions[rec.leave_date].to_f, rec.leave_fraction.to_f].max
+    end
+
     # Calculate summary statistics based on grouping
     case @grouping
     when 'weekly'
@@ -515,6 +525,20 @@ class TimeAnalyticsController < ApplicationController
     ).round(2)
   end
 
+  # A date worth flagging on the Trend chart / Time Overview: a weekend, a public/company
+  # holiday, or a date the user had any leave (full OR half day).
+  def ta_holiday_or_leave_date?(date)
+    return false unless date.is_a?(Date) && @period_working_day_checker
+    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f > 0
+  end
+
+  # A date to drop when "hide holidays + leaves" is on: weekends, holidays, and FULL-day
+  # leaves only. Half-day leaves are kept since the user still worked part of the day.
+  def ta_hidden_holiday_date?(date)
+    return false unless date.is_a?(Date) && @period_working_day_checker
+    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f >= 1.0
+  end
+
   def calculate_active_days(from_date, to_date)
     working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
     leave_days = calculate_leave_days_count(from_date, to_date)
@@ -872,8 +896,12 @@ class TimeAnalyticsController < ApplicationController
       end
     end
 
-    return empty_chart_data('line') if sorted_data.all? { |_, value| value.to_f.zero? }
-    
+    daily = @grouping == 'daily'
+    # Drop weekend/holiday/full-day-leave dates from the Trend chart when the toggle is off.
+    sorted_data = sorted_data.reject { |key, _| ta_hidden_holiday_date?(key) } if daily && @hide_holidays
+
+    return empty_chart_data('line') if sorted_data.empty? || sorted_data.all? { |_, value| value.to_f.zero? }
+
     formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
 
     # Generate detailed tooltip labels for weekly grouping
@@ -888,6 +916,9 @@ class TimeAnalyticsController < ApplicationController
 
     data_values = sorted_data.map { |_, value| value }
 
+    # Flag holiday/leave dates so their points and x-axis labels can render in a distinct colour.
+    holiday_flags = daily ? sorted_data.map { |key, _| ta_holiday_or_leave_date?(key) } : sorted_data.map { false }
+
     # Center a lone data point by padding a blank slot on each side, so it renders
     # in the middle of the chart instead of hugging the left edge.
     if data_values.length == 1
@@ -895,9 +926,12 @@ class TimeAnalyticsController < ApplicationController
       tooltip_labels   = ['', tooltip_labels.first, '']
       formatted_hours  = ['', formatted_hours.first, '']
       data_values      = [nil, data_values.first, nil]
+      holiday_flags    = [false, holiday_flags.first, false]
     end
 
     single_point = sorted_data.length == 1
+    # Holidays/leaves in amber, normal days in the usual dark blue.
+    point_colors = holiday_flags.map { |holiday| holiday ? '#f59e0b' : '#1d4ed8' }
 
     chart_data = {
       labels: formatted_labels,
@@ -909,12 +943,13 @@ class TimeAnalyticsController < ApplicationController
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        # Solid dark dots so points stay clearly visible with one or many data points.
+        # Solid dots so points stay clearly visible with one or many data points.
         pointRadius: single_point ? 6 : 4,
         pointHoverRadius: single_point ? 8 : 6,
-        pointBackgroundColor: '#1d4ed8',
-        pointBorderColor: '#1d4ed8',
+        pointBackgroundColor: point_colors,
+        pointBorderColor: point_colors,
         pointBorderWidth: 1,
+        holidayFlags: holiday_flags,
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
       }]
@@ -1756,16 +1791,21 @@ class TimeAnalyticsController < ApplicationController
     
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
-    
+
+    daily = grouping == 'daily'
+    # When hiding holidays + leaves, drop weekends/holidays/full-day-leave dates (daily only).
+    sorted_data = sorted_data.reject { |key, _| ta_hidden_holiday_date?(key) } if daily && @hide_holidays
+
     # Format data with proper date display (no activity breakdown)
     sorted_data.map do |period, hours|
-      formatted_period = if grouping == 'daily'
+      formatted_period = if daily
         helpers.format_chart_label(period)
       else
         helpers.format_period_for_table(period, grouping, @from, @to)
       end
-      
-      Struct.new(:period, :hours, :date).new(formatted_period, hours, period)
+
+      holiday = daily && ta_holiday_or_leave_date?(period)
+      Struct.new(:period, :hours, :date, :holiday).new(formatted_period, hours, period, holiday)
     end
   end
 
