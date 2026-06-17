@@ -1394,13 +1394,29 @@ function transformChartType(originalConfig, newType) {
     
     // Line chart styling
     if (newConfig.data && newConfig.data.datasets && newConfig.data.datasets[0]) {
-      newConfig.data.datasets[0].borderColor = '#36a2eb';
-      newConfig.data.datasets[0].backgroundColor = 'rgba(54, 162, 235, 0.1)';
-      newConfig.data.datasets[0].fill = true;
-      newConfig.data.datasets[0].tension = 0.2;
-      newConfig.data.datasets[0].borderWidth = 2;
-      newConfig.data.datasets[0].pointRadius = 3;
-      newConfig.data.datasets[0].pointHoverRadius = 5;
+      var ds = newConfig.data.datasets[0];
+      ds.borderColor = '#36a2eb';
+      ds.backgroundColor = 'rgba(54, 162, 235, 0.1)';
+      ds.fill = true;
+      ds.tension = 0.2;
+      ds.borderWidth = 2;
+
+      // Center a lone data point so it renders in the middle of the chart, not the left edge.
+      var dsData = ds.data || [];
+      var realCount = dsData.filter(function(v) { return v !== null && v !== undefined; }).length;
+      var isSingle = realCount === 1;
+      if (isSingle && dsData.length === 1) {
+        newConfig.data.labels = ['', newConfig.data.labels[0], ''];
+        ds.data = [null, dsData[0], null];
+        if (ds.formattedHours) { ds.formattedHours = ['', ds.formattedHours[0], '']; }
+      }
+
+      // Solid dark dots so points stay clearly visible with one or many data points.
+      ds.pointRadius = isSingle ? 6 : 4;
+      ds.pointHoverRadius = isSingle ? 8 : 6;
+      ds.pointBackgroundColor = '#1d4ed8';
+      ds.pointBorderColor = '#1d4ed8';
+      ds.pointBorderWidth = 1;
     }
     
   } else {

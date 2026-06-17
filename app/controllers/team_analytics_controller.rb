@@ -442,8 +442,9 @@ class TeamAnalyticsController < ApplicationController
 
     case @filter
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'last_month'
       @from = (Date.current - 1.month).beginning_of_month
       @to = (Date.current - 1.month).end_of_month
@@ -456,16 +457,16 @@ class TeamAnalyticsController < ApplicationController
       @from = parse_custom_date(params[:from]) || Date.current.beginning_of_month
       @to = parse_custom_date(params[:to]) || Date.current.end_of_month
     else
-      # Default to this month
+      # Default to this month (month-to-date)
       @filter = 'this_month'
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     end
   rescue ArgumentError
     # Handle invalid date format
     @filter = 'this_month'
     @from = Date.current.beginning_of_month
-    @to = Date.current.end_of_month
+    @to = Date.current
   end
 
   def set_grouping
@@ -969,8 +970,20 @@ class TeamAnalyticsController < ApplicationController
     else
       labels
     end
-    
+
     primary_color = '#36a2eb'
+
+    formatted_hours = data_values.map { |hours| helpers.format_hours(hours) }
+    single_point = data_values.length == 1
+
+    # Center a lone data point by padding a blank slot on each side, so it renders
+    # in the middle of the chart instead of hugging the left edge.
+    if single_point
+      labels          = ['', labels.first, '']
+      tooltip_labels  = ['', tooltip_labels.first, '']
+      formatted_hours = ['', formatted_hours.first, '']
+      data_values     = [nil, data_values.first, nil]
+    end
 
     chart_data = {
       labels: labels,
@@ -982,10 +995,14 @@ class TeamAnalyticsController < ApplicationController
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        # Solid dark dots so points stay clearly visible with one or many data points.
+        pointRadius: single_point ? 6 : 4,
+        pointHoverRadius: single_point ? 8 : 6,
+        pointBackgroundColor: '#1d4ed8',
+        pointBorderColor: '#1d4ed8',
+        pointBorderWidth: 1,
         tooltipLabels: tooltip_labels,
-        formattedHours: data_values.map { |hours| helpers.format_hours(hours) }
+        formattedHours: formatted_hours
       }]
     }
 

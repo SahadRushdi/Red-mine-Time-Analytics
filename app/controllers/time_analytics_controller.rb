@@ -297,8 +297,9 @@ class TimeAnalyticsController < ApplicationController
       @from = (Date.current - 1.week).beginning_of_week(:monday)
       @to = (Date.current - 1.week).end_of_week(:monday)
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'custom'
       from_param = params[:from].presence
       to_param = params[:to].presence
@@ -874,29 +875,46 @@ class TimeAnalyticsController < ApplicationController
     return empty_chart_data('line') if sorted_data.all? { |_, value| value.to_f.zero? }
     
     formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
+
     # Generate detailed tooltip labels for weekly grouping
     tooltip_labels = if @grouping == 'weekly'
       sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
       formatted_labels
     end
-    
+
     # Generate formatted hours for tooltips
     formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
-    
+
+    data_values = sorted_data.map { |_, value| value }
+
+    # Center a lone data point by padding a blank slot on each side, so it renders
+    # in the middle of the chart instead of hugging the left edge.
+    if data_values.length == 1
+      formatted_labels = ['', formatted_labels.first, '']
+      tooltip_labels   = ['', tooltip_labels.first, '']
+      formatted_hours  = ['', formatted_hours.first, '']
+      data_values      = [nil, data_values.first, nil]
+    end
+
+    single_point = sorted_data.length == 1
+
     chart_data = {
       labels: formatted_labels,
       datasets: [{
         label: 'Hours',
-        data: sorted_data.map { |_, value| value },
+        data: data_values,
         borderColor: '#36a2eb',
         backgroundColor: 'rgba(54, 162, 235, 0.1)',
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        # Solid dark dots so points stay clearly visible with one or many data points.
+        pointRadius: single_point ? 6 : 4,
+        pointHoverRadius: single_point ? 8 : 6,
+        pointBackgroundColor: '#1d4ed8',
+        pointBorderColor: '#1d4ed8',
+        pointBorderWidth: 1,
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
       }]

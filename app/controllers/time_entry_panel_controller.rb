@@ -266,8 +266,9 @@ class TimeEntryPanelController < ApplicationController
       @from = (Date.current - 1.week).beginning_of_week(:monday)
       @to = (Date.current - 1.week).end_of_week(:monday)
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'custom'
       @from = parse_custom_date(params[:from]) || (Date.current - 6.days)
       @to = parse_custom_date(params[:to]) || Date.current
