@@ -26,14 +26,18 @@ class TeamAnalyticsController < ApplicationController
     @member_dashboard_query = @member_dashboard_params.to_query
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
-    
+
+    # Temporary, session-only exclusions toggled from the Members summary table.
+    # Not persisted — a refresh (no param) re-activates everyone.
+    @temp_excluded_ids = Array(params[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+
     # Get all team members including sub-team members (bubble up from child teams)
     @team_members = @selected_team.hierarchical_members(@from, @to).to_a
-    
+
     @member_ids = @team_members.map(&:user_id).uniq
-    
-    # Filter out excluded users
-    @active_member_ids = @member_ids - excluded_ids
+
+    # Filter out permanently and temporarily excluded users
+    @active_member_ids = @member_ids - (excluded_ids | @temp_excluded_ids)
     @team_size = @active_member_ids.count
     
     # Get sub-teams for dashboard display
@@ -43,11 +47,19 @@ class TeamAnalyticsController < ApplicationController
     
     @time_entries = team_time_entries_scope(@team_members, @from, @to)
 
+    # Drop temporarily-excluded members from every aggregate (Total Hours, Max/Min,
+    # Time Overview, member pivot, donut) before any aggregation runs.
+    @time_entries = @time_entries.where.not(user_id: @temp_excluded_ids) if @time_entries && @temp_excluded_ids.any?
+
     @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
                                  .order('time_entries.spent_on DESC, time_entries.created_on DESC') if @time_entries
-    
+
     # If no members or conditions, return empty relation
     @time_entries ||= TimeEntry.none
+
+    # Hours for temporarily-excluded members, used to still render their (struck-through)
+    # rows in the Members summary table without counting them in any aggregate.
+    @temp_excluded_members = build_temp_excluded_members
     
     Rails.logger.info "Team Analytics: Auto-discovered projects from member time logs"
     
@@ -1428,8 +1440,8 @@ class TeamAnalyticsController < ApplicationController
                                 end
 
     # Excluded users are still filtered by the period they overlap with
-    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
-    
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end) | Array(@temp_excluded_ids)
+
     # Count members who were active during this period (based on membership dates, not time entries)
     active_count = @team_members.count do |membership|
       user_id = membership.user_id
@@ -1449,7 +1461,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def calculate_team_leave_days_for_period(period_start, period_end)
-    excluded_ids = TaTeamSetting.excluded_user_ids
+    excluded_ids = TaTeamSetting.excluded_user_ids | Array(@temp_excluded_ids)
     seen_user_dates = {}
     total_leave_days = 0.0
 
@@ -1472,6 +1484,30 @@ class TeamAnalyticsController < ApplicationController
     end
 
     total_leave_days
+  end
+
+  # Build the list of temporarily-excluded members (id/name/hours) so their rows can still
+  # be shown in the Members summary table, struck-through, without affecting any aggregate.
+  def build_temp_excluded_members
+    return [] if @temp_excluded_ids.blank?
+
+    # Permanent-excluded users are already filtered out by team_time_entries_scope;
+    # here we deliberately keep the temp set so we can display their hours.
+    hours_by_user = team_time_entries_scope(@team_members, @from, @to)
+                      .where(user_id: @temp_excluded_ids)
+                      .reorder(nil)
+                      .group(:user_id)
+                      .sum(:hours)
+
+    names_by_user = @team_members.each_with_object({}) do |membership, acc|
+      acc[membership.user_id] ||= membership.user&.name
+    end
+
+    @temp_excluded_ids.map do |user_id|
+      next unless names_by_user.key?(user_id)
+
+      { id: user_id, name: names_by_user[user_id], hours: hours_by_user[user_id] || 0 }
+    end.compact
   end
 
   # Format chart label for team dashboard (proper week format: YYYY-WW)

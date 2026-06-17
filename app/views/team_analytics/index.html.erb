@@ -301,7 +301,7 @@
 </style>
 
 <script type="text/javascript">
-  const teamDashboardBaseUrl = '<%= team_analytics_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :activity_view_state, :project_view_state, :member_view_state).to_h) %>';
+  const teamDashboardBaseUrl = '<%= team_analytics_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []).to_h) %>';
   const currentTeamId = '<%= @selected_team&.id %>';
   const teamTreeSidebarStorageKey = 'team_tree_sidebar_state';
   let teamTreeLoaded = false;
@@ -450,6 +450,9 @@
         var targetUrl = new URL(window.location.href);
         targetUrl.searchParams.set('team_id', teamId);
         targetUrl.searchParams.delete('page');
+        // Temporary exclusions are per-team — never carry one team's excluded members
+        // into another team (otherwise the other team would adopt them as its own).
+        targetUrl.searchParams.delete('temp_excluded_ids[]');
         window.location.assign(targetUrl.toString());
         return;
       }
@@ -579,7 +582,7 @@
   </div>
 </div>
 
-<div class="ts-summary-cards-row mb-6">
+<div id="ts-summary-cards-row" class="ts-summary-cards-row mb-6">
   <div class="ts-summary-card ts-summary-card--total flex items-center gap-4">
     <div class="ts-summary-card-icon">
       <svg class="ts-summary-card-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -636,7 +639,7 @@
 
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
   <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
-    <div class="box time-overview-box">
+    <div id="team-time-overview-box" class="box time-overview-box">
       <h3 class="text-base font-semibold text-gray-900 mb-3 text-center"><%= time_overview_header(@grouping) %></h3>
       <% if @effective_time_error_message.present? %>
         <div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -695,7 +698,7 @@
       
       <%# Pagination %>
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -855,7 +858,7 @@
       <%# Pagination for Activity view %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state, temp_excluded_ids: []) %>
         <span id="team-activity-pagination-links" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
@@ -994,7 +997,7 @@
       <%# Pagination for Project view %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state, temp_excluded_ids: []) %>
         <span id="team-project-pagination-links" style="<%= @project_view_state == 'summary' ? 'display: none;' : '' %>">
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
@@ -1034,7 +1037,8 @@
   <% end %>
 <% elsif @view_mode == 'members' %>
   <%# Member Analysis Tables - Show pivot table for Member × Time Period %>
-  <% if @members&.any? %>
+  <%# Keep rendering when only temp-excluded members remain so their toggles stay reachable %>
+  <% if @members&.any? || Array(@temp_excluded_members).any? %>
     <div class="ta-analysis-layout flex gap-6 mb-6">
       <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200 min-w-0">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -1129,10 +1133,39 @@
                 <div class="flex items-center gap-3">
                   <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
                   <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                  <% if member %>
+                    <label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">
+                      <input type="checkbox" class="sr-only peer member-exclusion-toggle" data-user-id="<%= member[:id] %>" checked>
+                      <div class="ta-custom-toggle-track"></div>
+                    </label>
+                  <% end %>
                 </div>
               </div>
               <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
+              </div>
+            </div>
+          <% end %>
+
+          <%# Temporarily-excluded members: still listed (struck-through) but counted in no aggregate %>
+          <% Array(@temp_excluded_members).each do |member| %>
+            <div class="ta-member-excluded bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= member[:hours].to_f %>" data-name="<%= h(member[:name]) %>" data-excluded="true">
+              <div class="flex items-center justify-between mb-2 gap-3">
+                <h3 class="text-base font-medium text-gray-400 line-through flex items-center gap-2">
+                  <%= member[:name] %>
+                  <span class="ta-member-excluded-badge no-underline">EXCLUDED</span>
+                </h3>
+                <div class="flex items-center gap-3">
+                  <span class="text-base font-semibold text-gray-400"><%= format_hours(member[:hours]) %></span>
+                  <span class="text-sm font-medium text-gray-400 min-w-[45px] text-right">—</span>
+                  <label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">
+                    <input type="checkbox" class="sr-only peer member-exclusion-toggle" data-user-id="<%= member[:id] %>">
+                    <div class="ta-custom-toggle-track"></div>
+                  </label>
+                </div>
+              </div>
+              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full rounded-full bg-gray-300" style="width: 100%;"></div>
               </div>
             </div>
           <% end %>
@@ -1142,14 +1175,14 @@
       <%# Pagination for Member view %>
       <div class="pagination-wrapper">
         <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state, temp_excluded_ids: []) %>
         <span id="team-member-pagination-links" style="<%= @member_view_state == 'summary' ? 'display: none;' : '' %>">
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
 
         <div class="pagination-info" id="team-member-pagination-info"
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-summary-count="<%= @member_totals&.count || 0 %>">
+             data-summary-count="<%= (@member_totals&.count || 0) + Array(@temp_excluded_members).count %>">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
       </div>
@@ -1276,11 +1309,17 @@
         labels.push('<%= j project %>');
         values.push(<%= hours.to_f %>);
       <% end %>
-    <% elsif @view_mode == 'members' && @member_totals.present? %>
-      <% @member_totals.select { |_, hours| hours > 0 }.sort_by { |name, hours| [-hours, name] }.each do |member_name, hours| %>
-        labels.push('<%= j member_name %>');
-        values.push(<%= hours.to_f %>);
-      <% end %>
+    <% elsif @view_mode == 'members' %>
+      // Build from the (possibly AJAX-refreshed) summary rows, skipping temporarily-excluded members.
+      var memberRows = document.querySelectorAll('#team-member-summary-view [data-name]:not([data-excluded="true"])');
+      var memberData = Array.prototype.map.call(memberRows, function(row) {
+        return { name: row.getAttribute('data-name') || '', hours: parseFloat(row.getAttribute('data-hours') || '0') };
+      }).filter(function(m) { return m.hours > 0; });
+      memberData.sort(function(a, b) {
+        if (b.hours !== a.hours) { return b.hours - a.hours; }
+        return a.name.localeCompare(b.name);
+      });
+      memberData.forEach(function(m) { labels.push(m.name); values.push(m.hours); });
     <% end %>
 
     if (!labels.length || !values.length) return;
@@ -1792,7 +1831,131 @@
     var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
     if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
     if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
+    if (containerId === 'team-member-summary-view') { lastMemberSort = sortBy; }
   }
+
+  // --- Temporary member exclusion (Members summary toggles) ---------------------
+  // Excluded user IDs are kept in sessionStorage (per team) so they survive reloads
+  // and navigation between dashboard pages for the whole browser session — until the
+  // team lead re-enables them. They are mirrored into the URL (temp_excluded_ids[])
+  // so the server renders every navigated/reloaded page already excluded; a one-time
+  // self-correcting redirect re-applies them on any page that lands without the param.
+  var lastMemberSort = 'hours';
+  var exclusionRequestToken = 0;
+  // Bump the version segment to invalidate any stale per-team entries persisted by an
+  // earlier build (e.g. exclusions that bled across teams before the team-switch fix).
+  var exclusionStorageKey = 'taTempExcluded:v2:' + (currentTeamId || 'none');
+
+  function getStoredExclusions() {
+    try {
+      var raw = sessionStorage.getItem(exclusionStorageKey);
+      if (raw === null) { return null; }
+      var ids = JSON.parse(raw);
+      return Array.isArray(ids) ? ids.map(String) : [];
+    } catch (e) { return null; }
+  }
+
+  function setStoredExclusions(ids) {
+    try { sessionStorage.setItem(exclusionStorageKey, JSON.stringify(ids.map(String))); } catch (e) {}
+  }
+
+  function getUrlExclusions(urlObj) {
+    return (urlObj || new URL(window.location.href)).searchParams.getAll('temp_excluded_ids[]').map(String);
+  }
+
+  function sameIdSet(a, b) {
+    if (a.length !== b.length) { return false; }
+    var sa = a.slice().sort(), sb = b.slice().sort();
+    return sa.every(function(v, i) { return v === sb[i]; });
+  }
+
+  function buildExclusionUrl(ids) {
+    var url = new URL(window.location.href);
+    url.searchParams.delete('temp_excluded_ids[]');
+    ids.forEach(function(id) { url.searchParams.append('temp_excluded_ids[]', id); });
+    return url;
+  }
+
+  // Current excluded set as reflected by the on-page toggles (Members summary).
+  function collectExcludedMemberIds() {
+    var ids = [];
+    document.querySelectorAll('.member-exclusion-toggle').forEach(function(input) {
+      if (!input.checked) {
+        var id = input.getAttribute('data-user-id');
+        if (id && ids.indexOf(id) === -1) { ids.push(id); }
+      }
+    });
+    return ids;
+  }
+
+  function refreshTeamMemberExclusions(ids) {
+    var summaryCard = document.getElementById('ts-summary-cards-row');
+    var token = ++exclusionRequestToken;
+    var url = buildExclusionUrl(ids);
+
+    if (summaryCard) { summaryCard.style.opacity = '0.5'; }
+
+    fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+      .then(function(response) { return response.text(); })
+      .then(function(html) {
+        // Ignore responses that have been superseded by a newer toggle.
+        if (token !== exclusionRequestToken) { return; }
+
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // innerHTML swap for content blocks (preserves wrappers' toggled display state).
+        ['ts-summary-cards-row', 'team-time-overview-box', 'team-member-summary-view', 'team-member-detailed-view'].forEach(function(id) {
+          var fresh = doc.getElementById(id);
+          var current = document.getElementById(id);
+          if (fresh && current) { current.innerHTML = fresh.innerHTML; }
+        });
+
+        // Full-element replace for pagination (data-* attributes carry the recomputed counts).
+        ['team-member-pagination-links', 'team-member-pagination-info'].forEach(function(id) {
+          var fresh = doc.getElementById(id);
+          var current = document.getElementById(id);
+          if (fresh && current) { current.replaceWith(document.importNode(fresh, true)); }
+        });
+
+        // Re-apply summary/detailed visibility + pagination text, the active sort,
+        // then rebuild the donut from the swapped rows.
+        restoreMemberViewState();
+        sortSummaryCards('team-member-summary-view', lastMemberSort);
+        initTeamDonutChart();
+      })
+      .catch(function(err) { console.error('Member exclusion refresh failed:', err); })
+      .finally(function() {
+        if (token === exclusionRequestToken && summaryCard) { summaryCard.style.opacity = ''; }
+      });
+  }
+
+  // Toggling a member updates the stored set, mirrors it into the URL, and refreshes in place.
+  document.addEventListener('change', function(e) {
+    if (e.target && e.target.classList && e.target.classList.contains('member-exclusion-toggle')) {
+      var ids = collectExcludedMemberIds();
+      setStoredExclusions(ids);
+      window.history.replaceState({}, '', buildExclusionUrl(ids).toString());
+      refreshTeamMemberExclusions(ids);
+    }
+  });
+
+  // On load, force the URL to match THIS team's stored set. The per-team sessionStorage
+  // is the only source of truth: a team applies only the exclusions it set itself, and
+  // never adopts IDs from the URL (so one team's exclusions can never leak into another).
+  function syncTeamMemberExclusions() {
+    var effective = getStoredExclusions() || []; // null (never set) is treated as empty
+    var urlIds = getUrlExclusions();
+
+    // URL already matches this team's stored set — server rendered correctly, nothing to do.
+    if (sameIdSet(effective, urlIds)) { return; }
+
+    // URL carries a different set (a clean reload, a re-enable, or IDs that bled in from
+    // another team). Re-render with the team's own set via a single redirect so every view
+    // (cards, overview, tables, charts) is consistent.
+    window.location.replace(buildExclusionUrl(effective).toString());
+  }
+
+  document.addEventListener('DOMContentLoaded', syncTeamMemberExclusions);
 
 </script>
 
