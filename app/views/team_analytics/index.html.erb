@@ -572,6 +572,7 @@
 
     <%= link_to team_analytics_export_csv_path(params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id)),
         method: :post,
+        id: 'team-export-csv-btn',
         style: 'background-color: #3b82f6 !important; color: white !important;',
         class: 'inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium !text-white !bg-[#3b82f6] rounded-lg hover:!bg-[#2563eb] focus:ring-4 focus:ring-blue-300 shadow-xs focus:outline-none transition-colors' do %>
       <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -1053,13 +1054,23 @@
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-                <button type="button" id="show-detailed-btn-member" 
-                        onclick="showDetailedView('member');" 
-                        style="<%= (@member_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@member_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <% detailed_active = @member_view_state == 'detailed' || (@member_view_state != 'summary' && @member_view_state != 'monthly_avg') %>
+                <button type="button" id="show-detailed-btn-member"
+                        onclick="showDetailedView('member');"
+                        style="<%= detailed_active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 order-2 <%= @grouping == 'monthly' ? '' : 'rounded-r-lg' %> focus:outline-none focus:ring-4 focus:ring-blue-300 <%= detailed_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+                <% if @grouping == 'monthly' %>
+                  <button type="button" id="show-monthly-avg-btn-member"
+                          onclick="showMemberMonthlyAvgView();"
+                          style="order: 3; <%= @member_view_state == 'monthly_avg' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                          class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @member_view_state == 'monthly_avg' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                    <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">calendar_month</span>
+                    Monthly avg
+                  </button>
+                <% end %>
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -1083,7 +1094,7 @@
         </div>
 
       <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
-      <div id="team-member-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
+      <div id="team-member-detailed-view" style="display: <%= (@member_view_state == 'summary' || @member_view_state == 'monthly_avg') ? 'none' : 'block' %>;" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
         <table class="w-full text-sm text-left text-gray-500">
           <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
@@ -1171,6 +1182,36 @@
           <% end %>
         </div>
       </div>
+
+      <%# Monthly avg View: per-member daily average per month (monthly grouping only) %>
+      <% if @member_monthly_avg %>
+        <div id="team-member-monthly-avg-view" style="display: <%= @member_view_state == 'monthly_avg' ? 'block' : 'none' %>;" class="ta-analysis-table-scroll overflow-x-auto">
+          <table id="team-member-monthly-avg-table" class="w-full text-sm text-left text-gray-500">
+            <thead class="text-sm text-gray-700 bg-gray-50">
+              <tr class="border-b border-gray-200">
+                <th class="px-6 py-3 cursor-pointer select-none hover:text-gray-900" onclick="sortMonthlyAvgTable(0, 'text')">Member <span class="ta-mavg-sort-ind text-gray-400"></span></th>
+                <% @member_monthly_avg[:months].each_with_index do |mo, i| %>
+                  <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900" onclick="sortMonthlyAvgTable(<%= i + 1 %>, 'number')"><%= mo[:label] %> <span class="ta-mavg-sort-ind text-gray-400"></span></th>
+                <% end %>
+                <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900 border-l-2 border-gray-300 font-bold" onclick="sortMonthlyAvgTable(<%= @member_monthly_avg[:months].size + 1 %>, 'number')">Overall avg <span class="ta-mavg-sort-ind text-gray-400"></span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @member_monthly_avg[:rows].each do |row| %>
+                <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                    <%= link_to row[:name], my_time_path(@member_dashboard_params.merge(user_id: row[:id])), target: "_blank", class: "text-gray-900 hover:text-blue-600 hover:underline" %>
+                  </td>
+                  <% @member_monthly_avg[:months].each do |mo| %>
+                    <td class="px-6 py-4 text-right text-gray-900" data-sort-value="<%= row[:monthly][mo[:key]] %>"><%= format_hours(row[:monthly][mo[:key]]) %></td>
+                  <% end %>
+                  <td class="px-6 py-4 text-right font-semibold text-gray-900 border-l-2 border-gray-300" data-sort-value="<%= row[:overall] %>"><%= format_hours(row[:overall]) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
 
       <%# Pagination for Member view %>
       <div class="pagination-wrapper">
@@ -1650,6 +1691,7 @@
 
     updateTeamToggleButtons(viewType, false);
     updateTeamPaginationInfo(viewType, 'detailed');
+    if (viewType === 'member') hideMemberMonthlyAvgView();
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'detailed';
@@ -1675,6 +1717,7 @@
 
     updateTeamToggleButtons(viewType, true);
     updateTeamPaginationInfo(viewType, 'summary');
+    if (viewType === 'member') hideMemberMonthlyAvgView();
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'summary';
@@ -1694,9 +1737,21 @@
     restoreTeamViewState('project');
   }
 
-  // Restore member view preference
+  // Restore member view preference (supports the extra "Monthly avg" state)
   function restoreMemberViewState() {
-    restoreTeamViewState('member');
+    var hiddenField = document.getElementById('member_view_state_field');
+    var serverMode = hiddenField ? hiddenField.value : null;
+    var savedMode = localStorage.getItem('team_member_view_mode');
+    var mode = savedMode || serverMode || 'detailed';
+    var monthlyBtn = document.getElementById('show-monthly-avg-btn-member');
+
+    if (mode === 'monthly_avg' && monthlyBtn) {
+      showMemberMonthlyAvgView({ persist: false });
+    } else if (mode === 'summary') {
+      showSummaryView('member', { reload: false, persist: false });
+    } else {
+      showDetailedView('member', { reload: false, persist: false });
+    }
   }
 
   function restoreTeamViewState(viewType) {
@@ -1717,6 +1772,136 @@
       showDetailedView(viewType, { reload: false, persist: false });
     }
   }
+
+  // ── Members "Monthly avg" view ───────────────────────────────────────────
+  function setTeamMemberButtonStyle(btn, active) {
+    if (!btn) return;
+    if (active) {
+      btn.style.backgroundColor = '#3b82f6';
+      btn.style.color = 'white';
+      btn.className = btn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+    } else {
+      btn.style.backgroundColor = '';
+      btn.style.color = '';
+      btn.className = btn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
+    }
+  }
+
+  function hideMemberMonthlyAvgView() {
+    var mv = document.getElementById('team-member-monthly-avg-view');
+    if (mv) mv.style.display = 'none';
+    setTeamMemberButtonStyle(document.getElementById('show-monthly-avg-btn-member'), false);
+  }
+
+  function showMemberMonthlyAvgView(options) {
+    var monthly = document.getElementById('team-member-monthly-avg-view');
+    if (!monthly) return;
+    var detailed = document.getElementById('team-member-detailed-view');
+    var summary = document.getElementById('team-member-summary-view');
+    if (detailed) detailed.style.display = 'none';
+    if (summary) summary.style.display = 'none';
+    monthly.style.display = 'block';
+
+    setTeamMemberButtonStyle(document.getElementById('show-summary-btn-member'), false);
+    setTeamMemberButtonStyle(document.getElementById('show-detailed-btn-member'), false);
+    setTeamMemberButtonStyle(document.getElementById('show-monthly-avg-btn-member'), true);
+
+    var sortButtons = document.getElementById('summary-sort-buttons');
+    if (sortButtons) sortButtons.style.display = 'none';
+
+    // The monthly-avg table is not paginated.
+    var pagLinks = document.getElementById('team-member-pagination-links');
+    var pagInfo = document.getElementById('team-member-pagination-info');
+    if (pagLinks) pagLinks.style.display = 'none';
+    if (pagInfo) pagInfo.textContent = '';
+
+    var hiddenField = document.getElementById('member_view_state_field');
+    if (hiddenField) hiddenField.value = 'monthly_avg';
+    if (!(options && options.persist === false)) {
+      localStorage.setItem('team_member_view_mode', 'monthly_avg');
+    }
+  }
+
+  var monthlyAvgSort = { col: -1, dir: 1 };
+  function sortMonthlyAvgTable(colIndex, type) {
+    var table = document.getElementById('team-member-monthly-avg-table');
+    if (!table || !table.tBodies[0]) return;
+    var tbody = table.tBodies[0];
+    var rows = Array.prototype.slice.call(tbody.rows);
+
+    if (monthlyAvgSort.col === colIndex) {
+      monthlyAvgSort.dir *= -1;
+    } else {
+      monthlyAvgSort.col = colIndex;
+      monthlyAvgSort.dir = (type === 'text') ? 1 : -1; // names A→Z, numbers high→low first
+    }
+    var dir = monthlyAvgSort.dir;
+
+    rows.sort(function (a, b) {
+      var ac = a.cells[colIndex];
+      var bc = b.cells[colIndex];
+      if (type === 'number') {
+        // Cells render H:MM, so sort by the raw numeric value kept in data-sort-value.
+        var an = parseFloat(ac && ac.getAttribute('data-sort-value')) || 0;
+        var bn = parseFloat(bc && bc.getAttribute('data-sort-value')) || 0;
+        return (an - bn) * dir;
+      }
+      var av = ac ? ac.textContent.trim() : '';
+      var bv = bc ? bc.textContent.trim() : '';
+      return av.localeCompare(bv, undefined, { sensitivity: 'base' }) * dir;
+    });
+    rows.forEach(function (r) { tbody.appendChild(r); });
+
+    var ths = table.tHead.rows[0].cells;
+    for (var i = 0; i < ths.length; i++) {
+      var ind = ths[i].querySelector('.ta-mavg-sort-ind');
+      if (ind) ind.textContent = (i === colIndex) ? (dir > 0 ? ' ▲' : ' ▼') : '';
+    }
+  }
+
+  function csvEscape(value) {
+    return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+  }
+
+  function exportMonthlyAvgCsv() {
+    var table = document.getElementById('team-member-monthly-avg-table');
+    if (!table || !table.tHead || !table.tBodies[0]) return;
+    var lines = [];
+    var head = table.tHead.rows[0];
+    lines.push(Array.prototype.map.call(head.cells, function (c) {
+      return csvEscape(c.textContent.replace(/[▲▼]/g, '').trim());
+    }).join(','));
+    Array.prototype.forEach.call(table.tBodies[0].rows, function (r) {
+      lines.push(Array.prototype.map.call(r.cells, function (c) {
+        return csvEscape(c.textContent.trim());
+      }).join(','));
+    });
+    var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'team_monthly_avg.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var exportBtn = document.getElementById('team-export-csv-btn');
+    if (!exportBtn) return;
+    // When the Monthly avg view is active, export that table client-side instead of the
+    // server CSV (which only knows view_mode/grouping). Capture phase + stopPropagation
+    // prevents Rails UJS from also firing the server POST.
+    exportBtn.addEventListener('click', function (e) {
+      var mv = document.getElementById('team-member-monthly-avg-view');
+      if (mv && mv.style.display !== 'none') {
+        e.preventDefault();
+        e.stopPropagation();
+        exportMonthlyAvgCsv();
+      }
+    }, true);
+  });
 
   function showTeamMemberDetails(teamId, periodStart, grouping) {
     const modal = document.getElementById('team-member-details-modal');
@@ -1904,7 +2089,7 @@
         var doc = new DOMParser().parseFromString(html, 'text/html');
 
         // innerHTML swap for content blocks (preserves wrappers' toggled display state).
-        ['ts-summary-cards-row', 'team-time-overview-box', 'team-member-summary-view', 'team-member-detailed-view'].forEach(function(id) {
+        ['ts-summary-cards-row', 'team-time-overview-box', 'team-member-summary-view', 'team-member-detailed-view', 'team-member-monthly-avg-view'].forEach(function(id) {
           var fresh = doc.getElementById(id);
           var current = document.getElementById(id);
           if (fresh && current) { current.innerHTML = fresh.innerHTML; }

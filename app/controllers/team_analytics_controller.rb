@@ -176,7 +176,10 @@ class TeamAnalyticsController < ApplicationController
 
       # Track member view state for chart generation
       @member_view_state = params[:member_view_state] || 'detailed'
-      
+
+      # Monthly-avg table (Members tab) — only relevant with monthly grouping.
+      @member_monthly_avg = @grouping == 'monthly' ? generate_member_monthly_avg_table(@time_entries, @from, @to) : nil
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_member_pivot_chart_data(@member_pivot_data, chart_type, @member_view_state)
@@ -1207,6 +1210,68 @@ class TeamAnalyticsController < ApplicationController
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
+  end
+
+  # Per-member daily-average hours for each month in the period (Members tab "Monthly avg"
+  # table, only used with monthly grouping). Reuses the same daily-average definition as the
+  # individual dashboard: hours / (working days - leave days), clamped at 0 active days.
+  def generate_member_monthly_avg_table(time_entries, from, to)
+    members = @team_members
+                .select { |m| @active_member_ids.include?(m.user_id) }
+                .map { |m| { id: m.user_id, name: m.user&.name } }
+                .reject { |m| m[:name].blank? }
+                .uniq { |m| m[:id] }
+    member_ids = members.map { |m| m[:id] }
+
+    # Month buckets within the period, each clamped to the period bounds.
+    months = []
+    cursor = from.beginning_of_month
+    while cursor <= to
+      months << {
+        key:   cursor.strftime('%Y-%m'),
+        label: cursor.strftime('%b %Y'),
+        start: [cursor, from].max,
+        end:   [cursor.end_of_month, to].min
+      }
+      cursor = cursor.next_month
+    end
+
+    # Hours per member per month, bucketed in Ruby to stay DB-agnostic.
+    hours = Hash.new(0.0)
+    time_entries.each do |entry|
+      next unless entry.user_id && entry.spent_on
+      hours[[entry.user_id, entry.spent_on.strftime('%Y-%m')]] += entry.hours
+    end
+
+    # Working days + per-member leave days for each month and for the whole period.
+    working_days = {}
+    leave_by_month = {}
+    months.each do |mo|
+      working_days[mo[:key]]   = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(mo[:start], mo[:end])
+      leave_by_month[mo[:key]] = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: mo[:start], to_date: mo[:end])
+    end
+    total_working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from, to)
+    total_leave        = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: from, to_date: to)
+
+    daily_avg = lambda { |hrs, active_days| active_days > 0 ? (hrs / active_days).round(2) : 0.0 }
+
+    rows = members.map do |m|
+      monthly = {}
+      total_hours = 0.0
+      months.each do |mo|
+        hrs = hours[[m[:id], mo[:key]]]
+        total_hours += hrs
+        active_days = [working_days[mo[:key]] - (leave_by_month[mo[:key]][m[:id]] || 0.0), 0].max
+        monthly[mo[:key]] = daily_avg.call(hrs, active_days)
+      end
+      overall_active = [total_working_days - (total_leave[m[:id]] || 0.0), 0].max
+      { id: m[:id], name: m[:name], monthly: monthly, overall: daily_avg.call(total_hours, overall_active) }
+    end
+
+    # Default order: highest overall daily average first (matches the design).
+    rows.sort_by! { |r| [-r[:overall], r[:name]] }
+
+    { months: months.map { |mo| { key: mo[:key], label: mo[:label] } }, rows: rows }
   end
 
   # Generate chart data for member pivot table
