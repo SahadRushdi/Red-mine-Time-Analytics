@@ -6,14 +6,7 @@ class TimeEntryPanelController < ApplicationController
 
   def index
     @user = User.current
-    
-    # Get issues assigned to the logged-in user
-    assigned_issues = Issue.joins(:project)
-                           .where(assigned_to_id: @user.id)
-                           .where(projects: { status: Project::STATUS_ACTIVE })
-                           .includes(:project, :tracker, :status, :priority)
-                           .to_a
-    
+
     # Get time entries for the selected date range
     @time_entries = TimeEntry.joins(:project, :issue)
                              .where(user: @user)
@@ -41,11 +34,18 @@ class TimeEntryPanelController < ApplicationController
       memo[entry.issue_id] = [memo[entry.issue_id], entry.created_on].compact.max
     end
 
-    # Logged-tab issue dropdown: include issues active in this period.
-    # Active means issue.updated_on is in range for assigned issues OR user logged time in range.
-    assigned_period_issue_ids = assigned_issues.select { |issue| issue.updated_on.in?(period_window) }.map(&:id)
+    # Issues the CURRENT USER personally changed (authored a journal) within the period.
+    journal_activity = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
+                              .group(:journalized_id)
+                              .maximum(:created_on)
+
+    # Logged-tab issue dropdown: only issues the current user personally engaged with in this
+    # period — issues they logged time on, or issues they changed themselves. An issue touched
+    # only by someone else (even one assigned to this user) is intentionally excluded here; it
+    # surfaces in that other user's "Worked On" tab instead.
     period_logged_issue_ids = period_te_dates.keys
-    logged_issue_ids = (assigned_period_issue_ids | period_logged_issue_ids)
+    own_change_issue_ids = journal_activity.keys
+    logged_issue_ids = (period_logged_issue_ids | own_change_issue_ids)
     @issues = if logged_issue_ids.any?
                 Issue.joins(:project)
                      .where(id: logged_issue_ids)
@@ -57,14 +57,12 @@ class TimeEntryPanelController < ApplicationController
               end
 
     @issues.sort_by! do |issue|
-      period_issue_update = issue.updated_on.in?(period_window) ? issue.updated_on : nil
-      [period_issue_update, period_te_dates[issue.id]].compact.max || Time.at(0)
+      [journal_activity[issue.id], period_te_dates[issue.id]].compact.max || Time.at(0)
     end
     @issues.reverse!
 
-    journal_activity = Journal.where(journalized_type: 'Issue', user_id: @user.id, created_on: period_window)
-                              .group(:journalized_id)
-                              .maximum(:created_on)
+    # "Worked On" tab: issues the user changed or that were created/assigned to them in the
+    # period but where they have not logged time yet.
     created_issue_activity = Issue.joins(:project)
                                   .where(assigned_to_id: @user.id, created_on: period_window)
                                   .where(projects: { status: Project::STATUS_ACTIVE })
