@@ -264,60 +264,45 @@ class TeamAnalyticsController < ApplicationController
     team_id = params[:team_id]
     period_start = params[:period_start].to_date rescue nil
     grouping = params[:grouping] || 'weekly'
+    temp_excluded_ids = Array(params[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).to_set
 
     return render json: { error: 'Missing parameters' }, status: 400 unless team_id && period_start
 
     team = TaTeam.find_by(id: team_id)
     return render json: { error: 'Team not found' }, status: 404 unless team
 
-    # Calculate period end
     period_end = case grouping
-                  when 'daily'
-                    period_start
-                  when 'monthly'
-                    period_start.end_of_month
-                  else
-                    period_start.end_of_week(:monday)
-                  end
+                 when 'daily'   then period_start
+                 when 'monthly' then period_start.end_of_month
+                 else                period_start.end_of_week(:monday)
+                 end
 
     period_label = helpers.format_period_for_table(period_start, grouping, period_start, period_end)
 
-    # Exclude analytics-excluded users so this modal matches the "Team Size" column count.
-    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
-    member_names = lambda do |memberships|
-      memberships.reject { |m| excluded_ids.include?(m.user_id) }
-                 .map { |m| m.user&.name }.compact.sort
+    # Permanently-excluded users are dropped entirely; temp-excluded are kept but flagged.
+    perm_excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
+    build_members = lambda do |memberships|
+      memberships
+        .reject { |m| perm_excluded_ids.include?(m.user_id) }
+        .filter_map { |m| next unless m.user; { name: m.user.name, temp_excluded: temp_excluded_ids.include?(m.user_id) } }
+        .sort_by { |m| [m[:temp_excluded] ? 1 : 0, m[:name]] }
     end
 
     if team.child_teams.any?
-      # Root/parent team: group members by sub-team (collapsed groups)
       groups = []
 
-      direct_members = member_names.call(team.active_members(period_start, period_end))
-      groups << { team_name: team.name, members: direct_members.map { |n| { name: n } } } if direct_members.any?
+      direct = build_members.call(team.active_members(period_start, period_end))
+      groups << { team_name: team.name, members: direct } if direct.any?
 
       team.all_descendants.each do |sub_team|
-        sub_members = member_names.call(sub_team.active_members(period_start, period_end))
-        groups << { team_name: sub_team.name, members: sub_members.map { |n| { name: n } } } if sub_members.any?
+        sub = build_members.call(sub_team.active_members(period_start, period_end))
+        groups << { team_name: sub_team.name, members: sub } if sub.any?
       end
 
-      render json: {
-        team_name: team.name,
-        period_label: period_label,
-        grouped: true,
-        groups: groups
-      }
+      render json: { team_name: team.name, period_label: period_label, grouped: true, groups: groups }
     else
-      # Leaf team: simple flat list of direct members
-      members = member_names.call(team.active_members(period_start, period_end))
-                            .map { |n| { name: n } }
-
-      render json: {
-        team_name: team.name,
-        period_label: period_label,
-        grouped: false,
-        members: members
-      }
+      members = build_members.call(team.active_members(period_start, period_end))
+      render json: { team_name: team.name, period_label: period_label, grouped: false, members: members }
     end
   end
 
