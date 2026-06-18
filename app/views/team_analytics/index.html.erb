@@ -1920,8 +1920,11 @@
 
     if (teamMemberDetailsModal) teamMemberDetailsModal.show();
 
-    // Fetch data
-    fetch(`<%= team_analytics_period_members_path %>?team_id=${teamId}&period_start=${periodStart}&grouping=${grouping}`)
+    // Build fetch URL, including any temporary exclusions so the modal matches the table count.
+    var fetchParams = new URLSearchParams({ team_id: teamId, period_start: periodStart, grouping: grouping });
+    (getStoredExclusions() || []).forEach(function(id) { fetchParams.append('temp_excluded_ids[]', id); });
+
+    fetch(`<%= team_analytics_period_members_path %>?${fetchParams.toString()}`)
       .then(response => response.json())
       .then(data => {
         if (data.error) {
@@ -1932,6 +1935,21 @@
         title.textContent = `${data.team_name} Members`;
         subtitle.textContent = data.period_label;
 
+        function memberRow(m, indentStyle, extraClass, hidden) {
+          const hiddenAttr = hidden ? ' style="display:none"' : '';
+          if (m.temp_excluded) {
+            return `<tr class="bg-white border-b ${extraClass || ''}"${hiddenAttr}>
+              <td style="${indentStyle}" class="text-gray-400">
+                <span class="line-through">${m.name}</span>
+                <span class="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">Excluded</span>
+              </td>
+            </tr>`;
+          }
+          return `<tr class="bg-white border-b hover:bg-gray-50 transition-colors ${extraClass || ''}"${hiddenAttr}>
+            <td style="${indentStyle}" class="font-medium text-gray-900">${m.name}</td>
+          </tr>`;
+        }
+
         if (data.grouped) {
           if (!data.groups || data.groups.length === 0) {
             tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
@@ -1939,17 +1957,20 @@
           }
           tableBody.innerHTML = data.groups.map((group, gIdx) => {
             const memberRows = group.members.map(m =>
-              `<tr class="bg-white border-b hover:bg-gray-50 transition-colors tm-group-row-${gIdx}" style="display:none">
-                <td style="padding-left:52px;padding-right:24px;padding-top:12px;padding-bottom:12px;" class="text-gray-700">${m.name}</td>
-              </tr>`
+              memberRow(m, 'padding-left:52px;padding-right:24px;padding-top:12px;padding-bottom:12px;', `tm-group-row-${gIdx}`, true)
             ).join('');
-            const count = group.members.length;
+            // Count only active (non-temp-excluded) members for the header badge
+            const activeCount = group.members.filter(m => !m.temp_excluded).length;
+            const totalCount = group.members.length;
+            const countLabel = activeCount === totalCount
+              ? `${activeCount} member${activeCount !== 1 ? 's' : ''}`
+              : `${activeCount} of ${totalCount}`;
             return `<tr class="bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors" onclick="toggleTeamMemberGroup(${gIdx})">
               <td class="px-6 py-3 font-semibold text-gray-800">
                 <span class="flex items-center gap-2">
                   <span class="material-symbols-outlined !text-[16px] leading-none select-none tm-group-icon-${gIdx}">chevron_right</span>
                   ${group.team_name}
-                  <span class="ml-1 text-xs font-normal text-gray-500">(${count} member${count !== 1 ? 's' : ''})</span>
+                  <span class="ml-1 text-xs font-normal text-gray-500">(${countLabel})</span>
                 </span>
               </td>
             </tr>${memberRows}`;
@@ -1959,11 +1980,7 @@
             tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">No members found for this period.</td></tr>';
             return;
           }
-          tableBody.innerHTML = data.members.map(member => `
-            <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
-              <td class="px-6 py-4 font-medium text-gray-900">${member.name}</td>
-            </tr>
-          `).join('');
+          tableBody.innerHTML = data.members.map(m => memberRow(m, 'padding:16px 24px;')).join('');
         }
       })
       .catch(error => {
