@@ -486,31 +486,31 @@
   <div class="box visualization-section">
     <h3 class="text-base font-semibold text-gray-900 mb-3" style="display: flex; justify-content: space-between; align-items: center;">
       <span><%= chart_breakdown_header(@grouping) %></span>
-      <div class="inline-flex gap-2">
-        <%# Two buttons for chart type selection - consistent with other Flowbite buttons %>
-        <button type="button" 
+      <div class="inline-flex items-center gap-2">
+        <%# Flowbite toggle: Show Active Days (daily only) — hides weekends, holidays & full-day leaves %>
+        <% if @grouping == 'daily' %>
+          <label class="relative inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="Show only working days (hides weekends, holidays & full-day leaves; half-days kept)">
+            <input type="checkbox" class="sr-only peer" <%= 'checked' if @hide_holidays %> onchange="toggleHolidays()">
+            <div class="ta-custom-toggle-track"></div>
+            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Show Active Days</span>
+          </label>
+          <span class="text-gray-300 select-none px-1">|</span>
+        <% end %>
+
+        <%# Chart type buttons %>
+        <button type="button"
                 onclick="switchChartType('line')"
                 style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Trend
         </button>
-        <button type="button" 
+        <button type="button"
                 onclick="switchChartType('bar')"
                 style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Stacked
         </button>
-        
-        <%# Toggle: include/exclude holidays + full-day leaves from the graph & Time Overview %>
-        <% if @grouping == 'daily' %>
-          <button type="button" onclick="toggleHolidays()"
-                  title="<%= @hide_holidays ? 'Show holidays & leaves' : 'Hide weekends, holidays & full-day leaves (half-days kept)' %>"
-                  style="<%= @hide_holidays ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                  class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @hide_holidays ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
-            <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">event_busy</span>
-            <%= @hide_holidays ? 'Holidays hidden' : 'Hide holidays' %>
-          </button>
-        <% end %>
 
         <%# Hidden select kept for backend compatibility %>
         <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),

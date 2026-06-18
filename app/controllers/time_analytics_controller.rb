@@ -526,10 +526,10 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # A date worth flagging on the Trend chart / Time Overview: a weekend, a public/company
-  # holiday, or a date the user had any leave (full OR half day).
+  # holiday, or a date the user had a full-day leave. Half-day leaves stay dark blue.
   def ta_holiday_or_leave_date?(date)
     return false unless date.is_a?(Date) && @period_working_day_checker
-    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f > 0
+    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f >= 1.0
   end
 
   # A date to drop when "hide holidays + leaves" is on: weekends, holidays, and FULL-day

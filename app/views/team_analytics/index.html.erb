@@ -1903,12 +1903,14 @@
     }, true);
   });
 
+  var teamMemberDetailsModal = null;
+
   function showTeamMemberDetails(teamId, periodStart, grouping) {
     const modal = document.getElementById('team-member-details-modal');
     const tableBody = document.getElementById('team-member-details-table-body');
     const title = document.getElementById('team-member-details-title');
     const subtitle = document.getElementById('team-member-details-subtitle');
-    
+
     if (!modal || !tableBody) return;
 
     // Show loading state
@@ -1916,24 +1918,7 @@
     subtitle.textContent = '';
     tableBody.innerHTML = '<tr><td class="px-6 py-8 text-center text-gray-500">Fetching member details...</td></tr>';
 
-    // Show modal using Flowbite
-    const modalOptions = {
-      placement: 'center',
-      backdrop: 'dynamic',
-      backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
-      closable: true
-    };
-    const modalObj = new Modal(modal, modalOptions);
-    modalObj.show();
-
-    // Ensure close buttons work correctly
-    const closeButtons = modal.querySelectorAll('[data-modal-hide="team-member-details-modal"]');
-    closeButtons.forEach(btn => {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        modalObj.hide();
-      };
-    });
+    if (teamMemberDetailsModal) teamMemberDetailsModal.show();
 
     // Fetch data
     fetch(`<%= team_analytics_period_members_path %>?team_id=${teamId}&period_start=${periodStart}&grouping=${grouping}`)
@@ -2140,7 +2125,18 @@
     window.location.replace(buildExclusionUrl(effective).toString());
   }
 
-  document.addEventListener('DOMContentLoaded', syncTeamMemberExclusions);
+  document.addEventListener('DOMContentLoaded', function() {
+    syncTeamMemberExclusions();
+    var modalEl = document.getElementById('team-member-details-modal');
+    if (modalEl && typeof Modal !== 'undefined') {
+      teamMemberDetailsModal = new Modal(modalEl, {
+        placement: 'center',
+        backdrop: 'dynamic',
+        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+        closable: true
+      });
+    }
+  });
 
 </script>
 
