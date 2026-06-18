@@ -51,24 +51,45 @@
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'project', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
                       class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
                   <span>Project</span>
                   <span id="ta-active-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
                 </span>
               </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'identifier', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'identifier', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Identifier</span>
+                  <span id="ta-active-projects-sort-icon-identifier" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'start-date', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
                       class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
                   <span>Start Date</span>
                   <span id="ta-active-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
                 </span>
               </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'end-date', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'end-date', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>End Date</span>
+                  <span id="ta-active-projects-sort-icon-end-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('active-projects', 'status', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('active-projects', 'status', '.ta-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Status</span>
+                  <span id="ta-active-projects-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
             </tr>
           </thead>
@@ -91,7 +112,10 @@
                   data-search-text="<%= h(search_text) %>"
                   data-team-project-id="<%= team_project.id %>"
                   data-sort-project="<%= project_name.to_s.downcase %>"
-                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
+                  data-sort-identifier="<%= project_identifier.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>"
+                  data-sort-end-date="<%= team_project.end_date ? team_project.end_date.to_time.to_i : 0 %>"
+                  data-sort-status="<%= team_project.active? ? 'active' : 'inactive' %>">
                 <td class="px-4 py-3">
                   <% if team_project.project_linkable? %>
                     <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
@@ -245,24 +269,45 @@
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'project', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
                       class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
                   <span>Project</span>
                   <span id="ta-inactive-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
                 </span>
               </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); this.blur();"
-                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'start-date'], ['start-date']); }"
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'identifier', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'identifier', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Identifier</span>
+                  <span id="ta-inactive-projects-sort-icon-identifier" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'start-date', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
                       class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
                   <span>Start Date</span>
                   <span id="ta-inactive-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
                 </span>
               </th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'end-date', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'end-date', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>End Date</span>
+                  <span id="ta-inactive-projects-sort-icon-end-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inactive-projects', 'status', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inactive-projects', 'status', '.ta-inactive-team-project-row', ['project', 'identifier', 'start-date', 'end-date', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Status</span>
+                  <span id="ta-inactive-projects-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
               <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Actions</th>
             </tr>
           </thead>
@@ -272,7 +317,10 @@
               <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
               <tr class="ta-inactive-team-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                   data-sort-project="<%= project_name.to_s.downcase %>"
-                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>">
+                  data-sort-identifier="<%= project_identifier.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>"
+                  data-sort-end-date="<%= team_project.end_date ? team_project.end_date.to_time.to_i : 0 %>"
+                  data-sort-status="inactive">
                 <td class="px-4 py-3">
                   <% if team_project.project_linkable? %>
                     <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
@@ -325,12 +373,54 @@
         <table class="ts-table w-full text-sm text-left">
           <thead class="bg-gray-50">
             <tr class="border-b border-gray-200">
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Project</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Identifier</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Inherited From</th>
-              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Status</th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'project', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'project', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Project</span>
+                  <span id="ta-inherited-projects-sort-icon-project" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'identifier', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'identifier', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Identifier</span>
+                  <span id="ta-inherited-projects-sort-icon-identifier" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'start-date', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'start-date', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Start Date</span>
+                  <span id="ta-inherited-projects-sort-icon-start-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'end-date', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'end-date', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>End Date</span>
+                  <span id="ta-inherited-projects-sort-icon-end-date" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'inherited-from', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'inherited-from', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Inherited From</span>
+                  <span id="ta-inherited-projects-sort-icon-inherited-from" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
+              <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">
+                <span role="button" tabindex="0" onclick="toggleTeamProjectsTableSort('inherited-projects', 'status', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); this.blur();"
+                      onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamProjectsTableSort('inherited-projects', 'status', '.ta-inherited-project-row', ['project', 'identifier', 'start-date', 'end-date', 'inherited-from', 'status'], ['start-date', 'end-date']); }"
+                      class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                  <span>Status</span>
+                  <span id="ta-inherited-projects-sort-icon-status" class="sort desc icon icon-sorted-asc"></span>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -338,7 +428,13 @@
               <% project_name = team_project.local_source? ? team_project.project_name : "External Project (#{team_project.project_display_identifier})" %>
               <% project_identifier = team_project.local_source? ? team_project.project_display_identifier : team_project.project_display_identifier %>
               <% inherited_team = team_project.inherited_from_team %>
-              <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr class="ta-inherited-project-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  data-sort-project="<%= project_name.to_s.downcase %>"
+                  data-sort-identifier="<%= project_identifier.to_s.downcase %>"
+                  data-sort-start-date="<%= team_project.start_date ? team_project.start_date.to_time.to_i : 0 %>"
+                  data-sort-end-date="<%= team_project.end_date ? team_project.end_date.to_time.to_i : 0 %>"
+                  data-sort-inherited-from="<%= inherited_team ? inherited_team.name.to_s.downcase : '' %>"
+                  data-sort-status="<%= team_project.active? ? 'active' : 'inactive' %>">
                 <td class="px-4 py-3">
                   <% if team_project.project_linkable? %>
                     <%= link_to project_name, project_path(team_project.project), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>

@@ -248,16 +248,23 @@
                     <span id="ta-team-settings-sort-icon-exclusions-user" class="sort desc icon icon-sorted-asc"></span>
                   </span>
                 </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'email'); this.blur();"
-                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'email'); }"
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'start-date'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'start-date'); }"
                         class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                    <span>Email</span>
-                    <span id="ta-team-settings-sort-icon-exclusions-email" class="sort desc icon icon-sorted-asc"></span>
+                    <span>Start Date</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-start-date" class="sort desc icon icon-sorted-asc"></span>
                   </span>
                 </th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Start Date</th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">End Date</th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
+                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('exclusions', 'end-date'); this.blur();"
+                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('exclusions', 'end-date'); }"
+                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
+                    <span>End Date</span>
+                    <span id="ta-team-settings-sort-icon-exclusions-end-date" class="sort desc icon icon-sorted-asc"></span>
+                  </span>
+                </th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
               </tr>
             </thead>
@@ -269,7 +276,9 @@
                 <tr class="ta-team-settings-row border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     data-search-text="<%= "#{user.name} #{user.mail} #{setting.start_date} #{setting.end_date}".downcase %>"
                     data-user-sort="<%= user.name.to_s.downcase %>"
-                    data-email-sort="<%= user.mail.to_s.downcase %>">
+                    data-email-sort="<%= user.mail.to_s.downcase %>"
+                    data-start-date-sort="<%= setting.start_date ? setting.start_date.to_time.to_i : 0 %>"
+                    data-end-date-sort="<%= setting.end_date ? setting.end_date.to_time.to_i : 0 %>">
                   <td class="px-4 py-3">
                     <%= link_to user.name, user_path(user), class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
                   </td>
@@ -397,14 +406,7 @@
                     <span id="ta-team-settings-sort-icon-super-users-user" class="sort desc icon icon-sorted-asc"></span>
                   </span>
                 </th>
-                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">
-                  <span role="button" tabindex="0" onclick="toggleTeamSettingsSort('super-users', 'email'); this.blur();"
-                        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTeamSettingsSort('super-users', 'email'); }"
-                        class="inline-flex items-center gap-1 cursor-pointer text-gray-600 hover:text-gray-900 focus:outline-none">
-                    <span>Email</span>
-                    <span id="ta-team-settings-sort-icon-super-users-email" class="sort desc icon icon-sorted-asc"></span>
-                  </span>
-                </th>
+                <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide">Email</th>
                 <th class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">Action</th>
               </tr>
             </thead>
@@ -740,6 +742,12 @@
     icon.className = order === 'asc' ? 'sort asc icon icon-sorted-desc' : 'sort desc icon icon-sorted-asc';
   }
 
+  var teamSettingsSortColumns = {
+    'exclusions': ['user', 'start-date', 'end-date'],
+    'super-users': ['user']
+  };
+  var teamSettingsSortNumericColumns = ['start-date', 'end-date'];
+
   function toggleTeamSettingsSort(tabType, column) {
     var panel = document.getElementById('panel-' + tabType);
     var tbody = panel ? panel.querySelector('table.ts-table tbody') : null;
@@ -752,15 +760,21 @@
 
     rows.sort(function(a, b) {
       var attr = 'data-' + column + '-sort';
-      var aValue = (a.getAttribute(attr) || '').toLowerCase();
-      var bValue = (b.getAttribute(attr) || '').toLowerCase();
-      var cmp = aValue.localeCompare(bValue);
+      var aValue = a.getAttribute(attr) || '';
+      var bValue = b.getAttribute(attr) || '';
+      if (teamSettingsSortNumericColumns.indexOf(column) !== -1) {
+        aValue = parseInt(aValue || '0', 10);
+        bValue = parseInt(bValue || '0', 10);
+        return nextOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      var cmp = aValue.toLowerCase().localeCompare(bValue.toLowerCase());
       return nextOrder === 'asc' ? cmp : -cmp;
     });
 
     rows.forEach(function(row) { tbody.appendChild(row); });
 
-    ['user', 'email'].forEach(function(col) {
+    var columns = teamSettingsSortColumns[tabType] || [];
+    columns.forEach(function(col) {
       if (col === column) return;
       setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, col)), 'desc');
     });
@@ -965,8 +979,8 @@
       teamSettingsSyncMultiSelect(type);
       filterTeamSettingsMultiSelect(type);
     });
-    ['exclusions', 'super-users'].forEach(function(tabType) {
-      ['user', 'email'].forEach(function(column) {
+    Object.keys(teamSettingsSortColumns).forEach(function(tabType) {
+      teamSettingsSortColumns[tabType].forEach(function(column) {
         setTeamSettingsSortIconState(document.getElementById(teamSettingsSortIconId(tabType, column)), 'desc');
       });
     });
