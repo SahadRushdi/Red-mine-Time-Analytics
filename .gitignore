@@ -19,7 +19,10 @@ Thumbs.db
 #Summary Files
 TASK_SUMMARY*
 Screenshot *
+
+# AI Files
 CLAUDE.md
+.claude
 
 # Note: We commit the following for deployment simplicity:
 # - package-lock.json (dependency locking)
