@@ -298,6 +298,44 @@
     font-size: 12px;
   }
 
+  /* Unified card: view tabs + analysis table + pie chart read as one bordered card */
+  .ta-team-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  /* Tabs sit flush at the top of the card with a divider beneath them */
+  .ta-team-card .ta-team-tabs-row {
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  /* Drop the inner cards' own chrome so table + donut merge into the parent card */
+  .ta-team-card .ta-analysis-layout {
+    margin-bottom: 0;
+    gap: 0;
+  }
+
+  .ta-team-card .ta-analysis-table,
+  .ta-team-card .ta-analysis-donut {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .ta-team-card .ta-analysis-donut {
+    border-left: 1px solid #e2e8f0;
+  }
+
+  @media (max-width: 1123px) {
+    .ta-team-card .ta-analysis-donut {
+      border-left: 0;
+      border-top: 1px solid #e2e8f0;
+    }
+  }
+
 </style>
 
 <script type="text/javascript">
@@ -754,6 +792,7 @@
   </div>
 </div>
 
+<div class="ta-team-card">
 <%= render(partial: 'team_analytics/view_togglers') %>
 <% summary_chart_colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'] %>
 
@@ -783,23 +822,6 @@
                   Detailed
                 </button>
               </div>
-            </div>
-            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>">
-                <button type="button" id="sort-name-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-                <button type="button" id="sort-hours-team-activity-summary-view" onclick="sortSummaryCards('team-activity-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-              </div>
-              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
-            <%= hidden_field_tag :filter, params[:filter] %>
-            <%= hidden_field_tag :from, params[:from] %>
-            <%= hidden_field_tag :to, params[:to] %>
-            <%= hidden_field_tag :grouping, params[:grouping] %>
-            <%= hidden_field_tag :chart_type, params[:chart_type] %>
-            <%= hidden_field_tag :view_mode, @view_mode %>
-            <%= hidden_field_tag :team_id, params[:team_id] %>
-            <%= hidden_field_tag :activity_view_state, @activity_view_state, id: 'activity_view_state_field' %>
-            <%= render 'per_page_dropdown' %>
-              <% end %>
             </div>
           </div>
         </div>
@@ -836,12 +858,12 @@
       
       <%# Summary View: Simple Activity Table (Hidden by default) %>
       <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
-        <div class="space-y-6 px-2">
+        <div class="space-y-2 px-2">
           <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-              <div class="flex items-center justify-between mb-2 gap-3">
+            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
+              <div class="flex items-center justify-between mb-1 gap-3">
                 <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                 <div class="flex items-center gap-3">
                   <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -923,23 +945,6 @@
                 </button>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= @project_view_state == 'summary' ? '' : 'display: none;' %>">
-                <button type="button" id="sort-name-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-                <button type="button" id="sort-hours-team-project-summary-view" onclick="sortSummaryCards('team-project-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-              </div>
-              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
-            <%= hidden_field_tag :filter, params[:filter] %>
-            <%= hidden_field_tag :from, params[:from] %>
-            <%= hidden_field_tag :to, params[:to] %>
-            <%= hidden_field_tag :grouping, params[:grouping] %>
-            <%= hidden_field_tag :chart_type, params[:chart_type] %>
-            <%= hidden_field_tag :view_mode, @view_mode %>
-            <%= hidden_field_tag :team_id, params[:team_id] %>
-            <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
-            <%= render 'per_page_dropdown' %>
-              <% end %>
-            </div>
           </div>
         </div>
 
@@ -975,12 +980,12 @@
       
       <%# Summary View: Simple Project Table (Hidden by default) %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
-        <div class="space-y-6 px-2">
+        <div class="space-y-2 px-2">
           <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-              <div class="flex items-center justify-between mb-2 gap-3">
+            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
+              <div class="flex items-center justify-between mb-1 gap-3">
                 <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                 <div class="flex items-center gap-3">
                   <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -1073,23 +1078,6 @@
                 <% end %>
               </div>
             </div>
-            <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-              <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= @member_view_state == 'summary' ? '' : 'display: none;' %>">
-                <button type="button" id="sort-name-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-                <button type="button" id="sort-hours-team-member-summary-view" onclick="sortSummaryCards('team-member-summary-view', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
-              </div>
-              <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
-            <%= hidden_field_tag :filter, params[:filter] %>
-            <%= hidden_field_tag :from, params[:from] %>
-            <%= hidden_field_tag :to, params[:to] %>
-            <%= hidden_field_tag :grouping, params[:grouping] %>
-            <%= hidden_field_tag :chart_type, params[:chart_type] %>
-            <%= hidden_field_tag :view_mode, @view_mode %>
-            <%= hidden_field_tag :team_id, params[:team_id] %>
-            <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' %>
-            <%= render 'per_page_dropdown' %>
-              <% end %>
-            </div>
           </div>
         </div>
 
@@ -1127,13 +1115,13 @@
       
       <%# Summary View: Simple Member Table (Hidden by default) %>
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
-        <div class="space-y-6 px-2">
+        <div class="space-y-2 px-2">
           <% @member_totals.sort_by { |name, hours| [-hours, name] }.each_with_index do |(member_name, hours), index| %>
             <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
             <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
             <% member = @members.find { |m| m[:name] == member_name } %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(member_name) %>">
-              <div class="flex items-center justify-between mb-2 gap-3">
+            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(member_name) %>">
+              <div class="flex items-center justify-between mb-1 gap-3">
                 <h3 class="text-base font-medium text-gray-900">
                   <% if member %>
                     <%= link_to member_name, my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
@@ -1160,8 +1148,8 @@
 
           <%# Temporarily-excluded members: still listed (struck-through) but counted in no aggregate %>
           <% Array(@temp_excluded_members).each do |member| %>
-            <div class="ta-member-excluded bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= member[:hours].to_f %>" data-name="<%= h(member[:name]) %>" data-excluded="true">
-              <div class="flex items-center justify-between mb-2 gap-3">
+            <div class="ta-member-excluded bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= member[:hours].to_f %>" data-name="<%= h(member[:name]) %>" data-excluded="true">
+              <div class="flex items-center justify-between mb-1 gap-3">
                 <h3 class="text-base font-medium text-gray-400 line-through flex items-center gap-2">
                   <%= member[:name] %>
                   <span class="ta-member-excluded-badge no-underline">EXCLUDED</span>
@@ -1255,6 +1243,7 @@
     </div>
   <% end %>
 <% end %>
+</div>
 
 <script>
   // Auto-submit team selector on change
@@ -2000,7 +1989,7 @@
   function sortSummaryCards(containerId, sortBy) {
     var container = document.getElementById(containerId);
     if (!container) return;
-    var cardsContainer = container.querySelector('.space-y-6');
+    var cardsContainer = container.querySelector('.space-y-2');
     if (!cardsContainer) return;
     var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
     cards.sort(function(a, b) {
