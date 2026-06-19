@@ -29,7 +29,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   settings partial: 'redmine_time_analytics_settings',
            default: {
              'missing_time_recipients' => '',
-             'missing_time_cron'       => ''
+             'missing_time_crons'      => []
            }
 
   # Add to top menu
