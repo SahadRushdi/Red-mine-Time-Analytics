@@ -306,6 +306,77 @@ class TeamAnalyticsController < ApplicationController
     end
   end
 
+  # Lazy-loaded second-level breakdown for the Members view: each member's logged time split by
+  # Issue, Activity, and Project. Reuses the exact same team scope/exclusions as `index` so the
+  # cards stay consistent with the summary table above. All three groupings are returned at once
+  # so the client can switch between them without re-fetching.
+  def member_breakdown
+    teams = User.current.accessible_team_dashboard_teams.to_a
+    return render json: { error: 'Unauthorized' }, status: 403 unless teams.any?
+
+    team = select_accessible_team(teams)
+    return render json: { members: [] } unless team
+
+    team_members = team.hierarchical_members(@from, @to).to_a
+    permitted = params.permit(temp_excluded_ids: [])
+    temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+
+    scope = team_time_entries_scope(team_members, @from, @to)
+    scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
+
+    # One grouped SUM per dimension — no per-member queries.
+    issue_sums    = scope.group(:user_id, :issue_id).sum(:hours)
+    activity_sums = scope.group(:user_id, :activity_id).sum(:hours)
+    project_sums  = scope.group(:user_id, :project_id).sum(:hours)
+
+    issues = Issue.where(id: issue_sums.keys.filter_map { |(_, id)| id }.uniq)
+                  .includes(:tracker).index_by(&:id)
+    activity_names = Enumeration.where(id: activity_sums.keys.filter_map { |(_, id)| id }.uniq)
+                               .pluck(:id, :name).to_h
+    project_names = Project.where(id: project_sums.keys.filter_map { |(_, id)| id }.uniq)
+                          .pluck(:id, :name).to_h
+
+    user_totals = Hash.new(0.0)
+    issue_sums.each { |(uid, _), hours| user_totals[uid] += hours.to_f }
+    users = User.where(id: user_totals.keys).index_by(&:id)
+
+    # Pre-group all three dimensions by user_id to avoid O(N×M) scanning in build_breakdown_items.
+    issue_by_user    = group_sums_by_user(issue_sums)
+    activity_by_user = group_sums_by_user(activity_sums)
+    project_by_user  = group_sums_by_user(project_sums)
+
+    sorted_user_ids = user_totals.keys.sort_by { |uid| [-user_totals[uid], users[uid]&.name.to_s] }
+
+    members = sorted_user_ids.filter_map do |uid|
+      user = users[uid]
+      next unless user
+
+      total = user_totals[uid]
+      {
+        id: uid,
+        name: user.name,
+        total_hours: total,
+        groupings: {
+          issue: build_breakdown_items(issue_by_user[uid] || {}, total) do |id|
+            issue = id && issues[id]
+            next ["##{id}", "##{id}"] if id && issue.nil?
+            issue ? ["##{issue.id} #{issue.subject}", "##{issue.id}"] : [l(:label_ta_no_issue), l(:label_ta_no_issue)]
+          end,
+          activity: build_breakdown_items(activity_by_user[uid] || {}, total) do |id|
+            name = id && activity_names[id]
+            name ? [name, name] : [l(:label_ta_no_activity), l(:label_ta_no_activity)]
+          end,
+          project: build_breakdown_items(project_by_user[uid] || {}, total) do |id|
+            name = id && project_names[id]
+            name ? [name, name] : [l(:label_ta_no_project), l(:label_ta_no_project)]
+          end
+        }
+      }
+    end
+
+    render json: { members: members }
+  end
+
   # Recursively build team node with sub-teams and members.
   # Returns [node_hash, subtree_user_ids] where subtree_user_ids is the Set of distinct
   # current active members across this team and all its descendants (team composition).
@@ -380,6 +451,30 @@ class TeamAnalyticsController < ApplicationController
   end
 
   private
+
+  # Turns a pre-grouped {group_id => hours} hash for a single user into a sorted, colored list.
+  # The block maps a group_id to [label, short_label].
+  def build_breakdown_items(user_sums, total)
+    user_sums.filter_map { |gid, hours| [gid, hours.to_f] if hours.to_f > 0 }
+             .sort_by { |_, hours| -hours }
+             .each_with_index.map do |(gid, hours), index|
+               label, short_label = yield(gid)
+               {
+                 label: label,
+                 short_label: short_label,
+                 hours: hours,
+                 percentage: total > 0 ? (hours / total * 100).round(1) : 0,
+                 color: TABLEAU10_COLORS[index % TABLEAU10_COLORS.size]
+               }
+             end
+  end
+
+  # Groups a {[user_id, group_id] => hours} hash into {user_id => {group_id => hours}}.
+  def group_sums_by_user(sums)
+    sums.each_with_object(Hash.new { |h, k| h[k] = {} }) do |((uid, gid), hours), h|
+      h[uid][gid] = hours.to_f
+    end
+  end
 
   def select_accessible_team(teams)
     default_team = default_accessible_team(teams)

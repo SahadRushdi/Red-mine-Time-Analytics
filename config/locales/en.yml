@@ -18,7 +18,25 @@ en:
   label_summary: "Summary"
   label_export_csv: "Export CSV"
   label_members: "Members"
-  
+
+  # Member breakdown (per-member second-level grouping on the Team dashboard)
+  label_member_breakdown: "Member Breakdown"
+  label_member_breakdown_hint: "Second-level grouping — expand to see each member's commitment"
+  label_member_breakdown_group_by: "Group by"
+  label_member_breakdown_loading: "Loading member breakdown…"
+  label_member_breakdown_empty: "No member time logged in this period."
+  label_member_breakdown_count_issues: "Issues"
+  label_member_breakdown_count_activities: "Activities"
+  label_member_breakdown_count_projects: "Projects"
+  label_member_breakdown_total: "Total Hours"
+  label_member_breakdown_expand: "View larger chart"
+  label_member_breakdown_scroll_up: "Scroll up"
+  label_member_breakdown_scroll_down: "Scroll down"
+  label_member_breakdown_error: "Failed to load member breakdown. Please try again."
+  label_ta_no_issue: "No Issue"
+  label_ta_no_activity: "No Activity"
+  label_ta_no_project: "No Project"
+
   # Filter options
   label_last_7_days: "Last 7 days"
   label_last_14_days: "Last 14 days"
