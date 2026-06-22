@@ -1,0 +1,182 @@
+<div class="contextual">
+  <%= link_to l(:label_positions_hiring), admin_ta_hiring_needs_path, class: 'icon icon-user' %>
+</div>
+
+<h2><%= l(:label_titles) %></h2>
+
+<%# ---------------------------------------------------------------- %>
+<%# Section 1: Manage the master title list (reuses TaHiringTitle)   %>
+<%# ---------------------------------------------------------------- %>
+<div class="box tabular" id="ta-titles-manage"
+     data-create-url="<%= admin_ta_hiring_titles_path %>"
+     data-csrf-token="<%= form_authenticity_token %>">
+  <h3><%= l(:label_manage_titles) %></h3>
+
+  <p>
+    <input type="text" id="ta-new-title" maxlength="255"
+           placeholder="<%= l(:label_title_name) %>" style="width: 280px;" />
+    <%= button_tag l(:button_add), type: 'button', id: 'ta-add-title-btn' %>
+  </p>
+
+  <% if @titles.empty? %>
+    <p class="nodata"><%= l(:label_no_data) %></p>
+  <% else %>
+    <table class="list">
+      <thead>
+        <tr>
+          <th><%= l(:label_title_name) %></th>
+          <th style="width: 80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @titles.each do |title| %>
+          <tr>
+            <td><%= h title.title %></td>
+            <td class="buttons">
+              <%= link_to l(:button_delete), '#',
+                          class: 'icon icon-del ta-delete-title',
+                          data: { delete_url: admin_ta_hiring_title_path(title) } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
+
+<%# ---------------------------------------------------------------- %>
+<%# Section 2: Assign a title to users                               %>
+<%# ---------------------------------------------------------------- %>
+<div class="box">
+  <h3><%= l(:label_assign_titles) %></h3>
+
+  <%= form_tag(admin_ta_titles_path, method: :get) do %>
+    <p>
+      <%= text_field_tag 'q', @search, size: 30, placeholder: l(:label_user) %>
+      <%= submit_tag l(:button_apply), name: nil %>
+      <%= link_to l(:button_clear), admin_ta_titles_path, class: 'icon icon-reload' if @search.present? %>
+    </p>
+  <% end %>
+
+  <% if @users.empty? %>
+    <p class="nodata"><%= l(:label_no_data) %></p>
+  <% else %>
+    <%= form_tag(assign_admin_ta_titles_path, method: :post, id: 'ta-assign-form') do %>
+      <div class="ta-bulk-bar" style="margin-bottom: 8px;">
+        <label><%= l(:label_set_title_for_selected) %>:</label>
+        <%= select_tag 'title_id',
+                       options_for_select([[l(:label_none_title), '']] +
+                                          @titles.map { |t| [t.title, t.id] }) %>
+        <%= submit_tag l(:button_apply) %>
+      </div>
+
+      <table class="list">
+        <thead>
+          <tr>
+            <th class="checkbox"><%= check_box_tag 'ta-check-all' %></th>
+            <th><%= l(:field_login) %></th>
+            <th><%= l(:label_user) %></th>
+            <th><%= l(:field_user_title) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @users.each do |user| %>
+            <% current = @titles_by_user[user.id]&.title %>
+            <tr>
+              <td class="checkbox"><%= check_box_tag 'user_ids[]', user.id, false, id: nil, class: 'ta-user-check' %></td>
+              <td><%= h user.login %></td>
+              <td><%= link_to h(user.name), edit_user_path(user) %></td>
+              <td>
+                <select class="ta-row-title" data-user-id="<%= user.id %>">
+                  <option value=""><%= l(:label_none_title) %></option>
+                  <% @titles.each do |t| %>
+                    <option value="<%= t.id %>" <%= 'selected' if current && current.id == t.id %>>
+                      <%= h t.title %>
+                    </option>
+                  <% end %>
+                </select>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <span class="pagination"><%= pagination_links_full @user_pages, @user_count %></span>
+  <% end %>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var manage = document.getElementById('ta-titles-manage');
+  var csrf = manage ? manage.getAttribute('data-csrf-token') : '';
+
+  function postJSON(url, method, body) {
+    return fetch(url, {
+      method: method,
+      headers: {
+        'X-CSRF-Token': csrf,
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+  }
+
+  // --- Add title ---
+  var addBtn = document.getElementById('ta-add-title-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', function () {
+      var input = document.getElementById('ta-new-title');
+      var value = (input.value || '').trim();
+      if (!value) { return; }
+      postJSON(manage.getAttribute('data-create-url'), 'POST', { title: value })
+        .then(function (r) {
+          if (r.ok) { window.location.reload(); }
+          else { r.json().then(function (d) { alert(d.error || 'Error'); }); }
+        });
+    });
+  }
+
+  // --- Delete title ---
+  document.querySelectorAll('.ta-delete-title').forEach(function (link) {
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (!window.confirm('<%= escape_javascript(l(:text_are_you_sure)) %>')) { return; }
+      postJSON(link.getAttribute('data-delete-url'), 'DELETE', null)
+        .then(function (r) {
+          if (r.ok) { window.location.reload(); }
+          else { alert('Error'); }
+        });
+    });
+  });
+
+  // --- Select all checkbox ---
+  var checkAll = document.getElementById('ta-check-all');
+  if (checkAll) {
+    checkAll.addEventListener('change', function () {
+      document.querySelectorAll('.ta-user-check').forEach(function (cb) { cb.checked = checkAll.checked; });
+    });
+  }
+
+  // --- Per-row immediate assignment ---
+  document.querySelectorAll('.ta-row-title').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      var form = document.createElement('form');
+      form.method = 'post';
+      form.action = '<%= assign_admin_ta_titles_path %>';
+      function hidden(name, val) {
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = name; i.value = val; form.appendChild(i);
+      }
+      hidden('authenticity_token', csrf);
+      hidden('user_id', sel.getAttribute('data-user-id'));
+      hidden('title_id', sel.value);
+      hidden('q', '<%= escape_javascript(@search.to_s) %>');
+      hidden('page', '<%= escape_javascript(params[:page].to_s) %>');
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+});
+</script>

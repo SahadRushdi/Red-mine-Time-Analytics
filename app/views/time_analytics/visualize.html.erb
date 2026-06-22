@@ -1,0 +1,110 @@
+<% content_for :header_tags do %>
+  <%= javascript_include_tag 'chart.min.js', plugin: 'redmine_time_analytics' %>
+  <%= javascript_include_tag 'chartjs-plugin-colorschemes.min.js', plugin: 'redmine_time_analytics' %>
+<% end %>
+
+<div class="contextual">
+  <%= link_to l(:label_details),
+              _time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')),
+              class: 'icon icon-time' %>
+</div>
+
+<h2><%= l(:label_spent_time) %></h2>
+
+<%# Tab strip mirroring the core Spent time tabs, with Visualize active %>
+<div class="tabs hide-when-print">
+  <ul>
+    <li><%= link_to l(:label_details),
+                    _time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')) %></li>
+    <li><%= link_to l(:label_report),
+                    _report_time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')) %></li>
+    <li><%= link_to l(:label_visualize), '#', class: 'selected' %></li>
+  </ul>
+</div>
+
+<% unless @query.valid? %>
+  <p class="nodata"><%= l(:label_no_data) %></p>
+<% else %>
+  <p>
+    <strong><%= l(:label_group_by) %>:</strong>
+    <% TimeAnalyticsController::VISUALIZE_GROUPS.each do |key, label_key| %>
+      <% if key == @group_by %>
+        <span class="selected" style="font-weight:bold; margin:0 6px;"><%= l(label_key) %></span>
+      <% else %>
+        <%= link_to l(label_key),
+                    time_entries_visualize_path(request.query_parameters.merge('viz_group' => key)),
+                    style: 'margin:0 6px;' %>
+      <% end %>
+    <% end %>
+  </p>
+
+  <% if @rows.empty? %>
+    <p class="nodata"><%= l(:label_no_data) %></p>
+  <% else %>
+    <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+      <div style="flex:1 1 360px; min-width:300px; height:340px;">
+        <canvas id="viz-donut"></canvas>
+      </div>
+      <div style="flex:1 1 360px; min-width:300px; height:340px;">
+        <canvas id="viz-bar"></canvas>
+      </div>
+    </div>
+
+    <table class="list" style="margin-top:24px;">
+      <thead>
+        <tr>
+          <th><%= l(TimeAnalyticsController::VISUALIZE_GROUPS[@group_by]) %></th>
+          <th><%= l(:field_hours) %></th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |label, hours| %>
+          <tr>
+            <td><%= h label %></td>
+            <td><%= format_hours(hours) %></td>
+            <td><%= @total_hours > 0 ? "#{((hours / @total_hours) * 100).round(1)}%" : '-' %></td>
+          </tr>
+        <% end %>
+        <tr class="total">
+          <td><strong><%= l(:label_total) %></strong></td>
+          <td><strong><%= format_hours(@total_hours) %></strong></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="viz-chart-data" data-chart='<%= @chart_data %>' style="display:none;"></div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var holder = document.getElementById('viz-chart-data');
+        if (!holder || typeof Chart === 'undefined') { return; }
+        var data = JSON.parse(holder.getAttribute('data-chart'));
+        var labels = data.labels;
+        var values = data.datasets[0].data;
+        var scheme = { colorschemes: { scheme: 'tableau.Tableau10' } };
+
+        new Chart(document.getElementById('viz-donut').getContext('2d'), {
+          type: 'doughnut',
+          data: { labels: labels, datasets: [{ data: values }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            legend: { position: 'right' },
+            plugins: scheme
+          }
+        });
+
+        new Chart(document.getElementById('viz-bar').getContext('2d'), {
+          type: 'bar',
+          data: { labels: labels, datasets: [{ label: '<%= j(l(:field_hours)) %>', data: values }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            legend: { display: false },
+            scales: { yAxes: [{ ticks: { beginAtZero: true } }] },
+            plugins: scheme
+          }
+        });
+      });
+    </script>
+  <% end %>
+<% end %>

@@ -1,5 +1,6 @@
 RedmineApp::Application.routes.draw do
   get 'time_analytics', to: 'time_analytics#index'
+  get 'time_analytics/visualize', to: 'time_analytics#visualize', as: :time_entries_visualize
   get 'my/time', to: 'time_analytics#individual_dashboard', as: :my_time
   get 'time_analytics/custom_dashboard', to: 'time_analytics#custom_dashboard'
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
@@ -50,6 +51,11 @@ RedmineApp::Application.routes.draw do
     end
   end
   resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :destroy]
+  resources :admin_ta_titles, path: 'admin/ta_titles', only: [:index] do
+    collection do
+      post :assign
+    end
+  end
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection
   end

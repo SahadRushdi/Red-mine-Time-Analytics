@@ -272,12 +272,73 @@ class TimeAnalyticsController < ApplicationController
       filename = "time_analytics_#{@user.login}_#{@from}_#{@to}.csv"
     end
     
-    send_data csv_data, 
+    send_data csv_data,
               filename: filename,
               type: 'text/csv'
   end
 
+  # Selectable group-by options for the "Visualize" tab embedded in the core Spent time view.
+  VISUALIZE_GROUPS = {
+    'user_title' => :field_user_title,
+    'user'       => :label_user,
+    'activity'   => :field_activity,
+    'project'    => :label_project
+  }.freeze
+
+  # Aggregates the time entries from the current Spent time filter (carried over via
+  # query params) by a chosen attribute (default: User's Title) and renders a table + charts.
+  def visualize
+    @project = Project.find(params[:project_id]) if params[:project_id].present?
+
+    @query =
+      if params[:query_id].present?
+        TimeEntryQuery.find(params[:query_id])
+      else
+        q = TimeEntryQuery.new(name: '_')
+        q.project = @project
+        q.build_from_params(params)
+        q
+      end
+
+    @group_by = VISUALIZE_GROUPS.key?(params[:viz_group]) ? params[:viz_group] : 'user_title'
+    @rows = @query.valid? ? visualize_rows(@query.base_scope, @group_by) : []
+    @total_hours = @rows.sum { |row| row[1] }
+
+    @chart_data = {
+      labels: @rows.map { |row| row[0] },
+      datasets: [{ data: @rows.map { |row| row[1].round(2) } }]
+    }.to_json
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
   private
+
+  # Returns [[label, hours], ...] sorted by hours desc for the chosen grouping.
+  def visualize_rows(scope, group_by)
+    scope = scope.reorder(nil)
+    rows =
+      case group_by
+      when 'user_title'
+        scope.group('tht.title').sum(:hours).map { |title, h| [title.presence || l(:label_none_title), h.to_f] }
+      when 'user'
+        totals = scope.group(:user_id).sum(:hours)
+        users = User.where(id: totals.keys).index_by(&:id)
+        totals.map { |uid, h| [users[uid]&.name || '-', h.to_f] }
+      when 'activity'
+        totals = scope.group(:activity_id).sum(:hours)
+        acts = TimeEntryActivity.where(id: totals.keys).index_by(&:id)
+        totals.map { |aid, h| [acts[aid]&.name || '-', h.to_f] }
+      when 'project'
+        totals = scope.group(:project_id).sum(:hours)
+        projs = Project.where(id: totals.keys).index_by(&:id)
+        totals.map { |pid, h| [projs[pid]&.name || '-', h.to_f] }
+      else
+        []
+      end
+    rows.reject { |row| row[1].zero? }.sort_by { |row| -row[1] }
+  end
+
 
   def parse_custom_date(value)
     return nil if value.blank?
