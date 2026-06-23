@@ -99,8 +99,10 @@ module RedmineTimeAnalytics
           settings = TaTeamSetting.where(user_id: id, setting_type: ['super_user', 'exclusion'])
           settings.destroy_all if settings.any?
 
-          # 3. Remove the user's title assignment so locked users drop out of title grouping
-          TaUserTitle.where(user_id: id).destroy_all
+          # NOTE: the user's title assignment (TaUserTitle) is intentionally retained when a
+          # user is locked. Historical time entries still group correctly by title, and the
+          # Titles admin page lets admins review/adjust locked users' titles so they take
+          # effect again on reactivation.
         end
       end
     end
