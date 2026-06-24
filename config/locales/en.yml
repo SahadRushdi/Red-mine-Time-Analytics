@@ -251,7 +251,6 @@ en:
   label_showing_active_users: "Showing %{shown} of %{total} active users"
   label_showing_locked_users: "Showing %{shown} of %{total} locked users"
   label_add_title: "Add new title"
-  text_locked_titles_notice: "These accounts are locked. Title assignments will take effect when the account is reactivated."
   text_no_users_found: "No users found."
   label_title_name: "Title name"
   label_none_title: "— No title —"

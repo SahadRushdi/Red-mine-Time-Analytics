@@ -233,11 +233,6 @@
 
     <div class="p-4">
       <%# Locked-accounts notice (locked tab only) %>
-      <div id="ta-titles-locked-notice" class="hidden mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-        <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86l-8.4 14.5A2 2 0 003.62 21h16.76a2 2 0 001.73-2.64l-8.4-14.5a2 2 0 00-3.44 0z"/></svg>
-        <span><%= l(:text_locked_titles_notice) %></span>
-      </div>
-
       <%# Bulk-assign bar (shown when rows are selected) %>
       <div id="ta-titles-bulk-bar" class="hidden mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
         <span id="ta-titles-bulk-count" class="font-semibold"></span>
@@ -427,7 +422,6 @@ document.addEventListener('DOMContentLoaded', function () {
     pagination: document.getElementById('ta-titles-pagination'),
     search: document.getElementById('ta-titles-search'),
     selectAll: document.getElementById('ta-titles-select-all'),
-    lockedNotice: document.getElementById('ta-titles-locked-notice'),
     bulkBar: document.getElementById('ta-titles-bulk-bar'),
     bulkCount: document.getElementById('ta-titles-bulk-count'),
     bulkTrigger: document.getElementById('ta-titles-bulk-trigger'),
@@ -506,8 +500,6 @@ document.addEventListener('DOMContentLoaded', function () {
     var page = state.pages[tab];
     var start = (page - 1) * state.perPage;
     var pageRows = rows.slice(start, start + state.perPage);
-
-    els.lockedNotice.classList.toggle('hidden', tab !== 'locked');
 
     var html = '';
     if (!pageRows.length) {
@@ -666,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function () {
     return html;
   }
 
-  function openMenu(anchor, items, currentValue, onSelect) {
+  function openMenu(anchor, items, currentValue, onSelect, minWidth) {
     menuCtx = { onSelect: onSelect, anchor: anchor };
     resetTypeahead();
     els.menu.innerHTML = buildMenuOptions(items, currentValue);
@@ -674,7 +666,10 @@ document.addEventListener('DOMContentLoaded', function () {
     anchor.classList.add('is-open');
 
     var rect = anchor.getBoundingClientRect();
-    var width = Math.max(rect.width, 120);
+    // Default floor of 120px for the wide title selectors; callers (e.g. the narrow
+    // per-page button) can pass a smaller floor so the menu matches the trigger width.
+    var floor = (typeof minWidth === 'number') ? minWidth : 120;
+    var width = Math.max(rect.width, floor);
     els.menu.style.width = width + 'px';
     var menuH = Math.min(els.menu.scrollHeight, 256);
     var spaceBelow = window.innerHeight - rect.bottom;
@@ -804,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
       els.perPageLabel.textContent = String(state.perPage);
       state.pages.active = 1; state.pages.locked = 1;
       render();
-    });
+    }, 0); // floor 0 → menu matches the per-page button width instead of the 120px default
   });
 
   // Per-row title trigger + checkbox (delegated)

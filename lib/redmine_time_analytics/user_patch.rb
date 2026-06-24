@@ -100,9 +100,9 @@ module RedmineTimeAnalytics
           settings.destroy_all if settings.any?
 
           # NOTE: the user's title assignment (TaUserTitle) is intentionally retained when a
-          # user is locked. Historical time entries still group correctly by title, and the
-          # Titles admin page lets admins review/adjust locked users' titles so they take
-          # effect again on reactivation.
+          # user is locked. The analytics title join is not status-gated, so a locked user's
+          # title applies to their historical time entries immediately — no reactivation
+          # needed — and the Titles admin page lets admins review/adjust locked users' titles.
         end
       end
     end
