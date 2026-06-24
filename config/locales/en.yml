@@ -237,7 +237,7 @@ en:
   text_confirm_delete_all_leaves: "Delete all leave records in this view?"
 
   # User Title management
-  field_user_title: "User's Title"
+  field_user_title: "Title"
   field_assigned_to_title: "Assignee's Title"
   label_titles: "Titles"
   label_positions_hiring: "Positions & Hiring"
@@ -258,6 +258,13 @@ en:
   label_set_title_for_selected: "Set title for selected users"
   label_visualize: "Visualize"
   label_group_by: "Group by"
+  label_group_results_by: "Group results by"
+  label_visualize_breakdown_by: "Hours breakdown by %{dimension}"
+  label_visualize_expand_hint: "click a row to expand"
+  label_visualize_total_hours: "total hours"
+  label_visualize_total_suffix: "total"
+  label_share: "Share"
+  label_subtotal: "Subtotal"
   notice_titles_assigned: "Title assigned to %{count} user(s)."
   notice_titles_cleared: "Title cleared for %{count} user(s)."
   notice_title_not_found: "The selected title could not be found."

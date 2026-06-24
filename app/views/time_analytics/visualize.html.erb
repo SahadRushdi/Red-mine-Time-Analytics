@@ -1,110 +1,686 @@
+<% html_title l(:label_spent_time) %>
+
 <% content_for :header_tags do %>
   <%= javascript_include_tag 'chart.min.js', plugin: 'redmine_time_analytics' %>
-  <%= javascript_include_tag 'chartjs-plugin-colorschemes.min.js', plugin: 'redmine_time_analytics' %>
+  <%# flowbite.min.css intentionally omitted — this tab uses no Flowbite components, and
+      tailwind.output.css already carries the utilities + forms base. Dropping it avoids a
+      duplicate @tailwindcss/forms base fighting the scoped #query_form overrides below. %>
+  <%= stylesheet_link_tag 'tailwind.output.css', plugin: 'redmine_time_analytics' %>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+  <%# NOTE: time_analytics.css is intentionally NOT loaded here — it hides #main-menu,
+      which would strip the core Redmine menu (Projects/Activity/Issues/Spent time…)
+      that this tab shares with the native Details/Report views. %>
+  <style>
+    /* --- Make the embedded Filters/Options form identical to the core Details tab.
+       tailwind.output.css ships the @tailwindcss/forms base (appearance:none + custom
+       checkbox/select painting) which otherwise blacks-out the Date checkbox and clips
+       the operator <select>. Force native appearance and re-apply PurpleMine2's field
+       styling. #query_form ID specificity beats the forms base even where it uses
+       !important. --- */
+    #query_form select:not([multiple]),
+    #query_form textarea,
+    #query_form input[type="text"],
+    #query_form input[type="date"],
+    #query_form input[type="datetime-local"],
+    #query_form input[type="month"],
+    #query_form input[type="time"],
+    #query_form input[type="week"],
+    #query_form input[type="number"],
+    #query_form input[type="url"],
+    #query_form input[type="email"],
+    #query_form input[type="search"],
+    #query_form input[type="password"] {
+      -webkit-appearance: auto !important;
+      -moz-appearance: auto !important;
+      appearance: auto !important;
+      background-image: none !important;
+      height: 28px !important;
+      padding: 3px 8px !important;
+      border: 1px solid #d1d3e0 !important;
+      border-radius: 2px !important;
+      background-color: #fff !important;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, .075) !important;
+      color: #3e4359 !important;
+      font-size: 14px !important;
+      line-height: 1.428571429 !important;
+      vertical-align: top !important;
+    }
+    #query_form textarea { height: auto !important; }
+    /* Multi-select list boxes (Available/Selected Columns) must keep their tall
+       native height — the single-line reset above would collapse them. */
+    #query_form select[multiple] {
+      -webkit-appearance: auto !important;
+      -moz-appearance: auto !important;
+      appearance: auto !important;
+      background-image: none !important;
+      height: auto !important;
+      min-height: 28px !important;
+      padding: 0 !important;
+      border: 1px solid #d1d3e0 !important;
+      border-radius: 2px !important;
+      background-color: #fff !important;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, .075) !important;
+      color: #3e4359 !important;
+      font-size: 14px !important;
+      line-height: 1.428571429 !important;
+      vertical-align: top !important;
+    }
+    #query_form select[multiple] option { padding: 3px 8px !important; }
+    #query_form select:focus,
+    #query_form textarea:focus,
+    #query_form input:focus {
+      border-color: rgba(81, 45, 196, .6) !important;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, .075), 0 0 0 2px rgba(81, 45, 196, .2) !important;
+      outline: 0 !important;
+    }
+    #query_form input[type="checkbox"],
+    #query_form input[type="radio"] {
+      -webkit-appearance: auto !important;
+      -moz-appearance: auto !important;
+      appearance: auto !important;
+      background-image: none !important;
+      background-color: #fff !important;
+      width: auto !important;
+      height: auto !important;
+      border-radius: 0 !important;
+      color: inherit !important;
+    }
+    #query_form input[type="checkbox"]:checked,
+    #query_form input[type="radio"]:checked {
+      background-color: #fff !important;
+    }
+
+    /* --- Kill PurpleMine2's blue 3D button styling inside the card. The theme paints
+       every <button> blue (bg #0065ff, border-bottom #004dc2, box-shadow:0 1px 0 #004dc2)
+       — that shadow is the "blue bottom border" seen on the sort headers, pagination and
+       every per-page digit. Scope under #viz-card so ID specificity beats button:hover. --- */
+    #viz-card button,
+    #viz-card button:hover,
+    #viz-card button:focus,
+    #viz-card button:active,
+    #viz-card button:focus-visible {
+      box-shadow: none !important;
+      text-shadow: none !important;
+      transform: none !important;
+      text-transform: none !important;
+      outline: none !important;
+    }
+    /* Sort headers + per-page menu options: borderless, transparent, gray text. */
+    #viz-card .ta-viz-sort,
+    #viz-card .ta-viz-sort:hover,
+    #viz-card .ta-viz-sort:focus,
+    #viz-card .ta-viz-sort:active,
+    #viz-card #viz-perpage-menu button,
+    #viz-card #viz-perpage-menu button:hover,
+    #viz-card #viz-perpage-menu button:focus,
+    #viz-card #viz-perpage-menu button:active {
+      border: 0 !important;
+      background-color: transparent !important;
+    }
+    #viz-card .ta-viz-sort {
+      height: auto !important;
+      padding: 0 !important;
+      color: #6b7280 !important;
+      text-transform: uppercase !important;
+    }
+    #viz-card .ta-viz-sort:hover { color: #374151 !important; }
+    #viz-card #viz-perpage-menu button { color: #374151 !important; }
+    #viz-card #viz-perpage-menu button:hover,
+    #viz-card #viz-perpage-menu button:focus,
+    #viz-card #viz-perpage-menu button:active {
+      background-color: #f3f4f6 !important;
+      color: #374151 !important;
+    }
+    /* Per-page trigger + pagination keep a neutral gray border in every state. */
+    #viz-card #viz-perpage-btn,
+    #viz-card #viz-perpage-btn:hover,
+    #viz-card #viz-perpage-btn:focus,
+    #viz-card #viz-perpage-btn:active,
+    #viz-card #viz-pagination-links button,
+    #viz-card #viz-pagination-links button:hover,
+    #viz-card #viz-pagination-links button:focus,
+    #viz-card #viz-pagination-links button:active {
+      border-color: #d1d5db !important;
+    }
+    #viz-card #viz-perpage-btn:hover {
+      background-color: #f9fafb !important;
+      color: #111827 !important;
+    }
+    #viz-card #viz-pagination-links button:hover {
+      background-color: #f3f4f6 !important;
+      color: #374151 !important;
+    }
+    .ta-viz-table td, .ta-viz-table th { border: none; }
+    #viz-card .material-symbols-outlined { line-height: 1; }
+    /* Borderless icon buttons for the legend pager (mirrors My Team breakdown). */
+    .ta-bd-icon-btn {
+      background: transparent !important; border: 0 !important; box-shadow: none !important;
+      outline: none !important; color: #9ca3af !important; padding: 0 !important;
+      cursor: pointer !important; transition: background-color 0.15s, color 0.15s;
+    }
+    .ta-bd-icon-btn:hover { background: #f3f4f6 !important; color: #374151 !important; }
+    .ta-bd-icon-btn:disabled, .ta-bd-icon-btn.pointer-events-none {
+      color: #d1d5db !important; background: transparent !important;
+    }
+  </style>
+<% end %>
+
+<%# Saved-query sidebar, identical to the native Details/Report tabs
+    (app/views/timelog/_sidebar.html.erb). Providing :sidebar flips the base
+    layout off "nosidebar" so the column appears. %>
+<% content_for :sidebar do %>
+  <%= render_sidebar_queries(TimeEntryQuery, @project) %>
 <% end %>
 
 <div class="contextual">
   <%= link_to l(:label_details),
-              _time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')),
+              _time_entries_path(@project, nil, :params => request.query_parameters),
               class: 'icon icon-time' %>
 </div>
 
 <h2><%= l(:label_spent_time) %></h2>
 
-<%# Tab strip mirroring the core Spent time tabs, with Visualize active %>
-<div class="tabs hide-when-print">
-  <ul>
-    <li><%= link_to l(:label_details),
-                    _time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')) %></li>
-    <li><%= link_to l(:label_report),
-                    _report_time_entries_path(@project, nil, :params => request.query_parameters.except('viz_group')) %></li>
-    <li><%= link_to l(:label_visualize), '#', class: 'selected' %></li>
-  </ul>
-</div>
+<%# Filters + Options + tab strip, mirroring the core Details/Report tabs. The form
+    submits back to the Visualize action so applying filters (and the Options
+    "Group results by" select) re-renders this tab. %>
+<%= form_tag(time_entries_visualize_path(@project ? { project_id: @project.identifier } : {}), method: :get, id: 'query_form') do %>
+  <%= render :partial => 'queries/query_form' %>
 
-<% unless @query.valid? %>
-  <p class="nodata"><%= l(:label_no_data) %></p>
-<% else %>
-  <p>
-    <strong><%= l(:label_group_by) %>:</strong>
-    <% TimeAnalyticsController::VISUALIZE_GROUPS.each do |key, label_key| %>
-      <% if key == @group_by %>
-        <span class="selected" style="font-weight:bold; margin:0 6px;"><%= l(label_key) %></span>
-      <% else %>
-        <%= link_to l(label_key),
-                    time_entries_visualize_path(request.query_parameters.merge('viz_group' => key)),
-                    style: 'margin:0 6px;' %>
-      <% end %>
-    <% end %>
-  </p>
+  <div class="tabs hide-when-print">
+    <ul>
+      <li><%= link_to l(:label_details),
+                      _time_entries_path(@project, nil, :params => request.query_parameters) %></li>
+      <li><%= link_to l(:label_report),
+                      _report_time_entries_path(@project, nil, :params => request.query_parameters) %></li>
+      <li><%= link_to l(:label_visualize), '#', class: 'selected', onclick: 'return false;' %></li>
+    </ul>
+  </div>
+<% end %>
 
-  <% if @rows.empty? %>
-    <p class="nodata"><%= l(:label_no_data) %></p>
-  <% else %>
-    <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
-      <div style="flex:1 1 360px; min-width:300px; height:340px;">
-        <canvas id="viz-donut"></canvas>
-      </div>
-      <div style="flex:1 1 360px; min-width:300px; height:340px;">
-        <canvas id="viz-bar"></canvas>
+<div class="ta-viz-wrap" style="margin-top:18px;">
+  <%# The Figma "Hours breakdown" card: donut + paginated legend on the left,
+      sortable / paginated / expandable table on the right. Rendered client-side. %>
+  <div id="viz-card" class="rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+      <h3 id="viz-card-title" class="text-lg font-semibold text-gray-900"></h3>
+      <div class="flex items-center gap-3">
+        <span id="viz-card-hint" class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 whitespace-nowrap"></span>
+        <%# Per-page selector lives in the top-right corner, after the hint. %>
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-600 whitespace-nowrap"><%= l(:label_per_page) %></span>
+          <div class="relative">
+            <button type="button" id="viz-perpage-btn"
+                    class="inline-flex h-[34px] min-w-[80px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-0">
+              <span id="viz-perpage-label">10</span>
+              <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div id="viz-perpage-menu" class="hidden absolute right-0 top-full z-20 mt-1 min-w-[80px] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+              <% [10, 25, 50, 100].each do |value| %>
+                <button type="button" class="ta-viz-perpage-option w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100" data-per-page="<%= value %>"><%= value %></button>
+              <% end %>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <table class="list" style="margin-top:24px;">
-      <thead>
-        <tr>
-          <th><%= l(TimeAnalyticsController::VISUALIZE_GROUPS[@group_by]) %></th>
-          <th><%= l(:field_hours) %></th>
-          <th>%</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @rows.each do |label, hours| %>
-          <tr>
-            <td><%= h label %></td>
-            <td><%= format_hours(hours) %></td>
-            <td><%= @total_hours > 0 ? "#{((hours / @total_hours) * 100).round(1)}%" : '-' %></td>
-          </tr>
-        <% end %>
-        <tr class="total">
-          <td><strong><%= l(:label_total) %></strong></td>
-          <td><strong><%= format_hours(@total_hours) %></strong></td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="flex flex-col lg:flex-row">
+      <%# Left column: donut + legend %>
+      <div class="shrink-0 lg:w-[320px] border-b lg:border-b-0 lg:border-r border-gray-100 p-6 flex flex-col items-center">
+        <div class="relative w-[200px] h-[200px]">
+          <canvas id="viz-donut"></canvas>
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span id="viz-donut-total" class="text-2xl font-bold text-gray-900"></span>
+            <span class="text-xs text-gray-500"><%= l(:label_visualize_total_hours) %></span>
+          </div>
+        </div>
+        <div class="w-full mt-5">
+          <div id="viz-legend" class="space-y-2.5" data-page="0"></div>
+          <div id="viz-legend-pager" class="hidden items-center justify-end gap-1 mt-3">
+            <button type="button" id="viz-legend-up" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_up) %>">
+              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_up</span>
+            </button>
+            <button type="button" id="viz-legend-down" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_down) %>">
+              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_down</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <div id="viz-chart-data" data-chart='<%= @chart_data %>' style="display:none;"></div>
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        var holder = document.getElementById('viz-chart-data');
-        if (!holder || typeof Chart === 'undefined') { return; }
-        var data = JSON.parse(holder.getAttribute('data-chart'));
-        var labels = data.labels;
-        var values = data.datasets[0].data;
-        var scheme = { colorschemes: { scheme: 'tableau.Tableau10' } };
+      <%# Right column: table %>
+      <div class="flex-1 min-w-0 p-2 sm:p-4">
+        <div class="overflow-x-auto">
+          <table class="ta-viz-table w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-100">
+                <th class="py-2 pl-2 pr-4 text-left">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700" data-sort-key="label">
+                    <span id="viz-th-dimension"></span><span class="viz-sort-indicator text-[10px]"></span>
+                  </button>
+                </th>
+                <th class="py-2 px-4 text-right">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="hours">
+                    <%= l(:field_hours) %><span class="viz-sort-indicator text-[10px]"></span>
+                  </button>
+                </th>
+                <th class="py-2 pl-4 pr-2 text-right">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="percentage">
+                    <%= l(:label_share) %><span class="viz-sort-indicator text-[10px]"></span>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="viz-tbody"></tbody>
+            <tfoot id="viz-tfoot"></tfoot>
+          </table>
+        </div>
 
-        new Chart(document.getElementById('viz-donut').getContext('2d'), {
-          type: 'doughnut',
-          data: { labels: labels, datasets: [{ data: values }] },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            legend: { position: 'right' },
-            plugins: scheme
+        <div id="viz-empty" class="hidden px-4 py-12 text-center text-sm text-gray-500"><%= l(:label_no_data) %></div>
+
+        <div id="viz-pagination-bar" class="hidden flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4 px-2">
+          <span id="viz-pagination-info" class="text-sm text-gray-500"></span>
+          <nav id="viz-pagination" aria-label="Visualize pagination">
+            <ul id="viz-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="viz-data" data-payload='<%= @viz_payload %>' style="display:none;"></div>
+
+<script>
+//<![CDATA[
+document.addEventListener('DOMContentLoaded', function () {
+  var holder = document.getElementById('viz-data');
+  if (!holder) { return; }
+
+  var TEXT = {
+    breakdownBy: '<%= j l(:label_visualize_breakdown_by, dimension: '__DIM__') %>',
+    expandHint: '<%= j l(:label_visualize_expand_hint) %>',
+    totalSuffix: '<%= j l(:label_visualize_total_suffix) %>',
+    total: '<%= j l(:label_total) %>',
+    subtotal: '<%= j l(:label_subtotal) %>',
+    noData: '<%= j l(:label_no_data) %>',
+    of: 'of'
+  };
+
+  var payload = JSON.parse(holder.getAttribute('data-payload'));
+  var LEGEND_PAGE_SIZE = 10;
+
+  var state = {
+    groups: payload.groups || [],
+    total: payload.total || 0,
+    dimensionLabel: payload.dimension_label || '',
+    childDimension: payload.child_dimension || '',
+    sortKey: 'hours',
+    sortDir: 'desc',
+    page: 1,
+    perPage: 10,
+    expanded: {},
+    legendPage: 0
+  };
+
+  // ---- helpers ---------------------------------------------------------------
+  function esc(value) {
+    var div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+  }
+  function formatHours(hours) {
+    var value = parseFloat(hours || 0);
+    var h = Math.floor(value);
+    var m = Math.round((value - h) * 60);
+    if (m === 60) { h += 1; m = 0; }
+    return h + ':' + (m < 10 ? '0' : '') + m;
+  }
+  function formatPct(pct) {
+    var n = parseFloat(pct || 0);
+    return (Math.round(n * 10) / 10) + '%';
+  }
+  function hexToRgba(hex, alpha) {
+    var c = String(hex || '#64748B').replace('#', '');
+    if (c.length === 3) { c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]; }
+    var r = parseInt(c.substr(0, 2), 16), g = parseInt(c.substr(2, 2), 16), b = parseInt(c.substr(4, 2), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+  function initials(name) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+  }
+  function avatarHtml(name) {
+    return '<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold shrink-0">' + esc(initials(name)) + '</span>';
+  }
+
+  function sortedGroups() {
+    var key = state.sortKey, dir = state.sortDir === 'asc' ? 1 : -1;
+    return state.groups.slice().sort(function (a, b) {
+      var result;
+      if (key === 'label') {
+        result = String(a.label).localeCompare(String(b.label), undefined, { sensitivity: 'base' });
+      } else {
+        result = (a[key] || 0) - (b[key] || 0);
+      }
+      if (result === 0) { result = (b.hours || 0) - (a.hours || 0); }
+      return dir * result;
+    });
+  }
+
+  // ---- donut + legend --------------------------------------------------------
+  var donutChart = null;
+  function renderDonut() {
+    var canvas = document.getElementById('viz-donut');
+    var totalEl = document.getElementById('viz-donut-total');
+    if (totalEl) { totalEl.textContent = formatHours(state.total); }
+    if (!canvas || typeof Chart === 'undefined') { return; }
+    if (donutChart) { try { donutChart.destroy(); } catch (e) {} donutChart = null; }
+    if (!state.groups.length) { return; }
+
+    var ordered = state.groups; // already hours-desc from server
+    donutChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ordered.map(function (g) { return g.label; }),
+        datasets: [{
+          data: ordered.map(function (g) { return g.hours; }),
+          backgroundColor: ordered.map(function (g) { return g.color; }),
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutoutPercentage: 70,
+        legend: { display: false },
+        tooltips: {
+          callbacks: {
+            label: function (item, data) {
+              var label = data.labels[item.index] || '';
+              var value = data.datasets[0].data[item.index] || 0;
+              var pct = state.total > 0 ? ((value / state.total) * 100).toFixed(1) : '0.0';
+              return label + ': ' + formatHours(value) + ' (' + pct + '%)';
+            }
           }
-        });
+        }
+      }
+    });
+  }
 
-        new Chart(document.getElementById('viz-bar').getContext('2d'), {
-          type: 'bar',
-          data: { labels: labels, datasets: [{ label: '<%= j(l(:field_hours)) %>', data: values }] },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            legend: { display: false },
-            scales: { yAxes: [{ ticks: { beginAtZero: true } }] },
-            plugins: scheme
-          }
+  function renderLegend() {
+    var legend = document.getElementById('viz-legend');
+    var pager = document.getElementById('viz-legend-pager');
+    if (!legend) { return; }
+    var items = state.groups;
+    var totalPages = Math.max(1, Math.ceil(items.length / LEGEND_PAGE_SIZE));
+    state.legendPage = Math.max(0, Math.min(state.legendPage, totalPages - 1));
+    var slice = items.slice(state.legendPage * LEGEND_PAGE_SIZE, state.legendPage * LEGEND_PAGE_SIZE + LEGEND_PAGE_SIZE);
+
+    legend.innerHTML = slice.map(function (g) {
+      return '' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + g.color + '"></span>' +
+          '<span class="flex-1 min-w-0 truncate text-sm text-gray-600" title="' + esc(g.label) + '">' + esc(g.label) + '</span>' +
+          '<span class="text-sm font-semibold whitespace-nowrap" style="color:' + g.color + '">' + formatPct(g.percentage) + '</span>' +
+        '</div>';
+    }).join('');
+
+    if (pager) {
+      if (items.length > LEGEND_PAGE_SIZE) {
+        pager.classList.remove('hidden');
+        pager.classList.add('flex');
+        var up = document.getElementById('viz-legend-up');
+        var down = document.getElementById('viz-legend-down');
+        [[up, state.legendPage <= 0], [down, state.legendPage >= totalPages - 1]].forEach(function (pair) {
+          if (!pair[0]) return;
+          pair[0].disabled = pair[1];
+          pair[0].classList.toggle('opacity-30', pair[1]);
+          pair[0].classList.toggle('pointer-events-none', pair[1]);
         });
+      } else {
+        pager.classList.add('hidden');
+        pager.classList.remove('flex');
+      }
+    }
+  }
+
+  // ---- table -----------------------------------------------------------------
+  function shareBadge(color, pct) {
+    return '<span class="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold" style="background:' +
+      hexToRgba(color, 0.14) + ';color:' + color + '">' + formatPct(pct) + '</span>';
+  }
+
+  function childRowHtml(child) {
+    var leader = state.childDimension === 'user'
+      ? avatarHtml(child.label)
+      : '<span class="w-2 h-2 rounded-full bg-gray-300 shrink-0 ml-2.5 mr-1"></span>';
+    return '' +
+      '<tr class="viz-child-row border-b border-gray-50 bg-gray-50/40">' +
+        '<td class="py-2 pl-9 pr-4">' +
+          '<div class="flex items-center gap-2 min-w-0">' + leader +
+            '<span class="truncate text-gray-600" title="' + esc(child.label) + '">' + esc(child.label) + '</span>' +
+          '</div>' +
+        '</td>' +
+        '<td class="py-2 px-4 text-right font-semibold text-gray-800 tabular-nums whitespace-nowrap">' + formatHours(child.hours) + '</td>' +
+        '<td class="py-2 pl-4 pr-2 text-right text-xs text-gray-400 whitespace-nowrap">' + formatPct(child.percentage) + '</td>' +
+      '</tr>';
+  }
+
+  function subtotalRowHtml(group) {
+    return '' +
+      '<tr class="viz-subtotal-row border-b border-gray-100 bg-gray-50">' +
+        '<td class="py-2 pr-4 text-right text-xs font-medium text-gray-400">' + esc(TEXT.subtotal) + '</td>' +
+        '<td class="py-2 px-4 text-right text-sm font-semibold text-gray-500 tabular-nums whitespace-nowrap">' + formatHours(group.hours) + '</td>' +
+        '<td></td>' +
+      '</tr>';
+  }
+
+  function parentRowHtml(group, key) {
+    var open = !!state.expanded[key];
+    var hasChildren = group.children && group.children.length;
+    var chevron = hasChildren
+      ? '<span class="viz-chevron material-symbols-outlined text-gray-400 transition-transform" style="font-size:20px;' + (open ? 'transform:rotate(90deg);' : '') + '">chevron_right</span>'
+      : '<span class="inline-block w-5"></span>';
+    var rows = '' +
+      '<tr class="viz-parent-row border-b border-gray-100 ' + (hasChildren ? 'cursor-pointer hover:bg-gray-50' : '') + '" data-key="' + esc(key) + '">' +
+        '<td class="py-3 pl-2 pr-4">' +
+          '<div class="flex items-center gap-2 min-w-0">' + chevron +
+            '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + group.color + '"></span>' +
+            '<span class="truncate font-semibold text-gray-900" title="' + esc(group.label) + '">' + esc(group.label) + '</span>' +
+          '</div>' +
+        '</td>' +
+        '<td class="py-3 px-4 text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(group.hours) + '</td>' +
+        '<td class="py-3 pl-4 pr-2 text-right whitespace-nowrap">' + shareBadge(group.color, group.percentage) + '</td>' +
+      '</tr>';
+    if (open && hasChildren) {
+      rows += group.children.map(childRowHtml).join('');
+      rows += subtotalRowHtml(group);
+    }
+    return rows;
+  }
+
+  function renderTable() {
+    var tbody = document.getElementById('viz-tbody');
+    var tfoot = document.getElementById('viz-tfoot');
+    var empty = document.getElementById('viz-empty');
+    if (!tbody) { return; }
+
+    if (!state.groups.length) {
+      tbody.innerHTML = '';
+      if (tfoot) { tfoot.innerHTML = ''; }
+      if (empty) { empty.classList.remove('hidden'); }
+      return;
+    }
+    if (empty) { empty.classList.add('hidden'); }
+
+    var groups = sortedGroups();
+    var totalPages = Math.max(1, Math.ceil(groups.length / state.perPage));
+    state.page = Math.min(Math.max(state.page, 1), totalPages);
+    var start = (state.page - 1) * state.perPage;
+    var pageGroups = groups.slice(start, start + state.perPage);
+
+    tbody.innerHTML = pageGroups.map(function (g) { return parentRowHtml(g, g.label); }).join('');
+
+    if (tfoot) {
+      tfoot.innerHTML = '' +
+        '<tr class="border-t-2 border-gray-200">' +
+          '<td class="py-3 pl-2 pr-4 font-bold text-gray-900">' + esc(TEXT.total) + '</td>' +
+          '<td class="py-3 px-4 text-right font-bold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(state.total) + '</td>' +
+          '<td class="py-3 pl-4 pr-2 text-right text-sm font-semibold text-gray-500 whitespace-nowrap">' + (state.total > 0 ? '100%' : '-') + '</td>' +
+        '</tr>';
+    }
+
+    bindRowToggles();
+    renderPagination(groups.length, totalPages, start, Math.min(start + state.perPage, groups.length));
+    updateSortIndicators();
+  }
+
+  function bindRowToggles() {
+    document.querySelectorAll('#viz-tbody .viz-parent-row').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var key = row.getAttribute('data-key');
+        state.expanded[key] = !state.expanded[key];
+        renderTable();
       });
-    </script>
-  <% end %>
-<% end %>
+    });
+  }
+
+  function updateSortIndicators() {
+    document.querySelectorAll('.ta-viz-sort').forEach(function (btn) {
+      var key = btn.getAttribute('data-sort-key');
+      var indicator = btn.querySelector('.viz-sort-indicator');
+      var active = state.sortKey === key;
+      btn.classList.toggle('text-gray-800', active);
+      if (indicator) {
+        indicator.textContent = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+      }
+    });
+  }
+
+  // ---- pagination ------------------------------------------------------------
+  function paginationButton(label, className, disabled, onClick) {
+    var li = document.createElement('li');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.textContent = label;
+    if (disabled) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+    else { btn.addEventListener('click', onClick); }
+    li.appendChild(btn);
+    return li;
+  }
+
+  function renderPagination(totalItems, totalPages, startIndex, endIndex) {
+    var bar = document.getElementById('viz-pagination-bar');
+    var info = document.getElementById('viz-pagination-info');
+    var links = document.getElementById('viz-pagination-links');
+    if (!bar || !info || !links) { return; }
+
+    bar.classList.remove('hidden');
+    bar.classList.add('flex');
+    info.textContent = (totalItems ? (startIndex + 1) : 0) + '-' + endIndex + ' ' + TEXT.of + ' ' + totalItems;
+    links.innerHTML = '';
+
+    if (totalPages <= 1) { return; }
+
+    links.appendChild(paginationButton('Previous',
+      'flex h-8 items-center justify-center rounded-l-lg border border-gray-300 bg-white px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+      state.page === 1, function () { state.page -= 1; renderTable(); }));
+
+    for (var p = 1; p <= totalPages; p += 1) {
+      (function (pageNumber) {
+        var current = pageNumber === state.page;
+        var cls = 'flex h-8 items-center justify-center border border-gray-300 px-3 leading-tight ' +
+          (current ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700' : 'bg-white text-gray-500 hover:bg-gray-100 hover:text-gray-700');
+        links.appendChild(paginationButton(String(pageNumber), cls, false, function () { state.page = pageNumber; renderTable(); }));
+      })(p);
+    }
+
+    links.appendChild(paginationButton('Next',
+      'flex h-8 items-center justify-center rounded-r-lg border border-gray-300 bg-white px-3 leading-tight text-gray-500 hover:bg-gray-100 hover:text-gray-700',
+      state.page === totalPages, function () { state.page += 1; renderTable(); }));
+  }
+
+  // ---- header ----------------------------------------------------------------
+  function renderHeader() {
+    var title = document.getElementById('viz-card-title');
+    var hint = document.getElementById('viz-card-hint');
+    var th = document.getElementById('viz-th-dimension');
+    if (title) { title.textContent = TEXT.breakdownBy.replace('__DIM__', state.dimensionLabel); }
+    if (th) { th.textContent = state.dimensionLabel; }
+    if (hint) {
+      if (state.groups.length) {
+        hint.textContent = formatHours(state.total) + ' ' + TEXT.totalSuffix + ' · ' + TEXT.expandHint;
+        hint.classList.remove('hidden');
+      } else {
+        hint.classList.add('hidden');
+      }
+    }
+  }
+
+  // ---- dropdowns -------------------------------------------------------------
+  function setupDropdown(btnId, menuId) {
+    var btn = document.getElementById(btnId);
+    var menu = document.getElementById(menuId);
+    if (!btn || !menu) { return; }
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.querySelectorAll('[data-viz-menu]').forEach(function (m) {
+        if (m !== menu) { m.classList.add('hidden'); }
+      });
+      menu.classList.toggle('hidden');
+    });
+    menu.setAttribute('data-viz-menu', '1');
+  }
+  document.addEventListener('click', function () {
+    document.querySelectorAll('[data-viz-menu]').forEach(function (m) { m.classList.add('hidden'); });
+  });
+
+  setupDropdown('viz-perpage-btn', 'viz-perpage-menu');
+
+  // Per-page: client-side only.
+  document.querySelectorAll('.ta-viz-perpage-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      state.perPage = parseInt(opt.getAttribute('data-per-page'), 10) || 10;
+      state.page = 1;
+      var label = document.getElementById('viz-perpage-label');
+      if (label) { label.textContent = state.perPage; }
+      document.getElementById('viz-perpage-menu').classList.add('hidden');
+      renderTable();
+    });
+  });
+
+  // Sorting.
+  document.querySelectorAll('.ta-viz-sort').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var key = btn.getAttribute('data-sort-key');
+      if (state.sortKey === key) {
+        state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sortKey = key;
+        state.sortDir = key === 'label' ? 'asc' : 'desc';
+      }
+      state.page = 1;
+      renderTable();
+    });
+  });
+
+  // Legend pager.
+  var legUp = document.getElementById('viz-legend-up');
+  var legDown = document.getElementById('viz-legend-down');
+  if (legUp) { legUp.addEventListener('click', function () { state.legendPage -= 1; renderLegend(); }); }
+  if (legDown) { legDown.addEventListener('click', function () { state.legendPage += 1; renderLegend(); }); }
+
+  // ---- initial render --------------------------------------------------------
+  renderHeader();
+  renderDonut();
+  renderLegend();
+  renderTable();
+});
+//]]>
+</script>

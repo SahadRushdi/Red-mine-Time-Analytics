@@ -3,6 +3,15 @@ class TimeAnalyticsController < ApplicationController
   before_action :set_date_range
   before_action :set_grouping
   helper :time_analytics
+  # The Visualize tab renders the core queries/_query_form + filters partials,
+  # which rely on these helpers (e.g. query_hidden_sort_tag, render_query_columns_selection).
+  helper :queries
+  helper :issues
+  helper :custom_fields
+
+  # Keep the top "Spent time" application menu item highlighted while on the
+  # Visualize tab (which lives on this controller, not core timelog).
+  menu_item :time_entries, only: :visualize
 
   def index
     # Default to individual dashboard
@@ -278,15 +287,40 @@ class TimeAnalyticsController < ApplicationController
   end
 
   # Selectable group-by options for the "Visualize" tab embedded in the core Spent time view.
+  # Each primary grouping declares the secondary dimension its rows expand into.
   VISUALIZE_GROUPS = {
-    'user_title' => :field_user_title,
-    'user'       => :label_user,
-    'activity'   => :field_activity,
-    'project'    => :label_project
+    'user_title' => { label: :field_user_title, child: 'user' },
+    'user'       => { label: :label_user,       child: 'activity' },
+    'activity'   => { label: :field_activity,   child: 'user' },
+    'project'    => { label: :label_project,    child: 'user' },
+    'issue'      => { label: :field_issue,      child: 'user' },
+    'spent_on'   => { label: :label_date,       child: 'user' },
+    'created_on' => { label: :field_created_on, child: 'user' }
   }.freeze
 
+  # SQL grouping expression for each dimension (against the title-joined base_scope).
+  # spent_on/created_on mirror the SQL Redmine's own TimeEntryQuery uses for these
+  # group-by columns (created_on is bucketed by date).
+  VISUALIZE_DIMENSION_SQL = {
+    'user_title' => 'tht.title',
+    'user'       => 'time_entries.user_id',
+    'activity'   => 'time_entries.activity_id',
+    'project'    => 'time_entries.project_id',
+    'issue'      => 'time_entries.issue_id',
+    'spent_on'   => 'time_entries.spent_on',
+    'created_on' => 'DATE(time_entries.created_on)'
+  }.freeze
+
+  # Donut/legend palette — matches the My Time dashboard donut (Tableau 10) so the
+  # visualization colours are consistent across the plugin.
+  VISUALIZE_PALETTE = %w[
+    #4E79A7 #F28E2B #E15759 #76B7B2 #59A14F
+    #EDC948 #B07AA1 #FF9DA7 #9C755F #BAB0AC
+  ].freeze
+
   # Aggregates the time entries from the current Spent time filter (carried over via
-  # query params) by a chosen attribute (default: User's Title) and renders a table + charts.
+  # query params) by a chosen attribute (default: User's Title), with an expandable
+  # secondary breakdown per group, and renders the donut + table card.
   def visualize
     @project = Project.find(params[:project_id]) if params[:project_id].present?
 
@@ -300,13 +334,21 @@ class TimeAnalyticsController < ApplicationController
         q
       end
 
-    @group_by = VISUALIZE_GROUPS.key?(params[:viz_group]) ? params[:viz_group] : 'user_title'
-    @rows = @query.valid? ? visualize_rows(@query.base_scope, @group_by) : []
-    @total_hours = @rows.sum { |row| row[1] }
+    # The primary dimension is driven by the core "Group results by" select in the
+    # Options section (the query's group_by). Fall back to User's Title when the
+    # chosen column isn't one we can visualize.
+    selected_group = Array(@query.group_by).first.to_s
+    @group_by = VISUALIZE_GROUPS.key?(selected_group) ? selected_group : 'user_title'
+    @child_by = VISUALIZE_GROUPS[@group_by][:child]
+    @viz_groups = @query.valid? ? visualize_groups(@query.base_scope, @group_by, @child_by) : []
+    @total_hours = @viz_groups.sum { |g| g[:hours] }
 
-    @chart_data = {
-      labels: @rows.map { |row| row[0] },
-      datasets: [{ data: @rows.map { |row| row[1].round(2) } }]
+    @viz_payload = {
+      dimension_label: l(VISUALIZE_GROUPS[@group_by][:label]),
+      child_label:     l(VISUALIZE_GROUPS[@child_by][:label]),
+      child_dimension: @child_by,
+      total:           @total_hours,
+      groups:          @viz_groups
     }.to_json
   rescue ActiveRecord::RecordNotFound
     render_404
@@ -314,29 +356,71 @@ class TimeAnalyticsController < ApplicationController
 
   private
 
-  # Returns [[label, hours], ...] sorted by hours desc for the chosen grouping.
-  def visualize_rows(scope, group_by)
+  # Builds the nested visualize dataset: a list of top-level groups (sorted by hours
+  # desc, colored from the palette, with grand-total share) each carrying its child
+  # breakdown (sorted by hours desc, with within-group share).
+  def visualize_groups(scope, primary, secondary)
     scope = scope.reorder(nil)
-    rows =
-      case group_by
-      when 'user_title'
-        scope.group('tht.title').sum(:hours).map { |title, h| [title.presence || l(:label_none_title), h.to_f] }
-      when 'user'
-        totals = scope.group(:user_id).sum(:hours)
-        users = User.where(id: totals.keys).index_by(&:id)
-        totals.map { |uid, h| [users[uid]&.name || '-', h.to_f] }
-      when 'activity'
-        totals = scope.group(:activity_id).sum(:hours)
-        acts = TimeEntryActivity.where(id: totals.keys).index_by(&:id)
-        totals.map { |aid, h| [acts[aid]&.name || '-', h.to_f] }
-      when 'project'
-        totals = scope.group(:project_id).sum(:hours)
-        projs = Project.where(id: totals.keys).index_by(&:id)
-        totals.map { |pid, h| [projs[pid]&.name || '-', h.to_f] }
-      else
-        []
+    sums = scope.group(VISUALIZE_DIMENSION_SQL[primary], VISUALIZE_DIMENSION_SQL[secondary]).sum(:hours)
+
+    by_parent = Hash.new { |h, k| h[k] = {} }
+    sums.each { |(pval, sval), hours| by_parent[pval][sval] = hours.to_f }
+
+    parent_labels = resolve_dimension_labels(primary, by_parent.keys)
+    child_labels  = resolve_dimension_labels(secondary, by_parent.values.flat_map(&:keys).uniq)
+
+    parents = by_parent.filter_map do |pval, child_sums|
+      total = child_sums.values.sum
+      [pval, child_sums, total] if total.positive?
+    end
+    grand_total = parents.sum { |_, _, total| total }
+
+    parents.sort_by { |_, _, total| -total }.each_with_index.map do |(pval, child_sums, total), index|
+      children = child_sums.filter_map { |sval, hours| [sval, hours] if hours.positive? }
+                           .sort_by { |_, hours| -hours }
+                           .map do |sval, hours|
+                             {
+                               label: child_labels[sval],
+                               hours: hours,
+                               percentage: total.positive? ? (hours / total * 100).round(1) : 0
+                             }
+                           end
+      {
+        label: parent_labels[pval],
+        hours: total,
+        percentage: grand_total.positive? ? (total / grand_total * 100).round(1) : 0,
+        color: VISUALIZE_PALETTE[index % VISUALIZE_PALETTE.size],
+        children: children
+      }
+    end
+  end
+
+  # Maps raw grouping values (title strings or record ids) to display labels.
+  def resolve_dimension_labels(dimension, values)
+    case dimension
+    when 'user_title'
+      values.index_with { |value| value.presence || l(:label_none_title) }
+    when 'user'
+      names = User.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'activity'
+      names = TimeEntryActivity.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'project'
+      names = Project.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'issue'
+      issues = Issue.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| (i = issues[id]) ? "##{i.id} #{i.subject}" : l(:label_none) }
+    when 'spent_on', 'created_on'
+      values.index_with do |value|
+        next l(:label_none) if value.blank?
+
+        value.respond_to?(:strftime) ? value.strftime('%Y-%m-%d') : value.to_s
       end
-    rows.reject { |row| row[1].zero? }.sort_by { |row| -row[1] }
+    else
+      values.index_with(&:to_s)
+    end
   end
 
 
