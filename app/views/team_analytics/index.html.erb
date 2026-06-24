@@ -1255,20 +1255,15 @@
      data-to="<%= @to %>">
   <button type="button" id="member-breakdown-toggle"
           aria-expanded="false" aria-controls="member-breakdown-body"
-          class="ta-bd-header-btn w-full flex items-center justify-between gap-3 px-6 py-4 text-left rounded-lg hover:bg-gray-50 transition-colors">
-    <span class="flex items-center gap-2 min-w-0">
-      <span class="material-symbols-outlined text-gray-600" aria-hidden="true">groups</span>
-      <span class="text-lg font-semibold text-gray-900"><%= l(:label_member_breakdown) %></span>
-      <span class="hidden sm:inline text-sm text-gray-500 truncate"><%= l(:label_member_breakdown_hint) %></span>
-    </span>
+          class="ta-bd-header-btn w-full flex items-center gap-2 px-6 py-4 text-left rounded-lg hover:bg-gray-50 transition-colors">
     <svg id="member-breakdown-chevron" class="w-5 h-5 text-gray-500 shrink-0 transition-transform duration-200 -rotate-90" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
     </svg>
+    <span class="text-lg font-semibold text-gray-900"><%= l(:label_member_breakdown) %></span>
   </button>
 
   <div id="member-breakdown-body" class="hidden border-t border-gray-200">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-3 bg-gray-50 border-b border-gray-100">
-      <span class="text-sm font-medium text-gray-600"><%= l(:label_member_breakdown_group_by) %></span>
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 px-6 py-3 bg-gray-50 border-b border-gray-100">
       <div class="inline-flex rounded-md shadow-sm" role="group" id="member-breakdown-grouping">
         <button type="button" data-grouping="issue"
                 class="member-bd-group-btn inline-flex items-center px-4 py-2 text-sm font-medium border border-gray-300 rounded-l-lg focus:outline-none !bg-[#3b82f6] !text-white">
@@ -1303,7 +1298,9 @@
       <span class="align-middle ml-2 text-red-500"><%= l(:label_member_breakdown_error) %></span>
     </div>
     <div id="member-breakdown-empty" class="hidden px-6 py-12 text-center text-gray-500 text-sm"><%= l(:label_member_breakdown_empty) %></div>
-    <div id="member-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6"></div>
+    <%# Show ~6 cards (2 rows × 3 on lg) by default; the rest scroll within this section
+        only (not the whole page). %>
+    <div id="member-breakdown-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6 overflow-y-auto" style="max-height: 30rem;"></div>
   </div>
 </div>
 <% end %>
@@ -2176,6 +2173,7 @@
       setStoredExclusions(ids);
       window.history.replaceState({}, '', buildExclusionUrl(ids).toString());
       refreshTeamMemberExclusions(ids);
+      refreshMemberBreakdownExclusions();
     }
   });
 
@@ -2315,7 +2313,9 @@
           breakdownAvatarHtml(member.name) +
           '<span class="font-semibold text-gray-900 truncate" title="' + bdEscape(member.name) + '">' + bdEscape(member.name) + '</span>' +
         '</span>' +
-        '<span class="font-semibold text-gray-900 whitespace-nowrap">' + formatTeamHours(member.total_hours) + '</span>' +
+        '<button type="button" class="member-bd-expand ta-bd-icon-btn inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" data-member-index="' + index + '" title="' + bdEscape(BREAKDOWN_EXPAND_TITLE) + '">' +
+          '<span class="material-symbols-outlined" style="font-size:18px;">open_in_full</span>' +
+        '</button>' +
       '</div>' +
       '<div class="flex items-center gap-4">' +
         '<div class="relative w-[140px] h-[140px] shrink-0">' +
@@ -2324,9 +2324,6 @@
             '<span class="text-base font-bold text-gray-900 leading-tight">' + formatTeamHours(member.total_hours) + '</span>' +
             '<span class="text-[10px] text-gray-500 leading-tight">' + bdEscape(BREAKDOWN_TOTAL_LABEL) + '</span>' +
           '</div>' +
-          '<button type="button" class="member-bd-expand ta-bd-icon-btn absolute -top-1 -right-1 inline-flex items-center justify-center w-6 h-6 rounded-md" data-member-index="' + index + '" title="' + bdEscape(BREAKDOWN_EXPAND_TITLE) + '">' +
-            '<span class="material-symbols-outlined" style="font-size:14px;">open_in_full</span>' +
-          '</button>' +
         '</div>' +
         '<div class="flex-1 min-w-0 flex flex-col justify-center self-stretch">' +
           '<div class="member-bd-legend min-w-0" data-page="0"></div>' +
@@ -2387,6 +2384,21 @@
         btn.classList.add('!bg-white', '!text-gray-700', 'hover:!bg-gray-50');
       }
     });
+  }
+
+  // Keep the Member Breakdown in sync with the temporary-exclusion set. The URL has
+  // already been updated by the toggle handler, so invalidate the cached payload and,
+  // when the section is open, re-fetch (the request reads temp_excluded_ids from the
+  // URL via getTempExcludedIds()). When collapsed, the next expand loads fresh data.
+  function refreshMemberBreakdownExclusions() {
+    var container = document.querySelector('.ta-member-breakdown');
+    var body = document.getElementById('member-breakdown-body');
+    if (!container || !body) return;
+    memberBreakdownData = null;
+    memberBreakdownLoaded = false;
+    if (!body.classList.contains('hidden') && !memberBreakdownLoading) {
+      loadMemberBreakdown(container);
+    }
   }
 
   function loadMemberBreakdown(container) {

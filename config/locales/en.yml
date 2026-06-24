@@ -20,7 +20,7 @@ en:
   label_members: "Members"
 
   # Member breakdown (per-member second-level grouping on the Team dashboard)
-  label_member_breakdown: "Member Breakdown"
+  label_member_breakdown: "Breakdown"
   label_member_breakdown_hint: "Second-level grouping — expand to see each member's commitment"
   label_member_breakdown_group_by: "Group by"
   label_member_breakdown_loading: "Loading member breakdown…"
