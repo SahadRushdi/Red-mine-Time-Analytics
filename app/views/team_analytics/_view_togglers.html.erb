@@ -54,7 +54,7 @@
   <% if current_sort %>
     <div class="flex flex-wrap items-center gap-3 pb-2 lg:pb-0">
       <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_sort[:state] == 'summary' ? '' : 'display: none;' %>">
-        <button type="button" id="sort-name-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+        <button type="button" id="sort-name-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
         <button type="button" id="sort-hours-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
       </div>
       <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>

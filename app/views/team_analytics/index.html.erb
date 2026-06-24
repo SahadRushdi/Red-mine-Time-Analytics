@@ -2047,28 +2047,63 @@
     if (icon) icon.textContent = isCollapsed ? 'expand_more' : 'chevron_right';
   }
 
+  // Per-summary sort state: which field is active + each field's remembered direction.
+  var summarySortState = {};
+
+  function getSummarySortState(containerId) {
+    return summarySortState[containerId] ||
+      (summarySortState[containerId] = { field: 'hours', dir: { name: 'asc', hours: 'desc' } });
+  }
+
+  // Toggle-style summary sort: clicking the active field flips its direction (so it can
+  // go Low→High or Z→A); clicking the other field switches to it in its own direction.
   function sortSummaryCards(containerId, sortBy) {
+    var state = getSummarySortState(containerId);
+    if (state.field === sortBy) {
+      state.dir[sortBy] = state.dir[sortBy] === 'asc' ? 'desc' : 'asc';
+    }
+    state.field = sortBy;
+    applySummarySort(containerId);
+  }
+
+  // Re-orders the cards using the container's current sort state (no direction flip).
+  function applySummarySort(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
     var cardsContainer = container.querySelector('.space-y-2');
     if (!cardsContainer) return;
+    var state = getSummarySortState(containerId);
+    var field = state.field, dir = state.dir[field];
     var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
     cards.sort(function(a, b) {
-      if (sortBy === 'name') {
-        return (a.getAttribute('data-name') || '').toLowerCase()
+      var r;
+      if (field === 'name') {
+        r = (a.getAttribute('data-name') || '').toLowerCase()
           .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
+      } else {
+        r = parseFloat(a.getAttribute('data-hours') || '0') - parseFloat(b.getAttribute('data-hours') || '0');
       }
-      return parseFloat(b.getAttribute('data-hours') || '0') -
-             parseFloat(a.getAttribute('data-hours') || '0');
+      return dir === 'asc' ? r : -r;
     });
     cards.forEach(function(card) { cardsContainer.appendChild(card); });
+    updateSummarySortButtons(containerId, state);
+  }
+
+  // Active button blue, the other gray; each label carries a flipping arrow
+  // (A–Z ↑ / Z–A ↓, Hours ↓ / Hours ↑) — ↑ = ascending, ↓ = descending.
+  function updateSummarySortButtons(containerId, state) {
     var hoursBtn = document.getElementById('sort-hours-' + containerId);
     var nameBtn  = document.getElementById('sort-name-'  + containerId);
     var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
     var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
-    if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
-    if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
-    if (containerId === 'team-member-summary-view') { lastMemberSort = sortBy; }
+    if (hoursBtn) {
+      hoursBtn.style.cssText = state.field === 'hours' ? active : inactive;
+      hoursBtn.textContent = 'Hours ' + (state.dir.hours === 'asc' ? '↑' : '↓');
+    }
+    if (nameBtn) {
+      nameBtn.style.cssText = state.field === 'name' ? active : inactive;
+      nameBtn.textContent = state.dir.name === 'asc' ? 'A–Z ↑' : 'Z–A ↓';
+    }
   }
 
   // --- Temporary member exclusion (Members summary toggles) ---------------------
@@ -2077,7 +2112,6 @@
   // team lead re-enables them. They are mirrored into the URL (temp_excluded_ids[])
   // so the server renders every navigated/reloaded page already excluded; a one-time
   // self-correcting redirect re-applies them on any page that lands without the param.
-  var lastMemberSort = 'hours';
   var exclusionRequestToken = 0;
   // Bump the version segment to invalidate any stale per-team entries persisted by an
   // earlier build (e.g. exclusions that bled across teams before the team-switch fix).
@@ -2157,7 +2191,7 @@
         // Re-apply summary/detailed visibility + pagination text, the active sort,
         // then rebuild the donut from the swapped rows.
         restoreMemberViewState();
-        sortSummaryCards('team-member-summary-view', lastMemberSort);
+        applySummarySort('team-member-summary-view');
         initTeamDonutChart();
       })
       .catch(function(err) { console.error('Member exclusion refresh failed:', err); })

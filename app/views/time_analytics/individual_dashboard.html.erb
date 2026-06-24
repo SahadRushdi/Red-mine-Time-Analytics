@@ -673,7 +673,7 @@ function toggleHolidays() {
                  when 'issue' then @issue_view_state
                end %>
             <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_view_state == 'summary' ? '' : 'display: none;' %>">
-              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
+              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
               <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
             </div>
             <%= form_tag my_time_path, method: :get, local: true,
@@ -752,7 +752,7 @@ function toggleHolidays() {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
+          <div class="space-y-2 px-2 pt-4">
             <%
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
@@ -761,9 +761,9 @@ function toggleHolidays() {
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
+              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
                 <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1 gap-3">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -816,7 +816,7 @@ function toggleHolidays() {
         
         <%# Summary View: Simple Activity Table (Hidden by default) %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
+          <div class="space-y-2 px-2 pt-4">
             <%
               # Sort activities by hours (highest to lowest)
               sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
@@ -825,9 +825,9 @@ function toggleHolidays() {
               <% hours = @activity_totals[activity] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
+              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
                 <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1 gap-3">
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -882,7 +882,7 @@ function toggleHolidays() {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
+          <div class="space-y-2 px-2 pt-4">
             <%
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
@@ -891,9 +891,9 @@ function toggleHolidays() {
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
+              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
                 <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1 gap-3">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -946,7 +946,7 @@ function toggleHolidays() {
         
         <%# Summary View: Simple Project Table (Hidden by default) %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
+          <div class="space-y-2 px-2 pt-4">
             <%
               # Sort projects by hours (highest to lowest)
               sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
@@ -955,9 +955,9 @@ function toggleHolidays() {
               <% hours = @project_totals[project] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
+              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
                 <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1 gap-3">
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
@@ -1024,7 +1024,7 @@ function toggleHolidays() {
         
         <%# Summary View: Simple Issue Table (Hidden by default) %>
         <div id="issue-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
+          <div class="space-y-2 px-2 pt-4">
             <%
               # Sort issues by hours (highest to lowest)
               sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
@@ -1033,9 +1033,9 @@ function toggleHolidays() {
               <% hours = @issue_totals[issue_info[:key]] || 0 %>
               <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
               <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(issue_info[:display]) %>">
+              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(issue_info[:display]) %>">
                 <!-- Issue name and hours -->
-                <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center justify-between mb-1 gap-3">
                     <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
                       <% if issue_info[:issue] %>
                         <span class="ts-tracker-badge"><%= issue_info[:issue].tracker.name %></span>
@@ -2050,28 +2050,63 @@ function initSummarySorting(tableContainerId) {
   }
 }
 
-// Sort card-based summary views by hours (desc) or name (A-Z)
+// Per-summary sort state: which field is active + each field's remembered direction.
+var summarySortState = {};
+
+function getSummarySortState(containerId) {
+  return summarySortState[containerId] ||
+    (summarySortState[containerId] = { field: 'hours', dir: { name: 'asc', hours: 'desc' } });
+}
+
+// Toggle-style summary sort: clicking the active field flips its direction (so it can
+// go Low→High or Z→A); clicking the other field switches to it in its own direction.
 function sortSummaryCards(containerId, sortBy) {
+  var state = getSummarySortState(containerId);
+  if (state.field === sortBy) {
+    state.dir[sortBy] = state.dir[sortBy] === 'asc' ? 'desc' : 'asc';
+  }
+  state.field = sortBy;
+  applySummarySort(containerId);
+}
+
+// Re-orders the cards using the container's current sort state (no direction flip).
+function applySummarySort(containerId) {
   var container = document.getElementById(containerId);
   if (!container) return;
-  var cardsContainer = container.querySelector('.space-y-6');
+  var cardsContainer = container.querySelector('.space-y-2');
   if (!cardsContainer) return;
+  var state = getSummarySortState(containerId);
+  var field = state.field, dir = state.dir[field];
   var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
   cards.sort(function(a, b) {
-    if (sortBy === 'name') {
-      return (a.getAttribute('data-name') || '').toLowerCase()
+    var r;
+    if (field === 'name') {
+      r = (a.getAttribute('data-name') || '').toLowerCase()
         .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
+    } else {
+      r = parseFloat(a.getAttribute('data-hours') || '0') - parseFloat(b.getAttribute('data-hours') || '0');
     }
-    return parseFloat(b.getAttribute('data-hours') || '0') -
-           parseFloat(a.getAttribute('data-hours') || '0');
+    return dir === 'asc' ? r : -r;
   });
   cards.forEach(function(card) { cardsContainer.appendChild(card); });
+  updateSummarySortButtons(containerId, state);
+}
+
+// Active button blue, the other gray; each label carries a flipping arrow
+// (A–Z ↑ / Z–A ↓, Hours ↓ / Hours ↑) — ↑ = ascending, ↓ = descending.
+function updateSummarySortButtons(containerId, state) {
   var hoursBtn = document.getElementById('sort-hours-' + containerId);
   var nameBtn  = document.getElementById('sort-name-'  + containerId);
   var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
   var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
-  if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
-  if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
+  if (hoursBtn) {
+    hoursBtn.style.cssText = state.field === 'hours' ? active : inactive;
+    hoursBtn.textContent = 'Hours ' + (state.dir.hours === 'asc' ? '↑' : '↓');
+  }
+  if (nameBtn) {
+    nameBtn.style.cssText = state.field === 'name' ? active : inactive;
+    nameBtn.textContent = state.dir.name === 'asc' ? 'A–Z ↑' : 'Z–A ↓';
+  }
 }
 
 // Table sorting function for summary views
