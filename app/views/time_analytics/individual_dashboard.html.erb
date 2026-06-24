@@ -767,7 +767,7 @@ function toggleHolidays() {
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -831,7 +831,7 @@ function toggleHolidays() {
                   <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -897,7 +897,7 @@ function toggleHolidays() {
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -961,7 +961,7 @@ function toggleHolidays() {
                   <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
                   <div class="flex items-center gap-3">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -1049,7 +1049,7 @@ function toggleHolidays() {
                     </h3>
                   <div class="flex items-center gap-3 flex-shrink-0">
                     <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
+                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
                   </div>
                 </div>
                 <!-- Progress bar -->
@@ -1956,12 +1956,12 @@ function generateDonutLegend(labels, values, colors, total) {
     
     legendItem.innerHTML = `
       <div class="flex items-center gap-1.5 flex-1 min-w-0">
-        <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background-color: ${colors[i]}"></div>
+        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${colors[i]}"></div>
         <span class="text-gray-700 truncate">${labels[i]}</span>
       </div>
       <div class="flex items-center gap-1.5 ml-2 flex-shrink-0">
         <span class="font-semibold text-gray-900">${formattedHours}</span>
-        <span class="text-gray-500">(${percentage}%)</span>
+        <span class="font-semibold" style="color: ${colors[i]}">(${percentage}%)</span>
       </div>
     `;
     
