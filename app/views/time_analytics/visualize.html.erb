@@ -26,10 +26,12 @@
     h2 { font-size: 1.43em; font-weight: 500; line-height: 1.33; margin-top: 0; margin-bottom: 20px; }
     h3 { font-size: 1.14em; font-weight: 500; line-height: 1.33; margin-top: 0; margin-bottom: 20px; }
     h4 { font-size: 1em; font-weight: 500; line-height: 1.428571429; margin-top: 0; }
-    /* Inside the viz card Tailwind controls headings */
+    /* Inside the viz card Tailwind controls headings; card-title gets its own size. */
     #viz-card h1, #viz-card h2, #viz-card h3, #viz-card h4, #viz-card h5, #viz-card h6 {
       font-size: inherit; font-weight: inherit; line-height: inherit; margin: 0;
     }
+    /* Card title override — beats the inherit reset above with ID+element specificity */
+    #viz-card-title { font-size: 1.25rem !important; font-weight: 700 !important; line-height: 1.75rem !important; }
 
     /* 2. Query-form action buttons (Apply/Clear/Save) ---
        @tailwindcss/forms: button,[type='submit']{background-color:transparent}
@@ -284,8 +286,13 @@
 
 <%# Filters + Options + tab strip, mirroring the core Details/Report tabs. The form
     submits back to the Visualize action so applying filters (and the Options
-    "Group results by" select) re-renders this tab. %>
-<%= form_tag(time_entries_visualize_path(@project ? { project_id: @project.identifier } : {}), method: :get, id: 'query_form') do %>
+    "Group results by" select) re-renders this tab.
+    NOTE: project_id MUST be a hidden field inside the form body, NOT in the form
+    action URL. With method:get, browsers replace the entire query string with form
+    fields on submit — any param in the action URL's query string is silently dropped,
+    which caused @project to become nil and the query to return all time entries. %>
+<%= form_tag(time_entries_visualize_path, method: :get, id: 'query_form') do %>
+  <%= hidden_field_tag 'project_id', @project.identifier if @project %>
   <%= render :partial => 'queries/query_form' %>
 
   <div class="tabs hide-when-print">
@@ -304,7 +311,7 @@
       sortable / paginated / expandable table on the right. Rendered client-side. %>
   <div id="viz-card" class="rounded-xl border border-gray-300 bg-white shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
-      <h3 id="viz-card-title" class="text-lg font-semibold text-gray-900"></h3>
+      <h3 id="viz-card-title" class="text-xl font-bold text-gray-900"></h3>
       <div class="flex items-center gap-3">
         <span id="viz-card-hint" class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 whitespace-nowrap"></span>
         <%# Per-page selector lives in the top-right corner, after the hint. %>
@@ -330,7 +337,7 @@
 
     <div id="viz-split-layout" class="flex flex-col lg:flex-row">
       <%# Left column: donut + legend. Width is JS-controlled via flex-basis (splitter). %>
-      <div id="viz-donut-column" class="border-b lg:border-b-0 lg:border-r border-gray-200 p-6 flex flex-col items-center" style="flex-basis:35%;min-width:220px">
+      <div id="viz-donut-column" class="border-b lg:border-b-0 p-6 flex flex-col items-center" style="flex-basis:35%;min-width:220px">
         <div id="viz-donut-container" class="relative" style="width:240px;height:240px">
           <canvas id="viz-donut"></canvas>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -339,7 +346,7 @@
           </div>
         </div>
         <div class="w-full mt-5">
-          <div id="viz-legend" class="grid gap-x-3 gap-y-1.5" style="grid-template-columns:repeat(2,1fr)" data-page="0"></div>
+          <div id="viz-legend" class="grid" style="grid-template-columns:repeat(2,1fr);column-gap:2rem;row-gap:0.5rem" data-page="0"></div>
           <div id="viz-legend-pager" class="hidden items-center justify-end gap-1 mt-3">
             <button type="button" id="viz-legend-up" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_up) %>">
               <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_up</span>
@@ -529,10 +536,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     legend.innerHTML = slice.map(function (g) {
       return '' +
-        '<div class="flex items-center gap-2">' +
-          '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + g.color + '"></span>' +
-          '<span class="flex-1 min-w-0 truncate text-sm text-gray-600" title="' + esc(g.label) + '">' + esc(g.label) + '</span>' +
-          '<span class="text-sm font-semibold whitespace-nowrap" style="color:' + g.color + '">' + formatPct(g.percentage) + '</span>' +
+        '<div class="flex items-center gap-1.5 min-w-0">' +
+          '<span class="w-2 h-2 rounded-full shrink-0" style="background:' + g.color + '"></span>' +
+          '<span class="truncate text-sm text-gray-600 min-w-0" title="' + esc(g.label) + '">' + esc(g.label) + '</span>' +
+          '<span class="text-sm font-semibold whitespace-nowrap shrink-0" style="color:' + g.color + ';padding-left:6px">' + formatPct(g.percentage) + '</span>' +
         '</div>';
     }).join('');
 
@@ -811,10 +818,12 @@ document.addEventListener('DOMContentLoaded', function () {
       // Ask Chart.js to re-fit the canvas to its new container.
       if (donutChart) { try { donutChart.resize(); } catch (_) {} }
 
-      // Legend columns: 1 / 2 / 3 based on available column width.
+      // 2-column legend only when donut section occupies ≥45% of the card width.
       if (legendEl) {
-        var cols = colW >= 460 ? 3 : (colW >= 300 ? 2 : 1);
+        var currentPct = parseFloat(donutCol.style.flexBasis) || DEFAULT_PERCENT;
+        var cols = currentPct >= 45 ? 2 : 1;
         legendEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
+        legendEl.style.columnGap = cols > 1 ? '2rem' : '0';
       }
     }
 
