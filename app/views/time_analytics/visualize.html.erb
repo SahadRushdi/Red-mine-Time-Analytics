@@ -192,7 +192,7 @@
       height: auto !important;
       padding: 0 !important;
       color: #6b7280 !important;
-      text-transform: uppercase !important;
+      text-transform: none !important;
     }
     #viz-card .ta-viz-sort:hover { color: #374151 !important; }
     #viz-card #viz-perpage-menu button { color: #374151 !important; }
@@ -221,8 +221,33 @@
       background-color: #f3f4f6 !important;
       color: #374151 !important;
     }
+    /* table-layout:fixed: col 1 (dimension) auto-fills; cols 2+3 use declared widths */
+    .ta-viz-table { table-layout: fixed; }
     .ta-viz-table td, .ta-viz-table th { border: none; }
     #viz-card .material-symbols-outlined { line-height: 1; }
+    /* Drag-to-resize splitter between donut and table (mirrors Teams admin pattern) */
+    #viz-splitter {
+      position: relative;
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+      cursor: col-resize;
+      touch-action: none;
+      flex-shrink: 0;
+      width: 10px;
+    }
+    @media (min-width: 1024px) { #viz-splitter { display: flex; } }
+    .viz-splitter-handle {
+      width: 4px;
+      height: 100%;
+      border-radius: 999px;
+      background: #d1d5db;
+      transition: background-color 0.15s ease;
+    }
+    #viz-splitter:hover .viz-splitter-handle { background: #9ca3af; }
+    #viz-splitter.is-dragging .viz-splitter-handle { background: #3b82f6; }
+    body.viz-split-dragging { cursor: col-resize !important; user-select: none !important; }
+
     /* Borderless icon buttons for the legend pager (mirrors My Team breakdown). */
     .ta-bd-icon-btn {
       background: transparent !important; border: 0 !important; box-shadow: none !important;
@@ -277,8 +302,8 @@
 <div class="ta-viz-wrap" style="margin-top:18px;">
   <%# The Figma "Hours breakdown" card: donut + paginated legend on the left,
       sortable / paginated / expandable table on the right. Rendered client-side. %>
-  <div id="viz-card" class="rounded-xl border border-gray-200 bg-white shadow-sm">
-    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+  <div id="viz-card" class="rounded-xl border border-gray-300 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
       <h3 id="viz-card-title" class="text-lg font-semibold text-gray-900"></h3>
       <div class="flex items-center gap-3">
         <span id="viz-card-hint" class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 whitespace-nowrap"></span>
@@ -303,10 +328,10 @@
       </div>
     </div>
 
-    <div class="flex flex-col lg:flex-row">
-      <%# Left column: donut + legend %>
-      <div class="shrink-0 lg:w-[320px] border-b lg:border-b-0 lg:border-r border-gray-100 p-6 flex flex-col items-center">
-        <div class="relative w-[200px] h-[200px]">
+    <div id="viz-split-layout" class="flex flex-col lg:flex-row">
+      <%# Left column: donut + legend. Width is JS-controlled via flex-basis (splitter). %>
+      <div id="viz-donut-column" class="border-b lg:border-b-0 lg:border-r border-gray-200 p-6 flex flex-col items-center" style="flex-basis:35%;min-width:220px">
+        <div id="viz-donut-container" class="relative" style="width:240px;height:240px">
           <canvas id="viz-donut"></canvas>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span id="viz-donut-total" class="text-2xl font-bold text-gray-900"></span>
@@ -314,7 +339,7 @@
           </div>
         </div>
         <div class="w-full mt-5">
-          <div id="viz-legend" class="space-y-2.5" data-page="0"></div>
+          <div id="viz-legend" class="grid gap-x-3 gap-y-1.5" style="grid-template-columns:repeat(2,1fr)" data-page="0"></div>
           <div id="viz-legend-pager" class="hidden items-center justify-end gap-1 mt-3">
             <button type="button" id="viz-legend-up" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_up) %>">
               <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_up</span>
@@ -326,24 +351,29 @@
         </div>
       </div>
 
-      <%# Right column: table %>
-      <div class="flex-1 min-w-0 p-2 sm:p-4">
+      <%# Drag handle between donut and table — mirrors Teams admin splitter %>
+      <div id="viz-splitter" role="separator" aria-orientation="vertical" title="Drag to resize">
+        <span class="viz-splitter-handle" aria-hidden="true"></span>
+      </div>
+
+      <%# Right column: table — flex-1 fills remaining space, table is w-full with fixed layout %>
+      <div class="flex-1 min-w-0 p-4">
         <div class="overflow-x-auto">
           <table class="ta-viz-table w-full text-sm">
             <thead>
               <tr class="border-b border-gray-100">
-                <th class="py-2 pl-2 pr-4 text-left">
-                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700" data-sort-key="label">
+                <th class="py-2 pl-3 pr-6 text-left">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700" data-sort-key="label">
                     <span id="viz-th-dimension"></span><span class="viz-sort-indicator text-[10px]"></span>
                   </button>
                 </th>
-                <th class="py-2 px-4 text-right">
-                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="hours">
+                <th class="py-2 pl-6 pr-6 text-right" style="width:130px">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="hours">
                     <%= l(:field_hours) %><span class="viz-sort-indicator text-[10px]"></span>
                   </button>
                 </th>
-                <th class="py-2 pl-4 pr-2 text-right">
-                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="percentage">
+                <th class="py-2 pl-6 pr-3 text-right" style="width:100px">
+                  <button type="button" class="ta-viz-sort inline-flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700 ml-auto" data-sort-key="percentage">
                     <%= l(:label_share) %><span class="viz-sort-indicator text-[10px]"></span>
                   </button>
                 </th>
@@ -380,7 +410,6 @@ document.addEventListener('DOMContentLoaded', function () {
     expandHint: '<%= j l(:label_visualize_expand_hint) %>',
     totalSuffix: '<%= j l(:label_visualize_total_suffix) %>',
     total: '<%= j l(:label_total) %>',
-    subtotal: '<%= j l(:label_subtotal) %>',
     noData: '<%= j l(:label_no_data) %>',
     of: 'of'
   };
@@ -538,22 +567,13 @@ document.addEventListener('DOMContentLoaded', function () {
       : '<span class="w-2 h-2 rounded-full bg-gray-300 shrink-0 ml-2.5 mr-1"></span>';
     return '' +
       '<tr class="viz-child-row border-b border-gray-50 bg-gray-50/40">' +
-        '<td class="py-2 pl-9 pr-4">' +
+        '<td class="py-1.5 pl-9 pr-6">' +
           '<div class="flex items-center gap-2 min-w-0">' + leader +
             '<span class="truncate text-gray-600" title="' + esc(child.label) + '">' + esc(child.label) + '</span>' +
           '</div>' +
         '</td>' +
-        '<td class="py-2 px-4 text-right font-semibold text-gray-800 tabular-nums whitespace-nowrap">' + formatHours(child.hours) + '</td>' +
-        '<td class="py-2 pl-4 pr-2 text-right text-xs text-gray-400 whitespace-nowrap">' + formatPct(child.percentage) + '</td>' +
-      '</tr>';
-  }
-
-  function subtotalRowHtml(group) {
-    return '' +
-      '<tr class="viz-subtotal-row border-b border-gray-100 bg-gray-50">' +
-        '<td class="py-2 pr-4 text-right text-xs font-medium text-gray-400">' + esc(TEXT.subtotal) + '</td>' +
-        '<td class="py-2 px-4 text-right text-sm font-semibold text-gray-500 tabular-nums whitespace-nowrap">' + formatHours(group.hours) + '</td>' +
-        '<td></td>' +
+        '<td class="py-1.5 pl-6 pr-6 text-right text-gray-400 tabular-nums whitespace-nowrap">' + formatHours(child.hours) + '</td>' +
+        '<td class="py-1.5 pl-6 pr-3 text-right text-xs text-gray-400 whitespace-nowrap">' + formatPct(child.percentage) + '</td>' +
       '</tr>';
   }
 
@@ -565,18 +585,17 @@ document.addEventListener('DOMContentLoaded', function () {
       : '<span class="inline-block w-5"></span>';
     var rows = '' +
       '<tr class="viz-parent-row border-b border-gray-100 ' + (hasChildren ? 'cursor-pointer hover:bg-gray-50' : '') + '" data-key="' + esc(key) + '">' +
-        '<td class="py-3 pl-2 pr-4">' +
+        '<td class="py-2 pl-3 pr-6">' +
           '<div class="flex items-center gap-2 min-w-0">' + chevron +
             '<span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:' + group.color + '"></span>' +
             '<span class="truncate font-semibold text-gray-900" title="' + esc(group.label) + '">' + esc(group.label) + '</span>' +
           '</div>' +
         '</td>' +
-        '<td class="py-3 px-4 text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(group.hours) + '</td>' +
-        '<td class="py-3 pl-4 pr-2 text-right whitespace-nowrap">' + shareBadge(group.color, group.percentage) + '</td>' +
+        '<td class="py-2 pl-6 pr-6 text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(group.hours) + '</td>' +
+        '<td class="py-2 pl-6 pr-3 text-right whitespace-nowrap">' + shareBadge(group.color, group.percentage) + '</td>' +
       '</tr>';
     if (open && hasChildren) {
       rows += group.children.map(childRowHtml).join('');
-      rows += subtotalRowHtml(group);
     }
     return rows;
   }
@@ -606,9 +625,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (tfoot) {
       tfoot.innerHTML = '' +
         '<tr class="border-t-2 border-gray-200">' +
-          '<td class="py-3 pl-2 pr-4 font-bold text-gray-900">' + esc(TEXT.total) + '</td>' +
-          '<td class="py-3 px-4 text-right font-bold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(state.total) + '</td>' +
-          '<td class="py-3 pl-4 pr-2 text-right text-sm font-semibold text-gray-500 whitespace-nowrap">' + (state.total > 0 ? '100%' : '-') + '</td>' +
+          '<td class="py-2 pl-3 pr-6 font-bold text-gray-900">' + esc(TEXT.total) + '</td>' +
+          '<td class="py-2 pl-6 pr-6 text-right font-bold text-gray-900 tabular-nums whitespace-nowrap">' + formatHours(state.total) + '</td>' +
+          '<td class="py-2 pl-6 pr-3 text-right text-sm font-semibold text-gray-500 whitespace-nowrap">' + (state.total > 0 ? '100%' : '-') + '</td>' +
         '</tr>';
     }
 
@@ -758,6 +777,107 @@ document.addEventListener('DOMContentLoaded', function () {
   renderDonut();
   renderLegend();
   renderTable();
+
+  // ---- drag-to-resize splitter — donut + legend adapt as the column widens/narrows ----
+  (function () {
+    var layout        = document.getElementById('viz-split-layout');
+    var donutCol      = document.getElementById('viz-donut-column');
+    var splitter      = document.getElementById('viz-splitter');
+    var donutCont     = document.getElementById('viz-donut-container');
+    var legendEl      = document.getElementById('viz-legend');
+    if (!layout || !donutCol || !splitter) { return; }
+
+    var STORAGE_KEY     = 'vizSplitLeftPercent';
+    var DEFAULT_PERCENT = 35;
+    var MIN_PERCENT     = 18;
+    var MAX_PERCENT     = 65;
+    var dragging  = false;
+    var pointerId = null;
+    var mq = window.matchMedia('(min-width: 1024px)');
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    // Resize donut chart canvas + legend columns to match the current column width.
+    // donutChart is in the outer DOMContentLoaded closure — accessible here.
+    function updateDonutLayout() {
+      var colW      = donutCol.clientWidth;
+      var inner     = colW - 48;                          // subtract p-6 (24px * 2)
+      var size      = clamp(Math.round(inner * 0.82), 150, 290);
+
+      if (donutCont) {
+        donutCont.style.width  = size + 'px';
+        donutCont.style.height = size + 'px';
+      }
+      // Ask Chart.js to re-fit the canvas to its new container.
+      if (donutChart) { try { donutChart.resize(); } catch (_) {} }
+
+      // Legend columns: 1 / 2 / 3 based on available column width.
+      if (legendEl) {
+        var cols = colW >= 460 ? 3 : (colW >= 300 ? 2 : 1);
+        legendEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
+      }
+    }
+
+    function applyPercent(pct, persist) {
+      var safe = clamp(pct, MIN_PERCENT, MAX_PERCENT);
+      donutCol.style.flexBasis = safe + '%';
+      if (persist && window.sessionStorage) {
+        sessionStorage.setItem(STORAGE_KEY, String(safe));
+      }
+      // Use rAF so the browser has laid out the new flex-basis before we measure.
+      requestAnimationFrame(updateDonutLayout);
+    }
+
+    function loadPercent() {
+      var saved  = window.sessionStorage ? sessionStorage.getItem(STORAGE_KEY) : null;
+      var parsed = parseFloat(saved);
+      return isNaN(parsed) ? DEFAULT_PERCENT : clamp(parsed, MIN_PERCENT, MAX_PERCENT);
+    }
+
+    function syncViewport() {
+      if (!mq.matches) {
+        donutCol.style.flexBasis = '';
+        requestAnimationFrame(updateDonutLayout);
+        return;
+      }
+      applyPercent(loadPercent(), false);
+    }
+
+    splitter.addEventListener('pointerdown', function (e) {
+      if (!mq.matches) { return; }
+      dragging  = true;
+      pointerId = e.pointerId;
+      splitter.classList.add('is-dragging');
+      document.body.classList.add('viz-split-dragging');
+      if (splitter.setPointerCapture) { splitter.setPointerCapture(e.pointerId); }
+      e.preventDefault();
+    });
+
+    window.addEventListener('pointermove', function (e) {
+      if (!dragging || !mq.matches) { return; }
+      if (pointerId !== null && e.pointerId !== pointerId) { return; }
+      var rect = layout.getBoundingClientRect();
+      if (!rect.width) { return; }
+      applyPercent(((e.clientX - rect.left) / rect.width) * 100, true);
+    });
+
+    function stopDrag(e) {
+      if (!dragging) { return; }
+      if (e && pointerId !== null && e.pointerId !== pointerId) { return; }
+      dragging = false;
+      splitter.classList.remove('is-dragging');
+      document.body.classList.remove('viz-split-dragging');
+      if (pointerId !== null && splitter.releasePointerCapture) {
+        try { splitter.releasePointerCapture(pointerId); } catch (_) {}
+      }
+      pointerId = null;
+    }
+
+    window.addEventListener('pointerup',     stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+    window.addEventListener('resize',        syncViewport);
+    syncViewport();
+  }());
 });
 //]]>
 </script>
