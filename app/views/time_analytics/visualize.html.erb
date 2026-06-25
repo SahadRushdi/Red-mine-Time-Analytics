@@ -11,6 +11,77 @@
       which would strip the core Redmine menu (Projects/Activity/Issues/Spent time…)
       that this tab shares with the native Details/Report views. %>
   <style>
+    /* --- Restore PurpleMine2 styles clobbered by Tailwind preflight -------------
+       tailwind.output.css ships a preflight that globally resets headings to
+       font-size:inherit (collapsing the #header logo and the h2 page title),
+       removes button backgrounds/margins (breaking the Apply/Clear/Save row),
+       and sets img/svg to display:block (disrupting inline toolbar icons).
+       These rules are loaded AFTER tailwind.output.css so source-order wins
+       (Tailwind preflight does NOT use !important). #viz-card overrides below
+       re-apply Tailwind's resets inside the card so utilities still work there.
+       -------------------------------------------------------------------------- */
+
+    /* 1. Headings — exact PurpleMine2 values (font-size + font-weight 500, not bold) */
+    h1 { font-size: 2em; font-weight: 500; line-height: 1.09725; margin: 0; }
+    h2 { font-size: 1.43em; font-weight: 500; line-height: 1.33; margin-top: 0; margin-bottom: 20px; }
+    h3 { font-size: 1.14em; font-weight: 500; line-height: 1.33; margin-top: 0; margin-bottom: 20px; }
+    h4 { font-size: 1em; font-weight: 500; line-height: 1.428571429; margin-top: 0; }
+    /* Inside the viz card Tailwind controls headings */
+    #viz-card h1, #viz-card h2, #viz-card h3, #viz-card h4, #viz-card h5, #viz-card h6 {
+      font-size: inherit; font-weight: inherit; line-height: inherit; margin: 0;
+    }
+
+    /* 2. Query-form action buttons (Apply/Clear/Save) ---
+       @tailwindcss/forms: button,[type='submit']{background-color:transparent}
+       PurpleMine2: input[type=submit]{background-color:#0065ff}
+       Both reach specificity (0,1,0-1) so Tailwind wins on source order.
+       Use #query_form prefix for higher specificity (0,2,1) to override. */
+    #query_form input[type="submit"] {
+      background-color: #0065ff;
+      color: #fff;
+      border: 1px solid #0065ff;
+      border-bottom-color: #004dc2;
+      box-shadow: 0 1px 0 #004dc2;
+      padding: 3px 12px;
+      border-radius: 3px;
+      font-size: 14px;
+      font-weight: normal;
+      line-height: 1.428571429;
+      display: inline-block;
+      vertical-align: top;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+    #query_form input[type="submit"]:hover,
+    #query_form input[type="submit"]:focus {
+      background-color: #004dc2;
+      border-color: #004dc2;
+      border-bottom-color: #003585;
+      box-shadow: 0 1px 0 #003585;
+    }
+    /* Spacing between the Clear / Save link-buttons that follow Apply */
+    #query_form p.buttons > a,
+    #query_form .buttons > a { margin-right: 4px; }
+
+    /* 3. Fieldset vertical spacing — PurpleMine2 sets fieldset { padding:10px 0 }
+       but Tailwind preflight resets it to 0, collapsing the Filters / Options
+       sections. #query_form prefix (specificity 0,2,1) beats both. */
+    #query_form fieldset { padding: 10px 0; border-top: 1px solid #eff0f4; }
+    #query_form fieldset:last-of-type { padding-bottom: 0; }
+
+    /* 4. Sidebar link colour — Tailwind a{color:inherit} (0,0,1) wins on source
+       order over PurpleMine2's a{color:#0051cc} (same specificity). #sidebar a
+       has higher specificity (0,1,1) so it beats Tailwind. */
+    #sidebar a { color: #0051cc; text-decoration: none; }
+    #sidebar a:hover, #sidebar a:focus { color: #0065ff; text-decoration: underline; }
+
+    /* 5. Inline logos/icons outside the card (Tailwind sets img/svg to block) */
+    #header img, #header svg,
+    #account img, #account svg,
+    .contextual img, .contextual svg { display: inline; vertical-align: middle; }
+    /* ----------------------------------------------------------------------- */
+
     /* --- Make the embedded Filters/Options form identical to the core Details tab.
        tailwind.output.css ships the @tailwindcss/forms base (appearance:none + custom
        checkbox/select painting) which otherwise blacks-out the Date checkbox and clips
@@ -173,9 +244,15 @@
 <% end %>
 
 <div class="contextual">
-  <%= link_to l(:label_details),
-              _time_entries_path(@project, nil, :params => request.query_parameters),
-              class: 'icon icon-time' %>
+  <%# link_to_if_authorized calls authorize_for which uses allowed_to?(@project)
+      — this returns false when @project is nil (global view) even for admins
+      because there is no :global flag. Mirror what the native timelog index does:
+      show for admins always, or for project members with :log_time permission. %>
+  <% if User.current.admin? || User.current.allowed_to?(:log_time, @project, global: @project.nil?) %>
+    <%= link_to l(:button_log_time),
+          { controller: 'timelog', action: 'new', project_id: @project },
+          class: 'icon icon-time-add' %>
+  <% end %>
 </div>
 
 <h2><%= l(:label_spent_time) %></h2>
