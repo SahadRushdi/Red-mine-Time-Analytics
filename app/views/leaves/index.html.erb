@@ -1337,9 +1337,9 @@
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
             '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
             '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateDisplay + '</td>' +
-            '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
+            '<td class="px-4 py-3 ' + (record.is_locked_user ? 'text-amber-600' : 'text-gray-700') + '" ' + (record.is_locked_user ? 'title="<%= j l(:label_locked) %>"' : '') + '>' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
-            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed, record.is_locked_user) + '</td>' +
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
           '</tr>';
           html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
@@ -1732,12 +1732,13 @@
       window.setTimeout(hideDatePickers, 120);
     }
 
-    function statusBadge(status, flaggedReason, aiAnalyzed) {
+    function statusBadge(status, flaggedReason, aiAnalyzed, isLockedUser) {
       if (status === 'confirmed') {
-        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span></div>';
+        var lockedHtml = isLockedUser ? '<div class="mt-1 text-xs text-amber-600"><%= j l(:label_user_is_locked) %></div>' : '';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><%= j l(:label_confirmed) %></span>' + lockedHtml + '</div>';
       }
       var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
-      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + '</div>';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"><%= j l(:label_flagged) %></span>' + reasonHtml + '</div>';
     }
 
     function formatLeaveDateForInput(value) {

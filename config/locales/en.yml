@@ -123,6 +123,7 @@ en:
   label_status: "Status"
   label_all_users: "All users"
   label_locked: "Locked"
+  label_user_is_locked: "User is locked"
   label_load_locked_users: "Load locked users"
   label_all_statuses: "All statuses"
   label_confirmed: "Confirmed"
