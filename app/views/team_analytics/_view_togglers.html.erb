@@ -1,5 +1,15 @@
-<div class="mb-0" style="margin-bottom: -1px;">
-  <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200">
+<%
+  # Sorting/pagination controls are shared across the three view modes but target a
+  # view-specific summary container + view-state field, so resolve the active one here.
+  sort_targets = {
+    'members'  => { container: 'team-member-summary-view',  state: @member_view_state,   state_param: :member_view_state,   field_id: 'member_view_state_field' },
+    'activity' => { container: 'team-activity-summary-view', state: @activity_view_state, state_param: :activity_view_state, field_id: 'activity_view_state_field' },
+    'project'  => { container: 'team-project-summary-view',  state: @project_view_state,  state_param: :project_view_state,  field_id: 'project_view_state_field' }
+  }
+  current_sort = sort_targets[@view_mode]
+%>
+<div class="ta-team-tabs-row flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 px-4">
+  <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
     <li class="me-2">
       <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :overview_page, :team_id, :chart_type, :activity_view_state, :project_view_state, :member_view_state).merge(view_mode: 'members')),
           class: "ta-view-tab inline-block p-4 rounded-t-lg #{@view_mode == 'members' ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}",
@@ -40,4 +50,24 @@
       <% end %>
     </li>
   </ul>
+
+  <% if current_sort %>
+    <div class="flex flex-wrap items-center gap-3 pb-2 lg:pb-0">
+      <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_sort[:state] == 'summary' ? '' : 'display: none;' %>">
+        <button type="button" id="sort-name-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
+        <button type="button" id="sort-hours-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+      </div>
+      <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
+        <%= hidden_field_tag :filter, params[:filter] %>
+        <%= hidden_field_tag :from, params[:from] %>
+        <%= hidden_field_tag :to, params[:to] %>
+        <%= hidden_field_tag :grouping, params[:grouping] %>
+        <%= hidden_field_tag :chart_type, params[:chart_type] %>
+        <%= hidden_field_tag :view_mode, @view_mode %>
+        <%= hidden_field_tag :team_id, params[:team_id] %>
+        <%= hidden_field_tag current_sort[:state_param], current_sort[:state], id: current_sort[:field_id] %>
+        <%= render 'per_page_dropdown' %>
+      <% end %>
+    </div>
+  <% end %>
 </div>

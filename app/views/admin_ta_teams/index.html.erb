@@ -1003,6 +1003,9 @@
   function teamMembersOpenDeleteModal() {
     var modal = document.getElementById('taTeamMembersDeleteModal');
     if (!modal) return;
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.setAttribute('aria-hidden', 'false');
@@ -1223,6 +1226,10 @@
     var modal = document.getElementById('taTeamMemberMoveModal');
     if (!modal) return;
 
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
+
     document.getElementById('ta-move-member-name').textContent = teamManagementMoveState.userName;
     document.getElementById('ta-move-target-team-name').textContent = teamManagementMoveState.targetTeamName;
 
@@ -1348,6 +1355,10 @@
   function teamAssignOpenModal(state) {
     var modal = document.getElementById('taTeamAssignModal');
     if (!modal) return;
+
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
 
     teamAssignState = {
       userId: state.userId,

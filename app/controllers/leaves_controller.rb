@@ -303,7 +303,8 @@ class LeavesController < ApplicationController
         can_unflag: record.status == 'flagged' && mapped_user.present?,
         can_delete: %w[confirmed flagged].include?(record.status),
         can_edit: true,
-        subject: record.raw_subject.to_s
+        subject: record.raw_subject.to_s,
+        is_locked_user: mapped_user&.status == User::STATUS_LOCKED
       }
   end
 

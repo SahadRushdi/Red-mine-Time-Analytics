@@ -256,7 +256,9 @@
   margin-top: 15px;
   margin-bottom: 0;
   padding-top: 15px;
-  padding-bottom: 0;
+  padding-bottom: 12px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
   border-top: 1px solid #eee;
   flex-wrap: wrap;
   gap: 10px;
@@ -1562,7 +1564,6 @@ body .datepicker-picker {
   border-radius: 0.75rem !important;
   max-width: min(20rem, calc(100vw - 1rem)) !important;
   z-index: 11001 !important;
-}
 }
 
 body .datepicker-header,

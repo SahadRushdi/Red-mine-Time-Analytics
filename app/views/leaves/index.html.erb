@@ -82,6 +82,36 @@
       outline: none !important;
       box-shadow: none !important;
     }
+    /* Override Redmine's global button theme on the locked-users toggle inside the
+       Add Leave modal — prevents blue border, blue background and invisible hover text */
+    #leaves-manual-locked-toggle {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      color: #6b7280 !important; /* gray-500 */
+      font-weight: normal !important;
+      text-align: left !important;
+      width: 100% !important;
+      padding: 0.5rem 1rem !important;
+      cursor: pointer !important;
+    }
+    #leaves-manual-locked-toggle:hover {
+      background-color: #f9fafb !important; /* gray-50 */
+      color: #374151 !important; /* gray-700 */
+      border: none !important;
+      box-shadow: none !important;
+    }
+    #leaves-manual-locked-toggle:focus,
+    #leaves-manual-locked-toggle:active,
+    #leaves-manual-locked-toggle:focus-within {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      color: #6b7280 !important;
+    }
   </style>
 <% end %>
 
@@ -448,6 +478,37 @@
                       <span class="text-gray-400">(<%= h(user.mail) %>)</span>
                     </button>
                   <% end %>
+                  <% if @locked_filter_users.present? %>
+                    <div class="mt-1 border-t border-gray-100 pt-1">
+                      <div class="flex items-center gap-1.5 px-4 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <svg class="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span><%= l(:label_locked) %></span>
+                      </div>
+                      <button type="button" id="leaves-manual-locked-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
+                        <svg id="leaves-manual-locked-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        <span><%= l(:label_load_locked_users) %></span>
+                      </button>
+                      <div id="leaves-manual-locked-list" class="hidden">
+                        <% @locked_filter_users.each do |user| %>
+                          <% user_text = "#{user.name} (#{user.mail})" %>
+                          <button type="button"
+                                  class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-amber-600"
+                                  data-user-id="<%= user.id %>"
+                                  data-user-text="<%= j(user_text) %>"
+                                  data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                                  data-locked="true">
+                            <span class="text-amber-600"><%= h(user.name) %></span>
+                            <span class="text-amber-400">(<%= h(user.mail) %>)</span>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
+                  <% end %>
                 </div>
               </div>
             </div>
@@ -668,7 +729,9 @@
       fraction: document.getElementById('leaves-manual-fraction'),
       fractionButton: document.getElementById('leaves-manual-fraction-button'),
       fractionLabel: document.getElementById('leaves-manual-fraction-label'),
-      fractionMenu: document.getElementById('leaves-manual-fraction-menu')
+      fractionMenu: document.getElementById('leaves-manual-fraction-menu'),
+      lockedList: document.getElementById('leaves-manual-locked-list'),
+      lockedChevron: document.getElementById('leaves-manual-locked-chevron')
     };
 
     function closeDropdowns(exceptId) {
@@ -1337,9 +1400,9 @@
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
             '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
             '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateDisplay + '</td>' +
-            '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
+            '<td class="px-4 py-3 ' + (record.is_locked_user ? 'text-amber-600' : 'text-gray-700') + '" ' + (record.is_locked_user ? 'title="<%= j l(:label_locked) %>"' : '') + '>' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
-            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed, record.is_locked_user) + '</td>' +
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
           '</tr>';
           html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
@@ -1732,12 +1795,13 @@
       window.setTimeout(hideDatePickers, 120);
     }
 
-    function statusBadge(status, flaggedReason, aiAnalyzed) {
+    function statusBadge(status, flaggedReason, aiAnalyzed, isLockedUser) {
       if (status === 'confirmed') {
-        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span></div>';
+        var lockedHtml = isLockedUser ? '<div class="mt-1 text-xs text-amber-600"><%= j l(:label_user_is_locked) %></div>' : '';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><%= j l(:label_confirmed) %></span>' + lockedHtml + '</div>';
       }
       var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
-      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + '</div>';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"><%= j l(:label_flagged) %></span>' + reasonHtml + '</div>';
     }
 
     function formatLeaveDateForInput(value) {
@@ -2017,6 +2081,14 @@
       });
     }
 
+    var manualLockedToggle = document.getElementById('leaves-manual-locked-toggle');
+    if (manualLockedToggle && manualElements.lockedList) {
+      manualLockedToggle.addEventListener('click', function () {
+        var expanded = manualElements.lockedList.classList.toggle('hidden') === false;
+        if (manualElements.lockedChevron) manualElements.lockedChevron.classList.toggle('-rotate-90', !expanded);
+      });
+    }
+
     bindDropdownKeyboard('leaves-user-dropdown', 'data-user-label', function (button) {
       setUserFilter(button.getAttribute('data-user-id'), button.getAttribute('data-user-label'));
     });
@@ -2244,10 +2316,24 @@
     function filterManualUsers() {
       if (!manualElements.userList || !manualElements.userSearch) return;
       var query = normalize(manualElements.userSearch.value);
+      var hasLockedMatch = false;
       manualElements.userList.querySelectorAll('.leaves-modal-option').forEach(function (option) {
         var searchValue = option.getAttribute('data-user-search') || '';
-        option.style.display = searchValue.indexOf(query) !== -1 ? '' : 'none';
+        var matches = searchValue.indexOf(query) !== -1;
+        option.style.display = matches ? '' : 'none';
+        if (matches && option.getAttribute('data-locked') === 'true') hasLockedMatch = true;
       });
+      // Auto-expand locked section when a locked user matches the search query;
+      // re-collapse when the search is cleared back to empty.
+      if (manualElements.lockedList) {
+        if (query && hasLockedMatch) {
+          manualElements.lockedList.classList.remove('hidden');
+          if (manualElements.lockedChevron) manualElements.lockedChevron.classList.remove('-rotate-90');
+        } else if (!query) {
+          manualElements.lockedList.classList.add('hidden');
+          if (manualElements.lockedChevron) manualElements.lockedChevron.classList.add('-rotate-90');
+        }
+      }
       manualUserState.activeIndex = -1;
       setManualUserActiveOption(-1);
     }
@@ -2299,8 +2385,11 @@
 
     function getVisibleManualUserOptions() {
       if (!manualElements.userList) return [];
+      var lockedList = manualElements.lockedList;
       return Array.from(manualElements.userList.querySelectorAll('.leaves-modal-option')).filter(function (option) {
-        return option.style.display !== 'none';
+        if (option.style.display === 'none') return false;
+        if (lockedList && lockedList.classList.contains('hidden') && lockedList.contains(option)) return false;
+        return true;
       });
     }
 

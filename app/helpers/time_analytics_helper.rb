@@ -431,4 +431,27 @@ module TimeAnalyticsHelper
   def status_badge_class(status)
     "ts-status-badge"
   end
+
+  # Converts a #RRGGBB (or #RGB) hex string to an rgba() string. Mirrors the
+  # `hexToRgba` JS helper used on the Visualize tab so tinted share badges look
+  # identical across the My Time / My Team / Visualize pages.
+  def ta_hex_to_rgba(hex, alpha = 1.0)
+    c = hex.to_s.delete('#').strip
+    c = c.chars.map { |ch| ch * 2 }.join if c.length == 3
+    return "rgba(100,116,139,#{alpha})" unless c.length == 6
+
+    r = c[0, 2].to_i(16)
+    g = c[2, 2].to_i(16)
+    b = c[4, 2].to_i(16)
+    "rgba(#{r},#{g},#{b},#{alpha})"
+  end
+
+  # Renders the Visualize-style "share" pill: a rounded badge with a tinted
+  # background and series-coloured text (e.g. the SHARE column on the Visualize
+  # tab). Reused for the percentage column on the My Time / My Team summary tables.
+  def ta_share_badge(hex, percentage)
+    content_tag(:span, "#{number_with_precision(percentage, precision: 1)}%",
+                class: 'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                style: "background:#{ta_hex_to_rgba(hex, 0.14)};color:#{hex};")
+  end
 end

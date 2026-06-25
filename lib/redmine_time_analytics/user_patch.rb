@@ -27,6 +27,25 @@ module RedmineTimeAnalytics
                           .exists?
         end
 
+        # --- User Title (job title) helpers ---
+
+        # The TaUserTitle record for this user (nil if none assigned)
+        def ta_user_title
+          return @ta_user_title if defined?(@ta_user_title)
+
+          @ta_user_title = TaUserTitle.find_by(user_id: id)
+        end
+
+        # The TaHiringTitle assigned to this user, or nil
+        def ta_title
+          ta_user_title&.title
+        end
+
+        # The assigned title text, or nil. Used by query/report column display.
+        def ta_title_name
+          ta_title&.title
+        end
+
         # Check if user has global team analytics access
         def super_user_for_team_analytics?
           TaTeamSetting.user_super?(id)
@@ -79,6 +98,11 @@ module RedmineTimeAnalytics
           # 2. Delete super user and exclusion list settings
           settings = TaTeamSetting.where(user_id: id, setting_type: ['super_user', 'exclusion'])
           settings.destroy_all if settings.any?
+
+          # NOTE: the user's title assignment (TaUserTitle) is intentionally retained when a
+          # user is locked. The analytics title join is not status-gated, so a locked user's
+          # title applies to their historical time entries immediately — no reactivation
+          # needed — and the Titles admin page lets admins review/adjust locked users' titles.
         end
       end
     end
