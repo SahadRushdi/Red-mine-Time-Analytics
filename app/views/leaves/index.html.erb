@@ -82,9 +82,34 @@
       outline: none !important;
       box-shadow: none !important;
     }
+    /* Hover / keyboard-active highlight for the shared searchable user options
+       (Add Leave modal + Leaves user filter) */
+    .leaves-modal-option:hover,
+    .leaves-modal-option--active {
+      background-color: #f3f4f6; /* gray-100 */
+    }
+    /* Leaves user filter: match the From/To date fields' height, and widen the menu so
+       long "name (email)" entries read without horizontal scrolling. (overflow-y:auto
+       makes the x-axis compute to auto, which is what produced the horizontal scrollbar.) */
+    #leaves-filter-user-search {
+      height: 43px !important;
+      padding-top: 0.625rem;
+      padding-bottom: 0.625rem;
+      line-height: 1.2;
+    }
+    #leaves-filter-user-list {
+      width: 480px;
+      max-width: 92vw;
+      overflow-x: hidden;
+    }
+    #leaves-filter-user-list .leaves-modal-option {
+      white-space: nowrap;
+    }
     /* Override Redmine's global button theme on the locked-users toggle inside the
-       Add Leave modal — prevents blue border, blue background and invisible hover text */
-    #leaves-manual-locked-toggle {
+       Add Leave modal and the Leaves user filter — prevents blue border, blue
+       background and invisible hover text */
+    #leaves-manual-locked-toggle,
+    #leaves-filter-locked-toggle {
       background: transparent !important;
       background-color: transparent !important;
       border: none !important;
@@ -97,7 +122,8 @@
       padding: 0.5rem 1rem !important;
       cursor: pointer !important;
     }
-    #leaves-manual-locked-toggle:hover {
+    #leaves-manual-locked-toggle:hover,
+    #leaves-filter-locked-toggle:hover {
       background-color: #f9fafb !important; /* gray-50 */
       color: #374151 !important; /* gray-700 */
       border: none !important;
@@ -105,7 +131,10 @@
     }
     #leaves-manual-locked-toggle:focus,
     #leaves-manual-locked-toggle:active,
-    #leaves-manual-locked-toggle:focus-within {
+    #leaves-manual-locked-toggle:focus-within,
+    #leaves-filter-locked-toggle:focus,
+    #leaves-filter-locked-toggle:active,
+    #leaves-filter-locked-toggle:focus-within {
       background: transparent !important;
       border: none !important;
       box-shadow: none !important;
@@ -115,7 +144,6 @@
   </style>
 <% end %>
 
-<% selected_user_label = @selected_user ? h(@selected_user.name) : l(:label_all_users) %>
 <% selected_status_label =
      case @filter_status
      when 'confirmed' then l(:label_confirmed)
@@ -148,19 +176,22 @@
           </div>
         </div>
 
-        <div class="relative">
-          <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
-          <button type="button" id="leaves-user-dropdown-button" class="inline-flex h-[43px] min-w-[220px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
-            <span id="leaves-user-dropdown-label" class="truncate"><%= selected_user_label %></span>
-            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
+        <div class="relative" id="leaves-filter-user-wrapper">
+          <label for="leaves-filter-user-search" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
+          <input type="text"
+                 id="leaves-filter-user-search"
+                 placeholder="<%= j l(:label_all_users) %>"
+                 autocomplete="off"
+                 value="<%= @selected_user ? h(@selected_user.name) : '' %>"
+                 class="leaves-modal-input block h-[43px] min-w-[220px] w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm focus:outline-none focus:ring-0">
           <input type="hidden" id="leaves-filter-user" value="<%= @filter_user_id %>">
-          <div id="leaves-user-dropdown" class="hidden absolute right-0 z-20 mt-1 max-h-80 min-w-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
-            <button type="button" class="leaves-dropdown-option leaves-dropdown-option--active w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-label="<%= j l(:label_all_users) %>"><%= l(:label_all_users) %></button>
+          <div id="leaves-filter-user-list" class="hidden absolute right-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-text="" data-user-search=""><%= l(:label_all_users) %></button>
             <% @users.each do |user| %>
-              <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
+              <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-text="<%= j user.name %>" data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>">
+                <span class="text-gray-800"><%= h(user.name) %></span>
+                <span class="text-gray-400">(<%= h(user.mail) %>)</span>
+              </button>
             <% end %>
             <% if @locked_filter_users.present? %>
               <div class="mt-1 border-t border-gray-100 pt-1">
@@ -171,15 +202,18 @@
                   </svg>
                   <span><%= l(:label_locked) %></span>
                 </div>
-                <button type="button" id="leaves-locked-users-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
-                  <svg id="leaves-locked-users-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <button type="button" id="leaves-filter-locked-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
+                  <svg id="leaves-filter-locked-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
                   <span><%= l(:label_load_locked_users) %></span>
                 </button>
-                <div id="leaves-locked-users-list" class="hidden">
+                <div id="leaves-filter-locked-list" class="hidden">
                   <% @locked_filter_users.each do |user| %>
-                    <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
+                    <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-amber-600" data-user-id="<%= user.id %>" data-user-text="<%= j user.name %>" data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>" data-locked="true">
+                      <span class="text-amber-600"><%= h(user.name) %></span>
+                      <span class="text-amber-400">(<%= h(user.mail) %>)</span>
+                    </button>
                   <% end %>
                 </div>
               </div>
@@ -672,9 +706,6 @@
       yearNext: document.getElementById('leaves-year-next'),
       selectedLabel: document.getElementById('leaves-selected-label'),
       monthButtons: document.querySelectorAll('[data-leaves-month]'),
-      userButton: document.getElementById('leaves-user-dropdown-button'),
-      userLabel: document.getElementById('leaves-user-dropdown-label'),
-      userMenu: document.getElementById('leaves-user-dropdown'),
       userInput: document.getElementById('leaves-filter-user'),
       statusButton: document.getElementById('leaves-status-dropdown-button'),
       statusLabel: document.getElementById('leaves-status-dropdown-label'),
@@ -708,13 +739,12 @@
       summaryLinks: document.getElementById('leaves-summary-pagination-links')
     };
 
-    var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
+    var dropdownIds = ['leaves-status-dropdown', 'leaves-per-page-dropdown'];
     var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     // months: Set of selected month indices (0-11) within `year`; anchor: last plain/ctrl-clicked
     // month, used as the base for Shift+Click range selection.
     var monthState = { year: null, months: new Set(), anchor: null };
-    var manualUserState = { activeIndex: -1 };
     var manualElements = {
       modal: document.getElementById('leaves-manual-modal'),
       openButton: document.getElementById('leaves-add-button'),
@@ -773,9 +803,6 @@
       var button = document.getElementById(buttonId);
       if (!button) return;
       var width = Math.max(button.offsetWidth, button.getBoundingClientRect().width);
-      if (menuId === 'leaves-user-dropdown') {
-        width = Math.max(width, 300);
-      }
       menu.style.width = width + 'px';
       menu.style.minWidth = width + 'px';
     }
@@ -1015,41 +1042,6 @@
       }) || null;
     }
 
-    var userDropdownTypeahead = {
-      buffer: '',
-      timer: null
-    };
-
-    function resetUserDropdownTypeahead() {
-      userDropdownTypeahead.buffer = '';
-      window.clearTimeout(userDropdownTypeahead.timer);
-      userDropdownTypeahead.timer = null;
-    }
-
-    function handleUserDropdownTypeahead(menu, query, attrName, selectFn) {
-      var typed = normalize(query);
-      if (!typed) return;
-
-      userDropdownTypeahead.buffer += typed;
-      window.clearTimeout(userDropdownTypeahead.timer);
-      userDropdownTypeahead.timer = window.setTimeout(function () {
-        resetUserDropdownTypeahead();
-      }, 900);
-
-      var match = findDropdownOption(menu, userDropdownTypeahead.buffer, attrName);
-      if (!match) {
-        userDropdownTypeahead.buffer = typed;
-        match = findDropdownOption(menu, typed, attrName);
-      }
-      if (!match) return;
-
-      match.focus();
-      if (normalize(match.getAttribute(attrName) || match.textContent || '') === userDropdownTypeahead.buffer) {
-        selectFn(match);
-        resetUserDropdownTypeahead();
-      }
-    }
-
     function bindDropdownKeyboard(menuId, attrName, selectFn) {
       var menu = document.getElementById(menuId);
       if (!menu) return;
@@ -1083,10 +1075,6 @@
 
         if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
           event.preventDefault();
-          if (menuId === 'leaves-user-dropdown') {
-            handleUserDropdownTypeahead(menu, event.key, attrName, selectFn);
-            return;
-          }
           var match = findDropdownOption(menu, event.key, attrName);
           if (match) match.focus();
         }
@@ -1100,7 +1088,6 @@
           }
         });
         button.addEventListener('click', function () {
-          if (menuId === 'leaves-user-dropdown') resetUserDropdownTypeahead();
           selectFn(button);
         });
       });
@@ -1124,14 +1111,8 @@
       if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
         openDropdown(menuId);
-        if (menuId === 'leaves-user-dropdown') {
-          handleUserDropdownTypeahead(document.getElementById(menuId), event.key, attrName, function (button) {
-            button.click();
-          });
-        } else {
-          var match = findDropdownOption(document.getElementById(menuId), event.key, attrName);
-          if (match) match.focus();
-        }
+        var match = findDropdownOption(document.getElementById(menuId), event.key, attrName);
+        if (match) match.focus();
       }
     }
 
@@ -1152,6 +1133,141 @@
 
     function normalize(value) {
       return String(value || '').toLowerCase().trim();
+    }
+
+    // Reusable searchable user dropdown — type to filter by name/email, keyboard
+    // navigation, and an optional collapsible "locked users" section that auto-expands
+    // on a matching search. Shared by the Add Leave modal and the Leaves user filter.
+    // config: { input, hidden, list, lockedToggle, lockedList, lockedChevron, wrapper, onSelect }
+    function createUserSearchDropdown(config) {
+      var input = config.input;
+      var hidden = config.hidden;
+      var list = config.list;
+      var lockedToggle = config.lockedToggle;
+      var lockedList = config.lockedList;
+      var lockedChevron = config.lockedChevron;
+      var onSelect = config.onSelect || function () {};
+      if (!input || !list) { return null; }
+      // `committed` holds the text of the current selection so that re-opening the
+      // dropdown shows the full list (browse mode) instead of filtering down to the
+      // already-selected name; typing anything else switches back to live filtering.
+      var local = { activeIndex: -1, committed: input.value || '' };
+
+      function visibleOptions() {
+        return Array.from(list.querySelectorAll('.leaves-modal-option')).filter(function (option) {
+          if (option.style.display === 'none') return false;
+          if (lockedList && lockedList.classList.contains('hidden') && lockedList.contains(option)) return false;
+          return true;
+        });
+      }
+
+      function setActiveOption(index) {
+        var options = visibleOptions();
+        options.forEach(function (option, optionIndex) {
+          option.classList.toggle('leaves-modal-option--active', optionIndex === index);
+        });
+        if (index >= 0 && options[index]) {
+          options[index].scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      function moveActiveOption(step) {
+        var options = visibleOptions();
+        if (!options.length) return;
+        if (local.activeIndex < 0) {
+          local.activeIndex = step > 0 ? 0 : options.length - 1;
+        } else {
+          local.activeIndex = Math.max(0, Math.min(options.length - 1, local.activeIndex + step));
+        }
+        setActiveOption(local.activeIndex);
+      }
+
+      function filter() {
+        // Browse mode: when the field still shows the committed selection, list everyone.
+        var query = input.value === local.committed ? '' : normalize(input.value);
+        var hasLockedMatch = false;
+        list.querySelectorAll('.leaves-modal-option').forEach(function (option) {
+          var searchValue = option.getAttribute('data-user-search') || '';
+          // The "All users" option (empty search value) always stays visible.
+          var matches = !searchValue || searchValue.indexOf(query) !== -1;
+          option.style.display = matches ? '' : 'none';
+          if (matches && option.getAttribute('data-locked') === 'true') hasLockedMatch = true;
+        });
+        if (lockedList) {
+          if (query && hasLockedMatch) {
+            lockedList.classList.remove('hidden');
+            if (lockedChevron) lockedChevron.classList.remove('-rotate-90');
+          } else if (!query) {
+            lockedList.classList.add('hidden');
+            if (lockedChevron) lockedChevron.classList.add('-rotate-90');
+          }
+        }
+        local.activeIndex = -1;
+        setActiveOption(-1);
+      }
+
+      function open() {
+        list.classList.remove('hidden');
+        filter();
+      }
+
+      function close() {
+        list.classList.add('hidden');
+        local.activeIndex = -1;
+        setActiveOption(-1);
+      }
+
+      function select(option) {
+        var id = option.getAttribute('data-user-id') || '';
+        var text = option.getAttribute('data-user-text') || option.textContent.trim();
+        if (hidden) hidden.value = id;
+        input.value = text;
+        local.committed = text;
+        close();
+        onSelect(id, text, option);
+      }
+
+      input.addEventListener('click', open);
+      input.addEventListener('input', open);
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') { close(); return; }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (list.classList.contains('hidden')) open();
+          moveActiveOption(1);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (list.classList.contains('hidden')) open();
+          moveActiveOption(-1);
+          return;
+        }
+        if (event.key === 'Enter') {
+          var options = visibleOptions();
+          if (local.activeIndex >= 0 && options[local.activeIndex]) {
+            event.preventDefault();
+            select(options[local.activeIndex]);
+          }
+        }
+      });
+      list.addEventListener('click', function (event) {
+        var option = event.target.closest('.leaves-modal-option');
+        if (option) select(option);
+      });
+      if (lockedToggle && lockedList) {
+        lockedToggle.addEventListener('click', function () {
+          var expanded = lockedList.classList.toggle('hidden') === false;
+          if (lockedChevron) lockedChevron.classList.toggle('-rotate-90', !expanded);
+        });
+      }
+      if (config.wrapper) {
+        document.addEventListener('click', function (event) {
+          if (!event.target.closest(config.wrapper)) { close(); }
+        });
+      }
+
+      return { open: open, close: close, filter: filter };
     }
 
     function formatNumber(value) {
@@ -1984,10 +2100,10 @@
         .catch(function (error) { alert(error.message); });
     }
 
-    function setUserFilter(userId, userLabel) {
-      elements.userInput.value = userId || '';
-      elements.userLabel.textContent = selectedText(userLabel, '<%= j l(:label_all_users) %>');
-      syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
+    // Called by the searchable user filter when a user (or "All users") is picked.
+    // The hidden #leaves-filter-user input is already set by the dropdown factory.
+    function applyUserFilter(userId) {
+      if (!userId && filterUserSearchInput) { filterUserSearchInput.value = ''; }
       closeDropdowns();
       loadData();
     }
@@ -2064,34 +2180,24 @@
         if (event.key === 'Escape' && !leaveDatesModal.classList.contains('hidden')) closeLeaveDatesModal();
       });
     }
-    elements.userButton.addEventListener('click', function () { toggleDropdown('leaves-user-dropdown'); });
     elements.statusButton.addEventListener('click', function () { toggleDropdown('leaves-status-dropdown'); });
     elements.perPageButton.addEventListener('click', function () { toggleDropdown('leaves-per-page-dropdown'); });
-    elements.userButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-user-dropdown', 'data-user-label'); });
     elements.statusButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-status-dropdown', 'data-status-label'); });
     elements.perPageButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-per-page-dropdown', 'data-per-page'); });
 
-    var lockedUsersToggle = document.getElementById('leaves-locked-users-toggle');
-    var lockedUsersList = document.getElementById('leaves-locked-users-list');
-    var lockedUsersChevron = document.getElementById('leaves-locked-users-chevron');
-    if (lockedUsersToggle && lockedUsersList) {
-      lockedUsersToggle.addEventListener('click', function () {
-        var expanded = lockedUsersList.classList.toggle('hidden') === false;
-        if (lockedUsersChevron) lockedUsersChevron.classList.toggle('-rotate-90', !expanded);
-      });
-    }
-
-    var manualLockedToggle = document.getElementById('leaves-manual-locked-toggle');
-    if (manualLockedToggle && manualElements.lockedList) {
-      manualLockedToggle.addEventListener('click', function () {
-        var expanded = manualElements.lockedList.classList.toggle('hidden') === false;
-        if (manualElements.lockedChevron) manualElements.lockedChevron.classList.toggle('-rotate-90', !expanded);
-      });
-    }
-
-    bindDropdownKeyboard('leaves-user-dropdown', 'data-user-label', function (button) {
-      setUserFilter(button.getAttribute('data-user-id'), button.getAttribute('data-user-label'));
+    // Searchable user filter — same component as the Add Leave modal.
+    var filterUserSearchInput = document.getElementById('leaves-filter-user-search');
+    createUserSearchDropdown({
+      input: filterUserSearchInput,
+      hidden: elements.userInput,
+      list: document.getElementById('leaves-filter-user-list'),
+      lockedToggle: document.getElementById('leaves-filter-locked-toggle'),
+      lockedList: document.getElementById('leaves-filter-locked-list'),
+      lockedChevron: document.getElementById('leaves-filter-locked-chevron'),
+      wrapper: '#leaves-filter-user-wrapper',
+      onSelect: function (userId) { applyUserFilter(userId); }
     });
+
     bindDropdownKeyboard('leaves-status-dropdown', 'data-status-label', function (button) {
       setStatusFilter(button.getAttribute('data-status'), button.getAttribute('data-status-label'));
     });
@@ -2191,8 +2297,7 @@
     });
 
     document.addEventListener('click', function (event) {
-      if (!event.target.closest('#leaves-user-dropdown-button') && !event.target.closest('#leaves-user-dropdown') &&
-          !event.target.closest('#leaves-status-dropdown-button') && !event.target.closest('#leaves-status-dropdown') &&
+      if (!event.target.closest('#leaves-status-dropdown-button') && !event.target.closest('#leaves-status-dropdown') &&
           !event.target.closest('#leaves-per-page-dropdown-button') && !event.target.closest('#leaves-per-page-dropdown')) {
         closeDropdowns();
       }
@@ -2313,49 +2418,10 @@
       manualElements.modal.setAttribute('aria-hidden', 'true');
     }
 
-    function filterManualUsers() {
-      if (!manualElements.userList || !manualElements.userSearch) return;
-      var query = normalize(manualElements.userSearch.value);
-      var hasLockedMatch = false;
-      manualElements.userList.querySelectorAll('.leaves-modal-option').forEach(function (option) {
-        var searchValue = option.getAttribute('data-user-search') || '';
-        var matches = searchValue.indexOf(query) !== -1;
-        option.style.display = matches ? '' : 'none';
-        if (matches && option.getAttribute('data-locked') === 'true') hasLockedMatch = true;
-      });
-      // Auto-expand locked section when a locked user matches the search query;
-      // re-collapse when the search is cleared back to empty.
-      if (manualElements.lockedList) {
-        if (query && hasLockedMatch) {
-          manualElements.lockedList.classList.remove('hidden');
-          if (manualElements.lockedChevron) manualElements.lockedChevron.classList.remove('-rotate-90');
-        } else if (!query) {
-          manualElements.lockedList.classList.add('hidden');
-          if (manualElements.lockedChevron) manualElements.lockedChevron.classList.add('-rotate-90');
-        }
-      }
-      manualUserState.activeIndex = -1;
-      setManualUserActiveOption(-1);
-    }
-
-    function openManualUserDropdown() {
-      if (!manualElements.userList) return;
-      manualElements.userList.classList.remove('hidden');
-      filterManualUsers();
-    }
-
+    // Thin shim so the existing reset / outside-click call sites keep working;
+    // the actual behaviour lives in the shared createUserSearchDropdown instance below.
     function closeManualUserDropdown() {
-      if (!manualElements.userList) return;
-      manualElements.userList.classList.add('hidden');
-      manualUserState.activeIndex = -1;
-      setManualUserActiveOption(-1);
-    }
-
-    function selectManualUser(option) {
-      if (!manualElements.userId || !manualElements.userSearch) return;
-      manualElements.userId.value = option.getAttribute('data-user-id') || '';
-      manualElements.userSearch.value = option.getAttribute('data-user-text') || option.textContent.trim();
-      closeManualUserDropdown();
+      if (manualUserDropdown) manualUserDropdown.close();
     }
 
     function setManualLeaveTypeMode(mode) {
@@ -2381,37 +2447,6 @@
       } else {
         setManualLeaveTypeMode('single');
       }
-    }
-
-    function getVisibleManualUserOptions() {
-      if (!manualElements.userList) return [];
-      var lockedList = manualElements.lockedList;
-      return Array.from(manualElements.userList.querySelectorAll('.leaves-modal-option')).filter(function (option) {
-        if (option.style.display === 'none') return false;
-        if (lockedList && lockedList.classList.contains('hidden') && lockedList.contains(option)) return false;
-        return true;
-      });
-    }
-
-    function setManualUserActiveOption(index) {
-      var options = getVisibleManualUserOptions();
-      options.forEach(function (option, optionIndex) {
-        option.classList.toggle('leaves-modal-option--active', optionIndex === index);
-      });
-      if (index >= 0 && options[index]) {
-        options[index].scrollIntoView({ block: 'nearest' });
-      }
-    }
-
-    function moveManualUserActiveOption(step) {
-      var options = getVisibleManualUserOptions();
-      if (!options.length) return;
-      if (manualUserState.activeIndex < 0) {
-        manualUserState.activeIndex = step > 0 ? 0 : options.length - 1;
-      } else {
-        manualUserState.activeIndex = Math.max(0, Math.min(options.length - 1, manualUserState.activeIndex + step));
-      }
-      setManualUserActiveOption(manualUserState.activeIndex);
     }
 
     function toggleManualFractionMenu() {
@@ -2468,10 +2503,8 @@
     elements.to.value = initialFilters.to;
     elements.userInput.value = initialFilters.user_id;
     elements.statusInput.value = initialFilters.status;
-    elements.userLabel.textContent = initialFilters.user_id ? elements.userLabel.textContent : '<%= j l(:label_all_users) %>';
     elements.statusLabel.textContent = initialFilters.status === 'confirmed' ? '<%= j l(:label_confirmed) %>' : (initialFilters.status === 'flagged' ? '<%= j l(:label_flagged) %>' : '<%= j l(:label_all_statuses) %>');
     elements.perPageLabel.textContent = String(state.perPage);
-    syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
     syncDropdownActiveState('leaves-status-dropdown', 'data-status', elements.statusInput.value);
     syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
     updateSortIndicators();
@@ -2546,44 +2579,16 @@
         if (event.target === manualElements.modal) closeManualModal();
       });
     }
-    if (manualElements.userSearch) {
-      manualElements.userSearch.addEventListener('click', openManualUserDropdown);
-      manualElements.userSearch.addEventListener('input', function () {
-        openManualUserDropdown();
-        filterManualUsers();
-      });
-      manualElements.userSearch.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-          closeManualUserDropdown();
-          return;
-        }
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
-          moveManualUserActiveOption(1);
-          return;
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
-          moveManualUserActiveOption(-1);
-          return;
-        }
-        if (event.key === 'Enter') {
-          var options = getVisibleManualUserOptions();
-          if (manualUserState.activeIndex >= 0 && options[manualUserState.activeIndex]) {
-            event.preventDefault();
-            selectManualUser(options[manualUserState.activeIndex]);
-          }
-        }
-      });
-    }
-    if (manualElements.userList) {
-      manualElements.userList.addEventListener('click', function (event) {
-        var option = event.target.closest('.leaves-modal-option');
-        if (option) selectManualUser(option);
-      });
-    }
+    // Add Leave modal user picker — same shared searchable dropdown as the filter.
+    // (The modal keeps its own outside-click handler below, so no `wrapper` here.)
+    var manualUserDropdown = createUserSearchDropdown({
+      input: manualElements.userSearch,
+      hidden: manualElements.userId,
+      list: manualElements.userList,
+      lockedToggle: document.getElementById('leaves-manual-locked-toggle'),
+      lockedList: manualElements.lockedList,
+      lockedChevron: manualElements.lockedChevron
+    });
     if (manualElements.fractionButton) {
       manualElements.fractionButton.addEventListener('click', function () {
         toggleManualFractionMenu();

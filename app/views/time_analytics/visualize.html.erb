@@ -186,7 +186,11 @@
     #viz-card #viz-perpage-menu button,
     #viz-card #viz-perpage-menu button:hover,
     #viz-card #viz-perpage-menu button:focus,
-    #viz-card #viz-perpage-menu button:active {
+    #viz-card #viz-perpage-menu button:active,
+    #viz-card #viz-export-menu button,
+    #viz-card #viz-export-menu button:hover,
+    #viz-card #viz-export-menu button:focus,
+    #viz-card #viz-export-menu button:active {
       border: 0 !important;
       background-color: transparent !important;
     }
@@ -197,10 +201,14 @@
       text-transform: none !important;
     }
     #viz-card .ta-viz-sort:hover { color: #374151 !important; }
-    #viz-card #viz-perpage-menu button { color: #374151 !important; }
+    #viz-card #viz-perpage-menu button,
+    #viz-card #viz-export-menu button { color: #374151 !important; }
     #viz-card #viz-perpage-menu button:hover,
     #viz-card #viz-perpage-menu button:focus,
-    #viz-card #viz-perpage-menu button:active {
+    #viz-card #viz-perpage-menu button:active,
+    #viz-card #viz-export-menu button:hover,
+    #viz-card #viz-export-menu button:focus,
+    #viz-card #viz-export-menu button:active {
       background-color: #f3f4f6 !important;
       color: #374151 !important;
     }
@@ -209,6 +217,10 @@
     #viz-card #viz-perpage-btn:hover,
     #viz-card #viz-perpage-btn:focus,
     #viz-card #viz-perpage-btn:active,
+    #viz-card #viz-export-btn,
+    #viz-card #viz-export-btn:hover,
+    #viz-card #viz-export-btn:focus,
+    #viz-card #viz-export-btn:active,
     #viz-card #viz-pagination-links button,
     #viz-card #viz-pagination-links button:hover,
     #viz-card #viz-pagination-links button:focus,
@@ -217,7 +229,8 @@
       background-color: #ffffff !important;
       color: #111827 !important;
     }
-    #viz-card #viz-perpage-btn:hover {
+    #viz-card #viz-perpage-btn:hover,
+    #viz-card #viz-export-btn:hover {
       background-color: #f9fafb !important;
       color: #111827 !important;
     }
@@ -308,6 +321,23 @@
       <h3 id="viz-card-title" class="text-xl font-bold text-gray-900"></h3>
       <div class="flex items-center gap-3">
         <span id="viz-card-hint" class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 whitespace-nowrap"></span>
+        <%# Export dropdown — exports the breakdown table as CSV (title-level or title + users). %>
+        <div class="relative" id="viz-export-wrap">
+          <button type="button" id="viz-export-btn"
+                  class="inline-flex h-[34px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-0">
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            <span class="whitespace-nowrap"><%= l(:label_export) %></span>
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div id="viz-export-menu" class="hidden absolute right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="ta-viz-export-option w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-export="title"><%= l(:label_export_title_only) %></button>
+            <button type="button" class="ta-viz-export-option w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-export="expanded"><%= l(:label_export_title_users) %></button>
+          </div>
+        </div>
         <%# Per-page selector lives in the top-right corner, after the hint. %>
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-600 whitespace-nowrap"><%= l(:label_per_page) %></span>
@@ -400,6 +430,8 @@ document.addEventListener('DOMContentLoaded', function () {
     expandHint: '<%= j l(:label_visualize_expand_hint) %>',
     totalSuffix: '<%= j l(:label_visualize_total_suffix) %>',
     total: '<%= j l(:label_total) %>',
+    hours: '<%= j l(:field_hours) %>',
+    share: '<%= j l(:label_export_share) %>',
     noData: '<%= j l(:label_no_data) %>',
     of: 'of'
   };
@@ -423,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
     groups: payload.groups || [],
     total: payload.total || 0,
     dimensionLabel: payload.dimension_label || '',
+    childLabel: payload.child_label || '',
     childDimension: payload.child_dimension || '',
     sortKey: 'hours',
     sortDir: 'desc',
@@ -671,8 +704,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var title = document.getElementById('viz-card-title');
     var hint = document.getElementById('viz-card-hint');
     var th = document.getElementById('viz-th-dimension');
+    var exportWrap = document.getElementById('viz-export-wrap');
     if (title) { title.textContent = TEXT.breakdownBy.replace('__DIM__', state.dimensionLabel); }
     if (th) { th.textContent = state.dimensionLabel; }
+    if (exportWrap) { exportWrap.classList.toggle('hidden', !state.groups.length); }
     if (hint) {
       if (state.groups.length) {
         hint.textContent = formatHours(state.total) + ' ' + TEXT.totalSuffix + ' · ' + TEXT.expandHint;
@@ -727,6 +762,85 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       state.page = 1;
       renderTable();
+    });
+  });
+
+  // ---- CSV export ------------------------------------------------------------
+  setupDropdown('viz-export-btn', 'viz-export-menu');
+
+  // Keep the export menu the same width as its trigger button.
+  (function () {
+    var exportBtn = document.getElementById('viz-export-btn');
+    var exportMenu = document.getElementById('viz-export-menu');
+    if (exportBtn && exportMenu) {
+      exportBtn.addEventListener('click', function () {
+        exportMenu.style.width = exportBtn.offsetWidth + 'px';
+      });
+    }
+  }());
+
+  function csvCell(value) {
+    var s = value == null ? '' : String(value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  function csvHours(hours) {
+    return Math.round(parseFloat(hours || 0) * 100) / 100; // decimal hours, spreadsheet-friendly
+  }
+  function csvRow(cells) {
+    return cells.map(csvCell).join(',');
+  }
+
+  // Builds the CSV text from the currently-sorted groups so the file matches the table.
+  // mode 'title'    → one row per group.
+  // mode 'expanded' → each group row followed by its child (within-group) rows.
+  function buildCsv(mode) {
+    var groups = sortedGroups();
+    var rows = [];
+    var totalPct = state.total > 0 ? '100%' : '';
+    if (mode === 'expanded') {
+      rows.push(csvRow([state.dimensionLabel, state.childLabel, TEXT.hours, TEXT.share]));
+      groups.forEach(function (g) {
+        rows.push(csvRow([g.label, '', csvHours(g.hours), formatPct(g.percentage)]));
+        (g.children || []).forEach(function (c) {
+          rows.push(csvRow(['', c.label, csvHours(c.hours), formatPct(c.percentage)]));
+        });
+      });
+      rows.push(csvRow([TEXT.total, '', csvHours(state.total), totalPct]));
+    } else {
+      rows.push(csvRow([state.dimensionLabel, TEXT.hours, TEXT.share]));
+      groups.forEach(function (g) {
+        rows.push(csvRow([g.label, csvHours(g.hours), formatPct(g.percentage)]));
+      });
+      rows.push(csvRow([TEXT.total, csvHours(state.total), totalPct]));
+    }
+    return rows.join('\r\n');
+  }
+
+  function downloadCsv(filename, text) {
+    var blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+  }
+
+  function exportCsv(mode) {
+    if (!state.groups.length) { return; }
+    var slug = String(state.dimensionLabel || 'group').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'group';
+    var filename = 'spent_time_grouped_' + slug + '_' + (mode === 'expanded' ? 'expanded' : 'title') + '.csv';
+    downloadCsv(filename, buildCsv(mode));
+  }
+
+  document.querySelectorAll('.ta-viz-export-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      var menu = document.getElementById('viz-export-menu');
+      if (menu) { menu.classList.add('hidden'); }
+      exportCsv(opt.getAttribute('data-export'));
     });
   });
 
