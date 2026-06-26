@@ -335,20 +335,23 @@ class TimeAnalyticsController < ApplicationController
       end
 
     # The primary dimension is driven by the core "Group results by" select in the
-    # Options section (the query's group_by). Fall back to User's Title when the
-    # chosen column isn't one we can visualize.
-    selected_group = Array(@query.group_by).first.to_s
-    @group_by = VISUALIZE_GROUPS.key?(selected_group) ? selected_group : 'user_title'
+    # Options section (the query's group_by). When nothing is selected (or the
+    # selection isn't a visualizable dimension), flag it so the view renders a
+    # "select a Group by" prompt instead of a meaningless default chart.
+    selected_group    = Array(@query.group_by).first.to_s
+    @no_group_selected = !VISUALIZE_GROUPS.key?(selected_group)
+    @group_by = @no_group_selected ? 'user_title' : selected_group
     @child_by = VISUALIZE_GROUPS[@group_by][:child]
-    @viz_groups = @query.valid? ? visualize_groups(@query.base_scope, @group_by, @child_by) : []
-    @total_hours = @viz_groups.sum { |g| g[:hours] }
+    @viz_groups   = (!@no_group_selected && @query.valid?) ? visualize_groups(@query.base_scope, @group_by, @child_by) : []
+    @total_hours  = @viz_groups.sum { |g| g[:hours] }
 
     @viz_payload = {
-      dimension_label: l(VISUALIZE_GROUPS[@group_by][:label]),
-      child_label:     l(VISUALIZE_GROUPS[@child_by][:label]),
-      child_dimension: @child_by,
-      total:           @total_hours,
-      groups:          @viz_groups
+      no_group_selected: @no_group_selected,
+      dimension_label:   @no_group_selected ? '' : l(VISUALIZE_GROUPS[@group_by][:label]),
+      child_label:       @no_group_selected ? '' : l(VISUALIZE_GROUPS[@child_by][:label]),
+      child_dimension:   @child_by,
+      total:             @total_hours,
+      groups:            @viz_groups
     }.to_json
   rescue ActiveRecord::RecordNotFound
     render_404

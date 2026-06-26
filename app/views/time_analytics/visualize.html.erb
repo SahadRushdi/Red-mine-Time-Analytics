@@ -204,7 +204,7 @@
       background-color: #f3f4f6 !important;
       color: #374151 !important;
     }
-    /* Per-page trigger + pagination keep a neutral gray border in every state. */
+    /* Per-page trigger + pagination keep a neutral gray border and white background in every state. */
     #viz-card #viz-perpage-btn,
     #viz-card #viz-perpage-btn:hover,
     #viz-card #viz-perpage-btn:focus,
@@ -214,6 +214,8 @@
     #viz-card #viz-pagination-links button:focus,
     #viz-card #viz-pagination-links button:active {
       border-color: #d1d5db !important;
+      background-color: #ffffff !important;
+      color: #111827 !important;
     }
     #viz-card #viz-perpage-btn:hover {
       background-color: #f9fafb !important;
@@ -250,16 +252,6 @@
     #viz-splitter.is-dragging .viz-splitter-handle { background: #3b82f6; }
     body.viz-split-dragging { cursor: col-resize !important; user-select: none !important; }
 
-    /* Borderless icon buttons for the legend pager (mirrors My Team breakdown). */
-    .ta-bd-icon-btn {
-      background: transparent !important; border: 0 !important; box-shadow: none !important;
-      outline: none !important; color: #9ca3af !important; padding: 0 !important;
-      cursor: pointer !important; transition: background-color 0.15s, color 0.15s;
-    }
-    .ta-bd-icon-btn:hover { background: #f3f4f6 !important; color: #374151 !important; }
-    .ta-bd-icon-btn:disabled, .ta-bd-icon-btn.pointer-events-none {
-      color: #d1d5db !important; background: transparent !important;
-    }
   </style>
 <% end %>
 
@@ -307,9 +299,11 @@
 <% end %>
 
 <div class="ta-viz-wrap" style="margin-top:18px;">
-  <%# The Figma "Hours breakdown" card: donut + paginated legend on the left,
-      sortable / paginated / expandable table on the right. Rendered client-side. %>
+  <%# Grouped-by card: donut on the left, sortable / paginated / expandable table on the right. Rendered client-side. %>
   <div id="viz-card" class="rounded-xl border border-gray-300 bg-white shadow-sm">
+    <div id="viz-no-group-msg" class="hidden px-6 py-16 text-center text-sm text-gray-500">
+      <%= l(:label_visualize_no_group_selected) %>
+    </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
       <h3 id="viz-card-title" class="text-xl font-bold text-gray-900"></h3>
       <div class="flex items-center gap-3">
@@ -336,24 +330,13 @@
     </div>
 
     <div id="viz-split-layout" class="flex flex-col lg:flex-row">
-      <%# Left column: donut + legend. Width is JS-controlled via flex-basis (splitter). %>
-      <div id="viz-donut-column" class="border-b lg:border-b-0 p-6 flex flex-col items-center" style="flex-basis:35%;min-width:220px">
+      <%# Left column: donut chart. Width is JS-controlled via flex-basis (splitter). %>
+      <div id="viz-donut-column" class="border-b lg:border-b-0 p-6 flex flex-col items-center justify-center" style="flex-basis:35%;min-width:220px">
         <div id="viz-donut-container" class="relative" style="width:240px;height:240px">
           <canvas id="viz-donut"></canvas>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span id="viz-donut-total" class="text-2xl font-bold text-gray-900"></span>
             <span class="text-xs text-gray-500"><%= l(:label_visualize_total_hours) %></span>
-          </div>
-        </div>
-        <div class="w-full mt-5">
-          <div id="viz-legend" class="grid" style="grid-template-columns:repeat(2,1fr);column-gap:2rem;row-gap:0.5rem" data-page="0"></div>
-          <div id="viz-legend-pager" class="hidden items-center justify-end gap-1 mt-3">
-            <button type="button" id="viz-legend-up" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_up) %>">
-              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_up</span>
-            </button>
-            <button type="button" id="viz-legend-down" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_down) %>">
-              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_down</span>
-            </button>
           </div>
         </div>
       </div>
@@ -422,7 +405,19 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   var payload = JSON.parse(holder.getAttribute('data-payload'));
-  var LEGEND_PAGE_SIZE = 10;
+
+  // When no Group by is selected, show the prompt and stop.
+  if (payload.no_group_selected) {
+    var noGroupTitle = document.getElementById('viz-card-title');
+    var noGroupMsg   = document.getElementById('viz-no-group-msg');
+    var splitLayout  = document.getElementById('viz-split-layout');
+    var cardHeader   = noGroupTitle && noGroupTitle.closest('.border-b');
+    if (noGroupTitle) { noGroupTitle.textContent = '<%= j l(:label_visualize) %>'; }
+    if (cardHeader)   { cardHeader.style.display = 'none'; }
+    if (splitLayout)  { splitLayout.style.display = 'none'; }
+    if (noGroupMsg)   { noGroupMsg.classList.remove('hidden'); }
+    return;
+  }
 
   var state = {
     groups: payload.groups || [],
@@ -433,8 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
     sortDir: 'desc',
     page: 1,
     perPage: 10,
-    expanded: {},
-    legendPage: 0
+    expanded: {}
   };
 
   // ---- helpers ---------------------------------------------------------------
@@ -484,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // ---- donut + legend --------------------------------------------------------
+  // ---- donut -----------------------------------------------------------------
   var donutChart = null;
   function renderDonut() {
     var canvas = document.getElementById('viz-donut');
@@ -523,43 +517,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
     });
-  }
-
-  function renderLegend() {
-    var legend = document.getElementById('viz-legend');
-    var pager = document.getElementById('viz-legend-pager');
-    if (!legend) { return; }
-    var items = state.groups;
-    var totalPages = Math.max(1, Math.ceil(items.length / LEGEND_PAGE_SIZE));
-    state.legendPage = Math.max(0, Math.min(state.legendPage, totalPages - 1));
-    var slice = items.slice(state.legendPage * LEGEND_PAGE_SIZE, state.legendPage * LEGEND_PAGE_SIZE + LEGEND_PAGE_SIZE);
-
-    legend.innerHTML = slice.map(function (g) {
-      return '' +
-        '<div class="flex items-center gap-1.5 min-w-0">' +
-          '<span class="w-2 h-2 rounded-full shrink-0" style="background:' + g.color + '"></span>' +
-          '<span class="truncate text-sm text-gray-600 min-w-0" title="' + esc(g.label) + '">' + esc(g.label) + '</span>' +
-          '<span class="text-sm font-semibold whitespace-nowrap shrink-0" style="color:' + g.color + ';padding-left:6px">' + formatPct(g.percentage) + '</span>' +
-        '</div>';
-    }).join('');
-
-    if (pager) {
-      if (items.length > LEGEND_PAGE_SIZE) {
-        pager.classList.remove('hidden');
-        pager.classList.add('flex');
-        var up = document.getElementById('viz-legend-up');
-        var down = document.getElementById('viz-legend-down');
-        [[up, state.legendPage <= 0], [down, state.legendPage >= totalPages - 1]].forEach(function (pair) {
-          if (!pair[0]) return;
-          pair[0].disabled = pair[1];
-          pair[0].classList.toggle('opacity-30', pair[1]);
-          pair[0].classList.toggle('pointer-events-none', pair[1]);
-        });
-      } else {
-        pager.classList.add('hidden');
-        pager.classList.remove('flex');
-      }
-    }
   }
 
   // ---- table -----------------------------------------------------------------
@@ -773,25 +730,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // Legend pager.
-  var legUp = document.getElementById('viz-legend-up');
-  var legDown = document.getElementById('viz-legend-down');
-  if (legUp) { legUp.addEventListener('click', function () { state.legendPage -= 1; renderLegend(); }); }
-  if (legDown) { legDown.addEventListener('click', function () { state.legendPage += 1; renderLegend(); }); }
-
   // ---- initial render --------------------------------------------------------
   renderHeader();
   renderDonut();
-  renderLegend();
   renderTable();
 
-  // ---- drag-to-resize splitter — donut + legend adapt as the column widens/narrows ----
+  // ---- drag-to-resize splitter — donut adapts as the column widens/narrows ----
   (function () {
     var layout        = document.getElementById('viz-split-layout');
     var donutCol      = document.getElementById('viz-donut-column');
     var splitter      = document.getElementById('viz-splitter');
     var donutCont     = document.getElementById('viz-donut-container');
-    var legendEl      = document.getElementById('viz-legend');
     if (!layout || !donutCol || !splitter) { return; }
 
     var STORAGE_KEY     = 'vizSplitLeftPercent';
@@ -804,7 +753,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-    // Resize donut chart canvas + legend columns to match the current column width.
     // donutChart is in the outer DOMContentLoaded closure — accessible here.
     function updateDonutLayout() {
       var colW      = donutCol.clientWidth;
@@ -817,14 +765,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       // Ask Chart.js to re-fit the canvas to its new container.
       if (donutChart) { try { donutChart.resize(); } catch (_) {} }
-
-      // 2-column legend only when donut section occupies ≥45% of the card width.
-      if (legendEl) {
-        var currentPct = parseFloat(donutCol.style.flexBasis) || DEFAULT_PERCENT;
-        var cols = currentPct >= 45 ? 2 : 1;
-        legendEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
-        legendEl.style.columnGap = cols > 1 ? '2rem' : '0';
-      }
     }
 
     function applyPercent(pct, persist) {
