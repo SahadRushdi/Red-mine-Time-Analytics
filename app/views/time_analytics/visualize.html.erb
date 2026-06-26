@@ -186,7 +186,11 @@
     #viz-card #viz-perpage-menu button,
     #viz-card #viz-perpage-menu button:hover,
     #viz-card #viz-perpage-menu button:focus,
-    #viz-card #viz-perpage-menu button:active {
+    #viz-card #viz-perpage-menu button:active,
+    #viz-card #viz-export-menu button,
+    #viz-card #viz-export-menu button:hover,
+    #viz-card #viz-export-menu button:focus,
+    #viz-card #viz-export-menu button:active {
       border: 0 !important;
       background-color: transparent !important;
     }
@@ -197,25 +201,36 @@
       text-transform: none !important;
     }
     #viz-card .ta-viz-sort:hover { color: #374151 !important; }
-    #viz-card #viz-perpage-menu button { color: #374151 !important; }
+    #viz-card #viz-perpage-menu button,
+    #viz-card #viz-export-menu button { color: #374151 !important; }
     #viz-card #viz-perpage-menu button:hover,
     #viz-card #viz-perpage-menu button:focus,
-    #viz-card #viz-perpage-menu button:active {
+    #viz-card #viz-perpage-menu button:active,
+    #viz-card #viz-export-menu button:hover,
+    #viz-card #viz-export-menu button:focus,
+    #viz-card #viz-export-menu button:active {
       background-color: #f3f4f6 !important;
       color: #374151 !important;
     }
-    /* Per-page trigger + pagination keep a neutral gray border in every state. */
+    /* Per-page trigger + pagination keep a neutral gray border and white background in every state. */
     #viz-card #viz-perpage-btn,
     #viz-card #viz-perpage-btn:hover,
     #viz-card #viz-perpage-btn:focus,
     #viz-card #viz-perpage-btn:active,
+    #viz-card #viz-export-btn,
+    #viz-card #viz-export-btn:hover,
+    #viz-card #viz-export-btn:focus,
+    #viz-card #viz-export-btn:active,
     #viz-card #viz-pagination-links button,
     #viz-card #viz-pagination-links button:hover,
     #viz-card #viz-pagination-links button:focus,
     #viz-card #viz-pagination-links button:active {
       border-color: #d1d5db !important;
+      background-color: #ffffff !important;
+      color: #111827 !important;
     }
-    #viz-card #viz-perpage-btn:hover {
+    #viz-card #viz-perpage-btn:hover,
+    #viz-card #viz-export-btn:hover {
       background-color: #f9fafb !important;
       color: #111827 !important;
     }
@@ -250,16 +265,6 @@
     #viz-splitter.is-dragging .viz-splitter-handle { background: #3b82f6; }
     body.viz-split-dragging { cursor: col-resize !important; user-select: none !important; }
 
-    /* Borderless icon buttons for the legend pager (mirrors My Team breakdown). */
-    .ta-bd-icon-btn {
-      background: transparent !important; border: 0 !important; box-shadow: none !important;
-      outline: none !important; color: #9ca3af !important; padding: 0 !important;
-      cursor: pointer !important; transition: background-color 0.15s, color 0.15s;
-    }
-    .ta-bd-icon-btn:hover { background: #f3f4f6 !important; color: #374151 !important; }
-    .ta-bd-icon-btn:disabled, .ta-bd-icon-btn.pointer-events-none {
-      color: #d1d5db !important; background: transparent !important;
-    }
   </style>
 <% end %>
 
@@ -307,13 +312,32 @@
 <% end %>
 
 <div class="ta-viz-wrap" style="margin-top:18px;">
-  <%# The Figma "Hours breakdown" card: donut + paginated legend on the left,
-      sortable / paginated / expandable table on the right. Rendered client-side. %>
+  <%# Grouped-by card: donut on the left, sortable / paginated / expandable table on the right. Rendered client-side. %>
   <div id="viz-card" class="rounded-xl border border-gray-300 bg-white shadow-sm">
+    <div id="viz-no-group-msg" class="hidden px-6 py-16 text-center text-sm text-gray-500">
+      <%= l(:label_visualize_no_group_selected) %>
+    </div>
     <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-200">
       <h3 id="viz-card-title" class="text-xl font-bold text-gray-900"></h3>
       <div class="flex items-center gap-3">
         <span id="viz-card-hint" class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-500 whitespace-nowrap"></span>
+        <%# Export dropdown — exports the breakdown table as CSV (title-level or title + users). %>
+        <div class="relative" id="viz-export-wrap">
+          <button type="button" id="viz-export-btn"
+                  class="inline-flex h-[34px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-0">
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            <span class="whitespace-nowrap"><%= l(:label_export) %></span>
+            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div id="viz-export-menu" class="hidden absolute right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="ta-viz-export-option w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-export="title"><%= l(:label_export_title_only) %></button>
+            <button type="button" class="ta-viz-export-option w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 whitespace-nowrap" data-export="expanded"><%= l(:label_export_title_users) %></button>
+          </div>
+        </div>
         <%# Per-page selector lives in the top-right corner, after the hint. %>
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-600 whitespace-nowrap"><%= l(:label_per_page) %></span>
@@ -336,24 +360,13 @@
     </div>
 
     <div id="viz-split-layout" class="flex flex-col lg:flex-row">
-      <%# Left column: donut + legend. Width is JS-controlled via flex-basis (splitter). %>
-      <div id="viz-donut-column" class="border-b lg:border-b-0 p-6 flex flex-col items-center" style="flex-basis:35%;min-width:220px">
+      <%# Left column: donut chart. Width is JS-controlled via flex-basis (splitter). %>
+      <div id="viz-donut-column" class="border-b lg:border-b-0 p-6 flex flex-col items-center justify-center" style="flex-basis:35%;min-width:220px">
         <div id="viz-donut-container" class="relative" style="width:240px;height:240px">
           <canvas id="viz-donut"></canvas>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span id="viz-donut-total" class="text-2xl font-bold text-gray-900"></span>
             <span class="text-xs text-gray-500"><%= l(:label_visualize_total_hours) %></span>
-          </div>
-        </div>
-        <div class="w-full mt-5">
-          <div id="viz-legend" class="grid" style="grid-template-columns:repeat(2,1fr);column-gap:2rem;row-gap:0.5rem" data-page="0"></div>
-          <div id="viz-legend-pager" class="hidden items-center justify-end gap-1 mt-3">
-            <button type="button" id="viz-legend-up" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_up) %>">
-              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_up</span>
-            </button>
-            <button type="button" id="viz-legend-down" class="ta-bd-icon-btn inline-flex items-center justify-center w-6 h-6 rounded" title="<%= l(:label_member_breakdown_scroll_down) %>">
-              <span class="material-symbols-outlined" style="font-size:16px;">keyboard_arrow_down</span>
-            </button>
           </div>
         </div>
       </div>
@@ -417,24 +430,38 @@ document.addEventListener('DOMContentLoaded', function () {
     expandHint: '<%= j l(:label_visualize_expand_hint) %>',
     totalSuffix: '<%= j l(:label_visualize_total_suffix) %>',
     total: '<%= j l(:label_total) %>',
+    hours: '<%= j l(:field_hours) %>',
+    share: '<%= j l(:label_export_share) %>',
     noData: '<%= j l(:label_no_data) %>',
     of: 'of'
   };
 
   var payload = JSON.parse(holder.getAttribute('data-payload'));
-  var LEGEND_PAGE_SIZE = 10;
+
+  // When no Group by is selected, show the prompt and stop.
+  if (payload.no_group_selected) {
+    var noGroupTitle = document.getElementById('viz-card-title');
+    var noGroupMsg   = document.getElementById('viz-no-group-msg');
+    var splitLayout  = document.getElementById('viz-split-layout');
+    var cardHeader   = noGroupTitle && noGroupTitle.closest('.border-b');
+    if (noGroupTitle) { noGroupTitle.textContent = '<%= j l(:label_visualize) %>'; }
+    if (cardHeader)   { cardHeader.style.display = 'none'; }
+    if (splitLayout)  { splitLayout.style.display = 'none'; }
+    if (noGroupMsg)   { noGroupMsg.classList.remove('hidden'); }
+    return;
+  }
 
   var state = {
     groups: payload.groups || [],
     total: payload.total || 0,
     dimensionLabel: payload.dimension_label || '',
+    childLabel: payload.child_label || '',
     childDimension: payload.child_dimension || '',
     sortKey: 'hours',
     sortDir: 'desc',
     page: 1,
     perPage: 10,
-    expanded: {},
-    legendPage: 0
+    expanded: {}
   };
 
   // ---- helpers ---------------------------------------------------------------
@@ -484,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // ---- donut + legend --------------------------------------------------------
+  // ---- donut -----------------------------------------------------------------
   var donutChart = null;
   function renderDonut() {
     var canvas = document.getElementById('viz-donut');
@@ -523,43 +550,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
     });
-  }
-
-  function renderLegend() {
-    var legend = document.getElementById('viz-legend');
-    var pager = document.getElementById('viz-legend-pager');
-    if (!legend) { return; }
-    var items = state.groups;
-    var totalPages = Math.max(1, Math.ceil(items.length / LEGEND_PAGE_SIZE));
-    state.legendPage = Math.max(0, Math.min(state.legendPage, totalPages - 1));
-    var slice = items.slice(state.legendPage * LEGEND_PAGE_SIZE, state.legendPage * LEGEND_PAGE_SIZE + LEGEND_PAGE_SIZE);
-
-    legend.innerHTML = slice.map(function (g) {
-      return '' +
-        '<div class="flex items-center gap-1.5 min-w-0">' +
-          '<span class="w-2 h-2 rounded-full shrink-0" style="background:' + g.color + '"></span>' +
-          '<span class="truncate text-sm text-gray-600 min-w-0" title="' + esc(g.label) + '">' + esc(g.label) + '</span>' +
-          '<span class="text-sm font-semibold whitespace-nowrap shrink-0" style="color:' + g.color + ';padding-left:6px">' + formatPct(g.percentage) + '</span>' +
-        '</div>';
-    }).join('');
-
-    if (pager) {
-      if (items.length > LEGEND_PAGE_SIZE) {
-        pager.classList.remove('hidden');
-        pager.classList.add('flex');
-        var up = document.getElementById('viz-legend-up');
-        var down = document.getElementById('viz-legend-down');
-        [[up, state.legendPage <= 0], [down, state.legendPage >= totalPages - 1]].forEach(function (pair) {
-          if (!pair[0]) return;
-          pair[0].disabled = pair[1];
-          pair[0].classList.toggle('opacity-30', pair[1]);
-          pair[0].classList.toggle('pointer-events-none', pair[1]);
-        });
-      } else {
-        pager.classList.add('hidden');
-        pager.classList.remove('flex');
-      }
-    }
   }
 
   // ---- table -----------------------------------------------------------------
@@ -714,8 +704,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var title = document.getElementById('viz-card-title');
     var hint = document.getElementById('viz-card-hint');
     var th = document.getElementById('viz-th-dimension');
+    var exportWrap = document.getElementById('viz-export-wrap');
     if (title) { title.textContent = TEXT.breakdownBy.replace('__DIM__', state.dimensionLabel); }
     if (th) { th.textContent = state.dimensionLabel; }
+    if (exportWrap) { exportWrap.classList.toggle('hidden', !state.groups.length); }
     if (hint) {
       if (state.groups.length) {
         hint.textContent = formatHours(state.total) + ' ' + TEXT.totalSuffix + ' · ' + TEXT.expandHint;
@@ -773,25 +765,96 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // Legend pager.
-  var legUp = document.getElementById('viz-legend-up');
-  var legDown = document.getElementById('viz-legend-down');
-  if (legUp) { legUp.addEventListener('click', function () { state.legendPage -= 1; renderLegend(); }); }
-  if (legDown) { legDown.addEventListener('click', function () { state.legendPage += 1; renderLegend(); }); }
+  // ---- CSV export ------------------------------------------------------------
+  setupDropdown('viz-export-btn', 'viz-export-menu');
+
+  // Keep the export menu the same width as its trigger button.
+  (function () {
+    var exportBtn = document.getElementById('viz-export-btn');
+    var exportMenu = document.getElementById('viz-export-menu');
+    if (exportBtn && exportMenu) {
+      exportBtn.addEventListener('click', function () {
+        exportMenu.style.width = exportBtn.offsetWidth + 'px';
+      });
+    }
+  }());
+
+  function csvCell(value) {
+    var s = value == null ? '' : String(value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  function csvHours(hours) {
+    return Math.round(parseFloat(hours || 0) * 100) / 100; // decimal hours, spreadsheet-friendly
+  }
+  function csvRow(cells) {
+    return cells.map(csvCell).join(',');
+  }
+
+  // Builds the CSV text from the currently-sorted groups so the file matches the table.
+  // mode 'title'    → one row per group.
+  // mode 'expanded' → each group row followed by its child (within-group) rows.
+  function buildCsv(mode) {
+    var groups = sortedGroups();
+    var rows = [];
+    var totalPct = state.total > 0 ? '100%' : '';
+    if (mode === 'expanded') {
+      rows.push(csvRow([state.dimensionLabel, state.childLabel, TEXT.hours, TEXT.share]));
+      groups.forEach(function (g) {
+        rows.push(csvRow([g.label, '', csvHours(g.hours), formatPct(g.percentage)]));
+        (g.children || []).forEach(function (c) {
+          rows.push(csvRow(['', c.label, csvHours(c.hours), formatPct(c.percentage)]));
+        });
+      });
+      rows.push(csvRow([TEXT.total, '', csvHours(state.total), totalPct]));
+    } else {
+      rows.push(csvRow([state.dimensionLabel, TEXT.hours, TEXT.share]));
+      groups.forEach(function (g) {
+        rows.push(csvRow([g.label, csvHours(g.hours), formatPct(g.percentage)]));
+      });
+      rows.push(csvRow([TEXT.total, csvHours(state.total), totalPct]));
+    }
+    return rows.join('\r\n');
+  }
+
+  function downloadCsv(filename, text) {
+    var blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+  }
+
+  function exportCsv(mode) {
+    if (!state.groups.length) { return; }
+    var slug = String(state.dimensionLabel || 'group').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'group';
+    var filename = 'spent_time_grouped_' + slug + '_' + (mode === 'expanded' ? 'expanded' : 'title') + '.csv';
+    downloadCsv(filename, buildCsv(mode));
+  }
+
+  document.querySelectorAll('.ta-viz-export-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      var menu = document.getElementById('viz-export-menu');
+      if (menu) { menu.classList.add('hidden'); }
+      exportCsv(opt.getAttribute('data-export'));
+    });
+  });
 
   // ---- initial render --------------------------------------------------------
   renderHeader();
   renderDonut();
-  renderLegend();
   renderTable();
 
-  // ---- drag-to-resize splitter — donut + legend adapt as the column widens/narrows ----
+  // ---- drag-to-resize splitter — donut adapts as the column widens/narrows ----
   (function () {
     var layout        = document.getElementById('viz-split-layout');
     var donutCol      = document.getElementById('viz-donut-column');
     var splitter      = document.getElementById('viz-splitter');
     var donutCont     = document.getElementById('viz-donut-container');
-    var legendEl      = document.getElementById('viz-legend');
     if (!layout || !donutCol || !splitter) { return; }
 
     var STORAGE_KEY     = 'vizSplitLeftPercent';
@@ -804,7 +867,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-    // Resize donut chart canvas + legend columns to match the current column width.
     // donutChart is in the outer DOMContentLoaded closure — accessible here.
     function updateDonutLayout() {
       var colW      = donutCol.clientWidth;
@@ -817,14 +879,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       // Ask Chart.js to re-fit the canvas to its new container.
       if (donutChart) { try { donutChart.resize(); } catch (_) {} }
-
-      // 2-column legend only when donut section occupies ≥45% of the card width.
-      if (legendEl) {
-        var currentPct = parseFloat(donutCol.style.flexBasis) || DEFAULT_PERCENT;
-        var cols = currentPct >= 45 ? 2 : 1;
-        legendEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
-        legendEl.style.columnGap = cols > 1 ? '2rem' : '0';
-      }
     }
 
     function applyPercent(pct, persist) {
