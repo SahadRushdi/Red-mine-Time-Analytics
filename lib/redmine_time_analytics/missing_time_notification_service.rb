@@ -86,9 +86,6 @@ module RedmineTimeAnalytics
 
     # Returns { user => [Date, ...] } for each user with at least one missing working day.
     def users_missing_time_for_range(date_range)
-      active_user_ids = User.active.pluck(:id)
-      return {} if active_user_ids.empty?
-
       all_dates = date_range.to_a
       # Use working_day_checker to load holidays once for the range rather than one DB call per date.
       is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(
@@ -97,20 +94,31 @@ module RedmineTimeAnalytics
       working_dates = all_dates.select { |d| is_working_day.call(d) }
       return {} if working_dates.empty?
 
+      # Team-member windows overlapping the checked range. Only users configured under a team
+      # (TaTeamMembership) are considered; membership is resolved per-date so a user is checked
+      # only on the working days their membership was active (end_date NULL or >= date).
+      membership_windows = TaTeamMembership.active_between(working_dates.min, working_dates.max)
+                                           .pluck(:user_id, :start_date, :end_date)
+      return {} if membership_windows.empty?
+
+      member_dates_by_user = dates_by_user_from_windows(membership_windows, working_dates)
+      team_user_ids = member_dates_by_user.keys
+      return {} if team_user_ids.empty?
+
       # One query for all exclusion windows; per-date membership resolved in memory.
       exclusion_windows = TaTeamSetting.exclusions_overlapping(working_dates.min, working_dates.max)
                                         .pluck(:user_id, :start_date, :end_date)
-      excluded_dates_by_user = build_excluded_dates_by_user(exclusion_windows, working_dates)
+      excluded_dates_by_user = dates_by_user_from_windows(exclusion_windows, working_dates)
 
       leave_dates_by_user = TaLeaveRecord.confirmed
-                                         .where(leave_date: working_dates, user_id: active_user_ids)
+                                         .where(leave_date: working_dates, user_id: team_user_ids)
                                          .pluck(:user_id, :leave_date)
                                          .each_with_object(Hash.new { |h, k| h[k] = [] }) do |(uid, d), h|
                                            h[uid] << d.to_date
                                          end
 
       logged_dates_by_user = TimeEntry.joins(:project)
-                                      .where(user_id: active_user_ids, spent_on: working_dates)
+                                      .where(user_id: team_user_ids, spent_on: working_dates)
                                       .where(projects: { status: Project::STATUS_ACTIVE })
                                       .group(:user_id, :spent_on)
                                       .having('SUM(time_entries.hours) > 0')
@@ -120,11 +128,12 @@ module RedmineTimeAnalytics
                                       end
 
       result = {}
-      active_user_ids.each do |uid|
+      team_user_ids.each do |uid|
+        member_days   = member_dates_by_user[uid]
         excluded_days = excluded_dates_by_user[uid]
         leave_days    = leave_dates_by_user[uid]
         logged_days   = logged_dates_by_user[uid]
-        checkable_dates = working_dates - excluded_days - leave_days
+        checkable_dates = member_days - excluded_days - leave_days
         missing = checkable_dates - logged_days
         result[uid] = missing unless missing.empty?
       end
@@ -135,16 +144,20 @@ module RedmineTimeAnalytics
       result.transform_keys { |uid| users_by_id[uid] }.reject { |u, _| u.nil? }
     end
 
-    # Builds { user_id => [Date, ...] } of dates each user is on the exclusion list,
-    # using in-memory range checks on already-fetched exclusion windows.
-    def build_excluded_dates_by_user(exclusion_windows, working_dates)
-      excluded = Hash.new { |h, k| h[k] = [] }
+    # Builds { user_id => [Date, ...] }: for each working date, the users whose [start, end]
+    # window covers it (end nil = open-ended). Used for both exclusion windows and membership
+    # windows, via in-memory range checks on already-fetched windows. A user with several
+    # windows (e.g. membership in multiple teams) still gets each date at most once.
+    def dates_by_user_from_windows(windows, working_dates)
+      by_user = Hash.new { |h, k| h[k] = [] }
       working_dates.each do |d|
-        exclusion_windows.each do |uid, start_d, end_d|
-          excluded[uid] << d if d >= start_d && (end_d.nil? || d <= end_d)
+        windows.each do |uid, start_d, end_d|
+          next unless d >= start_d && (end_d.nil? || d <= end_d)
+
+          by_user[uid] << d unless by_user[uid].include?(d)
         end
       end
-      excluded
+      by_user
     end
   end
 end
