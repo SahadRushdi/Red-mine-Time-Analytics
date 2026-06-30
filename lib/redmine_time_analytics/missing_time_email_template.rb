@@ -5,16 +5,16 @@ require 'erb'
 module RedmineTimeAnalytics
   class MissingTimeEmailTemplate
     class << self
-      def subject_for(date_range)
-        "Missing Time Entries for #{period_phrase(date_range)}"
+      def subject_for(date_range, period_type = nil)
+        "Missing Time Entries for #{period_phrase(date_range, period_type)}"
       end
 
       # Plain-text fallback body. Lists each team and its un-logged members.
-      def body_for(missing_by_team:, date_range:, from_name:)
+      def body_for(missing_by_team:, date_range:, from_name:, period_type: nil)
         lines = []
         lines << 'Hi Team,'
         lines << ''
-        lines << "This is a gentle reminder to review your time entries for #{period_phrase(date_range)} and ensure they are up to date."
+        lines << "This is a gentle reminder to review your time entries for #{period_phrase(date_range, period_type)} and ensure they are up to date."
         lines << 'If your name is listed below, please take a moment to check your logged time and update any missing entries if needed.'
         lines << ''
 
@@ -35,13 +35,13 @@ module RedmineTimeAnalytics
       end
 
       # HTML body: one table per team with the team's un-logged members.
-      def body_html_for(missing_by_team:, date_range:, from_name:)
+      def body_html_for(missing_by_team:, date_range:, from_name:, period_type: nil)
         tables = Array(missing_by_team).map { |team, user_dates| team_table_html(team, user_dates) }.join
 
         <<~HTML
           <div style="font-family: Arial, Helvetica, sans-serif; color:#1f2937; font-size:14px; line-height:1.6;">
             <p>Hi Team,</p>
-            <p>This is a gentle reminder to review your time entries for <strong>#{esc(period_phrase(date_range))}</strong> and ensure they are up to date. If your name is listed below, please take a moment to check your logged time and update any missing entries.</p>
+            <p>This is a gentle reminder to review your time entries for <strong>#{esc(period_phrase(date_range, period_type))}</strong> and ensure they are up to date. If your name is listed below, please take a moment to check your logged time and update any missing entries.</p>
             #{tables}
             <p style="margin-top:20px;">If your time entries are already up to date or you were on leave, you can ignore this message. Kindly complete any pending entries.</p>
             <p>Thanks for your support in keeping our records accurate.</p>
@@ -70,7 +70,7 @@ module RedmineTimeAnalytics
             <thead>
               <tr>
                 <th style="#{head}">Team Member</th>
-                <th style="#{head}">Days Missing Time Log</th>
+                <th style="#{head}">Time Log Missed Days</th>
               </tr>
             </thead>
             <tbody>#{rows}</tbody>
@@ -78,13 +78,24 @@ module RedmineTimeAnalytics
         HTML
       end
 
-      # "the Week of June 22–26, 2026" for a multi-day range, or "June 29, 2026" for a single day.
-      def period_phrase(date_range)
+      # Period wording for the subject/intro:
+      #   :monthly → "the Month of June 2026"
+      #   :weekly  → "the Week of June 22–26, 2026"
+      #   :daily   → "June 29, 2026"
+      # When period_type is nil it is inferred from the range (single day → daily, else weekly).
+      def period_phrase(date_range, period_type = nil)
         first = date_range.first
         last = date_range.last
-        return long_date(first) if first == last
+        type = period_type || (first == last ? :daily : :weekly)
 
-        "the Week of #{week_label(first, last)}"
+        case type
+        when :monthly
+          "the Month of #{first.strftime('%B %Y')}"
+        when :weekly
+          "the Week of #{week_label(first, last)}"
+        else
+          long_date(first)
+        end
       end
 
       def week_label(first, last)

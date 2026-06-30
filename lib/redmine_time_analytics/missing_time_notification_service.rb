@@ -8,12 +8,28 @@ module RedmineTimeAnalytics
       @settings = settings
     end
 
-    def notify_missing_time!(date_range: nil)
+    # period: nil      → auto-resolve weekly/daily window from today's weekday (default).
+    # period: :monthly → end-of-month reminder for the full month so far; only acts when today
+    #                    is the last Friday of the month (otherwise it is a no-op).
+    def notify_missing_time!(date_range: nil, period: nil)
       result = Result.new(date_range: nil, missing_users: {}, sent: false, errors: [])
 
       Time.use_zone(@settings[:timezone]) do
         today = Time.zone.today
-        range = date_range || resolve_date_range(today)
+
+        if period == :monthly
+          unless last_friday_of_month?(today)
+            Rails.logger.info("[MissingTimeScheduler] #{today} is not the last Friday of the month; skipping monthly reminder")
+            return result
+          end
+          range = date_range || (today.beginning_of_month..today)
+          period_type = :monthly
+        elsif date_range
+          range = date_range
+          period_type = period
+        else
+          range, period_type = resolve_date_range(today)
+        end
         result.date_range = range
 
         missing_by_team = users_missing_time_for_range(range)
@@ -28,6 +44,7 @@ module RedmineTimeAnalytics
           MissingTimeMailer.reminder(
             missing_by_team: missing_by_team,
             date_range: range,
+            period_type: period_type,
             recipients: @settings[:recipients],
             from_name: @settings[:from_name]
           ).deliver_now
@@ -58,22 +75,28 @@ module RedmineTimeAnalytics
 
     private
 
+    # Returns [date_range, period_type] for the weekly/daily reminder based on today's weekday.
     def resolve_date_range(today)
       case today.wday
       when 1 # Monday → previous week Mon–Fri
         monday = today - 7
-        monday..monday + 4
+        [monday..monday + 4, :weekly]
       when 5, 6 # Friday or Saturday → current week Mon–Fri
         monday = today - (today.wday - 1)
-        monday..monday + 4
+        [monday..monday + 4, :weekly]
       else
         prev = previous_working_day(today)
         Rails.logger.warn(
           "[MissingTimeScheduler] triggered on #{today.strftime('%A')} (not Mon/Fri/Sat); " \
           "falling back to single-day check for #{prev}"
         )
-        prev..prev
+        [prev..prev, :daily]
       end
+    end
+
+    # A Friday is the last Friday of its month if seven days later lands in the next month.
+    def last_friday_of_month?(date)
+      date.wday == 5 && (date + 7).month != date.month
     end
 
     def previous_working_day(reference_date)

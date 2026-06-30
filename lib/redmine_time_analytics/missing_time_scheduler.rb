@@ -5,6 +5,10 @@ require 'fugit'
 
 module RedmineTimeAnalytics
   class MissingTimeScheduler
+    # Hard-coded end-of-month reminder: fires every Friday 18:00 (scheduler timezone) and only
+    # acts when that Friday is the last Friday of the month (gated inside the service).
+    MONTHLY_REMINDER_CRON = '0 18 * * 5'
+
     @mutex = Mutex.new
     @scheduler = nil
     @jobs = []
@@ -73,10 +77,12 @@ module RedmineTimeAnalytics
           end
           @jobs << job
         end
+
+        @jobs << @scheduler.cron(MONTHLY_REMINDER_CRON) { run_notification!(period: :monthly) }
       end
 
-      def run_notification!
-        result = RedmineTimeAnalytics::MissingTimeNotificationService.new.notify_missing_time!
+      def run_notification!(period: nil)
+        result = RedmineTimeAnalytics::MissingTimeNotificationService.new.notify_missing_time!(period: period)
         if result.errors.any?
           unique_errors = result.errors.uniq
           Rails.logger.warn(
