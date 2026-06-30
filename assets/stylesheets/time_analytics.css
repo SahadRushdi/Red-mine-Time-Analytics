@@ -47,6 +47,8 @@
   flex-direction: column;
   align-self: stretch;
   overflow-x: visible;
+  /* The box is a fixed height (470px). Hide its own vertical overflow and let the inner
+     table-wrap scroll instead, so the pagination row stays pinned and fully visible. */
   overflow-y: hidden;
 }
 

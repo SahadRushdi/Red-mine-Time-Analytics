@@ -704,12 +704,17 @@
           </thead>
           <tbody>
             <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
+              <% is_holiday = entry.respond_to?(:holiday) && entry.holiday %>
+              <% cell_color = is_holiday ? '#b45309' : '#111827' %>
               <tr class="bg-white border-b hover:bg-gray-50">
-                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
-                <td class="px-2 py-4 text-center text-gray-900">
+                <th scope="row" class="px-6 py-3 font-medium text-gray-700 whitespace-nowrap" style="color: <%= cell_color %>;">
+                  <%= entry.period %>
+                  <% if is_holiday %><span class="ml-1 text-xs" title="Weekend or holiday" style="color:#f59e0b;">&#9679;</span><% end %>
+                </th>
+                <td class="px-2 py-3 text-center text-gray-700" style="color: <%= cell_color %>;">
                   <div class="flex items-center justify-center gap-1.5">
                     <span><%= entry.member_count %></span>
-                    <button type="button" 
+                    <button type="button"
                             onclick="showTeamMemberDetails('<%= @selected_team.id %>', '<%= entry.raw_period %>', '<%= @grouping %>')"
                             class="ta-info-icon-btn flex items-center justify-center cursor-pointer"
                             title="View members">
@@ -717,11 +722,11 @@
                     </button>
                   </div>
                 </td>
-                <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
+                <td class="px-2 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.hours) %></td>
+                <td class="px-6 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.average) %></td>
                 <% if @show_effective_time_column %>
-                  <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
-                  <td class="px-2 py-4 text-right font-mono text-gray-900">
+                  <td class="px-2 py-3 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="px-2 py-3 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
                     <% else %>
@@ -737,7 +742,7 @@
       
       <%# Pagination %>
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :hide_holidays, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -750,7 +755,16 @@
   <%# Visualization Section (Right Side) %>
   <div class="box visualization-section">
     <h3 style="display: flex; justify-content: flex-end;">
-      <div class="visualization-controls">
+      <div class="visualization-controls flex items-center gap-3">
+        <%# Toggle: hide weekend/holiday days from the Trend chart + Time Overview (daily grouping only). %>
+        <% if @grouping == 'daily' && (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') %>
+          <label class="relative inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="Show only working days (hides weekends &amp; holidays without logged time and amber-flagged days)">
+            <input type="checkbox" class="sr-only peer" <%= 'checked' if @hide_holidays %> onchange="toggleHolidays()">
+            <div class="ta-custom-toggle-track"></div>
+            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Show Active Days</span>
+          </label>
+        <% end %>
         <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
           <% chart_type = %w[line bar].include?(params[:chart_type]) ? params[:chart_type] : 'line' %>
           <div class="inline-flex gap-2">
@@ -1317,6 +1331,17 @@
     }
   }
 
+  // Toggle hiding weekend/holiday days from the Trend chart + Time Overview table.
+  function toggleHolidays() {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get('hide_holidays') === '1') {
+      url.searchParams.delete('hide_holidays');
+    } else {
+      url.searchParams.set('hide_holidays', '1');
+    }
+    window.location.href = url.toString();
+  }
+
   function scrollTeamTableIntoView() {
     var tableElement = document.querySelector('.ta-analysis-table');
     if (!tableElement) return;
@@ -1510,6 +1535,18 @@
         return;
       }
       
+      // Weekend/holiday points keep their amber colour when the dataset carries holidayFlags.
+      if (config.type === 'line' && Array.isArray(config.data.datasets)) {
+        config.data.datasets.forEach(function (ds) {
+          if (ds && ds.holidayFlags && ds.holidayFlags.length) {
+            var pointColors = ds.holidayFlags.map(function (h) { return h ? '#f59e0b' : '#1d4ed8'; });
+            ds.pointBackgroundColor = pointColors;
+            ds.pointBorderColor = pointColors;
+            ds.pointBorderWidth = 1;
+          }
+        });
+      }
+
       // Ensure responsive configuration
       if (!config.options) {
         config.options = {};
