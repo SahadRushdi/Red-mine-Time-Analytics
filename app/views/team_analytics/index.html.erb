@@ -1438,7 +1438,13 @@
       memberData.forEach(function(m) { labels.push(m.name); values.push(m.hours); });
     <% end %>
 
-    if (!labels.length || !values.length) return;
+    if (!labels.length || !values.length) {
+      // No active members (e.g. all temporarily excluded): zero the centre total so the
+      // display is correct and not left showing a stale figure.
+      var emptyTotal = document.getElementById('team-total-hours-display');
+      if (emptyTotal) emptyTotal.textContent = formatTeamHours(0);
+      return;
+    }
 
     var total = values.reduce(function(sum, val) { return sum + val; }, 0);
     var totalDisplay = document.getElementById('team-total-hours-display');
@@ -1722,13 +1728,14 @@
   }
 
   function selectPerPage(value) {
-    var field = document.getElementById('per-page-field');
     var label = document.getElementById('per-page-label');
     if (label) label.textContent = value;
-    if (field) {
-      field.value = value;
-      field.closest('form').submit();
-    }
+    // Navigate via the URL so all current params (including temp_excluded_ids[]) are
+    // preserved; avoids depending on an enclosing form.
+    var url = new URL(window.location.href);
+    url.searchParams.set('per_page', value);
+    url.searchParams.delete('page');
+    window.location.assign(url.toString());
   }
 
   document.addEventListener('click', function(event) {
@@ -2009,7 +2016,7 @@
 
     // Build fetch URL, including any temporary exclusions so the modal matches the table count.
     var fetchParams = new URLSearchParams({ team_id: teamId, period_start: periodStart, grouping: grouping });
-    (getStoredExclusions() || []).forEach(function(id) { fetchParams.append('temp_excluded_ids[]', id); });
+    getUrlExclusions().forEach(function(id) { fetchParams.append('temp_excluded_ids[]', id); });
 
     fetch(`<%= team_analytics_period_members_path %>?${fetchParams.toString()}`)
       .then(response => response.json())
@@ -2144,37 +2151,32 @@
   }
 
   // --- Temporary member exclusion (Members summary toggles) ---------------------
-  // Excluded user IDs are kept in sessionStorage (per team) so they survive reloads
-  // and navigation between dashboard pages for the whole browser session — until the
-  // team lead re-enables them. They are mirrored into the URL (temp_excluded_ids[])
-  // so the server renders every navigated/reloaded page already excluded; a one-time
-  // self-correcting redirect re-applies them on any page that lands without the param.
-  var exclusionRequestToken = 0;
-  // Bump the version segment to invalidate any stale per-team entries persisted by an
-  // earlier build (e.g. exclusions that bled across teams before the team-switch fix).
-  var exclusionStorageKey = 'taTempExcluded:v2:' + (currentTeamId || 'none');
-
-  function getStoredExclusions() {
-    try {
-      var raw = sessionStorage.getItem(exclusionStorageKey);
-      if (raw === null) { return null; }
-      var ids = JSON.parse(raw);
-      return Array.isArray(ids) ? ids.map(String) : [];
-    } catch (e) { return null; }
-  }
-
-  function setStoredExclusions(ids) {
-    try { sessionStorage.setItem(exclusionStorageKey, JSON.stringify(ids.map(String))); } catch (e) {}
-  }
+  // Exclusions are EPHEMERAL and live ONLY in the URL (temp_excluded_ids[]). They are
+  // intentionally not persisted: changing the time period or team, or navigating away
+  // to another Redmine page, drops them (all members return as included). They survive
+  // only the controls that explicitly carry the param forward — the Members/Activity/
+  // Project tabs, Summary/Detailed, grouping, per-page and pagination.
+  var exclusionNavTimer = null;
+  var EXCLUSION_NAV_DELAY = 350;
 
   function getUrlExclusions(urlObj) {
     return (urlObj || new URL(window.location.href)).searchParams.getAll('temp_excluded_ids[]').map(String);
   }
 
-  function sameIdSet(a, b) {
-    if (a.length !== b.length) { return false; }
-    var sa = a.slice().sort(), sb = b.slice().sort();
-    return sa.every(function(v, i) { return v === sb[i]; });
+  // Inject the current URL exclusions into a GET form as hidden fields so that a form
+  // submit PRESERVES them (used by the grouping dropdown). Controls that must CLEAR
+  // exclusions (time period, team) never call this, so the param is dropped on submit.
+  function appendExclusionFieldsToForm(form) {
+    if (!form) { return; }
+    form.querySelectorAll('input[data-ta-exclusion="1"]').forEach(function(el) { el.remove(); });
+    getUrlExclusions().forEach(function(id) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'temp_excluded_ids[]';
+      input.value = id;
+      input.setAttribute('data-ta-exclusion', '1');
+      form.appendChild(input);
+    });
   }
 
   function buildExclusionUrl(ids) {
@@ -2196,73 +2198,49 @@
     return ids;
   }
 
-  function refreshTeamMemberExclusions(ids) {
-    var summaryCard = document.getElementById('ts-summary-cards-row');
-    var token = ++exclusionRequestToken;
-    var url = buildExclusionUrl(ids);
-
-    if (summaryCard) { summaryCard.style.opacity = '0.5'; }
-
-    fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-      .then(function(response) { return response.text(); })
-      .then(function(html) {
-        // Ignore responses that have been superseded by a newer toggle.
-        if (token !== exclusionRequestToken) { return; }
-
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-
-        // innerHTML swap for content blocks (preserves wrappers' toggled display state).
-        ['ts-summary-cards-row', 'team-time-overview-box', 'team-member-summary-view', 'team-member-detailed-view', 'team-member-monthly-avg-view'].forEach(function(id) {
-          var fresh = doc.getElementById(id);
-          var current = document.getElementById(id);
-          if (fresh && current) { current.innerHTML = fresh.innerHTML; }
-        });
-
-        // Full-element replace for pagination (data-* attributes carry the recomputed counts).
-        ['team-member-pagination-links', 'team-member-pagination-info'].forEach(function(id) {
-          var fresh = doc.getElementById(id);
-          var current = document.getElementById(id);
-          if (fresh && current) { current.replaceWith(document.importNode(fresh, true)); }
-        });
-
-        // Re-apply summary/detailed visibility + pagination text, the active sort,
-        // then rebuild the donut from the swapped rows.
-        restoreMemberViewState();
-        applySummarySort('team-member-summary-view');
-        initTeamDonutChart();
-      })
-      .catch(function(err) { console.error('Member exclusion refresh failed:', err); })
-      .finally(function() {
-        if (token === exclusionRequestToken && summaryCard) { summaryCard.style.opacity = ''; }
-      });
+  // Dim the member section for instant "working…" feedback while the debounced reload
+  // settles. The reload renders the authoritative state, so there is nothing to un-dim.
+  function dimMemberSection(on) {
+    ['ts-summary-cards-row', 'team-member-summary-view', 'team-donut-chart'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.style.opacity = on ? '0.5' : ''; }
+    });
   }
 
-  // Toggling a member updates the stored set, mirrors it into the URL, and refreshes in place.
+  // Toggling a member reflects in the URL immediately and dims the section for feedback.
+  // The AUTHORITATIVE update is a real navigation to the exclusion URL — the same reliable
+  // mechanism as changing the time period — DEBOUNCED so toggling many members in a row
+  // reloads only once. A full render (instead of an in-place swap) guarantees the member
+  // rows, donut and totals are always correct, and the donut renders exactly once.
   document.addEventListener('change', function(e) {
     if (e.target && e.target.classList && e.target.classList.contains('member-exclusion-toggle')) {
-      var ids = collectExcludedMemberIds();
-      setStoredExclusions(ids);
-      window.history.replaceState({}, '', buildExclusionUrl(ids).toString());
-      refreshTeamMemberExclusions(ids);
-      refreshMemberBreakdownExclusions();
+      window.history.replaceState({}, '', buildExclusionUrl(collectExcludedMemberIds()).toString());
+      dimMemberSection(true);
+
+      if (exclusionNavTimer) { clearTimeout(exclusionNavTimer); }
+      exclusionNavTimer = setTimeout(function() {
+        exclusionNavTimer = null;
+        var latest = collectExcludedMemberIds();
+        // Preserve scroll across the reload (reuses the load-time restore handler).
+        try { sessionStorage.setItem('teamScrollPosition', String(window.pageYOffset || document.documentElement.scrollTop || 0)); } catch (e2) {}
+        window.location.assign(buildExclusionUrl(latest).toString());
+      }, EXCLUSION_NAV_DELAY);
     }
   });
 
-  // On load, force the URL to match THIS team's stored set. The per-team sessionStorage
-  // is the only source of truth: a team applies only the exclusions it set itself, and
-  // never adopts IDs from the URL (so one team's exclusions can never leak into another).
-  function syncTeamMemberExclusions() {
-    var effective = getStoredExclusions() || []; // null (never set) is treated as empty
-    var urlIds = getUrlExclusions();
-
-    // URL already matches this team's stored set — server rendered correctly, nothing to do.
-    if (sameIdSet(effective, urlIds)) { return; }
-
-    // URL carries a different set (a clean reload, a re-enable, or IDs that bled in from
-    // another team). Re-render with the team's own set via a single redirect so every view
-    // (cards, overview, tables, charts) is consistent.
-    window.location.replace(buildExclusionUrl(effective).toString());
-  }
+  // The Members/Activity/Project tab links are rendered server-side at load, so their href
+  // can be stale if members were toggled afterwards. Rewrite the href to the LIVE exclusion
+  // set just before navigation (capture phase) so switching views preserves exclusions.
+  document.addEventListener('click', function(e) {
+    var link = e.target && e.target.closest && e.target.closest('a[data-team-tab-nav]');
+    if (!link) { return; }
+    try {
+      var dest = new URL(link.getAttribute('href'), window.location.href);
+      dest.searchParams.delete('temp_excluded_ids[]');
+      getUrlExclusions().forEach(function(id) { dest.searchParams.append('temp_excluded_ids[]', id); });
+      link.setAttribute('href', dest.toString());
+    } catch (err) {}
+  }, true);
 
   // ===== Member Breakdown: per-member second-level grouping (lazy-loaded) =====
   var memberBreakdownData = null;
@@ -2589,7 +2567,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    syncTeamMemberExclusions();
     var modalEl = document.getElementById('team-member-details-modal');
     if (modalEl && typeof Modal !== 'undefined') {
       teamMemberDetailsModal = new Modal(modalEl, {

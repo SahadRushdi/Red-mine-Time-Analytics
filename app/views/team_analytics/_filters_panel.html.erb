@@ -108,6 +108,8 @@
       groupingHidden.value = groupingValue;
       groupingLabel.textContent = groupingText;
       if (dropdown) dropdown.classList.add('hidden');
+      // Grouping change keeps the same team + period, so PRESERVE temp exclusions.
+      if (typeof appendExclusionFieldsToForm === 'function') { appendExclusionFieldsToForm(form); }
       form.submit();
     }
   }
