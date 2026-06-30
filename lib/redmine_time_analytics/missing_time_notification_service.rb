@@ -16,25 +16,27 @@ module RedmineTimeAnalytics
         range = date_range || resolve_date_range(today)
         result.date_range = range
 
-        user_missing_dates = users_missing_time_for_range(range)
-        result.missing_users = user_missing_dates
+        missing_by_team = users_missing_time_for_range(range)
+        result.missing_users = missing_by_team
 
-        if user_missing_dates.empty?
+        if missing_by_team.empty?
           Rails.logger.info("[MissingTimeScheduler] no missing time entries for #{range}")
           return result
         end
 
         begin
           MissingTimeMailer.reminder(
-            user_missing_dates: user_missing_dates,
+            missing_by_team: missing_by_team,
             date_range: range,
             recipients: @settings[:recipients],
             from_name: @settings[:from_name]
           ).deliver_now
 
+          team_count = missing_by_team.size
+          user_count = missing_by_team.values.flat_map(&:keys).uniq.size
           Rails.logger.info(
             "[MissingTimeScheduler] sent reminder for #{range} to #{Array(@settings[:recipients]).join(', ')} " \
-            "(#{user_missing_dates.length} users)"
+            "(#{user_count} users across #{team_count} teams)"
           )
 
           result.sent = true
@@ -84,7 +86,10 @@ module RedmineTimeAnalytics
       raise "Unable to find previous working day from #{reference_date}"
     end
 
-    # Returns { user => [Date, ...] } for each user with at least one missing working day.
+    # Returns { TaTeam => { User => [Date, ...] } } grouped by the team(s) each user is a direct
+    # member of. A user belonging to several teams appears under each of them (Scenario 1).
+    # Membership is direct (not hierarchical), so a user assigned only to a sub-team never shows
+    # under its parent teams (Scenario 2).
     def users_missing_time_for_range(date_range)
       all_dates = date_range.to_a
       # Use working_day_checker to load holidays once for the range rather than one DB call per date.
@@ -94,14 +99,16 @@ module RedmineTimeAnalytics
       working_dates = all_dates.select { |d| is_working_day.call(d) }
       return {} if working_dates.empty?
 
-      # Team-member windows overlapping the checked range. Only users configured under a team
-      # (TaTeamMembership) are considered; membership is resolved per-date so a user is checked
-      # only on the working days their membership was active (end_date NULL or >= date).
+      # Direct team-member windows overlapping the checked range. Only users configured under a
+      # team (TaTeamMembership) are considered; membership is resolved per-date so a user is
+      # checked only on the working days their membership was active (end_date NULL or >= date).
+      # team_id is kept so missing dates can be grouped back under the user's direct team(s).
       membership_windows = TaTeamMembership.active_between(working_dates.min, working_dates.max)
-                                           .pluck(:user_id, :start_date, :end_date)
+                                           .pluck(:team_id, :user_id, :start_date, :end_date)
       return {} if membership_windows.empty?
 
-      member_dates_by_user = dates_by_user_from_windows(membership_windows, working_dates)
+      user_windows = membership_windows.map { |_team_id, uid, start_d, end_d| [uid, start_d, end_d] }
+      member_dates_by_user = dates_by_user_from_windows(user_windows, working_dates)
       team_user_ids = member_dates_by_user.keys
       return {} if team_user_ids.empty?
 
@@ -127,7 +134,7 @@ module RedmineTimeAnalytics
                                         h[uid] << d.to_date
                                       end
 
-      result = {}
+      missing_by_user = {}
       team_user_ids.each do |uid|
         member_days   = member_dates_by_user[uid]
         excluded_days = excluded_dates_by_user[uid]
@@ -135,13 +142,50 @@ module RedmineTimeAnalytics
         logged_days   = logged_dates_by_user[uid]
         checkable_dates = member_days - excluded_days - leave_days
         missing = checkable_dates - logged_days
-        result[uid] = missing unless missing.empty?
+        missing_by_user[uid] = missing unless missing.empty?
       end
 
-      return {} if result.empty?
+      return {} if missing_by_user.empty?
 
-      users_by_id = User.where(id: result.keys).sorted.index_by(&:id)
-      result.transform_keys { |uid| users_by_id[uid] }.reject { |u, _| u.nil? }
+      group_missing_by_team(membership_windows, missing_by_user)
+    end
+
+    # Distributes each user's missing dates back to the direct team(s) whose membership window
+    # covers each date, returning an ordered { TaTeam => { User => [Date, ...] } }.
+    def group_missing_by_team(membership_windows, missing_by_user)
+      by_team = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = [] } }
+      membership_windows.each do |team_id, uid, start_d, end_d|
+        dates = missing_by_user[uid]
+        next if dates.blank?
+
+        dates.each do |d|
+          next unless d >= start_d && (end_d.nil? || d <= end_d)
+
+          arr = by_team[team_id][uid]
+          arr << d unless arr.include?(d)
+        end
+      end
+      return {} if by_team.empty?
+
+      teams_by_id = TaTeam.where(id: by_team.keys).index_by(&:id)
+      user_ids = by_team.values.flat_map(&:keys).uniq
+      users_by_id = User.where(id: user_ids).sorted.index_by(&:id)
+      sorted_user_ids = users_by_id.keys
+
+      ordered = {}
+      by_team.keys.sort_by { |tid| teams_by_id[tid]&.name.to_s.downcase }.each do |tid|
+        team = teams_by_id[tid]
+        next if team.nil?
+
+        user_map = by_team[tid]
+        team_user_ordering = sorted_user_ids & user_map.keys
+        rows = team_user_ordering.each_with_object({}) do |uid, h|
+          user = users_by_id[uid]
+          h[user] = user_map[uid].sort if user
+        end
+        ordered[team] = rows unless rows.empty?
+      end
+      ordered
     end
 
     # Builds { user_id => [Date, ...] }: for each working date, the users whose [start, end]

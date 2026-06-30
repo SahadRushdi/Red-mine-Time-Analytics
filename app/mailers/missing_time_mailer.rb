@@ -3,9 +3,14 @@
 class MissingTimeMailer < ActionMailer::Base
   default from: -> { Setting.mail_from }
 
-  def reminder(user_missing_dates:, date_range:, recipients:, from_name:)
+  def reminder(missing_by_team:, date_range:, recipients:, from_name:)
     @body_text = RedmineTimeAnalytics::MissingTimeEmailTemplate.body_for(
-      user_missing_dates: user_missing_dates,
+      missing_by_team: missing_by_team,
+      date_range: date_range,
+      from_name: from_name
+    )
+    @body_html = RedmineTimeAnalytics::MissingTimeEmailTemplate.body_html_for(
+      missing_by_team: missing_by_team,
       date_range: date_range,
       from_name: from_name
     )
