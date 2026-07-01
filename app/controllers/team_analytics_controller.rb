@@ -179,8 +179,10 @@ class TeamAnalyticsController < ApplicationController
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
 
-      # Track member view state for chart generation
-      @member_view_state = params[:member_view_state] || 'detailed'
+      # Track member view state for chart generation.
+      # Default to 'summary' when all members are excluded — that is the only view with re-include toggles.
+      @member_view_state = params[:member_view_state] ||
+                           (@members.empty? && @temp_excluded_members.any? ? 'summary' : 'detailed')
 
       # Monthly-avg table (Members tab) — only relevant with monthly grouping.
       @member_monthly_avg = @grouping == 'monthly' ? generate_member_monthly_avg_table(@time_entries, @from, @to) : nil

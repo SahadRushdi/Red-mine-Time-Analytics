@@ -1345,6 +1345,7 @@
     const form = document.getElementById('team-analytics-form');
     if (hiddenField && form) {
       hiddenField.value = chartType;
+      if (typeof appendExclusionFieldsToForm === 'function') { appendExclusionFieldsToForm(form); }
       form.submit();
     }
   }
@@ -1426,6 +1427,12 @@
     var donutCanvas = document.getElementById('team-donut-chart');
     if (!donutCanvas) return;
 
+    // The canvas's parent (div.relative.h-80) is a positioned element that sits above the
+    // static member-list column in z-order. Re-enable pointer events in case we previously
+    // disabled them (e.g., navigating from all-excluded back to partial-excluded).
+    var donutInner = donutCanvas.parentNode;
+    if (donutInner) donutInner.style.pointerEvents = '';
+
     if (teamDonutChart) {
       teamDonutChart.destroy();
       teamDonutChart = null;
@@ -1457,10 +1464,12 @@
     <% end %>
 
     if (!labels.length || !values.length) {
-      // No active members (e.g. all temporarily excluded): zero the centre total so the
-      // display is correct and not left showing a stale figure.
+      // No active members (e.g. all temporarily excluded): zero the centre total and disable
+      // pointer events on the empty canvas container so it doesn't block the member-list toggles
+      // below it in z-order.
       var emptyTotal = document.getElementById('team-total-hours-display');
       if (emptyTotal) emptyTotal.textContent = formatTeamHours(0);
+      if (donutInner) donutInner.style.pointerEvents = 'none';
       return;
     }
 
@@ -1857,6 +1866,14 @@
     var mode = savedMode || serverMode || 'detailed';
     var monthlyBtn = document.getElementById('show-monthly-avg-btn-member');
 
+    // Safety: if 'detailed' would show an empty pivot table but excluded members exist in
+    // the summary view, auto-switch to 'summary' so the re-include toggles are always reachable.
+    if (mode === 'detailed') {
+      var hasActive = document.querySelectorAll('#team-member-summary-view [data-name]:not([data-excluded="true"])').length > 0;
+      var hasExcluded = document.querySelectorAll('#team-member-summary-view [data-excluded="true"]').length > 0;
+      if (!hasActive && hasExcluded) { mode = 'summary'; }
+    }
+
     if (mode === 'monthly_avg' && monthlyBtn) {
       showMemberMonthlyAvgView({ persist: false });
     } else if (mode === 'summary') {
@@ -2201,6 +2218,11 @@
     var url = new URL(window.location.href);
     url.searchParams.delete('temp_excluded_ids[]');
     ids.forEach(function(id) { url.searchParams.append('temp_excluded_ids[]', id); });
+    // Preserve the active member-view state so the reload restores Summary/Detailed correctly.
+    try {
+      var state = localStorage.getItem('team_member_view_mode');
+      if (state) { url.searchParams.set('member_view_state', state); }
+    } catch (_) {}
     return url;
   }
 
