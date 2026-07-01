@@ -679,7 +679,18 @@
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
   <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
     <div id="team-time-overview-box" class="box time-overview-box">
-      <h3 class="text-base font-semibold text-gray-900 mb-3 text-center"><%= time_overview_header(@grouping) %></h3>
+      <div class="relative mb-3 flex items-center">
+        <h3 class="text-base font-semibold text-gray-900"><%= time_overview_header(@grouping) %></h3>
+        <% if @show_effective_time_column %>
+          <%# Toggle to reveal the Support Time & Support Time (%) columns (hidden by default). %>
+          <label class="absolute right-0 inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="Show Support Time &amp; Support Time (%)">
+            <span class="text-xs font-medium text-gray-600">Support Time</span>
+            <input type="checkbox" class="sr-only peer" onchange="toggleSupportTimeColumns(this)">
+            <div class="ta-custom-toggle-track"></div>
+          </label>
+        <% end %>
+      </div>
       <% if @effective_time_error_message.present? %>
         <div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           Effective Time data unavailable: <%= h(@effective_time_error_message) %>
@@ -697,19 +708,24 @@
               <th scope="col" class="px-2 py-3 text-right">Team<br/>Time</th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
               <% if @show_effective_time_column %>
-                <th scope="col" class="px-2 py-3 text-right">Support<br/>Time</th>
-                <th scope="col" class="px-2 py-3 text-right">Effective<br/>Time (%)</th>
+                <th scope="col" class="ta-support-col px-2 py-3 text-right">Support<br/>Time</th>
+                <th scope="col" class="ta-support-col px-2 py-3 text-right">Support<br/>Time (%)</th>
               <% end %>
             </tr>
           </thead>
           <tbody>
             <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
+              <% is_holiday = entry.respond_to?(:holiday) && entry.holiday %>
+              <% cell_color = is_holiday ? '#b45309' : '#111827' %>
               <tr class="bg-white border-b hover:bg-gray-50">
-                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= entry.period %></th>
-                <td class="px-2 py-4 text-center text-gray-900">
+                <th scope="row" class="px-6 py-3 font-medium text-gray-700 whitespace-nowrap" style="color: <%= cell_color %>;">
+                  <%= entry.period %>
+                  <% if is_holiday %><span class="ml-1 text-xs" title="Weekend or holiday" style="color:#f59e0b;">&#9679;</span><% end %>
+                </th>
+                <td class="px-2 py-3 text-center text-gray-700" style="color: <%= cell_color %>;">
                   <div class="flex items-center justify-center gap-1.5">
                     <span><%= entry.member_count %></span>
-                    <button type="button" 
+                    <button type="button"
                             onclick="showTeamMemberDetails('<%= @selected_team.id %>', '<%= entry.raw_period %>', '<%= @grouping %>')"
                             class="ta-info-icon-btn flex items-center justify-center cursor-pointer"
                             title="View members">
@@ -717,11 +733,11 @@
                     </button>
                   </div>
                 </td>
-                <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.hours) %></td>
-                <td class="px-6 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.average) %></td>
+                <td class="px-2 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.hours) %></td>
+                <td class="px-6 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.average) %></td>
                 <% if @show_effective_time_column %>
-                  <td class="px-2 py-4 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
-                  <td class="px-2 py-4 text-right font-mono text-gray-900">
+                  <td class="ta-support-col px-2 py-3 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="ta-support-col px-2 py-3 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
                     <% else %>
@@ -737,7 +753,7 @@
       
       <%# Pagination %>
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :team_id, :hide_holidays, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -745,12 +761,29 @@
         </div>
       </div>
     </div>
+    <script type="text/javascript">
+      // Show/hide the Support Time & Support Time (%) columns (hidden by default).
+      function toggleSupportTimeColumns(input) {
+        var box = input.closest('#team-time-overview-box');
+        var table = box && box.querySelector('table');
+        if (table) { table.classList.toggle('ta-support-cols-visible', input.checked); }
+      }
+    </script>
   <% end %>
 
   <%# Visualization Section (Right Side) %>
   <div class="box visualization-section">
     <h3 style="display: flex; justify-content: flex-end;">
-      <div class="visualization-controls">
+      <div class="visualization-controls flex items-center gap-3">
+        <%# Toggle: hide weekend/holiday days from the Trend chart + Time Overview (daily grouping only). %>
+        <% if @grouping == 'daily' && (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') %>
+          <label class="relative inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="Show only working days (hides weekends &amp; holidays without logged time and amber-flagged days)">
+            <input type="checkbox" class="sr-only peer" <%= 'checked' if @hide_holidays %> onchange="toggleHolidays()">
+            <div class="ta-custom-toggle-track"></div>
+            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Show Active Days</span>
+          </label>
+        <% end %>
         <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
           <% chart_type = %w[line bar].include?(params[:chart_type]) ? params[:chart_type] : 'line' %>
           <div class="inline-flex gap-2">
@@ -1313,8 +1346,20 @@
     const form = document.getElementById('team-analytics-form');
     if (hiddenField && form) {
       hiddenField.value = chartType;
+      if (typeof appendExclusionFieldsToForm === 'function') { appendExclusionFieldsToForm(form); }
       form.submit();
     }
+  }
+
+  // Toggle hiding weekend/holiday days from the Trend chart + Time Overview table.
+  function toggleHolidays() {
+    var url = new URL(window.location.href);
+    if (url.searchParams.get('hide_holidays') === '1') {
+      url.searchParams.delete('hide_holidays');
+    } else {
+      url.searchParams.set('hide_holidays', '1');
+    }
+    window.location.href = url.toString();
   }
 
   function scrollTeamTableIntoView() {
@@ -1383,6 +1428,12 @@
     var donutCanvas = document.getElementById('team-donut-chart');
     if (!donutCanvas) return;
 
+    // The canvas's parent (div.relative.h-80) is a positioned element that sits above the
+    // static member-list column in z-order. Re-enable pointer events in case we previously
+    // disabled them (e.g., navigating from all-excluded back to partial-excluded).
+    var donutInner = donutCanvas.parentNode;
+    if (donutInner) donutInner.style.pointerEvents = '';
+
     if (teamDonutChart) {
       teamDonutChart.destroy();
       teamDonutChart = null;
@@ -1413,7 +1464,15 @@
       memberData.forEach(function(m) { labels.push(m.name); values.push(m.hours); });
     <% end %>
 
-    if (!labels.length || !values.length) return;
+    if (!labels.length || !values.length) {
+      // No active members (e.g. all temporarily excluded): zero the centre total and disable
+      // pointer events on the empty canvas container so it doesn't block the member-list toggles
+      // below it in z-order.
+      var emptyTotal = document.getElementById('team-total-hours-display');
+      if (emptyTotal) emptyTotal.textContent = formatTeamHours(0);
+      if (donutInner) donutInner.style.pointerEvents = 'none';
+      return;
+    }
 
     var total = values.reduce(function(sum, val) { return sum + val; }, 0);
     var totalDisplay = document.getElementById('team-total-hours-display');
@@ -1510,6 +1569,18 @@
         return;
       }
       
+      // Weekend/holiday points keep their amber colour when the dataset carries holidayFlags.
+      if (config.type === 'line' && Array.isArray(config.data.datasets)) {
+        config.data.datasets.forEach(function (ds) {
+          if (ds && ds.holidayFlags && ds.holidayFlags.length) {
+            var pointColors = ds.holidayFlags.map(function (h) { return h ? '#f59e0b' : '#1d4ed8'; });
+            ds.pointBackgroundColor = pointColors;
+            ds.pointBorderColor = pointColors;
+            ds.pointBorderWidth = 1;
+          }
+        });
+      }
+
       // Ensure responsive configuration
       if (!config.options) {
         config.options = {};
@@ -1685,13 +1756,14 @@
   }
 
   function selectPerPage(value) {
-    var field = document.getElementById('per-page-field');
     var label = document.getElementById('per-page-label');
     if (label) label.textContent = value;
-    if (field) {
-      field.value = value;
-      field.closest('form').submit();
-    }
+    // Navigate via the URL so all current params (including temp_excluded_ids[]) are
+    // preserved; avoids depending on an enclosing form.
+    var url = new URL(window.location.href);
+    url.searchParams.set('per_page', value);
+    url.searchParams.delete('page');
+    window.location.assign(url.toString());
   }
 
   document.addEventListener('click', function(event) {
@@ -1794,6 +1866,14 @@
     var savedMode = localStorage.getItem('team_member_view_mode');
     var mode = savedMode || serverMode || 'detailed';
     var monthlyBtn = document.getElementById('show-monthly-avg-btn-member');
+
+    // Safety: if 'detailed' would show an empty pivot table but excluded members exist in
+    // the summary view, auto-switch to 'summary' so the re-include toggles are always reachable.
+    if (mode === 'detailed') {
+      var hasActive = document.querySelectorAll('#team-member-summary-view [data-name]:not([data-excluded="true"])').length > 0;
+      var hasExcluded = document.querySelectorAll('#team-member-summary-view [data-excluded="true"]').length > 0;
+      if (!hasActive && hasExcluded) { mode = 'summary'; }
+    }
 
     if (mode === 'monthly_avg' && monthlyBtn) {
       showMemberMonthlyAvgView({ persist: false });
@@ -1972,7 +2052,7 @@
 
     // Build fetch URL, including any temporary exclusions so the modal matches the table count.
     var fetchParams = new URLSearchParams({ team_id: teamId, period_start: periodStart, grouping: grouping });
-    (getStoredExclusions() || []).forEach(function(id) { fetchParams.append('temp_excluded_ids[]', id); });
+    getUrlExclusions().forEach(function(id) { fetchParams.append('temp_excluded_ids[]', id); });
 
     fetch(`<%= team_analytics_period_members_path %>?${fetchParams.toString()}`)
       .then(response => response.json())
@@ -2107,43 +2187,43 @@
   }
 
   // --- Temporary member exclusion (Members summary toggles) ---------------------
-  // Excluded user IDs are kept in sessionStorage (per team) so they survive reloads
-  // and navigation between dashboard pages for the whole browser session — until the
-  // team lead re-enables them. They are mirrored into the URL (temp_excluded_ids[])
-  // so the server renders every navigated/reloaded page already excluded; a one-time
-  // self-correcting redirect re-applies them on any page that lands without the param.
-  var exclusionRequestToken = 0;
-  // Bump the version segment to invalidate any stale per-team entries persisted by an
-  // earlier build (e.g. exclusions that bled across teams before the team-switch fix).
-  var exclusionStorageKey = 'taTempExcluded:v2:' + (currentTeamId || 'none');
-
-  function getStoredExclusions() {
-    try {
-      var raw = sessionStorage.getItem(exclusionStorageKey);
-      if (raw === null) { return null; }
-      var ids = JSON.parse(raw);
-      return Array.isArray(ids) ? ids.map(String) : [];
-    } catch (e) { return null; }
-  }
-
-  function setStoredExclusions(ids) {
-    try { sessionStorage.setItem(exclusionStorageKey, JSON.stringify(ids.map(String))); } catch (e) {}
-  }
+  // Exclusions are EPHEMERAL and live ONLY in the URL (temp_excluded_ids[]). They are
+  // intentionally not persisted: changing the time period or team, or navigating away
+  // to another Redmine page, drops them (all members return as included). They survive
+  // only the controls that explicitly carry the param forward — the Members/Activity/
+  // Project tabs, Summary/Detailed, grouping, per-page and pagination.
+  var exclusionNavTimer = null;
+  var EXCLUSION_NAV_DELAY = 350;
 
   function getUrlExclusions(urlObj) {
     return (urlObj || new URL(window.location.href)).searchParams.getAll('temp_excluded_ids[]').map(String);
   }
 
-  function sameIdSet(a, b) {
-    if (a.length !== b.length) { return false; }
-    var sa = a.slice().sort(), sb = b.slice().sort();
-    return sa.every(function(v, i) { return v === sb[i]; });
+  // Inject the current URL exclusions into a GET form as hidden fields so that a form
+  // submit PRESERVES them (used by the grouping dropdown). Controls that must CLEAR
+  // exclusions (time period, team) never call this, so the param is dropped on submit.
+  function appendExclusionFieldsToForm(form) {
+    if (!form) { return; }
+    form.querySelectorAll('input[data-ta-exclusion="1"]').forEach(function(el) { el.remove(); });
+    getUrlExclusions().forEach(function(id) {
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'temp_excluded_ids[]';
+      input.value = id;
+      input.setAttribute('data-ta-exclusion', '1');
+      form.appendChild(input);
+    });
   }
 
   function buildExclusionUrl(ids) {
     var url = new URL(window.location.href);
     url.searchParams.delete('temp_excluded_ids[]');
     ids.forEach(function(id) { url.searchParams.append('temp_excluded_ids[]', id); });
+    // Preserve the active member-view state so the reload restores Summary/Detailed correctly.
+    try {
+      var state = localStorage.getItem('team_member_view_mode');
+      if (state) { url.searchParams.set('member_view_state', state); }
+    } catch (_) {}
     return url;
   }
 
@@ -2159,73 +2239,49 @@
     return ids;
   }
 
-  function refreshTeamMemberExclusions(ids) {
-    var summaryCard = document.getElementById('ts-summary-cards-row');
-    var token = ++exclusionRequestToken;
-    var url = buildExclusionUrl(ids);
-
-    if (summaryCard) { summaryCard.style.opacity = '0.5'; }
-
-    fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
-      .then(function(response) { return response.text(); })
-      .then(function(html) {
-        // Ignore responses that have been superseded by a newer toggle.
-        if (token !== exclusionRequestToken) { return; }
-
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-
-        // innerHTML swap for content blocks (preserves wrappers' toggled display state).
-        ['ts-summary-cards-row', 'team-time-overview-box', 'team-member-summary-view', 'team-member-detailed-view', 'team-member-monthly-avg-view'].forEach(function(id) {
-          var fresh = doc.getElementById(id);
-          var current = document.getElementById(id);
-          if (fresh && current) { current.innerHTML = fresh.innerHTML; }
-        });
-
-        // Full-element replace for pagination (data-* attributes carry the recomputed counts).
-        ['team-member-pagination-links', 'team-member-pagination-info'].forEach(function(id) {
-          var fresh = doc.getElementById(id);
-          var current = document.getElementById(id);
-          if (fresh && current) { current.replaceWith(document.importNode(fresh, true)); }
-        });
-
-        // Re-apply summary/detailed visibility + pagination text, the active sort,
-        // then rebuild the donut from the swapped rows.
-        restoreMemberViewState();
-        applySummarySort('team-member-summary-view');
-        initTeamDonutChart();
-      })
-      .catch(function(err) { console.error('Member exclusion refresh failed:', err); })
-      .finally(function() {
-        if (token === exclusionRequestToken && summaryCard) { summaryCard.style.opacity = ''; }
-      });
+  // Dim the member section for instant "working…" feedback while the debounced reload
+  // settles. The reload renders the authoritative state, so there is nothing to un-dim.
+  function dimMemberSection(on) {
+    ['ts-summary-cards-row', 'team-member-summary-view', 'team-donut-chart'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.style.opacity = on ? '0.5' : ''; }
+    });
   }
 
-  // Toggling a member updates the stored set, mirrors it into the URL, and refreshes in place.
+  // Toggling a member reflects in the URL immediately and dims the section for feedback.
+  // The AUTHORITATIVE update is a real navigation to the exclusion URL — the same reliable
+  // mechanism as changing the time period — DEBOUNCED so toggling many members in a row
+  // reloads only once. A full render (instead of an in-place swap) guarantees the member
+  // rows, donut and totals are always correct, and the donut renders exactly once.
   document.addEventListener('change', function(e) {
     if (e.target && e.target.classList && e.target.classList.contains('member-exclusion-toggle')) {
-      var ids = collectExcludedMemberIds();
-      setStoredExclusions(ids);
-      window.history.replaceState({}, '', buildExclusionUrl(ids).toString());
-      refreshTeamMemberExclusions(ids);
-      refreshMemberBreakdownExclusions();
+      window.history.replaceState({}, '', buildExclusionUrl(collectExcludedMemberIds()).toString());
+      dimMemberSection(true);
+
+      if (exclusionNavTimer) { clearTimeout(exclusionNavTimer); }
+      exclusionNavTimer = setTimeout(function() {
+        exclusionNavTimer = null;
+        var latest = collectExcludedMemberIds();
+        // Preserve scroll across the reload (reuses the load-time restore handler).
+        try { sessionStorage.setItem('teamScrollPosition', String(window.pageYOffset || document.documentElement.scrollTop || 0)); } catch (e2) {}
+        window.location.assign(buildExclusionUrl(latest).toString());
+      }, EXCLUSION_NAV_DELAY);
     }
   });
 
-  // On load, force the URL to match THIS team's stored set. The per-team sessionStorage
-  // is the only source of truth: a team applies only the exclusions it set itself, and
-  // never adopts IDs from the URL (so one team's exclusions can never leak into another).
-  function syncTeamMemberExclusions() {
-    var effective = getStoredExclusions() || []; // null (never set) is treated as empty
-    var urlIds = getUrlExclusions();
-
-    // URL already matches this team's stored set — server rendered correctly, nothing to do.
-    if (sameIdSet(effective, urlIds)) { return; }
-
-    // URL carries a different set (a clean reload, a re-enable, or IDs that bled in from
-    // another team). Re-render with the team's own set via a single redirect so every view
-    // (cards, overview, tables, charts) is consistent.
-    window.location.replace(buildExclusionUrl(effective).toString());
-  }
+  // The Members/Activity/Project tab links are rendered server-side at load, so their href
+  // can be stale if members were toggled afterwards. Rewrite the href to the LIVE exclusion
+  // set just before navigation (capture phase) so switching views preserves exclusions.
+  document.addEventListener('click', function(e) {
+    var link = e.target && e.target.closest && e.target.closest('a[data-team-tab-nav]');
+    if (!link) { return; }
+    try {
+      var dest = new URL(link.getAttribute('href'), window.location.href);
+      dest.searchParams.delete('temp_excluded_ids[]');
+      getUrlExclusions().forEach(function(id) { dest.searchParams.append('temp_excluded_ids[]', id); });
+      link.setAttribute('href', dest.toString());
+    } catch (err) {}
+  }, true);
 
   // ===== Member Breakdown: per-member second-level grouping (lazy-loaded) =====
   var memberBreakdownData = null;
@@ -2552,7 +2608,6 @@
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    syncTeamMemberExclusions();
     var modalEl = document.getElementById('team-member-details-modal');
     if (modalEl && typeof Modal !== 'undefined') {
       teamMemberDetailsModal = new Modal(modalEl, {

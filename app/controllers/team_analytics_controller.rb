@@ -10,7 +10,7 @@ class TeamAnalyticsController < ApplicationController
     '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
     '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
   ].freeze
-  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available, :raw_period)
+  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available, :raw_period, :holiday)
 
   def index
     # Super users can access all teams; team leads can access led teams + descendants
@@ -68,6 +68,11 @@ class TeamAnalyticsController < ApplicationController
     @entry_count = @time_entries.count
     @active_days_count = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
     @team_leave_days = calculate_team_leave_days_for_period(@from, @to)
+
+    # "Show Active Days" toggle (daily only): hide weekend/holiday days from the Trend chart and
+    # Time Overview table. The checker is a pre-fetched O(1) lambda over the date range.
+    @hide_holidays = params[:hide_holidays].to_s == '1'
+    @period_working_day_checker = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(@from, @to)
 
     Rails.logger.info "Team Analytics: Found #{@entry_count} time entries, Total hours: #{@total_hours}"
     
@@ -174,8 +179,10 @@ class TeamAnalyticsController < ApplicationController
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
 
-      # Track member view state for chart generation
-      @member_view_state = params[:member_view_state] || 'detailed'
+      # Track member view state for chart generation.
+      # Default to 'summary' when all members are excluded — that is the only view with re-include toggles.
+      @member_view_state = params[:member_view_state] ||
+                           (@members.empty? && @temp_excluded_members.any? ? 'summary' : 'detailed')
 
       # Monthly-avg table (Members tab) — only relevant with monthly grouping.
       @member_monthly_avg = @grouping == 'monthly' ? generate_member_monthly_avg_table(@time_entries, @from, @to) : nil
@@ -667,7 +674,10 @@ class TeamAnalyticsController < ApplicationController
     
     # Sort by period key in DESCENDING order (newest first, like Individual Dashboard)
     sorted_data = data.sort_by { |key, _| key }.reverse
-    
+
+    # "Show Active Days": drop weekend/holiday days entirely (even logged ones).
+    sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+
       # Return structured data with period, team_size (not member_count), hours, and average
     sorted_data.map do |period, hours|
       # Convert period key to appropriate format for the helper
@@ -683,8 +693,9 @@ class TeamAnalyticsController < ApplicationController
       
       # Calculate average: Total Hours / (Team Size * Active Working Days)
       average = calculate_period_average(period_for_display, grouping, hours, team_size)
-      
-      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false, period_for_display.to_s)
+
+      is_holiday = grouping == 'daily' && ta_team_holiday_date?(period_for_display)
+      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false, period_for_display.to_s, is_holiday)
     end
   end
 
@@ -721,7 +732,7 @@ class TeamAnalyticsController < ApplicationController
     if result.errors.any?
       @effective_time_error_message = result.errors.uniq.join('; ')
       @time_overview_data = @time_overview_data.map do |row|
-        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
+        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period, row.holiday)
       end
       return
     end
@@ -738,13 +749,13 @@ class TeamAnalyticsController < ApplicationController
                                ((support_hours / internal_hours) * 100.0).round(2)
                              end
 
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?, row.raw_period)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?, row.raw_period, row.holiday)
     end
   rescue StandardError => e
     @show_effective_time_column = true
     @effective_time_error_message = e.message
     @time_overview_data = @time_overview_data.map do |row|
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period, row.holiday)
     end
   end
 
@@ -766,7 +777,10 @@ class TeamAnalyticsController < ApplicationController
     grouped = fill_missing_working_days_team(grouped, @from, @to) if grouping == 'daily'
     grouped = fill_missing_weeks_team(grouped, @from, @to) if grouping == 'weekly'
     grouped = fill_missing_months_team(grouped, @from, @to) if grouping == 'monthly'
-    grouped.sort_by { |key, _| key }.reverse.map(&:first)
+    sorted = grouped.sort_by { |key, _| key }.reverse
+    # Keep aligned with generate_team_time_overview_data so Effective Time columns map correctly.
+    sorted = sorted.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+    sorted.map(&:first)
   end
 
   # Generate chart data for team view
@@ -805,13 +819,18 @@ class TeamAnalyticsController < ApplicationController
     
     # Sort by period key in ASCENDING order (oldest first for chart, like Individual Dashboard)
     sorted_data = grouped_data.sort_by { |key, _| key }
-    
+
+    # "Show Active Days": drop weekend/holiday points entirely (even logged ones).
+    sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+
     # Format labels and values
     labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
     values = sorted_data.map { |_, hours| hours.round(2) }
-    
+
     raw_keys = sorted_data.map(&:first)
-    generate_line_chart_from_data(labels, values, raw_keys, grouping)
+    # Flag weekend/holiday points (daily only) so they render amber.
+    holiday_flags = grouping == 'daily' ? raw_keys.map { |key| ta_team_holiday_date?(key) } : raw_keys.map { false }
+    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags)
   end
 
   def generate_time_entries_stacked_chart_data(entries, grouping)
@@ -965,9 +984,7 @@ class TeamAnalyticsController < ApplicationController
     when 'bar'
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:activities], pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
   end
 
@@ -1046,7 +1063,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   # Generate line chart from data arrays
-  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil)
     # Generate detailed tooltip labels for weekly grouping
     tooltip_labels = if raw_keys && grouping == 'weekly'
       raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
@@ -1059,6 +1076,10 @@ class TeamAnalyticsController < ApplicationController
     formatted_hours = data_values.map { |hours| helpers.format_hours(hours) }
     single_point = data_values.length == 1
 
+    # Weekend/holiday points render amber (#f59e0b); regular working days stay dark blue.
+    holiday_flags ||= data_values.map { false }
+    point_colors = holiday_flags.map { |holiday| holiday ? '#f59e0b' : '#1d4ed8' }
+
     # Center a lone data point by padding a blank slot on each side, so it renders
     # in the middle of the chart instead of hugging the left edge.
     if single_point
@@ -1066,6 +1087,8 @@ class TeamAnalyticsController < ApplicationController
       tooltip_labels  = ['', tooltip_labels.first, '']
       formatted_hours = ['', formatted_hours.first, '']
       data_values     = [nil, data_values.first, nil]
+      holiday_flags   = [false, holiday_flags.first, false]
+      point_colors    = ['#1d4ed8', point_colors.first, '#1d4ed8']
     end
 
     chart_data = {
@@ -1081,9 +1104,10 @@ class TeamAnalyticsController < ApplicationController
         # Solid dark dots so points stay clearly visible with one or many data points.
         pointRadius: single_point ? 6 : 4,
         pointHoverRadius: single_point ? 8 : 6,
-        pointBackgroundColor: '#1d4ed8',
-        pointBorderColor: '#1d4ed8',
+        pointBackgroundColor: point_colors,
+        pointBorderColor: point_colors,
         pointBorderWidth: 1,
+        holidayFlags: holiday_flags,
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
       }]
@@ -1217,9 +1241,7 @@ class TeamAnalyticsController < ApplicationController
     when 'bar'
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:projects], pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
   end
 
@@ -1361,10 +1383,21 @@ class TeamAnalyticsController < ApplicationController
       member_names = pivot_data[:members].map { |member| member[:name] }
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], member_names, pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
+  end
+
+  # Shared line-chart builder for the Members/Activity/Project pivot views. Applies the
+  # weekend/holiday amber flags and the "Show Active Days" filter (daily grouping only) so all
+  # trend charts behave like the My Time page.
+  def generate_pivot_line_chart(raw_periods, period_totals)
+    periods = raw_periods.dup
+    periods = periods.reject { |period| ta_team_holiday_date?(period) } if @grouping == 'daily' && @hide_holidays
+
+    labels = periods.map { |period| format_activity_period_display(period, @grouping) }
+    data_values = periods.map { |period| period_totals[period] || 0 }
+    holiday_flags = @grouping == 'daily' ? periods.map { |period| ta_team_holiday_date?(period) } : periods.map { false }
+    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags)
   end
 
   def generate_stacked_bar_chart_from_matrix(period_keys, categories, matrix_data, grouping)
@@ -1504,11 +1537,21 @@ class TeamAnalyticsController < ApplicationController
   end
 
   # Fill missing days for team dashboard (one entry per calendar date in range)
+  # A team "non-working" day = weekend or admin Company Holiday (no per-user leave at team level).
+  # Used both to flag a day amber and to hide it when the "Show Active Days" toggle is on.
+  def ta_team_holiday_date?(date)
+    date.is_a?(Date) && @period_working_day_checker && !@period_working_day_checker.call(date)
+  end
+
   def fill_missing_working_days_team(grouped_data, from_date, to_date)
     result = {}
 
     (from_date..to_date).each do |date|
-      result[date] = grouped_data[date] || 0
+      # Include the date only when it's a working day, OR time was logged on it (even if it's a
+      # weekend/holiday). Empty weekend/holiday days are dropped from chart + overview by default.
+      if (@period_working_day_checker && @period_working_day_checker.call(date)) || grouped_data.key?(date)
+        result[date] = grouped_data[date] || 0
+      end
     end
 
     result

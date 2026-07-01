@@ -47,6 +47,8 @@
   flex-direction: column;
   align-self: stretch;
   overflow-x: visible;
+  /* The box is a fixed height (470px). Hide its own vertical overflow and let the inner
+     table-wrap scroll instead, so the pagination row stays pinned and fully visible. */
   overflow-y: hidden;
 }
 
@@ -81,6 +83,15 @@
 
 .analytics-section .time-overview-box td {
   white-space: nowrap;
+}
+
+/* Support Time & Support Redmine Time (%) columns — hidden until the header toggle is on. */
+.ta-support-col {
+  display: none;
+}
+
+table.ta-support-cols-visible .ta-support-col {
+  display: table-cell;
 }
 
 .analytics-section .visualization-section,

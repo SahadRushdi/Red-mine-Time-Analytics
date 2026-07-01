@@ -8,6 +8,7 @@
   <%= hidden_field_tag :project_view_state, @project_view_state, id: 'project_view_state_field' %>
   <%= hidden_field_tag :member_view_state, @member_view_state, id: 'member_view_state_field' %>
   <%= hidden_field_tag :team_id, @selected_team&.id, id: 'team_id_hidden' %>
+  <%= hidden_field_tag :hide_holidays, (@hide_holidays ? '1' : ''), id: 'hide_holidays_hidden' %>
   <%= hidden_field_tag :grouping, @grouping, id: 'grouping_hidden' %>
 
   <div class="ta-period-group inline-flex rounded-lg shadow-sm" role="group">
@@ -107,6 +108,8 @@
       groupingHidden.value = groupingValue;
       groupingLabel.textContent = groupingText;
       if (dropdown) dropdown.classList.add('hidden');
+      // Grouping change keeps the same team + period, so PRESERVE temp exclusions.
+      if (typeof appendExclusionFieldsToForm === 'function') { appendExclusionFieldsToForm(form); }
       form.submit();
     }
   }

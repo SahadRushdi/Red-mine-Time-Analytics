@@ -3,7 +3,7 @@ class AdminTaHiringTitlesController < ApplicationController
   self.main_menu = false
 
   before_action :require_admin
-  before_action :find_hiring_title, only: :destroy
+  before_action :find_hiring_title, only: [:update, :destroy]
 
   def create
     @hiring_title = TaHiringTitle.new(title: title_params[:title].to_s.strip, active: true)
@@ -13,6 +13,17 @@ class AdminTaHiringTitlesController < ApplicationController
         title: title_payload(@hiring_title),
         titles: titles_payload
       }, status: :created
+    else
+      render json: { error: @hiring_title.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def update
+    if @hiring_title.update(title: title_params[:title].to_s.strip)
+      render json: {
+        title: title_payload(@hiring_title),
+        titles: titles_payload
+      }, status: :ok
     else
       render json: { error: @hiring_title.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
