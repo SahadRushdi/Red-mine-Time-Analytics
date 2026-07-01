@@ -50,7 +50,7 @@ RedmineApp::Application.routes.draw do
       patch :mark_open
     end
   end
-  resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :destroy]
+  resources :admin_ta_hiring_titles, path: 'admin/ta_hiring_titles', only: [:create, :update, :destroy]
   resources :admin_ta_titles, path: 'admin/ta_titles', only: [:index] do
     collection do
       post :assign

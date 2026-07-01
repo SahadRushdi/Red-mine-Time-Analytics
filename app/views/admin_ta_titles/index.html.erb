@@ -151,6 +151,24 @@
       border: 0 !important; outline: none !important; box-shadow: none !important;
       background: transparent !important; background-image: none !important;
     }
+    /* Edit icon buttons — neutral, no blue bleed */
+    .ta-titles-edit-btn,
+    .ta-titles-edit-btn:hover,
+    .ta-titles-edit-btn:focus,
+    .ta-titles-edit-btn:focus-visible,
+    .ta-titles-edit-btn:active {
+      border: 0 !important; outline: none !important; box-shadow: none !important;
+      background: transparent !important; background-image: none !important;
+    }
+    /* Inline edit input inside the manage list — no Redmine theme bleed */
+    #ta-titles-manage-list input[type="text"] {
+      border: 1px solid #d1d5db !important; border-radius: 0.5rem !important;
+      background: #fff !important; color: #111827 !important;
+      box-shadow: none !important; outline: none !important;
+    }
+    #ta-titles-manage-list input[type="text"]:focus {
+      border-color: #3b82f6 !important; box-shadow: none !important;
+    }
     /* Add-title input: soft blue focus, never a heavy blue border */
     #ta-titles-new-input:focus { border-color: #3b82f6 !important; box-shadow: none !important; outline: none !important; }
   </style>
@@ -328,12 +346,20 @@
                   <span class="h-2 w-2 rounded-full bg-blue-500"></span>
                   <%= h title.title %>
                 </span>
-                <button type="button" class="ta-titles-delete-btn ta-inline-icon-btn ta-inline-icon-btn--danger"
-                        title="<%= l(:button_delete) %>"
-                        data-delete-url="<%= admin_ta_hiring_title_path(title) %>"
-                        data-title-label="<%= h title.title %>">
-                  <span class="material-icons ta-inline-material-icon">delete</span>
-                </button>
+                <div class="flex items-center gap-1">
+                  <button type="button" class="ta-titles-edit-btn ta-inline-icon-btn"
+                          data-edit-url="<%= admin_ta_hiring_title_path(title) %>"
+                          data-title-id="<%= title.id %>"
+                          data-title-label="<%= h title.title %>">
+                    <span class="material-icons ta-inline-material-icon">edit</span>
+                  </button>
+                  <button type="button" class="ta-titles-delete-btn ta-inline-icon-btn ta-inline-icon-btn--danger"
+                          title="<%= l(:button_delete) %>"
+                          data-delete-url="<%= admin_ta_hiring_title_path(title) %>"
+                          data-title-label="<%= h title.title %>">
+                    <span class="material-icons ta-inline-material-icon">delete</span>
+                  </button>
+                </div>
               </li>
             <% end %>
           </ul>
@@ -920,11 +946,96 @@ document.addEventListener('DOMContentLoaded', function () {
     pendingDeleteUrl = null;
     deleteModal.classList.add('hidden'); deleteModal.classList.remove('flex');
   }
-  document.querySelectorAll('.ta-titles-delete-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      openDeleteModal(btn.getAttribute('data-delete-url'), btn.getAttribute('data-title-label'));
+  // Delegated handler for edit + delete in the manage list (covers server-rendered and re-rendered rows)
+  var manageList = document.getElementById('ta-titles-manage-list');
+  if (manageList) {
+    manageList.addEventListener('click', function(e) {
+      var deleteBtn = e.target.closest('.ta-titles-delete-btn');
+      if (deleteBtn) {
+        e.preventDefault();
+        openDeleteModal(deleteBtn.getAttribute('data-delete-url'), deleteBtn.getAttribute('data-title-label'));
+        return;
+      }
+
+      var editBtn = e.target.closest('.ta-titles-edit-btn');
+      if (editBtn) {
+        e.preventDefault();
+        var li = editBtn.closest('li');
+        if (!li) return;
+        var editUrl = editBtn.getAttribute('data-edit-url');
+        var titleId = Number(editBtn.getAttribute('data-title-id') || '0');
+        var titleLabel = editBtn.getAttribute('data-title-label');
+        var originalClass = li.className;
+        var originalHTML = li.innerHTML;
+
+        li.className = 'flex items-center gap-2 px-4 py-3';
+        li.innerHTML =
+          '<input type="text" maxlength="255" value="' + escapeHtml(titleLabel) + '">' +
+          '<button type="button" class="ta-inline-icon-btn ta-inline-icon-btn--success" title="Save" data-ta-titles-edit-save>' +
+          '<span class="material-icons ta-inline-material-icon">done</span></button>' +
+          '<button type="button" class="ta-inline-icon-btn" title="Cancel" data-ta-titles-edit-cancel>' +
+          '<span class="material-icons ta-inline-material-icon">close</span></button>';
+
+        var inp = li.querySelector('input');
+        var saveBtn = li.querySelector('[data-ta-titles-edit-save]');
+        var cancelBtn = li.querySelector('[data-ta-titles-edit-cancel]');
+
+        function restoreRow() { li.className = originalClass; li.innerHTML = originalHTML; }
+
+        function saveRow() {
+          var newTitle = (inp ? inp.value : '').trim();
+          if (!newTitle) return;
+          fetch(editUrl, {
+            method: 'PATCH',
+            headers: { 'X-CSRF-Token': csrf, 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: JSON.stringify({ title: newTitle })
+          }).then(function(r) {
+            return r.json().then(function(j) { return { ok: r.ok, body: j }; });
+          }).then(function(res) {
+            if (res.ok) {
+              var updatedTitle = res.body.title;
+              var updatedName = updatedTitle ? updatedTitle.title : newTitle;
+              var updatedUrl = updatedTitle ? updatedTitle.destroy_url : editUrl;
+
+              li.className = 'flex items-center justify-between px-4 py-3 hover:bg-gray-50';
+              li.innerHTML =
+                '<span class="flex items-center gap-2 text-sm text-gray-700">' +
+                  '<span class="h-2 w-2 rounded-full bg-blue-500"></span>' + escapeHtml(updatedName) +
+                '</span>' +
+                '<div class="flex items-center gap-1">' +
+                  '<button type="button" class="ta-titles-edit-btn ta-inline-icon-btn" ' +
+                  'data-edit-url="' + escapeHtml(updatedUrl) + '" data-title-id="' + titleId + '" data-title-label="' + escapeHtml(updatedName) + '">' +
+                  '<span class="material-icons ta-inline-material-icon">edit</span></button>' +
+                  '<button type="button" class="ta-titles-delete-btn ta-inline-icon-btn ta-inline-icon-btn--danger" ' +
+                  'data-delete-url="' + escapeHtml(updatedUrl) + '" data-title-label="' + escapeHtml(updatedName) + '">' +
+                  '<span class="material-icons ta-inline-material-icon">delete</span></button>' +
+                '</div>';
+
+              if (titleNameById[titleId] !== undefined) titleNameById[titleId] = updatedName;
+              var t = titles.find(function(t) { return t.id === titleId; });
+              if (t) t.name = updatedName;
+              render();
+              showToast(updatedName + ' updated');
+            } else {
+              showToast((res.body && res.body.error) || 'Error', true);
+              restoreRow();
+            }
+          }).catch(function() { showToast('Error', true); restoreRow(); });
+        }
+
+        if (cancelBtn) cancelBtn.addEventListener('click', restoreRow);
+        if (saveBtn) saveBtn.addEventListener('click', saveRow);
+        if (inp) {
+          inp.focus(); inp.select();
+          inp.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); saveRow(); }
+            if (e.key === 'Escape') { e.preventDefault(); restoreRow(); }
+          });
+        }
+      }
     });
-  });
+  }
+
   document.getElementById('ta-titles-delete-cancel').addEventListener('click', closeDeleteModal);
   document.getElementById('ta-titles-delete-confirm').addEventListener('click', function () {
     if (!pendingDeleteUrl) return;
