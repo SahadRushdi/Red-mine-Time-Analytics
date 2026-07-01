@@ -85,6 +85,15 @@
   white-space: nowrap;
 }
 
+/* Support Time & Support Redmine Time (%) columns — hidden until the header toggle is on. */
+.ta-support-col {
+  display: none;
+}
+
+table.ta-support-cols-visible .ta-support-col {
+  display: table-cell;
+}
+
 .analytics-section .visualization-section,
 .analytics-section .visualization-section.box {
   flex: 2;

@@ -679,7 +679,17 @@
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
   <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
     <div id="team-time-overview-box" class="box time-overview-box">
-      <h3 class="text-base font-semibold text-gray-900 mb-3 text-center"><%= time_overview_header(@grouping) %></h3>
+      <div class="relative mb-3 flex items-center justify-center">
+        <h3 class="text-base font-semibold text-gray-900 text-center"><%= time_overview_header(@grouping) %></h3>
+        <% if @show_effective_time_column %>
+          <%# Toggle to reveal the Support Time & Support Redmine Time (%) columns (hidden by default). %>
+          <label class="absolute right-0 inline-flex items-center cursor-pointer select-none"
+                 title="Show Support Time &amp; Support Redmine Time (%)">
+            <input type="checkbox" class="sr-only peer" onchange="toggleSupportTimeColumns(this)">
+            <div class="ta-custom-toggle-track"></div>
+          </label>
+        <% end %>
+      </div>
       <% if @effective_time_error_message.present? %>
         <div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           Effective Time data unavailable: <%= h(@effective_time_error_message) %>
@@ -697,8 +707,8 @@
               <th scope="col" class="px-2 py-3 text-right">Team<br/>Time</th>
               <th scope="col" class="px-6 py-3 text-right">Average</th>
               <% if @show_effective_time_column %>
-                <th scope="col" class="px-2 py-3 text-right">Support<br/>Time</th>
-                <th scope="col" class="px-2 py-3 text-right">Effective<br/>Time (%)</th>
+                <th scope="col" class="ta-support-col px-2 py-3 text-right">Support<br/>Time</th>
+                <th scope="col" class="ta-support-col px-2 py-3 text-right">Support Redmine<br/>Time (%)</th>
               <% end %>
             </tr>
           </thead>
@@ -725,8 +735,8 @@
                 <td class="px-2 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.hours) %></td>
                 <td class="px-6 py-3 text-right font-mono text-gray-700" style="color: <%= cell_color %>;"><%= format_hours(entry.average) %></td>
                 <% if @show_effective_time_column %>
-                  <td class="px-2 py-3 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
-                  <td class="px-2 py-3 text-right font-mono text-gray-900">
+                  <td class="ta-support-col px-2 py-3 text-right font-mono text-gray-900"><%= format_hours(entry.support_hours || 0) %></td>
+                  <td class="ta-support-col px-2 py-3 text-right font-mono text-gray-900">
                     <% if entry.effective_time_available %>
                       <%= number_with_precision(entry.effective_time_percentage, precision: 2) %>%
                     <% else %>
@@ -750,6 +760,14 @@
         </div>
       </div>
     </div>
+    <script type="text/javascript">
+      // Show/hide the Support Time & Support Redmine Time (%) columns (hidden by default).
+      function toggleSupportTimeColumns(input) {
+        var box = input.closest('#team-time-overview-box');
+        var table = box && box.querySelector('table');
+        if (table) { table.classList.toggle('ta-support-cols-visible', input.checked); }
+      }
+    </script>
   <% end %>
 
   <%# Visualization Section (Right Side) %>
