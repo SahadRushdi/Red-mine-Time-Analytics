@@ -821,16 +821,20 @@ class TimeAnalyticsController < ApplicationController
       tooltip_labels = all_periods.map { |key| helpers.format_chart_label(key) }
     else
       # Generate labels for chart
-      formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+      full_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+      formatted_labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(all_periods) : full_labels
 
-      # Generate tooltip labels (detailed format for weekly grouping)
+      # Generate tooltip labels (detailed format for weekly grouping); monthly/other tooltips
+      # keep the full "Month Year" text, decoupled from the shortened monthly axis labels above.
       tooltip_labels = if grouping == 'weekly'
         all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
       else
-        formatted_labels
+        full_labels
       end
+
+      boundaries = helpers.build_period_boundaries(all_periods, grouping)
     end
-    
+
     # Create datasets for each category (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = categories_sorted.map do |category|
@@ -877,9 +881,9 @@ class TimeAnalyticsController < ApplicationController
             display: false
           },
           ticks: {
-            maxRotation: daily ? 0 : 45,
-            minRotation: daily ? 0 : 45,
-            autoSkip: !daily,
+            maxRotation: (daily || grouping == 'monthly') ? 0 : 45,
+            minRotation: (daily || grouping == 'monthly') ? 0 : 45,
+            autoSkip: !(daily || grouping == 'monthly'),
             fontSize: 11
           }
         }],
@@ -905,7 +909,7 @@ class TimeAnalyticsController < ApplicationController
       }
     }
 
-    chart_options[:monthYearSeparator] = { boundaries: boundaries } if daily && boundaries.present?
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'bar',
@@ -1064,13 +1068,18 @@ class TimeAnalyticsController < ApplicationController
       boundaries = axis[:boundaries]
       tooltip_labels = sorted_data.map { |key, _| helpers.format_chart_label(key) }
     else
-      formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-      # Generate detailed tooltip labels for weekly grouping
+      full_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_data.map(&:first)) : full_labels
+
+      # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+      # full "Month Year" text, decoupled from the shortened monthly axis labels above.
       tooltip_labels = if @grouping == 'weekly'
         sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
       else
-        formatted_labels
+        full_labels
       end
+
+      boundaries = helpers.build_period_boundaries(sorted_data.map(&:first), @grouping)
     end
 
     # Generate formatted hours for tooltips
@@ -1155,15 +1164,15 @@ class TimeAnalyticsController < ApplicationController
             labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
-            maxRotation: daily ? 0 : 45,
-            minRotation: daily ? 0 : 45,
-            autoSkip: !daily
+            maxRotation: (daily || @grouping == 'monthly') ? 0 : 45,
+            minRotation: (daily || @grouping == 'monthly') ? 0 : 45,
+            autoSkip: !(daily || @grouping == 'monthly')
           }
         }]
       }
     }
 
-    chart_options[:monthYearSeparator] = { boundaries: boundaries } if daily && boundaries.present?
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'line',
@@ -1268,17 +1277,21 @@ class TimeAnalyticsController < ApplicationController
 
     # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
     sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
-    
+
     # Generate labels for chart
-    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
-    # Generate detailed tooltip labels for weekly grouping
+    full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+
+    # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+    # full "Month Year" text, decoupled from the shortened monthly axis labels above.
     tooltip_labels = if @grouping == 'weekly'
       sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
-      formatted_labels
+      full_labels
     end
-    
+
+    boundaries = helpers.build_period_boundaries(sorted_periods, @grouping)
+
     # Create datasets for each activity (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = activities.map do |activity|
@@ -1328,8 +1341,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: @grouping == 'monthly' ? 0 : 45,
+            minRotation: @grouping == 'monthly' ? 0 : 45,
             fontSize: 11
           }
         }],
@@ -1354,6 +1367,8 @@ class TimeAnalyticsController < ApplicationController
       }
     }
 
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
+
     {
       type: 'bar',
       data: {
@@ -1370,17 +1385,21 @@ class TimeAnalyticsController < ApplicationController
 
     # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
     sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
-    
+
     # Generate labels for chart
-    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
-    # Generate detailed tooltip labels for weekly grouping
+    full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+
+    # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+    # full "Month Year" text, decoupled from the shortened monthly axis labels above.
     tooltip_labels = if @grouping == 'weekly'
       sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
-      formatted_labels
+      full_labels
     end
-    
+
+    boundaries = helpers.build_period_boundaries(sorted_periods, @grouping)
+
     # Create datasets for each project (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = projects.map do |project|
@@ -1430,8 +1449,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: @grouping == 'monthly' ? 0 : 45,
+            minRotation: @grouping == 'monthly' ? 0 : 45,
             fontSize: 11
           }
         }],
@@ -1455,6 +1474,8 @@ class TimeAnalyticsController < ApplicationController
         }
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'bar',

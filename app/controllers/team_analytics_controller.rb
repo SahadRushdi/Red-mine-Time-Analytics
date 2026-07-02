@@ -832,7 +832,8 @@ class TeamAnalyticsController < ApplicationController
       labels = axis[:labels]
       boundaries = axis[:boundaries]
     else
-      labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(raw_keys) : sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      boundaries = helpers.build_period_boundaries(raw_keys, grouping)
     end
 
     # Flag weekend/holiday points (daily only) so they render amber.
@@ -1071,12 +1072,15 @@ class TeamAnalyticsController < ApplicationController
 
   # Generate line chart from data arrays
   def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil, boundaries = nil)
-    # Generate detailed tooltip labels for weekly grouping; full descriptive dates for daily
-    # (decoupled from the short 2/3-line axis labels used for daily grouping's data.labels).
+    # Generate detailed tooltip labels for weekly grouping; full descriptive dates for daily and
+    # monthly (decoupled from the short axis labels used for daily/monthly grouping's
+    # data.labels).
     tooltip_labels = if raw_keys && grouping == 'weekly'
       raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
     elsif raw_keys && grouping == 'daily'
       raw_keys.map { |key| helpers.format_chart_label(key) }
+    elsif raw_keys && grouping == 'monthly'
+      raw_keys.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
     else
       labels
     end
@@ -1166,9 +1170,9 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: grouping == 'daily' ? 0 : 45,
-            minRotation: grouping == 'daily' ? 0 : 45,
-            autoSkip: grouping != 'daily',
+            maxRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily monthly].include?(grouping),
             fontSize: 11
           }
         }]
@@ -1419,7 +1423,8 @@ class TeamAnalyticsController < ApplicationController
       labels = axis[:labels]
       boundaries = axis[:boundaries]
     else
-      labels = periods.map { |period| format_activity_period_display(period, @grouping) }
+      labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(periods) : periods.map { |period| format_activity_period_display(period, @grouping) }
+      boundaries = helpers.build_period_boundaries(periods, @grouping)
     end
 
     data_values = periods.map { |period| period_totals[period] || 0 }
@@ -1446,12 +1451,16 @@ class TeamAnalyticsController < ApplicationController
       boundaries = axis[:boundaries]
       tooltip_labels = sorted_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+      full_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+      formatted_labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+
       tooltip_labels = if grouping == 'weekly'
         sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
       else
-        formatted_labels
+        full_labels
       end
+
+      boundaries = helpers.build_period_boundaries(sorted_periods, grouping)
     end
 
     datasets = categories.each_with_index.map do |category, index|
@@ -1496,9 +1505,9 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: grouping == 'daily' ? 0 : 45,
-            minRotation: grouping == 'daily' ? 0 : 45,
-            autoSkip: grouping != 'daily',
+            maxRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily monthly].include?(grouping),
             fontSize: 11
           }
         }],
@@ -1523,7 +1532,7 @@ class TeamAnalyticsController < ApplicationController
       }
     }
 
-    chart_options[:monthYearSeparator] = { boundaries: boundaries } if grouping == 'daily' && boundaries.present?
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'bar',

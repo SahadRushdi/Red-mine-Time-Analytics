@@ -176,7 +176,6 @@ module TimeAnalyticsHelper
   # format_chart_label/format_period_for_table remain the source of truth there.
   def build_daily_chart_axis(dates)
     labels = []
-    boundaries = []
     prev_date = nil
 
     dates.each_with_index do |raw_date, index|
@@ -189,7 +188,6 @@ module TimeAnalyticsHelper
         lines = [letter, date.strftime('%b %-d')]
         lines << date.year.to_s if year_changed
         labels << lines
-        boundaries << { index: index, type: year_changed ? 'year' : 'month' } if prev_date
       else
         labels << [letter, date.day.to_s]
       end
@@ -197,7 +195,83 @@ module TimeAnalyticsHelper
       prev_date = date
     end
 
-    { labels: labels, boundaries: boundaries }
+    { labels: labels, boundaries: build_period_boundaries(dates, 'daily') }
+  end
+
+  # Resolves any grouping key (Date/Time/String/Integer/Array, per database adapter) into a
+  # representative Date, for chart month/year boundary detection only - returns nil if the key
+  # can't be resolved, in which case that tick is simply skipped by build_period_boundaries.
+  def normalize_period_date(key, grouping)
+    case grouping
+    when 'monthly'
+      case key
+      when Date, Time, DateTime then key.to_date
+      when Array then Date.new(key[0], key[1], 1)
+      when String then Date.parse(key)
+      end
+    when 'weekly'
+      case key
+      when Date, Time, DateTime
+        key.to_date
+      when String
+        key.match?(/^\d{6}$/) ? Date.commercial(key[0..3].to_i, key[4..5].to_i, 1) : Date.parse(key)
+      when Integer
+        key.to_s.length == 6 ? Date.commercial(key / 100, key % 100, 1) : nil
+      end
+    else
+      case key
+      when Date, Time, DateTime then key.to_date
+      when String then Date.parse(key)
+      end
+    end
+  rescue
+    nil
+  end
+
+  # Computes month/year boundary tick indices for a sorted list of period keys, for the
+  # monthYearSeparator chart plugin. Used for daily, weekly, and monthly grouping - for monthly
+  # grouping every tick is already a new month, so a boundary is marked at every tick.
+  def build_period_boundaries(keys, grouping)
+    boundaries = []
+    prev_date = nil
+
+    keys.each_with_index do |key, index|
+      date = normalize_period_date(key, grouping)
+      next unless date
+
+      if prev_date
+        year_changed = date.year != prev_date.year
+        month_changed = date.month != prev_date.month || year_changed
+        boundaries << { index: index, type: year_changed ? 'year' : 'month' } if month_changed
+      end
+
+      prev_date = date
+    end
+
+    boundaries
+  end
+
+  # Monthly chart axis labels: full month name only (e.g. "June"), with the year appended as a
+  # second line only on the first tick and whenever the year changes from the previous tick
+  # (e.g. ["June", "2026"]). Chart axis only - table/CSV/tooltip text still uses the full
+  # "Month Year" format via format_period_for_table.
+  def build_monthly_chart_labels(keys)
+    labels = []
+    prev_date = nil
+
+    keys.each do |key|
+      date = normalize_period_date(key, 'monthly')
+      unless date
+        labels << key.to_s
+        next
+      end
+
+      month_name = date.strftime('%B')
+      labels << (prev_date.nil? || date.year != prev_date.year ? [month_name, date.year.to_s] : month_name)
+      prev_date = date
+    end
+
+    labels
   end
 
   def time_filter_options
