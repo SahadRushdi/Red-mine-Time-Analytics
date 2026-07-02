@@ -823,14 +823,21 @@ class TeamAnalyticsController < ApplicationController
     # "Show Active Days": drop weekend/holiday points entirely (even logged ones).
     sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
 
-    # Format labels and values
-    labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+    raw_keys = sorted_data.map(&:first)
     values = sorted_data.map { |_, hours| hours.round(2) }
 
-    raw_keys = sorted_data.map(&:first)
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(raw_keys)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+    end
+
     # Flag weekend/holiday points (daily only) so they render amber.
     holiday_flags = grouping == 'daily' ? raw_keys.map { |key| ta_team_holiday_date?(key) } : raw_keys.map { false }
-    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags)
+    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags, boundaries)
   end
 
   def generate_time_entries_stacked_chart_data(entries, grouping)
@@ -1063,10 +1070,13 @@ class TeamAnalyticsController < ApplicationController
   end
 
   # Generate line chart from data arrays
-  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil)
-    # Generate detailed tooltip labels for weekly grouping
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil, boundaries = nil)
+    # Generate detailed tooltip labels for weekly grouping; full descriptive dates for daily
+    # (decoupled from the short 2/3-line axis labels used for daily grouping's data.labels).
     tooltip_labels = if raw_keys && grouping == 'weekly'
       raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    elsif raw_keys && grouping == 'daily'
+      raw_keys.map { |key| helpers.format_chart_label(key) }
     else
       labels
     end
@@ -1117,7 +1127,13 @@ class TeamAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: false
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
       },
       tooltips: {
         mode: 'index',
@@ -1150,13 +1166,16 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: grouping == 'daily' ? 0 : 45,
+            minRotation: grouping == 'daily' ? 0 : 45,
+            autoSkip: grouping != 'daily',
             fontSize: 11
           }
         }]
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'line',
@@ -1394,10 +1413,18 @@ class TeamAnalyticsController < ApplicationController
     periods = raw_periods.dup
     periods = periods.reject { |period| ta_team_holiday_date?(period) } if @grouping == 'daily' && @hide_holidays
 
-    labels = periods.map { |period| format_activity_period_display(period, @grouping) }
+    boundaries = []
+    if @grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(periods)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = periods.map { |period| format_activity_period_display(period, @grouping) }
+    end
+
     data_values = periods.map { |period| period_totals[period] || 0 }
     holiday_flags = @grouping == 'daily' ? periods.map { |period| ta_team_holiday_date?(period) } : periods.map { false }
-    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags)
+    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags, boundaries)
   end
 
   def generate_stacked_bar_chart_from_matrix(period_keys, categories, matrix_data, grouping)
@@ -1412,11 +1439,19 @@ class TeamAnalyticsController < ApplicationController
       fill_missing_months_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
     end
 
-    formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
-    tooltip_labels = if grouping == 'weekly'
-      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(sorted_periods)
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = sorted_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+      tooltip_labels = if grouping == 'weekly'
+        sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+      else
+        formatted_labels
+      end
     end
 
     datasets = categories.each_with_index.map do |category, index|
@@ -1435,63 +1470,68 @@ class TeamAnalyticsController < ApplicationController
       }
     end
 
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'nearest',
+        intersect: true,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
+          },
+          ticks: {
+            maxRotation: grouping == 'daily' ? 0 : 45,
+            minRotation: grouping == 'daily' ? 0 : 45,
+            autoSkip: grouping != 'daily',
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if grouping == 'daily' && boundaries.present?
+
     {
       type: 'bar',
       data: {
         labels: formatted_labels,
         datasets: datasets
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          display: false
-        },
-        tooltips: {
-          mode: 'nearest',
-          intersect: true,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFontSize: 14,
-          titleFontStyle: 'bold',
-          bodyFontSize: 13,
-          cornerRadius: 8
-        },
-        scales: {
-          xAxes: [{
-            stacked: true,
-            scaleLabel: {
-              display: true,
-              labelString: helpers.grouping_label(grouping),
-              fontSize: 12,
-              fontStyle: 'bold'
-            },
-            ticks: {
-              maxRotation: 45,
-              minRotation: 45,
-              fontSize: 11
-            }
-          }],
-          yAxes: [{
-            stacked: true,
-            ticks: {
-              beginAtZero: true,
-              fontSize: 11
-            },
-            scaleLabel: {
-              display: true,
-              labelString: 'Hours',
-              fontSize: 12,
-              fontStyle: 'bold'
-            }
-          }]
-        },
-        plugins: {
-          colorschemes: {
-            scheme: 'tableau.Tableau10'
-          }
-        }
-      }
+      options: chart_options
     }.to_json.html_safe
   end
 

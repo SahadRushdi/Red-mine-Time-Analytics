@@ -119,19 +119,30 @@ table.ta-support-cols-visible .ta-support-col {
   display: flex;
   flex-direction: column;
   height: 0; /* Allows flex-grow to work correctly */
+  overflow: hidden; /* Never let chart/legend content spill outside the fixed-height card */
 }
 
 .chart-wrapper {
   position: relative;
   flex-grow: 1;
-  height: 300px !important;
+  height: 370px !important;
   margin: 0;
   width: 100%;
   min-width: 0;
 }
 
+/* When #chart-container also holds a below-chart legend (.ts-chart-legend-scroll), the chart
+   itself needs a shorter fixed height to leave guaranteed room for the legend within the
+   fixed-height card. Only applied on Stacked (bar) chart views, which are the only ones that
+   populate the legend div - Trend (line) charts draw their small legend inside the canvas
+   itself and use the full chart-wrapper height above. */
+#chart-container.has-chart-legend .chart-wrapper {
+  height: 300px !important;
+}
+
 .ts-chart-legend-scroll {
-  max-height: 75px;
+  flex-shrink: 0;
+  max-height: 70px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px;

@@ -810,15 +810,25 @@ class TimeAnalyticsController < ApplicationController
       end
     end
     categories_sorted = all_categories.sort_by { |_, h| -h }.map(&:first)
-    
-    # Generate labels for chart
-    formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
-    
-    # Generate tooltip labels (detailed format for weekly grouping)
-    tooltip_labels = if grouping == 'weekly'
-      all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+
+    daily = grouping == 'daily'
+    boundaries = []
+
+    if daily
+      axis = helpers.build_daily_chart_axis(all_periods)
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = all_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      # Generate labels for chart
+      formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+
+      # Generate tooltip labels (detailed format for weekly grouping)
+      tooltip_labels = if grouping == 'weekly'
+        all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+      else
+        formatted_labels
+      end
     end
     
     # Create datasets for each category (stacked)
@@ -848,13 +858,7 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
         mode: 'nearest',
@@ -873,8 +877,9 @@ class TimeAnalyticsController < ApplicationController
             display: false
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: daily ? 0 : 45,
+            minRotation: daily ? 0 : 45,
+            autoSkip: !daily,
             fontSize: 11
           }
         }],
@@ -899,6 +904,8 @@ class TimeAnalyticsController < ApplicationController
         }
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if daily && boundaries.present?
 
     {
       type: 'bar',
@@ -1050,13 +1057,20 @@ class TimeAnalyticsController < ApplicationController
 
     return empty_chart_data('line') if sorted_data.empty? || sorted_data.all? { |_, value| value.to_f.zero? }
 
-    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if @grouping == 'weekly'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    boundaries = []
+    if daily
+      axis = helpers.build_daily_chart_axis(sorted_data.map(&:first))
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = sorted_data.map { |key, _| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      # Generate detailed tooltip labels for weekly grouping
+      tooltip_labels = if @grouping == 'weekly'
+        sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+      else
+        formatted_labels
+      end
     end
 
     # Generate formatted hours for tooltips
@@ -1141,12 +1155,15 @@ class TimeAnalyticsController < ApplicationController
             labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45
+            maxRotation: daily ? 0 : 45,
+            minRotation: daily ? 0 : 45,
+            autoSkip: !daily
           }
         }]
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if daily && boundaries.present?
 
     {
       type: 'line',
@@ -1289,13 +1306,7 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
         mode: 'nearest',
@@ -1397,13 +1408,7 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
         mode: 'nearest',

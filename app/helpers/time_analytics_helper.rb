@@ -170,6 +170,36 @@ module TimeAnalyticsHelper
     end
   end
 
+  # Builds compact 2/3-line daily chart tick labels (Chart.js v2 renders each array
+  # element of a label as its own line) plus month/year boundary metadata for the
+  # monthYearSeparator plugin. Only used for chart x-axes, never for table/CSV text -
+  # format_chart_label/format_period_for_table remain the source of truth there.
+  def build_daily_chart_axis(dates)
+    labels = []
+    boundaries = []
+    prev_date = nil
+
+    dates.each_with_index do |raw_date, index|
+      date = raw_date.respond_to?(:to_date) ? raw_date.to_date : raw_date
+      letter = date.strftime('%A')[0, 1]
+      year_changed = prev_date && date.year != prev_date.year
+      month_changed = prev_date.nil? || date.month != prev_date.month || year_changed
+
+      if month_changed
+        lines = [letter, date.strftime('%b %-d')]
+        lines << date.year.to_s if year_changed
+        labels << lines
+        boundaries << { index: index, type: year_changed ? 'year' : 'month' } if prev_date
+      else
+        labels << [letter, date.day.to_s]
+      end
+
+      prev_date = date
+    end
+
+    { labels: labels, boundaries: boundaries }
+  end
+
   def time_filter_options
     [
       [l(:label_last_7_days), 'last_7_days'],

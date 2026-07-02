@@ -484,6 +484,7 @@
 
   <!-- Visualization Section -->
   <div class="box visualization-section">
+    <% chart_type = params[:chart_type] || default_chart_type(@view_mode) %>
     <h3 class="text-base font-semibold text-gray-900 mb-3" style="display: flex; justify-content: space-between; align-items: center;">
       <span><%= chart_breakdown_header(@grouping) %></span>
       <div class="inline-flex items-center gap-2">
@@ -501,29 +502,30 @@
         <%# Chart type buttons %>
         <button type="button"
                 onclick="switchChartType('line')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Trend
         </button>
         <button type="button"
                 onclick="switchChartType('bar')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Stacked
         </button>
 
         <%# Hidden select kept for backend compatibility %>
-        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
+        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, chart_type),
             onchange: 'updateChart()', id: 'chart_type_select', style: 'display: none;' %>
       </div>
     </h3>
-    
-    <div id="chart-container" style="display: block;">
+
+    <div id="chart-container" class="<%= chart_type == 'bar' ? 'has-chart-legend' : '' %>" style="display: block;">
       <div class="chart-wrapper">
-        <canvas id="time-chart" class="chart" 
-                data-chart='<%= @chart_data %>' 
+        <canvas id="time-chart" class="chart"
+                data-chart='<%= @chart_data %>'
                 data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
+      <div id="individual-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
     </div>
   </div>
 </div>
@@ -1260,9 +1262,17 @@ function initChart() {
       
       return label;
     };
-    
+
+    if (window.TaChartPlugins) {
+      TaChartPlugins.applyHolidayLegend(config);
+    }
+
     timeAnalyticsChart = new Chart(chartElement, config);
-    
+
+    if (config.type === 'bar' && window.TaChartPlugins) {
+      TaChartPlugins.renderChartLegend(timeAnalyticsChart, 'individual-chart-legend');
+    }
+
   } catch (error) {
     console.error('Chart initialization error:', error);
     chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart</p>';
