@@ -109,17 +109,6 @@ class TimeAnalyticsController < ApplicationController
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
-      
-      # Also generate simple activity summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'activity')
-        # Sort by hours (highest to lowest) for summary view
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |activity_name, hours|
-          Struct.new(:period, :hours).new(activity_name || 'No Activity', hours)
-        end
-      end
     elsif @view_mode == 'project'
       # Generate Project × Time Period pivot table for ALL groupings (including daily)
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
@@ -133,17 +122,6 @@ class TimeAnalyticsController < ApplicationController
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
-      
-      # Also generate simple project summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'project')
-        # Sort by hours (highest to lowest) for summary view
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |project_name, hours|
-          Struct.new(:period, :hours).new(project_name || 'No Project', hours)
-        end
-      end
     elsif @view_mode == 'issue'
       # Generate Issue × Time Period pivot table for ALL groupings (including daily)
       @issue_pivot_data = generate_issue_pivot_table(@time_entries, @grouping)
@@ -157,17 +135,6 @@ class TimeAnalyticsController < ApplicationController
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
-      
-      # Also generate simple issue summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'issue')
-        # Sort by hours (highest to lowest)
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |issue_info, hours|
-          Struct.new(:period, :hours, :issue).new(issue_info[:display], hours, issue_info[:issue])
-        end
-      end
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       

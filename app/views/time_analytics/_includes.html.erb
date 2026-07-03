@@ -27,4 +27,7 @@
   
   <!-- Automatic Status Badge Coloring (Automatic logic - no manual color mapping) -->
   <%= javascript_include_tag 'status_colors.js', plugin: 'redmine_time_analytics' %>
+
+  <!-- Client-side sort/paginate helper for Summary cards and the Monthly avg table -->
+  <%= javascript_include_tag 'ta_client_table.js', plugin: 'redmine_time_analytics' %>
 <% end %>

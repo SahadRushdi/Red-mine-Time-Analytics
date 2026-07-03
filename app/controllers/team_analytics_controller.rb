@@ -203,7 +203,7 @@ class TeamAnalyticsController < ApplicationController
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
-    
+
     respond_to do |format|
       format.html { render 'team_analytics/index' }
       format.json { 
@@ -1406,8 +1406,9 @@ class TeamAnalyticsController < ApplicationController
       { id: m[:id], name: m[:name], monthly: monthly, overall: daily_avg.call(total_hours, overall_active) }
     end
 
-    # Default order: highest overall daily average first (matches the design).
-    rows.sort_by! { |r| [-r[:overall], r[:name]] }
+    # Default order: highest overall daily average first (matches the design). The client
+    # re-sorts in memory when a column header is clicked.
+    rows.sort_by! { |r| [-r[:overall], r[:name].to_s.downcase] }
 
     { months: months.map { |mo| { key: mo[:key], label: mo[:label] } }, rows: rows }
   end

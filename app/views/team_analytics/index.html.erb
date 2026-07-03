@@ -889,39 +889,26 @@
         </table>
       </div>
       
-      <%# Summary View: Simple Activity Table (Hidden by default) %>
+      <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
-        <div class="space-y-2 px-2">
-          <% @activity_totals.sort_by { |_, hours| -hours }.each_with_index do |(activity, hours), index| %>
-            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-              <div class="flex items-center justify-between mb-1 gap-3">
-                <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
-                <div class="flex items-center gap-3">
-                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                  <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                </div>
-              </div>
-              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-              </div>
-            </div>
-          <% end %>
+        <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
+        <div id="team-activity-summary-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
+        <div id="team-activity-summary-cards" class="space-y-2 px-2"></div>
+        <div class="pagination-wrapper">
+          <span id="team-activity-summary-pagination-links"></span>
+          <div class="pagination-info" id="team-activity-summary-pagination-info"></div>
         </div>
       </div>
 
-      <%# Pagination for Activity view %>
-      <div class="pagination-wrapper">
-        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state, temp_excluded_ids: []) %>
-        <span id="team-activity-pagination-links" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
+      <%# Pagination for Activity view (Detailed only — Summary paginates client-side above) %>
+      <div id="team-activity-detailed-pagination-bar" class="pagination-wrapper" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
+        <span id="team-activity-pagination-links">
+          <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state, temp_excluded_ids: []) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
 
-        <div class="pagination-info" id="team-activity-pagination-info"
-             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-summary-count="<%= @activity_totals&.count || 0 %>">
+        <div class="pagination-info" id="team-activity-pagination-info">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
       </div>
@@ -1011,39 +998,26 @@
         </table>
       </div>
       
-      <%# Summary View: Simple Project Table (Hidden by default) %>
+      <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
-        <div class="space-y-2 px-2">
-          <% @project_totals.sort_by { |_, hours| -hours }.each_with_index do |(project, hours), index| %>
-            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-              <div class="flex items-center justify-between mb-1 gap-3">
-                <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
-                <div class="flex items-center gap-3">
-                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                  <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                </div>
-              </div>
-              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-              </div>
-            </div>
-          <% end %>
+        <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
+        <div id="team-project-summary-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
+        <div id="team-project-summary-cards" class="space-y-2 px-2"></div>
+        <div class="pagination-wrapper">
+          <span id="team-project-summary-pagination-links"></span>
+          <div class="pagination-info" id="team-project-summary-pagination-info"></div>
         </div>
       </div>
 
-      <%# Pagination for Project view %>
-      <div class="pagination-wrapper">
-        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state, temp_excluded_ids: []) %>
-        <span id="team-project-pagination-links" style="<%= @project_view_state == 'summary' ? 'display: none;' : '' %>">
+      <%# Pagination for Project view (Detailed only — Summary paginates client-side above) %>
+      <div id="team-project-detailed-pagination-bar" class="pagination-wrapper" style="<%= @project_view_state == 'summary' ? 'display: none;' : '' %>">
+        <span id="team-project-pagination-links">
+          <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :project_view_state, temp_excluded_ids: []) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
 
-        <div class="pagination-info" id="team-project-pagination-info"
-             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-summary-count="<%= @project_totals&.count || 0 %>">
+        <div class="pagination-info" id="team-project-pagination-info">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
       </div>
@@ -1146,45 +1120,31 @@
         </table>
       </div>
       
-      <%# Summary View: Simple Member Table (Hidden by default) %>
+      <%# Summary View: Simple Member Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
+        <% member_summary_payload = {
+             grandTotal: @grand_total.to_f,
+             items: @member_totals.map do |member_name, hours|
+               member = @members.find { |m| m[:name] == member_name }
+               {
+                 name: member_name,
+                 hours: hours.to_f,
+                 memberId: member && member[:id],
+                 url: member ? my_time_path(@member_dashboard_params.merge(user_id: member[:id])) : nil,
+                 activeDaysHtml: (member && @member_active_days) ? ta_active_days_text(@member_active_days[member[:id]].to_f, @active_days_count) : nil
+               }
+             end
+           }.to_json %>
+        <div id="team-member-summary-payload" data-payload='<%= member_summary_payload %>' style="display:none;"></div>
         <div class="space-y-2 px-2">
-          <% @member_totals.sort_by { |name, hours| [-hours, name] }.each_with_index do |(member_name, hours), index| %>
-            <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-            <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-            <% member = @members.find { |m| m[:name] == member_name } %>
-            <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(member_name) %>">
-              <div class="flex items-center justify-between mb-1 gap-3">
-                <h3 class="text-base font-medium text-gray-900">
-                  <% if member %>
-                    <%= link_to member_name, my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-gray-900 hover:text-gray-900 hover:no-underline" %>
-                  <% else %>
-                    <%= member_name %>
-                  <% end %>
-                </h3>
-                <div class="flex items-center gap-3">
-                  <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                  <span class="min-w-[56px] text-right" title="Active Days / Working Days">
-                    <% if member && @member_active_days %>
-                      <%= ta_active_days_text(@member_active_days[member[:id]].to_f, @active_days_count) %>
-                    <% else %>
-                      <span class="text-sm font-medium text-gray-400">—</span>
-                    <% end %>
-                  </span>
-                  <% if member %>
-                    <label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">
-                      <input type="checkbox" class="sr-only peer member-exclusion-toggle" data-user-id="<%= member[:id] %>" checked>
-                      <div class="ta-custom-toggle-track"></div>
-                    </label>
-                  <% end %>
-                </div>
-              </div>
-              <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-              </div>
-            </div>
-          <% end %>
+          <div id="team-member-summary-cards"></div>
+        </div>
+        <div class="pagination-wrapper">
+          <span id="team-member-summary-pagination-links"></span>
+          <div class="pagination-info" id="team-member-summary-pagination-info"></div>
+        </div>
 
+        <div class="space-y-2 px-2">
           <%# Temporarily-excluded members: still listed (struck-through) but counted in no aggregate %>
           <% Array(@temp_excluded_members).each do |member| %>
             <div class="ta-member-excluded bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= member[:hours].to_f %>" data-name="<%= h(member[:name]) %>" data-excluded="true">
@@ -1210,47 +1170,50 @@
         </div>
       </div>
 
-      <%# Monthly avg View: per-member daily average per month (monthly grouping only) %>
+      <%# Monthly avg View: per-member daily average per month (monthly grouping only) — client-side sort+paginate %>
       <% if @member_monthly_avg %>
         <div id="team-member-monthly-avg-view" style="display: <%= @member_view_state == 'monthly_avg' ? 'block' : 'none' %>;" class="ta-analysis-table-scroll overflow-x-auto">
+          <% monthly_avg_payload = {
+               months: @member_monthly_avg[:months],
+               items: @member_monthly_avg[:rows].map do |row|
+                 {
+                   id: row[:id],
+                   name: row[:name],
+                   url: my_time_path(@member_dashboard_params.merge(user_id: row[:id])),
+                   monthly: row[:monthly],
+                   overall: row[:overall]
+                 }
+               end
+             }.to_json %>
+          <div id="team-member-monthly-avg-payload" data-payload='<%= monthly_avg_payload %>' style="display:none;"></div>
           <table id="team-member-monthly-avg-table" class="w-full text-sm text-left text-gray-500">
             <thead class="text-sm text-gray-700 bg-gray-50">
               <tr class="border-b border-gray-200">
-                <th class="px-6 py-3 cursor-pointer select-none hover:text-gray-900" onclick="sortMonthlyAvgTable(0, 'text')">Member <span class="ta-mavg-sort-ind text-gray-400"></span></th>
-                <% @member_monthly_avg[:months].each_with_index do |mo, i| %>
-                  <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900" onclick="sortMonthlyAvgTable(<%= i + 1 %>, 'number')"><%= mo[:label] %> <span class="ta-mavg-sort-ind text-gray-400"></span></th>
+                <th class="px-6 py-3 cursor-pointer select-none hover:text-gray-900" onclick="taMonthlyAvgSortClick('name')">Member <span class="ta-mavg-sort-ind text-gray-400" id="mavg-sort-ind-name"></span></th>
+                <% @member_monthly_avg[:months].each do |mo| %>
+                  <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900" onclick="taMonthlyAvgSortClick('<%= mo[:key] %>')"><%= mo[:label] %> <span class="ta-mavg-sort-ind text-gray-400" id="mavg-sort-ind-<%= mo[:key] %>"></span></th>
                 <% end %>
-                <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900 border-l-2 border-gray-300 font-bold" onclick="sortMonthlyAvgTable(<%= @member_monthly_avg[:months].size + 1 %>, 'number')">Overall avg <span class="ta-mavg-sort-ind text-gray-400"></span></th>
+                <th class="px-6 py-3 text-right cursor-pointer select-none hover:text-gray-900 border-l-2 border-gray-300 font-bold" onclick="taMonthlyAvgSortClick('overall')">Overall avg <span class="ta-mavg-sort-ind text-gray-400" id="mavg-sort-ind-overall"></span></th>
               </tr>
             </thead>
-            <tbody>
-              <% @member_monthly_avg[:rows].each do |row| %>
-                <tr class="bg-white border-b border-gray-100 hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                    <%= link_to row[:name], my_time_path(@member_dashboard_params.merge(user_id: row[:id])), target: "_blank", class: "text-gray-900 hover:text-blue-600 hover:underline" %>
-                  </td>
-                  <% @member_monthly_avg[:months].each do |mo| %>
-                    <td class="px-6 py-4 text-right text-gray-900" data-sort-value="<%= row[:monthly][mo[:key]] %>"><%= format_hours(row[:monthly][mo[:key]]) %></td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900 border-l-2 border-gray-300" data-sort-value="<%= row[:overall] %>"><%= format_hours(row[:overall]) %></td>
-                </tr>
-              <% end %>
-            </tbody>
+            <tbody id="team-member-monthly-avg-cards"></tbody>
           </table>
+          <div class="pagination-wrapper">
+            <span id="team-member-monthly-avg-pagination-links"></span>
+            <div class="pagination-info" id="team-member-monthly-avg-pagination-info"></div>
+          </div>
         </div>
       <% end %>
 
-      <%# Pagination for Member view %>
-      <div class="pagination-wrapper">
-        <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state, temp_excluded_ids: []) %>
-        <span id="team-member-pagination-links" style="<%= @member_view_state == 'summary' ? 'display: none;' : '' %>">
+      <%# Pagination for Member view (Detailed only — Summary/Monthly avg paginate client-side above) %>
+      <div id="team-member-detailed-pagination-bar" class="pagination-wrapper" style="<%= (@member_view_state == 'summary' || @member_view_state == 'monthly_avg') ? 'display: none;' : '' %>">
+        <span id="team-member-pagination-links">
+          <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
+          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :member_view_state, temp_excluded_ids: []) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </span>
 
-        <div class="pagination-info" id="team-member-pagination-info"
-             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-summary-count="<%= (@member_totals&.count || 0) + Array(@temp_excluded_members).count %>">
+        <div class="pagination-info" id="team-member-pagination-info">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
       </div>
@@ -1375,6 +1338,15 @@
   }
 
   document.addEventListener('DOMContentLoaded', function() {
+    <% if @view_mode == 'activity' %>
+      initTeamSummaryTable('team-activity-summary', taTeamSummaryCardHtml);
+    <% elsif @view_mode == 'project' %>
+      initTeamSummaryTable('team-project-summary', taTeamSummaryCardHtml);
+    <% elsif @view_mode == 'members' %>
+      initTeamSummaryTable('team-member-summary', taTeamMemberSummaryCardHtml);
+      initTeamMonthlyAvgTable();
+    <% end %>
+
     // Initialize chart
     initChart();
     initTeamDonutChart();
@@ -1458,11 +1430,13 @@
         values.push(<%= hours.to_f %>);
       <% end %>
     <% elsif @view_mode == 'members' %>
-      // Build from the (possibly AJAX-refreshed) summary rows, skipping temporarily-excluded members.
-      var memberRows = document.querySelectorAll('#team-member-summary-view [data-name]:not([data-excluded="true"])');
-      var memberData = Array.prototype.map.call(memberRows, function(row) {
-        return { name: row.getAttribute('data-name') || '', hours: parseFloat(row.getAttribute('data-hours') || '0') };
-      }).filter(function(m) { return m.hours > 0; });
+      // Build from the full member payload (not the paginated Summary DOM), so the donut
+      // always reflects every included member regardless of which page is on screen.
+      // Temporarily-excluded members are never part of this payload to begin with.
+      var memberPayloadEl = document.getElementById('team-member-summary-payload');
+      var memberData = memberPayloadEl
+        ? JSON.parse(memberPayloadEl.getAttribute('data-payload')).items.filter(function(m) { return m.hours > 0; })
+        : [];
       memberData.sort(function(a, b) {
         if (b.hours !== a.hours) { return b.hours - a.hours; }
         return a.name.localeCompare(b.name);
@@ -1662,22 +1636,19 @@
       prefix: 'team-activity',
       storageKey: 'team_activity_view_mode',
       hiddenFieldId: 'activity_view_state_field',
-      paginationInfoId: 'team-activity-pagination-info',
-      paginationLinksId: 'team-activity-pagination-links'
+      detailedPaginationBarId: 'team-activity-detailed-pagination-bar'
     },
     project: {
       prefix: 'team-project',
       storageKey: 'team_project_view_mode',
       hiddenFieldId: 'project_view_state_field',
-      paginationInfoId: 'team-project-pagination-info',
-      paginationLinksId: 'team-project-pagination-links'
+      detailedPaginationBarId: 'team-project-detailed-pagination-bar'
     },
     member: {
       prefix: 'team-member',
       storageKey: 'team_member_view_mode',
       hiddenFieldId: 'member_view_state_field',
-      paginationInfoId: 'team-member-pagination-info',
-      paginationLinksId: 'team-member-pagination-links'
+      detailedPaginationBarId: 'team-member-detailed-pagination-bar'
     }
   };
 
@@ -1735,22 +1706,130 @@
   function updateTeamPaginationInfo(viewType, viewState) {
     var config = TEAM_VIEW_CONFIG[viewType];
     if (!config) return;
-    var paginationInfo = document.getElementById(config.paginationInfoId);
-    var paginationLinks = document.getElementById(config.paginationLinksId);
+    var bar = document.getElementById(config.detailedPaginationBarId);
+    if (bar) bar.style.display = viewState === 'detailed' ? '' : 'none';
+  }
 
-    if (paginationLinks) {
-      paginationLinks.style.display = viewState === 'detailed' ? '' : 'none';
-    }
+  // ── Client-side Summary card lists (Activity/Project/Member) ────────────────────────────
+  // Rendered/sorted/paginated entirely from the embedded payload, so the donut chart (which
+  // reads the same full dataset, not the DOM) is never limited to whatever page is on screen.
+  var TA_TEAM_SUMMARY_COLORS = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
 
-    if (!paginationInfo) return;
+  function taTeamSummaryCardHtml(item, index, grandTotal, colors) {
+    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+    var color = colors[index % colors.length];
+    var name = taEscapeHtml(item.name);
+    return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
+      '<div class="flex items-center justify-between mb-1 gap-3">' +
+        '<h3 class="text-base font-medium text-gray-900">' + name + '</h3>' +
+        '<div class="flex items-center gap-3">' +
+          '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+          '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+        '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+      '</div>' +
+    '</div>';
+  }
 
-    if (viewState === 'detailed') {
-      paginationInfo.textContent = paginationInfo.getAttribute('data-detailed-text') || '';
-      return;
-    }
+  function taTeamMemberSummaryCardHtml(item, index, grandTotal, colors) {
+    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+    var color = colors[index % colors.length];
+    var name = taEscapeHtml(item.name);
+    var nameHtml = item.url ? ('<a href="' + item.url + '" target="_blank" class="text-gray-900 hover:text-gray-900 hover:no-underline">' + name + '</a>') : name;
+    var activeDaysHtml = item.activeDaysHtml || '<span class="text-sm font-medium text-gray-400">—</span>';
+    var toggleHtml = item.memberId ? (
+      '<label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">' +
+        '<input type="checkbox" class="sr-only peer member-exclusion-toggle" data-user-id="' + item.memberId + '" checked>' +
+        '<div class="ta-custom-toggle-track"></div>' +
+      '</label>'
+    ) : '';
+    return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
+      '<div class="flex items-center justify-between mb-1 gap-3">' +
+        '<h3 class="text-base font-medium text-gray-900">' + nameHtml + '</h3>' +
+        '<div class="flex items-center gap-3">' +
+          '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+          '<span class="min-w-[56px] text-right" title="Active Days / Working Days">' + activeDaysHtml + '</span>' +
+          toggleHtml +
+        '</div>' +
+      '</div>' +
+      '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+        '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+      '</div>' +
+    '</div>';
+  }
 
-    var count = parseInt(paginationInfo.getAttribute('data-summary-count')) || 0;
-    paginationInfo.textContent = '(1-' + count + '/' + count + ')';
+  function initTeamSummaryTable(prefix, renderFn) {
+    var payloadEl = document.getElementById(prefix + '-payload');
+    var container = document.getElementById(prefix + '-cards');
+    if (!payloadEl || !container) { return null; }
+
+    var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
+    var table = TaClientTable({
+      getItems: function () { return payload.items; },
+      sortValue: function (item, field) { return field === 'name' ? (item.name || '').toLowerCase() : item.hours; },
+      renderRow: function (item, index) { return renderFn(item, index, payload.grandTotal, TA_TEAM_SUMMARY_COLORS); },
+      container: container,
+      paginationInfo: document.getElementById(prefix + '-pagination-info'),
+      paginationLinks: document.getElementById(prefix + '-pagination-links'),
+      perPage: <%= @limit %>,
+      sortField: 'hours',
+      sortDir: 'desc'
+    });
+    table.render();
+    return table;
+  }
+
+  // ── Client-side Monthly avg table (Members tab) ──────────────────────────────────────────
+  var taTeamMonthlyAvgTable = null;
+
+  function taMonthlyAvgRowHtml(item, index, months) {
+    var cells = '<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">' +
+      '<a href="' + item.url + '" target="_blank" class="text-gray-900 hover:text-blue-600 hover:underline">' + taEscapeHtml(item.name) + '</a></td>';
+    months.forEach(function (mo) {
+      cells += '<td class="px-6 py-4 text-right text-gray-900">' + taFormatHours(item.monthly[mo.key]) + '</td>';
+    });
+    cells += '<td class="px-6 py-4 text-right font-semibold text-gray-900 border-l-2 border-gray-300">' + taFormatHours(item.overall) + '</td>';
+    return '<tr class="bg-white border-b border-gray-100 hover:bg-gray-50">' + cells + '</tr>';
+  }
+
+  function taUpdateMavgSortIndicators() {
+    if (!taTeamMonthlyAvgTable) { return; }
+    var state = taTeamMonthlyAvgTable.getState();
+    document.querySelectorAll('.ta-mavg-sort-ind').forEach(function (el) { el.textContent = ''; });
+    var indicator = document.getElementById('mavg-sort-ind-' + state.sortField);
+    if (indicator) { indicator.textContent = state.sortDir === 'asc' ? '▲' : '▼'; }
+  }
+
+  function taMonthlyAvgSortClick(field) {
+    if (!taTeamMonthlyAvgTable) { return; }
+    taTeamMonthlyAvgTable.setSort(field, field === 'name' ? 'asc' : 'desc');
+  }
+
+  function initTeamMonthlyAvgTable() {
+    var payloadEl = document.getElementById('team-member-monthly-avg-payload');
+    var container = document.getElementById('team-member-monthly-avg-cards');
+    if (!payloadEl || !container) { return; }
+
+    var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
+    taTeamMonthlyAvgTable = TaClientTable({
+      getItems: function () { return payload.items; },
+      sortValue: function (item, field) {
+        if (field === 'name') { return (item.name || '').toLowerCase(); }
+        if (field === 'overall') { return item.overall; }
+        return (item.monthly && item.monthly[field]) || 0;
+      },
+      renderRow: function (item, index) { return taMonthlyAvgRowHtml(item, index, payload.months); },
+      container: container,
+      paginationInfo: document.getElementById('team-member-monthly-avg-pagination-info'),
+      paginationLinks: document.getElementById('team-member-monthly-avg-pagination-links'),
+      perPage: <%= @limit %>,
+      sortField: 'overall',
+      sortDir: 'desc',
+      onRender: function () { taUpdateMavgSortIndicators(); }
+    });
+    taTeamMonthlyAvgTable.render();
   }
 
   function showDetailedView(viewType, options) {
@@ -1895,11 +1974,7 @@
     var sortButtons = document.getElementById('summary-sort-buttons');
     if (sortButtons) sortButtons.style.display = 'none';
 
-    // The monthly-avg table is not paginated.
-    var pagLinks = document.getElementById('team-member-pagination-links');
-    var pagInfo = document.getElementById('team-member-pagination-info');
-    if (pagLinks) pagLinks.style.display = 'none';
-    if (pagInfo) pagInfo.textContent = '';
+    updateTeamPaginationInfo('member', 'monthly_avg');
 
     var hiddenField = document.getElementById('member_view_state_field');
     if (hiddenField) hiddenField.value = 'monthly_avg';
@@ -1908,59 +1983,24 @@
     }
   }
 
-  var monthlyAvgSort = { col: -1, dir: 1 };
-  function sortMonthlyAvgTable(colIndex, type) {
-    var table = document.getElementById('team-member-monthly-avg-table');
-    if (!table || !table.tBodies[0]) return;
-    var tbody = table.tBodies[0];
-    var rows = Array.prototype.slice.call(tbody.rows);
-
-    if (monthlyAvgSort.col === colIndex) {
-      monthlyAvgSort.dir *= -1;
-    } else {
-      monthlyAvgSort.col = colIndex;
-      monthlyAvgSort.dir = (type === 'text') ? 1 : -1; // names A→Z, numbers high→low first
-    }
-    var dir = monthlyAvgSort.dir;
-
-    rows.sort(function (a, b) {
-      var ac = a.cells[colIndex];
-      var bc = b.cells[colIndex];
-      if (type === 'number') {
-        // Cells render H:MM, so sort by the raw numeric value kept in data-sort-value.
-        var an = parseFloat(ac && ac.getAttribute('data-sort-value')) || 0;
-        var bn = parseFloat(bc && bc.getAttribute('data-sort-value')) || 0;
-        return (an - bn) * dir;
-      }
-      var av = ac ? ac.textContent.trim() : '';
-      var bv = bc ? bc.textContent.trim() : '';
-      return av.localeCompare(bv, undefined, { sensitivity: 'base' }) * dir;
-    });
-    rows.forEach(function (r) { tbody.appendChild(r); });
-
-    var ths = table.tHead.rows[0].cells;
-    for (var i = 0; i < ths.length; i++) {
-      var ind = ths[i].querySelector('.ta-mavg-sort-ind');
-      if (ind) ind.textContent = (i === colIndex) ? (dir > 0 ? ' ▲' : ' ▼') : '';
-    }
-  }
-
   function csvEscape(value) {
     return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
   }
 
+  // Exports the full payload (all members, all months), not just the currently-visible
+  // page — the table itself only ever renders one page of rows at a time.
   function exportMonthlyAvgCsv() {
-    var table = document.getElementById('team-member-monthly-avg-table');
-    if (!table || !table.tHead || !table.tBodies[0]) return;
+    var payloadEl = document.getElementById('team-member-monthly-avg-payload');
+    if (!payloadEl) { return; }
+    var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
     var lines = [];
-    var head = table.tHead.rows[0];
-    lines.push(Array.prototype.map.call(head.cells, function (c) {
-      return csvEscape(c.textContent.replace(/[▲▼]/g, '').trim());
-    }).join(','));
-    Array.prototype.forEach.call(table.tBodies[0].rows, function (r) {
-      lines.push(Array.prototype.map.call(r.cells, function (c) {
-        return csvEscape(c.textContent.trim());
-      }).join(','));
+    var header = ['Member'].concat(payload.months.map(function (mo) { return mo.label; })).concat(['Overall avg']);
+    lines.push(header.map(csvEscape).join(','));
+    payload.items.forEach(function (item) {
+      var row = [item.name].concat(payload.months.map(function (mo) {
+        return taFormatHours(item.monthly[mo.key]);
+      })).concat([taFormatHours(item.overall)]);
+      lines.push(row.map(csvEscape).join(','));
     });
     var blob = new Blob(["\uFEFF" + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
