@@ -28,7 +28,7 @@ class TaTeam < ActiveRecord::Base
   validate :validate_personal_project_urls
 
   # Safe attributes for mass assignment
-  safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_urls'
+  safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_urls', 'hide_support_time'
   
   # Serialize personal_project_urls as JSON array
   serialize :personal_project_urls, JSON

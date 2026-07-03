@@ -703,6 +703,8 @@ class TeamAnalyticsController < ApplicationController
     @show_effective_time_column = false
     @effective_time_error_message = nil
     return if @time_overview_data.blank?
+    # Team-level opt-out: skip support time entirely (direct + inherited) for this team.
+    return if @selected_team.hide_support_time?
 
     # Get direct external assignments
     external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to).to_a

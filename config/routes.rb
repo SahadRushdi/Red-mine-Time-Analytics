@@ -41,7 +41,11 @@ RedmineApp::Application.routes.draw do
     resources :admin_ta_team_memberships, path: 'memberships', as: 'memberships', only: [:create, :update, :destroy] do
       post :move, on: :member
     end
-    resources :admin_ta_team_projects, path: 'projects', as: 'team_projects'
+    resources :admin_ta_team_projects, path: 'projects', as: 'team_projects' do
+      collection do
+        patch :toggle_support_time
+      end
+    end
   end
 
   resources :admin_ta_hiring_needs, path: 'admin/ta_hiring_needs', only: [:index, :create, :update, :destroy] do

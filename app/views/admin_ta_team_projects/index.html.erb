@@ -38,7 +38,17 @@
         <h3 class="font-semibold text-gray-900">Active Projects (<%= @active_projects.count %>)</h3>
         <p class="text-xs text-gray-500">Projects currently assigned to this team.</p>
       </div>
-      <div class="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+      <div class="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
+        <%= form_tag toggle_support_time_admin_ta_team_team_projects_path(@team), method: :patch, class: 'inline-flex items-center' do %>
+          <%= hidden_field_tag :hide_support_time, '0' %>
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="When on, Support Time is not calculated or shown for this team on the Team dashboard - including projects inherited from child teams">
+            <span class="text-xs font-medium text-gray-600 whitespace-nowrap">Hide Support Time</span>
+            <%= check_box_tag :hide_support_time, '1', @team.hide_support_time?,
+                              class: 'sr-only peer', onchange: 'this.form.submit()' %>
+            <div class="ta-custom-toggle-track"></div>
+          </label>
+        <% end %>
         <input type="text" id="ta-active-projects-search" placeholder="Search project name, identifier, or status..."
                class="ts-search-input !block !h-[44px] !w-full md:!w-80 !rounded-lg !border !border-gray-300 !px-3 !text-sm !text-gray-900 !shadow-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]"
                oninput="filterActiveProjectRows()">
