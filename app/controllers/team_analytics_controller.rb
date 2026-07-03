@@ -832,7 +832,11 @@ class TeamAnalyticsController < ApplicationController
       labels = axis[:labels]
       boundaries = axis[:boundaries]
     else
-      labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(raw_keys) : sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(raw_keys)
+        when 'weekly' then helpers.build_weekly_chart_axis(raw_keys)
+        else sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      end
       boundaries = helpers.build_period_boundaries(raw_keys, grouping)
     end
 
@@ -1170,9 +1174,9 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
-            minRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
-            autoSkip: !%w[daily monthly].include?(grouping),
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
             fontSize: 11
           }
         }]
@@ -1423,7 +1427,11 @@ class TeamAnalyticsController < ApplicationController
       labels = axis[:labels]
       boundaries = axis[:boundaries]
     else
-      labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(periods) : periods.map { |period| format_activity_period_display(period, @grouping) }
+      labels = case @grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(periods)
+        else periods.map { |period| format_activity_period_display(period, @grouping) }
+      end
       boundaries = helpers.build_period_boundaries(periods, @grouping)
     end
 
@@ -1452,7 +1460,11 @@ class TeamAnalyticsController < ApplicationController
       tooltip_labels = sorted_periods.map { |key| helpers.format_chart_label(key) }
     else
       full_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
-      formatted_labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+      formatted_labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+        else full_labels
+      end
 
       tooltip_labels = if grouping == 'weekly'
         sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
@@ -1505,9 +1517,9 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
-            minRotation: %w[daily monthly].include?(grouping) ? 0 : 45,
-            autoSkip: !%w[daily monthly].include?(grouping),
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
             fontSize: 11
           }
         }],

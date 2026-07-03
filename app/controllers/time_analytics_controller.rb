@@ -822,7 +822,11 @@ class TimeAnalyticsController < ApplicationController
     else
       # Generate labels for chart
       full_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
-      formatted_labels = grouping == 'monthly' ? helpers.build_monthly_chart_labels(all_periods) : full_labels
+      formatted_labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(all_periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(all_periods)
+        else full_labels
+      end
 
       # Generate tooltip labels (detailed format for weekly grouping); monthly/other tooltips
       # keep the full "Month Year" text, decoupled from the shortened monthly axis labels above.
@@ -881,9 +885,9 @@ class TimeAnalyticsController < ApplicationController
             display: false
           },
           ticks: {
-            maxRotation: (daily || grouping == 'monthly') ? 0 : 45,
-            minRotation: (daily || grouping == 'monthly') ? 0 : 45,
-            autoSkip: !(daily || grouping == 'monthly'),
+            maxRotation: (daily || %w[weekly monthly].include?(grouping)) ? 0 : 45,
+            minRotation: (daily || %w[weekly monthly].include?(grouping)) ? 0 : 45,
+            autoSkip: !(daily || %w[weekly monthly].include?(grouping)),
             fontSize: 11
           }
         }],
@@ -1069,7 +1073,11 @@ class TimeAnalyticsController < ApplicationController
       tooltip_labels = sorted_data.map { |key, _| helpers.format_chart_label(key) }
     else
       full_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-      formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_data.map(&:first)) : full_labels
+      formatted_labels = case @grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(sorted_data.map(&:first))
+        when 'weekly' then helpers.build_weekly_chart_axis(sorted_data.map(&:first))
+        else full_labels
+      end
 
       # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
       # full "Month Year" text, decoupled from the shortened monthly axis labels above.
@@ -1164,9 +1172,9 @@ class TimeAnalyticsController < ApplicationController
             labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
-            maxRotation: (daily || @grouping == 'monthly') ? 0 : 45,
-            minRotation: (daily || @grouping == 'monthly') ? 0 : 45,
-            autoSkip: !(daily || @grouping == 'monthly')
+            maxRotation: (daily || %w[weekly monthly].include?(@grouping)) ? 0 : 45,
+            minRotation: (daily || %w[weekly monthly].include?(@grouping)) ? 0 : 45,
+            autoSkip: !(daily || %w[weekly monthly].include?(@grouping))
           }
         }]
       }
@@ -1280,7 +1288,11 @@ class TimeAnalyticsController < ApplicationController
 
     # Generate labels for chart
     full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+    formatted_labels = case @grouping
+      when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+      when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+      else full_labels
+    end
 
     # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
     # full "Month Year" text, decoupled from the shortened monthly axis labels above.
@@ -1341,8 +1353,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: @grouping == 'monthly' ? 0 : 45,
-            minRotation: @grouping == 'monthly' ? 0 : 45,
+            maxRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
+            minRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
             fontSize: 11
           }
         }],
@@ -1388,7 +1400,11 @@ class TimeAnalyticsController < ApplicationController
 
     # Generate labels for chart
     full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    formatted_labels = @grouping == 'monthly' ? helpers.build_monthly_chart_labels(sorted_periods) : full_labels
+    formatted_labels = case @grouping
+      when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+      when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+      else full_labels
+    end
 
     # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
     # full "Month Year" text, decoupled from the shortened monthly axis labels above.
@@ -1449,8 +1465,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: @grouping == 'monthly' ? 0 : 45,
-            minRotation: @grouping == 'monthly' ? 0 : 45,
+            maxRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
+            minRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
             fontSize: 11
           }
         }],

@@ -112,11 +112,8 @@ module TimeAnalyticsHelper
       # Fallback if key parsing fails
       return format_chart_label(key) unless date_in_week
 
-      # Calculate ISO week number (Redmine format: YYYY-W)
-      week_number = date_in_week.cweek
-      year = date_in_week.cwyear
-      
-      "#{year}-#{week_number}"
+      # Start-of-week date with the short month name (e.g. "13 Jun").
+      date_in_week.strftime('%d %b')
     elsif grouping == 'monthly'
       # The key from the controller is now consistently a Date or a 'YYYY-MM-DD' string
       date = key.is_a?(String) ? Date.parse(key) : key.to_date
@@ -249,6 +246,38 @@ module TimeAnalyticsHelper
     end
 
     boundaries
+  end
+
+  # Weekly chart axis labels: start-of-week day number only (e.g. "13"), with the short month
+  # name appended as a second line on the first tick and whenever the month changes (e.g.
+  # ["13", "Jun"]), plus the year as a third line whenever the year changes. Chart axis only -
+  # table/CSV/tooltip text still uses the "DD Mon" format via format_period_for_table.
+  def build_weekly_chart_axis(keys)
+    labels = []
+    prev_date = nil
+
+    keys.each do |key|
+      date = normalize_period_date(key, 'weekly')
+      unless date
+        labels << key.to_s
+        next
+      end
+
+      year_changed = prev_date && date.year != prev_date.year
+      month_changed = prev_date.nil? || date.month != prev_date.month || year_changed
+
+      if month_changed
+        lines = [date.day.to_s, date.strftime('%b')]
+        lines << date.year.to_s if year_changed
+        labels << lines
+      else
+        labels << date.day.to_s
+      end
+
+      prev_date = date
+    end
+
+    labels
   end
 
   # Monthly chart axis labels: full month name only (e.g. "June"), with the year appended as a
