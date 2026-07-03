@@ -19,6 +19,96 @@
 
   var UNGROUPED_ID = '__ungrouped__';
 
+  var DIALOG_BTN_PRIMARY = '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
+  var DIALOG_BTN_DANGER = '!text-white !bg-[#dc2626] hover:!bg-[#b91c1c] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
+
+  // Small Flowbite-styled confirm/prompt dialogs, replacing the native browser confirm()/prompt().
+  // A single overlay element is created lazily and reused across calls/instances so this works
+  // identically on both the Admin -> Activity Groups page and the Team Dashboard's "Customize
+  // groups" popup, without either host page needing to provide its own dialog markup.
+  var taBoardDialogEl = null;
+
+  function ensureBoardDialogEl() {
+    if (taBoardDialogEl) { return taBoardDialogEl; }
+
+    var el = document.createElement('div');
+    el.className = 'ta-board-dialog-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4';
+    el.innerHTML =
+      '<div class="ta-board-dialog-backdrop absolute inset-0 bg-gray-900/50"></div>' +
+      '<div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 w-full max-w-sm overflow-hidden">' +
+        '<div class="p-5">' +
+          '<p class="ta-board-dialog-message text-sm text-gray-700 mb-3"></p>' +
+          '<input type="text" class="ta-board-dialog-input hidden w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" />' +
+        '</div>' +
+        '<div class="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50/50">' +
+          '<button type="button" class="ta-board-dialog-cancel !text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer">Cancel</button>' +
+          '<button type="button" class="ta-board-dialog-confirm ' + DIALOG_BTN_PRIMARY + '">OK</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    el.querySelector('.ta-board-dialog-backdrop').addEventListener('click', function () { el.classList.add('hidden'); });
+    taBoardDialogEl = el;
+    return el;
+  }
+
+  function taBoardConfirm(message, onConfirm) {
+    var el = ensureBoardDialogEl();
+    el.querySelector('.ta-board-dialog-message').textContent = message;
+    el.querySelector('.ta-board-dialog-input').classList.add('hidden');
+    el.classList.remove('hidden');
+
+    var confirmBtn = el.querySelector('.ta-board-dialog-confirm');
+    var cancelBtn = el.querySelector('.ta-board-dialog-cancel');
+    confirmBtn.textContent = 'Remove';
+    confirmBtn.className = 'ta-board-dialog-confirm ' + DIALOG_BTN_DANGER;
+
+    function cleanup() {
+      confirmBtn.removeEventListener('click', onConfirmClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      el.classList.add('hidden');
+    }
+    function onConfirmClick() { cleanup(); onConfirm(); }
+    function onCancelClick() { cleanup(); }
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+  }
+
+  function taBoardPrompt(message, onSubmit) {
+    var el = ensureBoardDialogEl();
+    el.querySelector('.ta-board-dialog-message').textContent = message;
+    var input = el.querySelector('.ta-board-dialog-input');
+    input.classList.remove('hidden');
+    input.value = '';
+    el.classList.remove('hidden');
+    setTimeout(function () { input.focus(); }, 0);
+
+    var confirmBtn = el.querySelector('.ta-board-dialog-confirm');
+    var cancelBtn = el.querySelector('.ta-board-dialog-cancel');
+    confirmBtn.textContent = 'Add';
+    confirmBtn.className = 'ta-board-dialog-confirm ' + DIALOG_BTN_PRIMARY;
+
+    function cleanup() {
+      confirmBtn.removeEventListener('click', onConfirmClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      input.removeEventListener('keydown', onKeydown);
+      el.classList.add('hidden');
+    }
+    function submit() {
+      var value = input.value.trim();
+      cleanup();
+      if (value) { onSubmit(value); }
+    }
+    function onConfirmClick() { submit(); }
+    function onCancelClick() { cleanup(); }
+    function onKeydown(event) {
+      if (event.key === 'Enter') { submit(); }
+      if (event.key === 'Escape') { cleanup(); }
+    }
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+    input.addEventListener('keydown', onKeydown);
+  }
+
   function TaActivityGroupBoard(rootEl, options) {
     var state = {
       groups: (options.groups || []).map(cloneGroup).sort(byPosition),
@@ -267,9 +357,9 @@
 
       rootEl.querySelectorAll('.ta-group-remove').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          if (window.confirm('Remove this group? Its activities will become Ungrouped.')) {
+          taBoardConfirm('Remove this group? Its activities will become Ungrouped.', function () {
             removeGroup(btn.getAttribute('data-group-id'));
-          }
+          });
         });
       });
 
@@ -296,8 +386,7 @@
       var addBtn = rootEl.querySelector('.ta-group-add-btn');
       if (addBtn) {
         addBtn.addEventListener('click', function () {
-          var name = window.prompt('New group name:');
-          if (name) { addGroup(name); }
+          taBoardPrompt('New group name:', function (name) { addGroup(name); });
         });
       }
     }

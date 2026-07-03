@@ -868,7 +868,7 @@
             </div>
             <div id="team-activity-customize-groups-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
               <button type="button" id="team-customize-groups-btn" onclick="openCustomizeGroupsModal();"
-                      class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                      class="inline-flex items-center px-3 py-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
                 <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">tune</span>
                 <%= l(:label_customize_groups) %>
               </button>
@@ -926,7 +926,7 @@
            offset: @offset,
            limit: @limit
          }.to_json %>
-      <div id="team-activity-group-payload" data-payload='<%= j activity_group_payload %>' style="display:none;"></div>
+      <div id="team-activity-group-payload" data-payload='<%= activity_group_payload %>' style="display:none;"></div>
 
       <%# Pagination for Activity view (Detailed only — Summary paginates client-side above) %>
       <div id="team-activity-detailed-pagination-bar" class="pagination-wrapper" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">

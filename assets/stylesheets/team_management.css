@@ -1245,18 +1245,32 @@ button.ta-btn-danger,
   border-radius: 0.25rem;
 }
 
-.ta-group-remove {
-  border: none;
-  background: transparent;
+.ta-group-remove,
+.ta-group-remove:hover,
+.ta-group-remove:focus,
+.ta-group-remove:focus-visible,
+.ta-group-remove:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
   color: #9ca3af;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
   padding: 0 0.2rem;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.ta-group-remove:hover {
-  color: #ef4444;
+.ta-group-remove::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-group-remove:hover,
+.ta-group-remove:focus,
+.ta-group-remove:focus-visible {
+  color: #ef4444 !important;
 }
 
 .ta-group-dropzone {
@@ -1298,18 +1312,32 @@ button.ta-btn-danger,
   padding-top: 0.5rem;
 }
 
-.ta-group-add-btn {
-  border: 1px dashed #9ca3af;
-  background: transparent;
+.ta-group-add-btn,
+.ta-group-add-btn:hover,
+.ta-group-add-btn:focus,
+.ta-group-add-btn:focus-visible,
+.ta-group-add-btn:active {
+  border: 1px dashed #9ca3af !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
   color: #4b5563;
   border-radius: 0.375rem;
   padding: 0.4rem 0.75rem;
   font-size: 0.8125rem;
   cursor: pointer;
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.ta-group-add-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
+.ta-group-add-btn::-moz-focus-inner {
+  border: 0 !important;
+}
+
+.ta-group-add-btn:hover,
+.ta-group-add-btn:focus,
+.ta-group-add-btn:focus-visible {
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
 }
