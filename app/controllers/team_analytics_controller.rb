@@ -174,7 +174,14 @@ class TeamAnalyticsController < ApplicationController
       @period_totals = @member_pivot_data[:period_totals]
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
-      
+
+      # Active Days / Working Days per member for the Summary view (replaces the hours-share
+      # percentage badge there; the donut chart still shows the percentage breakdown).
+      member_leave_days = TaLeaveRecord.total_leave_days_for_users(user_ids: @member_ids, from_date: @from, to_date: @to)
+      @member_active_days = @member_ids.each_with_object({}) do |user_id, hash|
+        hash[user_id] = [@active_days_count - member_leave_days[user_id].to_f, 0].max.round(2)
+      end
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []

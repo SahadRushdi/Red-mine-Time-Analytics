@@ -1164,7 +1164,13 @@
                 </h3>
                 <div class="flex items-center gap-3">
                   <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                  <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
+                  <span class="min-w-[56px] text-right" title="Active Days / Working Days">
+                    <% if member && @member_active_days %>
+                      <%= ta_active_days_text(@member_active_days[member[:id]].to_f, @active_days_count) %>
+                    <% else %>
+                      <span class="text-sm font-medium text-gray-400">—</span>
+                    <% end %>
+                  </span>
                   <% if member %>
                     <label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">
                       <input type="checkbox" class="sr-only peer member-exclusion-toggle" data-user-id="<%= member[:id] %>" checked>

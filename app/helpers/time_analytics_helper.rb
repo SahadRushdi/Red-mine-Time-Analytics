@@ -587,4 +587,18 @@ module TimeAnalyticsHelper
                 class: 'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold',
                 style: "background:#{ta_hex_to_rgba(hex, 0.14)};color:#{hex};")
   end
+
+  # Renders the "Active Days / Working Days" text (e.g. "35/38") shown per member on the
+  # My Team Members summary table, replacing the hours-share percentage badge there. Plain
+  # bold grey text, not a colour-coded pill - the colour coding is reserved for percentages.
+  def ta_active_days_text(active_days, working_days)
+    content_tag(:span, "#{format_active_days_value(active_days)}/#{format_active_days_value(working_days)}",
+                class: 'text-sm font-bold text-gray-700 whitespace-nowrap')
+  end
+
+  # Whole numbers print without a decimal (e.g. "38"); fractional values (half-day leaves)
+  # keep one decimal place (e.g. "34.5").
+  def format_active_days_value(value)
+    value == value.to_i ? value.to_i.to_s : number_with_precision(value, precision: 1)
+  end
 end
