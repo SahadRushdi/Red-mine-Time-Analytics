@@ -135,7 +135,17 @@ class TeamAnalyticsController < ApplicationController
 
       # Track activity view state for chart generation
       @activity_view_state = params[:activity_view_state] || 'detailed'
-      
+
+      # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
+      # Computed unconditionally (not gated on @activity_view_state) since Summary/Detailed/Grouped
+      # are all rendered server-side and toggled client-side.
+      @activity_groups = TaActivityGroup.ordered.to_a
+      @activity_group_assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
+      group_names_by_id = @activity_groups.index_by(&:id).transform_values(&:name)
+      activity_id_to_group_name = @activity_group_assignments.transform_values { |gid| group_names_by_id[gid] }
+      @activity_group_pivot_data = regroup_activity_pivot(@activity_pivot_data, activity_id_to_group_name, @activity_groups.map(&:name))
+      @activity_group_colors = TaActivityGroup.tableau10_colors(@activity_groups.size)
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
@@ -910,6 +920,7 @@ class TeamAnalyticsController < ApplicationController
       {
         period_key: period_key,
         activity_name: activity_name,
+        activity_id: entry.activity_id,
         hours: entry.hours
       }
     end
@@ -946,7 +957,10 @@ class TeamAnalyticsController < ApplicationController
 
     # Keep activity order consistent across stacked chart and donut chart colors
     activities = activities.sort_by { |activity| -(activity_totals[activity] || 0) }
-    
+
+    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
+    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       activities: activities,
@@ -954,7 +968,46 @@ class TeamAnalyticsController < ApplicationController
       period_totals: period_totals,
       activity_totals: activity_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      activity_ids: activity_ids
+    }
+  end
+
+  # Re-buckets an already-computed activity pivot (see generate_activity_pivot_table) by Activity
+  # Group instead of raw activity, without re-scanning the underlying time entries. Activities with
+  # no assignment fall back to the computed 'Ungrouped' bucket. Returns the same hash shape so it
+  # plugs directly into generate_activity_pivot_chart_data.
+  def regroup_activity_pivot(pivot_data, activity_id_to_group_name, group_names_in_order)
+    matrix_data = {}
+    pivot_data[:raw_periods].each { |period| matrix_data[period] = Hash.new(0.0) }
+
+    pivot_data[:matrix].each do |period, by_activity|
+      by_activity.each do |activity_name, hours|
+        activity_id = pivot_data[:activity_ids][activity_name]
+        group_name = activity_id && activity_id_to_group_name[activity_id]
+        bucket = group_name || TaActivityGroup::UNGROUPED_NAME
+        matrix_data[period][bucket] += hours
+      end
+    end
+
+    activities = group_names_in_order.dup
+    if matrix_data.values.any? { |by_group| (by_group[TaActivityGroup::UNGROUPED_NAME] || 0) > 0 }
+      activities << TaActivityGroup::UNGROUPED_NAME
+    end
+
+    activity_totals = {}
+    activities.each do |group_name|
+      activity_totals[group_name] = pivot_data[:raw_periods].sum { |period| matrix_data[period][group_name] || 0 }
+    end
+
+    {
+      periods: pivot_data[:periods],
+      activities: activities,
+      matrix: matrix_data,
+      period_totals: pivot_data[:period_totals],
+      activity_totals: activity_totals,
+      grand_total: pivot_data[:grand_total],
+      raw_periods: pivot_data[:raw_periods]
     }
   end
 

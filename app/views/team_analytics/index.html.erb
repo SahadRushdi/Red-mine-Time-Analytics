@@ -1,4 +1,7 @@
 <%= render 'time_analytics/includes' %>
+<%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'ta_activity_group_board.js', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'team_activity_groups.js', plugin: 'redmine_time_analytics' %>
 <% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
 <% no_table_data_message = "No data available for the selected period" %>
 <% no_chart_data_message = "No data available for #{date_range_label}. Try adjusting filters or selecting a different date range." %>
@@ -847,50 +850,60 @@
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-                <button type="button" id="show-detailed-btn-activity" 
-                        onclick="showDetailedView('activity');" 
-                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-activity"
+                        onclick="showDetailedView('activity');"
+                        style="<%= @activity_view_state == 'detailed' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 order-2 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'detailed' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
                 </button>
+                <button type="button" id="show-grouped-btn-activity"
+                        onclick="showGroupedView();"
+                        style="<%= @activity_view_state == 'grouped' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg order-3 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= @activity_view_state == 'grouped' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">category</span>
+                  Grouped
+                </button>
               </div>
+            </div>
+            <div id="team-activity-customize-groups-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+              <button type="button" id="team-customize-groups-btn" onclick="openCustomizeGroupsModal();"
+                      class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">tune</span>
+                <%= l(:label_customize_groups) %>
+              </button>
             </div>
           </div>
         </div>
 
       <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
-      <div id="team-activity-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
-          <thead class="text-sm text-gray-700 bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
-              <% @activities.each do |activity| %>
-                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
-              <% end %>
-              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @paginated_periods.each_with_index do |period_display, index| %>
-              <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-              <tr class="bg-white border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                <% @activities.each do |activity| %>
-                  <td class="px-6 py-4 text-center text-gray-900">
-                    <% hours = @matrix_data[period_key][activity] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '—' %>
-                  </td>
-                <% end %>
-                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+      <div id="team-activity-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto" style="<%= @activity_view_state == 'detailed' ? '' : 'display: none;' %>">
+        <%= render 'team_analytics/activity_period_pivot_table',
+                   pivot_activities: @activities,
+                   matrix: @matrix_data,
+                   period_totals: @period_totals,
+                   paginated_periods: @paginated_periods,
+                   raw_periods: @activity_pivot_data[:raw_periods],
+                   offset: @offset,
+                   colors: [],
+                   show_bars: false %>
       </div>
-      
+
+      <%# Grouped View: Pivot Table (Time Period × Activity Group matrix) %>
+      <div id="team-activity-grouped-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+        <%= render 'team_analytics/activity_period_pivot_table',
+                   pivot_activities: @activity_group_pivot_data[:activities],
+                   matrix: @activity_group_pivot_data[:matrix],
+                   period_totals: @activity_group_pivot_data[:period_totals],
+                   paginated_periods: @paginated_periods,
+                   raw_periods: @activity_group_pivot_data[:raw_periods],
+                   offset: @offset,
+                   colors: @activity_group_colors,
+                   show_bars: true %>
+      </div>
+
       <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
-      <div id="team-activity-summary-view" style="display: none;" class="px-4 py-4">
+      <div id="team-activity-summary-view" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>" class="px-4 py-4">
         <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
         <div id="team-activity-summary-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
         <div id="team-activity-summary-cards" class="space-y-2 px-2"></div>
@@ -899,6 +912,21 @@
           <div class="pagination-info" id="team-activity-summary-pagination-info"></div>
         </div>
       </div>
+
+      <%# Session-only recompute payload for the Grouped tab and "Customize groups" popup — see team_activity_groups.js %>
+      <% activity_group_payload = {
+           rawPeriods: @activity_pivot_data[:raw_periods],
+           periodDisplay: @activity_pivot_data[:periods],
+           matrix: @activity_pivot_data[:matrix],
+           activityIds: @activity_pivot_data[:activity_ids],
+           assignments: @activity_group_assignments.each_with_object({}) { |(aid, gid), h| h[aid.to_s] = gid.to_s },
+           groups: @activity_groups.each_with_index.map { |g, i| { id: g.id.to_s, name: g.name, color: @activity_group_colors[i], position: g.position } },
+           ungroupedColor: TaActivityGroup::UNGROUPED_COLOR,
+           ungroupedName: TaActivityGroup::UNGROUPED_NAME,
+           offset: @offset,
+           limit: @limit
+         }.to_json %>
+      <div id="team-activity-group-payload" data-payload='<%= j activity_group_payload %>' style="display:none;"></div>
 
       <%# Pagination for Activity view (Detailed only — Summary paginates client-side above) %>
       <div id="team-activity-detailed-pagination-bar" class="pagination-wrapper" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
@@ -1406,17 +1434,6 @@
     var donutCanvas = document.getElementById('team-donut-chart');
     if (!donutCanvas) return;
 
-    // The canvas's parent (div.relative.h-80) is a positioned element that sits above the
-    // static member-list column in z-order. Re-enable pointer events in case we previously
-    // disabled them (e.g., navigating from all-excluded back to partial-excluded).
-    var donutInner = donutCanvas.parentNode;
-    if (donutInner) donutInner.style.pointerEvents = '';
-
-    if (teamDonutChart) {
-      teamDonutChart.destroy();
-      teamDonutChart = null;
-    }
-
     var labels = [];
     var values = [];
     <% if @view_mode == 'activity' && @activity_totals.present? %>
@@ -1444,6 +1461,29 @@
       memberData.forEach(function(m) { labels.push(m.name); values.push(m.hours); });
     <% end %>
 
+    var colors = labels.map(function(_, index) { return TEAM_TABLEAU10[index % TEAM_TABLEAU10.length]; });
+    renderTeamDonutFromArrays(labels, values, colors);
+  }
+
+  // Builds/replaces the team donut chart + its legend from plain labels/values/colors arrays.
+  // Shared by initTeamDonutChart (per-activity/project/member, from server-rendered data) and
+  // the Activity tab's "Grouped" view (from the client-side regrouped pivot, see
+  // team_activity_groups.js + rebuildTeamChartsForGroups below).
+  function renderTeamDonutFromArrays(labels, values, colors) {
+    var donutCanvas = document.getElementById('team-donut-chart');
+    if (!donutCanvas) return;
+
+    // The canvas's parent (div.relative.h-80) is a positioned element that sits above the
+    // static member-list column in z-order. Re-enable pointer events in case we previously
+    // disabled them (e.g., navigating from all-excluded back to partial-excluded).
+    var donutInner = donutCanvas.parentNode;
+    if (donutInner) donutInner.style.pointerEvents = '';
+
+    if (teamDonutChart) {
+      teamDonutChart.destroy();
+      teamDonutChart = null;
+    }
+
     if (!labels.length || !values.length) {
       // No active members (e.g. all temporarily excluded): zero the centre total and disable
       // pointer events on the empty canvas container so it doesn't block the member-list toggles
@@ -1458,7 +1498,6 @@
     var totalDisplay = document.getElementById('team-total-hours-display');
     if (totalDisplay) totalDisplay.textContent = formatTeamHours(total);
 
-    var colors = labels.map(function(_, index) { return TEAM_TABLEAU10[index % TEAM_TABLEAU10.length]; });
     teamDonutChart = new Chart(donutCanvas.getContext('2d'), {
       type: 'doughnut',
       data: {
@@ -1707,7 +1746,7 @@
     var config = TEAM_VIEW_CONFIG[viewType];
     if (!config) return;
     var bar = document.getElementById(config.detailedPaginationBarId);
-    if (bar) bar.style.display = viewState === 'detailed' ? '' : 'none';
+    if (bar) bar.style.display = (viewState === 'detailed' || viewState === 'grouped') ? '' : 'none';
   }
 
   // ── Client-side Summary card lists (Activity/Project/Member) ────────────────────────────
@@ -1849,6 +1888,7 @@
     updateTeamToggleButtons(viewType, false);
     updateTeamPaginationInfo(viewType, 'detailed');
     if (viewType === 'member') hideMemberMonthlyAvgView();
+    if (viewType === 'activity') { hideGroupedView(); restoreTeamChartsToActivities(); }
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'detailed';
@@ -1875,6 +1915,7 @@
     updateTeamToggleButtons(viewType, true);
     updateTeamPaginationInfo(viewType, 'summary');
     if (viewType === 'member') hideMemberMonthlyAvgView();
+    if (viewType === 'activity') { hideGroupedView(); restoreTeamChartsToActivities(); }
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'summary';
@@ -1885,8 +1926,20 @@
   }
 
   // Restore activity view preference
+  // Restore activity view preference (supports the extra "Grouped" state)
   function restoreActivityViewState() {
-    restoreTeamViewState('activity');
+    var hiddenField = document.getElementById('activity_view_state_field');
+    var serverMode = hiddenField ? hiddenField.value : null;
+    var savedMode = localStorage.getItem('team_activity_view_mode');
+    var mode = savedMode || serverMode || 'detailed';
+
+    if (mode === 'grouped') {
+      showGroupedView({ persist: false });
+    } else if (mode === 'summary') {
+      showSummaryView('activity', { persist: false });
+    } else {
+      showDetailedView('activity', { persist: false });
+    }
   }
 
   // Restore project view preference
@@ -1982,6 +2035,160 @@
       localStorage.setItem('team_member_view_mode', 'monthly_avg');
     }
   }
+
+  // ── Activity "Grouped" tab + session-only "Customize groups" popup ──────────────────────────
+  // The raw per-activity payload is parsed once; customGroupState (null = server defaults) holds
+  // the in-memory-only working copy after "Apply" in the Customize-groups modal. Nothing here is
+  // ever persisted — a reload always reverts to the admin's real defaults.
+  // Parsed eagerly (not inside a DOMContentLoaded listener) because restoreActivityViewState()
+  // runs from the page's main DOMContentLoaded handler above, which is registered earlier in this
+  // script and therefore fires first — the payload must already be available by then. Safe to
+  // read synchronously here since this <script> executes after the payload <div> above it in the
+  // document has already been parsed into the DOM.
+  var activityGroupPayloadEl = document.getElementById('team-activity-group-payload');
+  var activityGroupPayload = activityGroupPayloadEl ? JSON.parse(activityGroupPayloadEl.getAttribute('data-payload')) : null;
+  var customGroupState = null;
+  var customizeGroupsModal = null;
+  var customizeGroupsBoard = null;
+
+  function currentGroupsAndAssignments() {
+    if (customGroupState) { return customGroupState; }
+    return { groups: activityGroupPayload.groups, assignments: activityGroupPayload.assignments };
+  }
+
+  function computeCurrentGroupedPivot() {
+    var gs = currentGroupsAndAssignments();
+    return window.TeamActivityGroups.computeGroupedPivot(activityGroupPayload, gs.groups, gs.assignments);
+  }
+
+  function renderGroupedTableFromPivot(pivot) {
+    var container = document.getElementById('team-activity-grouped-view');
+    if (!container || !activityGroupPayload) return;
+    var firstTh = container.querySelector('thead th');
+    var periodLabel = firstTh ? firstTh.textContent : '';
+    container.innerHTML = window.TeamActivityGroups.renderGroupedTableHtml(pivot, activityGroupPayload, periodLabel, taFormatHours);
+  }
+
+  function rebuildTeamChartsForGroups() {
+    if (!activityGroupPayload) return;
+    var pivot = computeCurrentGroupedPivot();
+    renderGroupedTableFromPivot(pivot);
+
+    var donut = window.TeamActivityGroups.buildDonutDatasets(pivot);
+    renderTeamDonutFromArrays(donut.labels, donut.values, donut.colors);
+
+    if (teamChart && teamChart.config && teamChart.config.type === 'bar') {
+      var chartElement = document.getElementById('time-chart');
+      var barData = window.TeamActivityGroups.buildStackedBarChartData(pivot, activityGroupPayload);
+      teamChart.destroy();
+      teamChart = new Chart(chartElement, {
+        type: 'bar',
+        data: barData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
+        }
+      });
+    }
+  }
+
+  // Re-shows the original per-activity chart data (untouched by any grouping), used when leaving
+  // the Grouped tab back to Summary/Detailed.
+  function restoreTeamChartsToActivities() {
+    initChart();
+    initTeamDonutChart();
+  }
+
+  function hideGroupedView() {
+    var gv = document.getElementById('team-activity-grouped-view');
+    if (gv) gv.style.display = 'none';
+    setTeamMemberButtonStyle(document.getElementById('show-grouped-btn-activity'), false);
+    var wrapper = document.getElementById('team-activity-customize-groups-wrapper');
+    if (wrapper) wrapper.style.display = 'none';
+  }
+
+  function showGroupedView(options) {
+    var grouped = document.getElementById('team-activity-grouped-view');
+    if (!grouped) return;
+    var detailed = document.getElementById('team-activity-detailed-view');
+    var summary = document.getElementById('team-activity-summary-view');
+    if (detailed) detailed.style.display = 'none';
+    if (summary) summary.style.display = 'none';
+    grouped.style.display = 'block';
+
+    setTeamMemberButtonStyle(document.getElementById('show-summary-btn-activity'), false);
+    setTeamMemberButtonStyle(document.getElementById('show-detailed-btn-activity'), false);
+    setTeamMemberButtonStyle(document.getElementById('show-grouped-btn-activity'), true);
+
+    var sortButtons = document.getElementById('summary-sort-buttons');
+    if (sortButtons) sortButtons.style.display = 'none';
+
+    updateTeamPaginationInfo('activity', 'grouped');
+
+    var wrapper = document.getElementById('team-activity-customize-groups-wrapper');
+    if (wrapper) wrapper.style.display = '';
+
+    var hiddenField = document.getElementById('activity_view_state_field');
+    if (hiddenField) hiddenField.value = 'grouped';
+    if (!(options && options.persist === false)) {
+      localStorage.setItem('team_activity_view_mode', 'grouped');
+    }
+
+    rebuildTeamChartsForGroups();
+  }
+
+  function openCustomizeGroupsModal() {
+    if (!activityGroupPayload) return;
+
+    if (!customizeGroupsModal) {
+      var modalEl = document.getElementById('customize-groups-modal');
+      if (!modalEl || !window.Modal) return;
+      customizeGroupsModal = new Modal(modalEl, {
+        placement: 'center',
+        backdrop: 'dynamic',
+        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+        closable: true
+      });
+    }
+
+    var gs = currentGroupsAndAssignments();
+    var activities = Object.keys(activityGroupPayload.activityIds)
+      .map(function (name) { return { id: activityGroupPayload.activityIds[name], name: name }; })
+      .filter(function (a) { return a.id !== null && a.id !== undefined; });
+
+    var boardEl = document.getElementById('customize-groups-board');
+    boardEl.innerHTML = '';
+    customizeGroupsBoard = TaActivityGroupBoard(boardEl, {
+      groups: gs.groups,
+      activities: activities,
+      assignments: gs.assignments,
+      ungroupedColor: activityGroupPayload.ungroupedColor,
+      persistImmediately: false
+    });
+
+    customizeGroupsModal.show();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var resetBtn = document.getElementById('customize-groups-reset-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function () {
+        if (!customizeGroupsBoard || !activityGroupPayload) return;
+        customizeGroupsBoard.reset(activityGroupPayload.groups, activityGroupPayload.assignments);
+      });
+    }
+
+    var applyBtn = document.getElementById('customize-groups-apply-btn');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', function () {
+        if (!customizeGroupsBoard) return;
+        customGroupState = customizeGroupsBoard.getState();
+        rebuildTeamChartsForGroups();
+        if (customizeGroupsModal) customizeGroupsModal.hide();
+      });
+    }
+  });
 
   function csvEscape(value) {
     return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
@@ -2704,6 +2911,40 @@
       <!-- Footer -->
       <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-end">
         <button data-modal-hide="member-breakdown-modal" type="button" class="!text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer"><%= l(:button_close) %></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Customize Groups Modal (session-only — nothing here is ever persisted) -->
+<div id="customize-groups-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto h-[calc(100%-1rem)] max-h-full">
+  <div class="relative w-full max-w-4xl max-h-full">
+    <div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
+      <!-- Header -->
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div>
+          <h3 class="text-xl font-bold text-gray-900"><%= l(:label_customize_groups) %></h3>
+          <p class="text-sm text-gray-500">Drag activities between groups. Applies to your view only.</p>
+        </div>
+        <button type="button" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="customize-groups-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <!-- Body -->
+      <div class="p-5">
+        <div id="customize-groups-board" class="ta-group-board"></div>
+      </div>
+      <!-- Footer -->
+      <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-between">
+        <button type="button" id="customize-groups-reset-btn" class="!text-blue-600 !bg-transparent hover:!underline !border-none !outline-none !shadow-none !ring-0 text-sm font-semibold cursor-pointer">
+          Reset to default
+        </button>
+        <button type="button" id="customize-groups-apply-btn" class="!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer">
+          Apply
+        </button>
       </div>
     </div>
   </div>

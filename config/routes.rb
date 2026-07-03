@@ -60,6 +60,12 @@ RedmineApp::Application.routes.draw do
       post :assign
     end
   end
+  resources :admin_ta_activity_groups, path: 'admin/ta_activity_groups', only: [:index, :create, :update, :destroy] do
+    collection do
+      post :assign
+      post :reorder
+    end
+  end
   resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
     get :index, on: :collection
   end
