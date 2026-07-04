@@ -19,6 +19,14 @@
 
   var UNGROUPED_ID = '__ungrouped__';
 
+  // Mirrors TaActivityGroup::TABLEAU10_COLORS (app/models/ta_activity_group.rb) so session-only
+  // groups added from the "Customize groups" popup (no server round-trip, hence no server-assigned
+  // color) get the same palette, cycling by position, as persisted groups do.
+  var TABLEAU10_COLORS = [
+    '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
+    '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
+  ];
+
   var DIALOG_BTN_PRIMARY = '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
   var DIALOG_BTN_DANGER = '!text-white !bg-[#dc2626] hover:!bg-[#b91c1c] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
 
@@ -265,7 +273,7 @@
       state.groups.push({
         id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         name: name,
-        color: ungroupedColor,
+        color: TABLEAU10_COLORS[state.groups.length % TABLEAU10_COLORS.length],
         position: state.groups.length
       });
       render();
