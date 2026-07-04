@@ -1376,14 +1376,16 @@ class TeamAnalyticsController < ApplicationController
     
     # Calculate member totals via SQL SUM to avoid accumulated float errors.
     # reorder(nil) strips any ORDER BY from the scope so MySQL ONLY_FULL_GROUP_BY is satisfied.
+    # Keyed by member id (not name) so two members who happen to share a display name can
+    # never collide into a single total.
     sql_user_totals = time_entries.reorder(nil).group(:user_id).sum(:hours)
     member_totals = {}
     members_unsorted.each do |member_data|
-      member_totals[member_data[:name]] = sql_user_totals[member_data[:id]] || 0
+      member_totals[member_data[:id]] = sql_user_totals[member_data[:id]] || 0
     end
 
     # Sort members by total hours descending (largest to smallest), then by name
-    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:name]], member_data[:name]] }
+    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:id]], member_data[:name]] }
 
     # Calculate period totals and grand total
     period_totals = {}
@@ -1397,7 +1399,7 @@ class TeamAnalyticsController < ApplicationController
       members: members, # Array of {id:, name:} hashes
       matrix: matrix_data, # Still keyed by member name for lookup
       period_totals: period_totals,
-      member_totals: member_totals, # Keyed by member name
+      member_totals: member_totals, # Keyed by member id
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }

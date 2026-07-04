@@ -50,6 +50,9 @@
   //   paginationLinks      -> element to receive prev/page/next controls (optional)
   //   perPage, sortField, sortDir -> initial state
   //   onRender(pageItems, allItems) -> called after each render (optional)
+  //   dedupeKey(item)      -> optional; when given, items are reduced to one per key
+  //                          (first occurrence wins) before sorting/paging, guarding
+  //                          against any upstream data duplication
   function TaClientTable(options) {
     var state = {
       page: 1,
@@ -58,8 +61,22 @@
       sortDir: options.sortDir || 'desc'
     };
 
+    function dedupedItems() {
+      var items = options.getItems();
+      if (!options.dedupeKey) { return items.slice(); }
+      var seen = {};
+      var result = [];
+      items.forEach(function (item) {
+        var key = options.dedupeKey(item);
+        if (Object.prototype.hasOwnProperty.call(seen, key)) { return; }
+        seen[key] = true;
+        result.push(item);
+      });
+      return result;
+    }
+
     function sortedItems() {
-      var items = options.getItems().slice();
+      var items = dedupedItems();
       items.sort(function (a, b) {
         var av = options.sortValue(a, state.sortField);
         var bv = options.sortValue(b, state.sortField);

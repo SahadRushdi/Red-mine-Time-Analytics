@@ -1152,14 +1152,14 @@
       <div id="team-member-summary-view" style="display: none;" class="px-4 py-4">
         <% member_summary_payload = {
              grandTotal: @grand_total.to_f,
-             items: @member_totals.map do |member_name, hours|
-               member = @members.find { |m| m[:name] == member_name }
+             items: @member_totals.map do |member_id, hours|
+               member = @members.find { |m| m[:id] == member_id }
                {
-                 name: member_name,
+                 name: member ? member[:name] : nil,
                  hours: hours.to_f,
-                 memberId: member && member[:id],
-                 url: member ? my_time_path(@member_dashboard_params.merge(user_id: member[:id])) : nil,
-                 activeDaysHtml: (member && @member_active_days) ? ta_active_days_text(@member_active_days[member[:id]].to_f, @active_days_count) : nil
+                 memberId: member_id,
+                 url: member ? my_time_path(@member_dashboard_params.merge(user_id: member_id)) : nil,
+                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil
                }
              end
            }.to_json %>
@@ -1371,7 +1371,7 @@
     <% elsif @view_mode == 'project' %>
       initTeamSummaryTable('team-project-summary', taTeamSummaryCardHtml);
     <% elsif @view_mode == 'members' %>
-      initTeamSummaryTable('team-member-summary', taTeamMemberSummaryCardHtml);
+      initTeamSummaryTable('team-member-summary', taTeamMemberSummaryCardHtml, taMemberDedupeKey);
       initTeamMonthlyAvgTable();
     <% end %>
 
@@ -1799,7 +1799,7 @@
     '</div>';
   }
 
-  function initTeamSummaryTable(prefix, renderFn) {
+  function initTeamSummaryTable(prefix, renderFn, dedupeKeyFn) {
     var payloadEl = document.getElementById(prefix + '-payload');
     var container = document.getElementById(prefix + '-cards');
     if (!payloadEl || !container) { return null; }
@@ -1807,6 +1807,7 @@
     var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
     var table = TaClientTable({
       getItems: function () { return payload.items; },
+      dedupeKey: dedupeKeyFn,
       sortValue: function (item, field) { return field === 'name' ? (item.name || '').toLowerCase() : item.hours; },
       renderRow: function (item, index) { return renderFn(item, index, payload.grandTotal, TA_TEAM_SUMMARY_COLORS); },
       container: container,
@@ -1818,6 +1819,11 @@
     });
     table.render();
     return table;
+  }
+
+  // Members carry a stable memberId; fall back to name only for the rare case it's absent.
+  function taMemberDedupeKey(item) {
+    return item.memberId != null ? 'id:' + item.memberId : 'name:' + item.name;
   }
 
   // ── Client-side Monthly avg table (Members tab) ──────────────────────────────────────────
@@ -1854,6 +1860,7 @@
     var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
     taTeamMonthlyAvgTable = TaClientTable({
       getItems: function () { return payload.items; },
+      dedupeKey: function (item) { return item.id != null ? 'id:' + item.id : 'name:' + item.name; },
       sortValue: function (item, field) {
         if (field === 'name') { return (item.name || '').toLowerCase(); }
         if (field === 'overall') { return item.overall; }
@@ -2139,18 +2146,7 @@
   }
 
   function openCustomizeGroupsModal() {
-    if (!activityGroupPayload) return;
-
-    if (!customizeGroupsModal) {
-      var modalEl = document.getElementById('customize-groups-modal');
-      if (!modalEl || !window.Modal) return;
-      customizeGroupsModal = new Modal(modalEl, {
-        placement: 'center',
-        backdrop: 'dynamic',
-        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
-        closable: true
-      });
-    }
+    if (!activityGroupPayload || !customizeGroupsModal) return;
 
     var gs = currentGroupsAndAssignments();
     var activities = Object.keys(activityGroupPayload.activityIds)
@@ -2835,6 +2831,22 @@
     }
 
     initMemberBreakdown();
+
+    var customizeGroupsModalEl = document.getElementById('customize-groups-modal');
+    if (customizeGroupsModalEl && typeof Modal !== 'undefined') {
+      customizeGroupsModal = new Modal(customizeGroupsModalEl, {
+        placement: 'center',
+        backdrop: 'dynamic',
+        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+        closable: true
+      });
+    }
+    var customizeGroupsCloseBtn = document.getElementById('customize-groups-close-btn');
+    if (customizeGroupsCloseBtn) {
+      customizeGroupsCloseBtn.addEventListener('click', function () {
+        if (customizeGroupsModal) customizeGroupsModal.hide();
+      });
+    }
   });
 
 </script>
@@ -2926,7 +2938,7 @@
           <h3 class="text-xl font-bold text-gray-900"><%= l(:label_customize_groups) %></h3>
           <p class="text-sm text-gray-500">Drag activities between groups. Applies to your view only.</p>
         </div>
-        <button type="button" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="customize-groups-modal">
+        <button type="button" id="customize-groups-close-btn" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="customize-groups-modal">
           <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
           </svg>
