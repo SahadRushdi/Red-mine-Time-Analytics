@@ -367,7 +367,11 @@
         });
       });
 
-      rootEl.querySelectorAll('.ta-group-dropzone').forEach(function (zone) {
+      // Wired to the whole column box (header + chip list), not just the narrow chip-list area,
+      // so dropping anywhere over a group — including its header — moves the activity there.
+      // The header's own dragover/drop (column reordering, application/x-ta-group-reorder) checks
+      // its type first and otherwise no-ops without stopping propagation, so both drag kinds coexist.
+      rootEl.querySelectorAll('.ta-group-column').forEach(function (zone) {
         zone.addEventListener('dragover', function (event) {
           if (event.dataTransfer.types.indexOf('application/x-ta-chip') === -1) { return; }
           event.preventDefault();
