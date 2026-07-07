@@ -64,11 +64,15 @@
 
   // Rebuilds the Grouped pivot table's full <table> markup client-side, in the same visual shape
   // as the server-rendered partial (_activity_period_pivot_table.html.erb, show_bars: true).
+  // Uses the payload's most-recent-first arrays (displayRawPeriods/displayPeriodDisplay) — not
+  // rawPeriods/periodDisplay, which stay chronological for the Stacked chart (buildStackedBarChartData).
   function renderGroupedTableHtml(pivot, payload, periodLabel, formatHours) {
+    var displayRawPeriods = payload.displayRawPeriods || payload.rawPeriods;
+    var displayPeriodDisplay = payload.displayPeriodDisplay || payload.periodDisplay;
     var offset = payload.offset || 0;
-    var limit = payload.limit || payload.rawPeriods.length;
-    var pagePeriods = payload.rawPeriods.slice(offset, offset + limit);
-    var pageLabels = payload.periodDisplay.slice(offset, offset + limit);
+    var limit = payload.limit || displayRawPeriods.length;
+    var pagePeriods = displayRawPeriods.slice(offset, offset + limit);
+    var pageLabels = displayPeriodDisplay.slice(offset, offset + limit);
 
     var theadCells = pivot.activities.map(function (a) {
       return '<th scope="col" class="px-6 py-3 text-center border-r border-gray-200">' +

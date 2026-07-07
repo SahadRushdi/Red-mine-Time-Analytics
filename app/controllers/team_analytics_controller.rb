@@ -122,13 +122,17 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'activity'
       # Activity view - Generate pivot table for Activity × Time Period matrix
       @activity_pivot_data = generate_activity_pivot_table(@time_entries, @grouping)
-      @time_periods = @activity_pivot_data[:periods]
+      # Detailed/Grouped tables show most-recent-first; @activity_pivot_data itself stays in
+      # chronological order below since generate_activity_pivot_chart_data (Trend/Stacked charts)
+      # and regroup_activity_pivot both read straight from it.
+      @time_periods = @activity_pivot_data[:periods].reverse
+      @display_raw_periods = @activity_pivot_data[:raw_periods].reverse
       @activities = @activity_pivot_data[:activities]
       @matrix_data = @activity_pivot_data[:matrix]
       @period_totals = @activity_pivot_data[:period_totals]
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
-      
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
@@ -159,13 +163,16 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'project'
       # Project view - Generate pivot table for Project × Time Period matrix
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
-      @time_periods = @project_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @project_pivot_data itself stays chronological
+      # since generate_project_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @project_pivot_data[:periods].reverse
+      @display_raw_periods = @project_pivot_data[:raw_periods].reverse
       @projects = @project_pivot_data[:projects]
       @matrix_data = @project_pivot_data[:matrix]
       @period_totals = @project_pivot_data[:period_totals]
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
-      
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
@@ -182,7 +189,10 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'members'
       # Members view - Generate pivot table for Member × Time Period matrix
       @member_pivot_data = generate_member_pivot_table(@time_entries, @grouping)
-      @time_periods = @member_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @member_pivot_data itself stays chronological
+      # since generate_member_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @member_pivot_data[:periods].reverse
+      @display_raw_periods = @member_pivot_data[:raw_periods].reverse
       @members = @member_pivot_data[:members]
       @matrix_data = @member_pivot_data[:matrix]
       @period_totals = @member_pivot_data[:period_totals]

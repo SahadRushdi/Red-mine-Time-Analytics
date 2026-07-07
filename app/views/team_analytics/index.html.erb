@@ -5,6 +5,7 @@
 <% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
 <% no_table_data_message = "No data available for the selected period" %>
 <% no_chart_data_message = "No data available for #{date_range_label}. Try adjusting filters or selecting a different date range." %>
+<% no_activity_groups_message = "No activity groups have been set up yet. Group your activities to see rolled-up hours here." %>
 
 <!-- jsTree CSS and JS from CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.16/themes/default/style.min.css" />
@@ -883,7 +884,7 @@
                    matrix: @matrix_data,
                    period_totals: @period_totals,
                    paginated_periods: @paginated_periods,
-                   raw_periods: @activity_pivot_data[:raw_periods],
+                   raw_periods: @display_raw_periods,
                    offset: @offset,
                    colors: [],
                    show_bars: false %>
@@ -891,15 +892,21 @@
 
       <%# Grouped View: Pivot Table (Time Period × Activity Group matrix) %>
       <div id="team-activity-grouped-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
-        <%= render 'team_analytics/activity_period_pivot_table',
-                   pivot_activities: @activity_group_pivot_data[:activities],
-                   matrix: @activity_group_pivot_data[:matrix],
-                   period_totals: @activity_group_pivot_data[:period_totals],
-                   paginated_periods: @paginated_periods,
-                   raw_periods: @activity_group_pivot_data[:raw_periods],
-                   offset: @offset,
-                   colors: @activity_group_colors,
-                   show_bars: true %>
+        <% if @activity_groups.present? %>
+          <%= render 'team_analytics/activity_period_pivot_table',
+                     pivot_activities: @activity_group_pivot_data[:activities],
+                     matrix: @activity_group_pivot_data[:matrix],
+                     period_totals: @activity_group_pivot_data[:period_totals],
+                     paginated_periods: @paginated_periods,
+                     raw_periods: @display_raw_periods,
+                     offset: @offset,
+                     colors: @activity_group_colors,
+                     show_bars: true %>
+        <% else %>
+          <div class="px-6 py-8 text-center">
+            <p class="text-sm text-gray-500"><%= no_activity_groups_message %></p>
+          </div>
+        <% end %>
       </div>
 
       <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
@@ -915,8 +922,13 @@
 
       <%# Session-only recompute payload for the Grouped tab and "Customize groups" popup — see team_activity_groups.js %>
       <% activity_group_payload = {
+           # Chronological (oldest first) — used by the Stacked bar chart, which always plots the
+           # full range left-to-right regardless of table pagination.
            rawPeriods: @activity_pivot_data[:raw_periods],
            periodDisplay: @activity_pivot_data[:periods],
+           # Most-recent-first + paginated — used by the Grouped table (see offset/limit below).
+           displayRawPeriods: @display_raw_periods,
+           displayPeriodDisplay: @time_periods,
            matrix: @activity_pivot_data[:matrix],
            activityIds: @activity_pivot_data[:activity_ids],
            allActivities: @all_activities.map { |a| { id: a.id, name: a.name } },
@@ -924,6 +936,7 @@
            groups: @activity_groups.each_with_index.map { |g, i| { id: g.id.to_s, name: g.name, color: @activity_group_colors[i], position: g.position } },
            ungroupedColor: TaActivityGroup::UNGROUPED_COLOR,
            ungroupedName: TaActivityGroup::UNGROUPED_NAME,
+           periodColumnLabel: (@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}")),
            offset: @offset,
            limit: @limit
          }.to_json %>
@@ -944,14 +957,20 @@
       </div>
 
       <div class="ta-analysis-donut bg-white rounded-lg shadow-md p-4 border border-gray-200">
-        <div class="relative h-80 flex items-center justify-center">
-          <canvas id="team-donut-chart" class="chart"></canvas>
-          <div id="team-donut-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span class="text-3xl font-bold text-gray-900" id="team-total-hours-display">0.00</span>
-            <span class="text-xs text-gray-500">Total Hours</span>
+        <div id="team-donut-chart-wrapper">
+          <div class="relative h-80 flex items-center justify-center">
+            <canvas id="team-donut-chart" class="chart"></canvas>
+            <div id="team-donut-center-text" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-3xl font-bold text-gray-900" id="team-total-hours-display">0.00</span>
+              <span class="text-xs text-gray-500">Total Hours</span>
+            </div>
           </div>
+          <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
+        <%# Grouped tab, no custom groups configured yet — see rebuildTeamChartsForGroups() %>
+        <div id="team-donut-no-groups-message" class="h-80 flex items-center justify-center" style="display:none;">
+          <p class="text-center text-gray-500 text-sm px-4"><%= no_activity_groups_message %></p>
+        </div>
       </div>
     </div>
   <% else %>
@@ -1011,7 +1030,7 @@
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
-              <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
+              <% period_key = @display_raw_periods[(@offset + index)] %>
               <tr class="bg-white border-b hover:bg-gray-50">
                 <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
                 <% @projects.each do |project| %>
@@ -1133,7 +1152,7 @@
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
-              <% period_key = @member_pivot_data[:raw_periods][(@offset + index)] %>
+              <% period_key = @display_raw_periods[(@offset + index)] %>
               <tr class="bg-white border-b hover:bg-gray-50">
                 <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
                 <% @members.each do |member| %>
@@ -1418,6 +1437,7 @@
   var teamDonutChart = null;
   var TEAM_TABLEAU10 = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
   var noChartDataMessage = '<%= j no_chart_data_message %>';
+  var noActivityGroupsMessage = '<%= j no_activity_groups_message %>';
 
   function renderTeamEmptyState(container, message) {
     if (!container) return;
@@ -1473,6 +1493,12 @@
   function renderTeamDonutFromArrays(labels, values, colors) {
     var donutCanvas = document.getElementById('team-donut-chart');
     if (!donutCanvas) return;
+
+    // Undo the Grouped tab's "no groups configured" empty state, if it was showing.
+    var chartWrapper = document.getElementById('team-donut-chart-wrapper');
+    var noGroupsMsg = document.getElementById('team-donut-no-groups-message');
+    if (chartWrapper) chartWrapper.style.display = '';
+    if (noGroupsMsg) noGroupsMsg.style.display = 'none';
 
     // The canvas's parent (div.relative.h-80) is a positioned element that sits above the
     // static member-list column in z-order. Re-enable pointer events in case we previously
@@ -2072,13 +2098,35 @@
   function renderGroupedTableFromPivot(pivot) {
     var container = document.getElementById('team-activity-grouped-view');
     if (!container || !activityGroupPayload) return;
-    var firstTh = container.querySelector('thead th');
-    var periodLabel = firstTh ? firstTh.textContent : '';
+    var periodLabel = activityGroupPayload.periodColumnLabel || '';
     container.innerHTML = window.TeamActivityGroups.renderGroupedTableHtml(pivot, activityGroupPayload, periodLabel, taFormatHours);
+  }
+
+  // Shown instead of the table/donut when no custom Activity Groups have been defined yet — at
+  // that point every activity is Ungrouped, so a table/chart with a single 100% "Ungrouped" slice
+  // isn't a useful rollup to show.
+  function renderGroupedNoGroupsState() {
+    var tableContainer = document.getElementById('team-activity-grouped-view');
+    if (tableContainer) {
+      tableContainer.innerHTML = '<div class="px-6 py-8 text-center"><p class="text-sm text-gray-500">' + noActivityGroupsMessage + '</p></div>';
+    }
+
+    if (teamDonutChart) { teamDonutChart.destroy(); teamDonutChart = null; }
+    var chartWrapper = document.getElementById('team-donut-chart-wrapper');
+    var noGroupsMsg = document.getElementById('team-donut-no-groups-message');
+    if (chartWrapper) chartWrapper.style.display = 'none';
+    if (noGroupsMsg) noGroupsMsg.style.display = '';
   }
 
   function rebuildTeamChartsForGroups() {
     if (!activityGroupPayload) return;
+    var gs = currentGroupsAndAssignments();
+
+    if (!gs.groups.length) {
+      renderGroupedNoGroupsState();
+      return;
+    }
+
     var pivot = computeCurrentGroupedPivot();
     renderGroupedTableFromPivot(pivot);
 

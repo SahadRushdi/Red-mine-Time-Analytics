@@ -117,6 +117,59 @@
     input.addEventListener('keydown', onKeydown);
   }
 
+  // Auto-scrolls a horizontally-scrolling board while a chip (or group header) is dragged near its
+  // left/right edge — otherwise moving an activity into an off-screen column means dropping it into
+  // an intermediate column, scrolling, then dragging again. Listens in the capture phase so it
+  // still sees the event even though the dropzone/header dragover handlers call stopPropagation().
+  function setupBoardAutoScroll(rootEl) {
+    var EDGE_SIZE = 56;
+    var MAX_SPEED = 16;
+    var rafId = null;
+    var pointerX = null;
+
+    function tick() {
+      rafId = null;
+      if (pointerX === null) { return; }
+
+      var rect = rootEl.getBoundingClientRect();
+      var distFromLeft = pointerX - rect.left;
+      var distFromRight = rect.right - pointerX;
+      var delta = 0;
+
+      if (distFromLeft >= 0 && distFromLeft < EDGE_SIZE) {
+        delta = -MAX_SPEED * (1 - distFromLeft / EDGE_SIZE);
+      } else if (distFromRight >= 0 && distFromRight < EDGE_SIZE) {
+        delta = MAX_SPEED * (1 - distFromRight / EDGE_SIZE);
+      }
+
+      if (delta !== 0) {
+        rootEl.scrollLeft += delta;
+        rafId = window.requestAnimationFrame(tick);
+      }
+    }
+
+    function isTaDrag(event) {
+      var types = event.dataTransfer && event.dataTransfer.types;
+      if (!types) { return false; }
+      return Array.prototype.indexOf.call(types, 'application/x-ta-chip') !== -1 ||
+        Array.prototype.indexOf.call(types, 'application/x-ta-group-reorder') !== -1;
+    }
+
+    function stop() {
+      pointerX = null;
+      if (rafId !== null) { window.cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    rootEl.addEventListener('dragover', function (event) {
+      if (!isTaDrag(event)) { return; }
+      pointerX = event.clientX;
+      if (rafId === null) { rafId = window.requestAnimationFrame(tick); }
+    }, true);
+
+    rootEl.addEventListener('drop', stop, true);
+    document.addEventListener('dragend', stop);
+  }
+
   function TaActivityGroupBoard(rootEl, options) {
     var state = {
       groups: (options.groups || []).map(cloneGroup).sort(byPosition),
@@ -400,6 +453,7 @@
     }
 
     render();
+    setupBoardAutoScroll(rootEl);
 
     return {
       render: render,
