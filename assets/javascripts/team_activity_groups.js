@@ -35,12 +35,9 @@
       return { id: String(g.id), name: g.name, color: g.color };
     });
 
-    var hasUngrouped = payload.rawPeriods.some(function (period) {
-      return (matrix[period][UNGROUPED_KEY] || 0) > 0;
-    });
-    if (hasUngrouped) {
-      activities.push({ id: UNGROUPED_KEY, name: payload.ungroupedName || 'Ungrouped', color: payload.ungroupedColor || '#9CA3AF' });
-    }
+    // Always shown, like named groups (mirrors TeamAnalyticsController#regroup_activity_pivot) —
+    // otherwise the column vanishes whenever nobody has logged time to an unassigned activity yet.
+    activities.push({ id: UNGROUPED_KEY, name: payload.ungroupedName || 'Ungrouped', color: payload.ungroupedColor || '#9CA3AF' });
 
     var periodTotals = {};
     var groupTotals = {};

@@ -139,6 +139,10 @@ class TeamAnalyticsController < ApplicationController
       # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
       # Computed unconditionally (not gated on @activity_view_state) since Summary/Detailed/Grouped
       # are all rendered server-side and toggled client-side.
+      # All defined activities (not just ones with logged hours in the current range), so the
+      # "Customize groups" popup lets you place a brand-new activity into a group even before
+      # anyone has logged time against it.
+      @all_activities = TimeEntryActivity.shared.sorted.to_a
       @activity_groups = TaActivityGroup.ordered.to_a
       @activity_group_assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
       group_names_by_id = @activity_groups.index_by(&:id).transform_values(&:name)
@@ -990,10 +994,11 @@ class TeamAnalyticsController < ApplicationController
       end
     end
 
+    # Always shown, like named groups, so a team with no custom groups (or an activity that hasn't
+    # been assigned yet) still reads as "everything is Ungrouped" rather than the column vanishing
+    # whenever nobody has logged time to an unassigned activity yet.
     activities = group_names_in_order.dup
-    if matrix_data.values.any? { |by_group| (by_group[TaActivityGroup::UNGROUPED_NAME] || 0) > 0 }
-      activities << TaActivityGroup::UNGROUPED_NAME
-    end
+    activities << TaActivityGroup::UNGROUPED_NAME
 
     activity_totals = {}
     activities.each do |group_name|

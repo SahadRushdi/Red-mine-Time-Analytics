@@ -919,6 +919,7 @@
            periodDisplay: @activity_pivot_data[:periods],
            matrix: @activity_pivot_data[:matrix],
            activityIds: @activity_pivot_data[:activity_ids],
+           allActivities: @all_activities.map { |a| { id: a.id, name: a.name } },
            assignments: @activity_group_assignments.each_with_object({}) { |(aid, gid), h| h[aid.to_s] = gid.to_s },
            groups: @activity_groups.each_with_index.map { |g, i| { id: g.id.to_s, name: g.name, color: @activity_group_colors[i], position: g.position } },
            ungroupedColor: TaActivityGroup::UNGROUPED_COLOR,
@@ -2149,9 +2150,9 @@
     if (!activityGroupPayload || !customizeGroupsModal) return;
 
     var gs = currentGroupsAndAssignments();
-    var activities = Object.keys(activityGroupPayload.activityIds)
-      .map(function (name) { return { id: activityGroupPayload.activityIds[name], name: name }; })
-      .filter(function (a) { return a.id !== null && a.id !== undefined; });
+    // All defined activities, not just ones with logged hours in the current range — otherwise a
+    // brand-new activity can't be dragged into a group until someone has logged time to it.
+    var activities = activityGroupPayload.allActivities || [];
 
     var boardEl = document.getElementById('customize-groups-board');
     boardEl.innerHTML = '';

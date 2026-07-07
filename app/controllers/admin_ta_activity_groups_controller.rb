@@ -1,23 +1,16 @@
 # frozen_string_literal: true
 
-# Administration -> Activity Groups
 # Lets an admin define named groups (e.g. "Effective dev effort", "Customer support") and map
 # each Redmine time-logging Activity to exactly one group. This is the default grouping shown on
 # the Team Dashboard's "Grouped" activity tab. Activities with no assignment row fall back to a
 # computed "Ungrouped" bucket at read time (never persisted).
+# The "Manage groups" board is injected onto Redmine's
+# core Administration -> Enumerations page via RedmineTimeAnalytics::ActivityGroupsHook (see
+# lib/redmine_time_analytics/hooks.rb), which is also where @groups/@activities/@assignments are
+# queried for the initial render. This controller only serves the board's mutation endpoints.
 class AdminTaActivityGroupsController < ApplicationController
-  layout 'admin'
-  self.main_menu = false
-  menu_item :activity_groups
-
   before_action :require_admin
   before_action :find_group, only: [:update, :destroy]
-
-  def index
-    @groups = TaActivityGroup.ordered.to_a
-    @activities = TimeEntryActivity.shared.sorted.to_a
-    @assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
-  end
 
   def create
     @group = TaActivityGroup.new(group_params)
@@ -97,7 +90,7 @@ class AdminTaActivityGroupsController < ApplicationController
       render json: { ok: true, notice: notice }.merge(serialize_extra(extra))
     else
       flash[:notice] = notice
-      redirect_to admin_ta_activity_groups_path
+      redirect_to enumerations_path
     end
   end
 
@@ -106,7 +99,7 @@ class AdminTaActivityGroupsController < ApplicationController
       render json: { ok: false, error: error }, status: :unprocessable_entity
     else
       flash[:error] = error
-      redirect_to admin_ta_activity_groups_path
+      redirect_to enumerations_path
     end
   end
 
