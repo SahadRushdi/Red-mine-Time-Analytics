@@ -122,20 +122,38 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'activity'
       # Activity view - Generate pivot table for Activity × Time Period matrix
       @activity_pivot_data = generate_activity_pivot_table(@time_entries, @grouping)
-      @time_periods = @activity_pivot_data[:periods]
+      # Detailed/Grouped tables show most-recent-first; @activity_pivot_data itself stays in
+      # chronological order below since generate_activity_pivot_chart_data (Trend/Stacked charts)
+      # and regroup_activity_pivot both read straight from it.
+      @time_periods = @activity_pivot_data[:periods].reverse
+      @display_raw_periods = @activity_pivot_data[:raw_periods].reverse
       @activities = @activity_pivot_data[:activities]
       @matrix_data = @activity_pivot_data[:matrix]
       @period_totals = @activity_pivot_data[:period_totals]
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
-      
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
 
       # Track activity view state for chart generation
       @activity_view_state = params[:activity_view_state] || 'detailed'
-      
+
+      # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
+      # Computed unconditionally (not gated on @activity_view_state) since Summary/Detailed/Grouped
+      # are all rendered server-side and toggled client-side.
+      # All defined activities (not just ones with logged hours in the current range), so the
+      # "Customize groups" popup lets you place a brand-new activity into a group even before
+      # anyone has logged time against it.
+      @all_activities = TimeEntryActivity.shared.sorted.to_a
+      @activity_groups = TaActivityGroup.ordered.to_a
+      @activity_group_assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
+      group_names_by_id = @activity_groups.index_by(&:id).transform_values(&:name)
+      activity_id_to_group_name = @activity_group_assignments.transform_values { |gid| group_names_by_id[gid] }
+      @activity_group_pivot_data = regroup_activity_pivot(@activity_pivot_data, activity_id_to_group_name, @activity_groups.map(&:name))
+      @activity_group_colors = TaActivityGroup.tableau10_colors(@activity_groups.size)
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
@@ -145,13 +163,16 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'project'
       # Project view - Generate pivot table for Project × Time Period matrix
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
-      @time_periods = @project_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @project_pivot_data itself stays chronological
+      # since generate_project_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @project_pivot_data[:periods].reverse
+      @display_raw_periods = @project_pivot_data[:raw_periods].reverse
       @projects = @project_pivot_data[:projects]
       @matrix_data = @project_pivot_data[:matrix]
       @period_totals = @project_pivot_data[:period_totals]
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
-      
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
@@ -168,13 +189,23 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'members'
       # Members view - Generate pivot table for Member × Time Period matrix
       @member_pivot_data = generate_member_pivot_table(@time_entries, @grouping)
-      @time_periods = @member_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @member_pivot_data itself stays chronological
+      # since generate_member_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @member_pivot_data[:periods].reverse
+      @display_raw_periods = @member_pivot_data[:raw_periods].reverse
       @members = @member_pivot_data[:members]
       @matrix_data = @member_pivot_data[:matrix]
       @period_totals = @member_pivot_data[:period_totals]
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
-      
+
+      # Active Days / Working Days per member for the Summary view (replaces the hours-share
+      # percentage badge there; the donut chart still shows the percentage breakdown).
+      member_leave_days = TaLeaveRecord.total_leave_days_for_users(user_ids: @member_ids, from_date: @from, to_date: @to)
+      @member_active_days = @member_ids.each_with_object({}) do |user_id, hash|
+        hash[user_id] = [@active_days_count - member_leave_days[user_id].to_f, 0].max.round(2)
+      end
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
@@ -196,7 +227,7 @@ class TeamAnalyticsController < ApplicationController
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
-    
+
     respond_to do |format|
       format.html { render 'team_analytics/index' }
       format.json { 
@@ -703,6 +734,8 @@ class TeamAnalyticsController < ApplicationController
     @show_effective_time_column = false
     @effective_time_error_message = nil
     return if @time_overview_data.blank?
+    # Team-level opt-out: skip support time entirely (direct + inherited) for this team.
+    return if @selected_team.hide_support_time?
 
     # Get direct external assignments
     external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to).to_a
@@ -823,14 +856,26 @@ class TeamAnalyticsController < ApplicationController
     # "Show Active Days": drop weekend/holiday points entirely (even logged ones).
     sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
 
-    # Format labels and values
-    labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+    raw_keys = sorted_data.map(&:first)
     values = sorted_data.map { |_, hours| hours.round(2) }
 
-    raw_keys = sorted_data.map(&:first)
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(raw_keys)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(raw_keys)
+        when 'weekly' then helpers.build_weekly_chart_axis(raw_keys)
+        else sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      end
+      boundaries = helpers.build_period_boundaries(raw_keys, grouping)
+    end
+
     # Flag weekend/holiday points (daily only) so they render amber.
     holiday_flags = grouping == 'daily' ? raw_keys.map { |key| ta_team_holiday_date?(key) } : raw_keys.map { false }
-    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags)
+    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags, boundaries)
   end
 
   def generate_time_entries_stacked_chart_data(entries, grouping)
@@ -889,6 +934,7 @@ class TeamAnalyticsController < ApplicationController
       {
         period_key: period_key,
         activity_name: activity_name,
+        activity_id: entry.activity_id,
         hours: entry.hours
       }
     end
@@ -925,7 +971,10 @@ class TeamAnalyticsController < ApplicationController
 
     # Keep activity order consistent across stacked chart and donut chart colors
     activities = activities.sort_by { |activity| -(activity_totals[activity] || 0) }
-    
+
+    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
+    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       activities: activities,
@@ -933,7 +982,47 @@ class TeamAnalyticsController < ApplicationController
       period_totals: period_totals,
       activity_totals: activity_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      activity_ids: activity_ids
+    }
+  end
+
+  # Re-buckets an already-computed activity pivot (see generate_activity_pivot_table) by Activity
+  # Group instead of raw activity, without re-scanning the underlying time entries. Activities with
+  # no assignment fall back to the computed 'Ungrouped' bucket. Returns the same hash shape so it
+  # plugs directly into generate_activity_pivot_chart_data.
+  def regroup_activity_pivot(pivot_data, activity_id_to_group_name, group_names_in_order)
+    matrix_data = {}
+    pivot_data[:raw_periods].each { |period| matrix_data[period] = Hash.new(0.0) }
+
+    pivot_data[:matrix].each do |period, by_activity|
+      by_activity.each do |activity_name, hours|
+        activity_id = pivot_data[:activity_ids][activity_name]
+        group_name = activity_id && activity_id_to_group_name[activity_id]
+        bucket = group_name || TaActivityGroup::UNGROUPED_NAME
+        matrix_data[period][bucket] += hours
+      end
+    end
+
+    # Always shown, like named groups, so a team with no custom groups (or an activity that hasn't
+    # been assigned yet) still reads as "everything is Ungrouped" rather than the column vanishing
+    # whenever nobody has logged time to an unassigned activity yet.
+    activities = group_names_in_order.dup
+    activities << TaActivityGroup::UNGROUPED_NAME
+
+    activity_totals = {}
+    activities.each do |group_name|
+      activity_totals[group_name] = pivot_data[:raw_periods].sum { |period| matrix_data[period][group_name] || 0 }
+    end
+
+    {
+      periods: pivot_data[:periods],
+      activities: activities,
+      matrix: matrix_data,
+      period_totals: pivot_data[:period_totals],
+      activity_totals: activity_totals,
+      grand_total: pivot_data[:grand_total],
+      raw_periods: pivot_data[:raw_periods]
     }
   end
 
@@ -1063,10 +1152,16 @@ class TeamAnalyticsController < ApplicationController
   end
 
   # Generate line chart from data arrays
-  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil)
-    # Generate detailed tooltip labels for weekly grouping
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil, boundaries = nil)
+    # Generate detailed tooltip labels for weekly grouping; full descriptive dates for daily and
+    # monthly (decoupled from the short axis labels used for daily/monthly grouping's
+    # data.labels).
     tooltip_labels = if raw_keys && grouping == 'weekly'
       raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    elsif raw_keys && grouping == 'daily'
+      raw_keys.map { |key| helpers.format_chart_label(key) }
+    elsif raw_keys && grouping == 'monthly'
+      raw_keys.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
     else
       labels
     end
@@ -1117,7 +1212,13 @@ class TeamAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: false
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
       },
       tooltips: {
         mode: 'index',
@@ -1150,13 +1251,16 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
             fontSize: 11
           }
         }]
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'line',
@@ -1287,14 +1391,16 @@ class TeamAnalyticsController < ApplicationController
     
     # Calculate member totals via SQL SUM to avoid accumulated float errors.
     # reorder(nil) strips any ORDER BY from the scope so MySQL ONLY_FULL_GROUP_BY is satisfied.
+    # Keyed by member id (not name) so two members who happen to share a display name can
+    # never collide into a single total.
     sql_user_totals = time_entries.reorder(nil).group(:user_id).sum(:hours)
     member_totals = {}
     members_unsorted.each do |member_data|
-      member_totals[member_data[:name]] = sql_user_totals[member_data[:id]] || 0
+      member_totals[member_data[:id]] = sql_user_totals[member_data[:id]] || 0
     end
 
     # Sort members by total hours descending (largest to smallest), then by name
-    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:name]], member_data[:name]] }
+    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:id]], member_data[:name]] }
 
     # Calculate period totals and grand total
     period_totals = {}
@@ -1308,7 +1414,7 @@ class TeamAnalyticsController < ApplicationController
       members: members, # Array of {id:, name:} hashes
       matrix: matrix_data, # Still keyed by member name for lookup
       period_totals: period_totals,
-      member_totals: member_totals, # Keyed by member name
+      member_totals: member_totals, # Keyed by member id
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
@@ -1370,8 +1476,9 @@ class TeamAnalyticsController < ApplicationController
       { id: m[:id], name: m[:name], monthly: monthly, overall: daily_avg.call(total_hours, overall_active) }
     end
 
-    # Default order: highest overall daily average first (matches the design).
-    rows.sort_by! { |r| [-r[:overall], r[:name]] }
+    # Default order: highest overall daily average first (matches the design). The client
+    # re-sorts in memory when a column header is clicked.
+    rows.sort_by! { |r| [-r[:overall], r[:name].to_s.downcase] }
 
     { months: months.map { |mo| { key: mo[:key], label: mo[:label] } }, rows: rows }
   end
@@ -1394,10 +1501,23 @@ class TeamAnalyticsController < ApplicationController
     periods = raw_periods.dup
     periods = periods.reject { |period| ta_team_holiday_date?(period) } if @grouping == 'daily' && @hide_holidays
 
-    labels = periods.map { |period| format_activity_period_display(period, @grouping) }
+    boundaries = []
+    if @grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(periods)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = case @grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(periods)
+        else periods.map { |period| format_activity_period_display(period, @grouping) }
+      end
+      boundaries = helpers.build_period_boundaries(periods, @grouping)
+    end
+
     data_values = periods.map { |period| period_totals[period] || 0 }
     holiday_flags = @grouping == 'daily' ? periods.map { |period| ta_team_holiday_date?(period) } : periods.map { false }
-    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags)
+    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags, boundaries)
   end
 
   def generate_stacked_bar_chart_from_matrix(period_keys, categories, matrix_data, grouping)
@@ -1412,11 +1532,27 @@ class TeamAnalyticsController < ApplicationController
       fill_missing_months_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
     end
 
-    formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
-    tooltip_labels = if grouping == 'weekly'
-      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(sorted_periods)
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = sorted_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      full_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+      formatted_labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+        else full_labels
+      end
+
+      tooltip_labels = if grouping == 'weekly'
+        sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+      else
+        full_labels
+      end
+
+      boundaries = helpers.build_period_boundaries(sorted_periods, grouping)
     end
 
     datasets = categories.each_with_index.map do |category, index|
@@ -1435,63 +1571,68 @@ class TeamAnalyticsController < ApplicationController
       }
     end
 
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'nearest',
+        intersect: true,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
+          },
+          ticks: {
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
+
     {
       type: 'bar',
       data: {
         labels: formatted_labels,
         datasets: datasets
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          display: false
-        },
-        tooltips: {
-          mode: 'nearest',
-          intersect: true,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFontSize: 14,
-          titleFontStyle: 'bold',
-          bodyFontSize: 13,
-          cornerRadius: 8
-        },
-        scales: {
-          xAxes: [{
-            stacked: true,
-            scaleLabel: {
-              display: true,
-              labelString: helpers.grouping_label(grouping),
-              fontSize: 12,
-              fontStyle: 'bold'
-            },
-            ticks: {
-              maxRotation: 45,
-              minRotation: 45,
-              fontSize: 11
-            }
-          }],
-          yAxes: [{
-            stacked: true,
-            ticks: {
-              beginAtZero: true,
-              fontSize: 11
-            },
-            scaleLabel: {
-              display: true,
-              labelString: 'Hours',
-              fontSize: 12,
-              fontStyle: 'bold'
-            }
-          }]
-        },
-        plugins: {
-          colorschemes: {
-            scheme: 'tableau.Tableau10'
-          }
-        }
-      }
+      options: chart_options
     }.to_json.html_safe
   end
 

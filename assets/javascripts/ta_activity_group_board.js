@@ -1,0 +1,476 @@
+// Shared drag-and-drop "board" for mapping Activities into named Groups.
+// Used by both the Administration -> Activity Groups page (persistImmediately: true, mutations
+// are POSTed to the server) and the Team Dashboard's session-only "Customize groups" popup
+// (persistImmediately: false, mutations only touch an in-memory working copy).
+//
+// options:
+//   groups:        [{ id, name, color, position }]
+//   activities:    [{ id, name }]
+//   assignments:   { activityId: groupId|null }
+//   ungroupedColor: '#9CA3AF' (optional)
+//   persistImmediately: boolean
+//   onAssign(activityId, groupIdOrNull)      -> optional Promise; rejection reverts local state
+//   onAddGroup(name)                          -> returns a group object, or a Promise resolving to one
+//   onRemoveGroup(groupId)                    -> optional Promise; rejection reverts local state
+//   onRenameGroup(groupId, name)              -> optional Promise; rejection reverts local state
+//   onReorderGroups(orderedGroupIds)          -> optional Promise; rejection reverts local state
+(function (window) {
+  'use strict';
+
+  var UNGROUPED_ID = '__ungrouped__';
+
+  // Mirrors TaActivityGroup::TABLEAU10_COLORS (app/models/ta_activity_group.rb) so session-only
+  // groups added from the "Customize groups" popup (no server round-trip, hence no server-assigned
+  // color) get the same palette, cycling by position, as persisted groups do.
+  var TABLEAU10_COLORS = [
+    '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
+    '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
+  ];
+
+  var DIALOG_BTN_PRIMARY = '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
+  var DIALOG_BTN_DANGER = '!text-white !bg-[#dc2626] hover:!bg-[#b91c1c] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer';
+
+  // Small Flowbite-styled confirm/prompt dialogs, replacing the native browser confirm()/prompt().
+  // A single overlay element is created lazily and reused across calls/instances so this works
+  // identically on both the Admin -> Activity Groups page and the Team Dashboard's "Customize
+  // groups" popup, without either host page needing to provide its own dialog markup.
+  var taBoardDialogEl = null;
+
+  function ensureBoardDialogEl() {
+    if (taBoardDialogEl) { return taBoardDialogEl; }
+
+    var el = document.createElement('div');
+    el.className = 'ta-board-dialog-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4';
+    el.innerHTML =
+      '<div class="ta-board-dialog-backdrop absolute inset-0 bg-gray-900/50"></div>' +
+      '<div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 w-full max-w-sm overflow-hidden">' +
+        '<div class="p-5">' +
+          '<p class="ta-board-dialog-message text-sm text-gray-700 mb-3"></p>' +
+          '<input type="text" class="ta-board-dialog-input hidden w-full text-sm text-gray-900 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400" />' +
+        '</div>' +
+        '<div class="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50/50">' +
+          '<button type="button" class="ta-board-dialog-cancel !text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-4 py-2 cursor-pointer">Cancel</button>' +
+          '<button type="button" class="ta-board-dialog-confirm ' + DIALOG_BTN_PRIMARY + '">OK</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    el.querySelector('.ta-board-dialog-backdrop').addEventListener('click', function () { el.classList.add('hidden'); });
+    taBoardDialogEl = el;
+    return el;
+  }
+
+  function taBoardConfirm(message, onConfirm) {
+    var el = ensureBoardDialogEl();
+    el.querySelector('.ta-board-dialog-message').textContent = message;
+    el.querySelector('.ta-board-dialog-input').classList.add('hidden');
+    el.classList.remove('hidden');
+
+    var confirmBtn = el.querySelector('.ta-board-dialog-confirm');
+    var cancelBtn = el.querySelector('.ta-board-dialog-cancel');
+    confirmBtn.textContent = 'Remove';
+    confirmBtn.className = 'ta-board-dialog-confirm ' + DIALOG_BTN_DANGER;
+
+    function cleanup() {
+      confirmBtn.removeEventListener('click', onConfirmClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      el.classList.add('hidden');
+    }
+    function onConfirmClick() { cleanup(); onConfirm(); }
+    function onCancelClick() { cleanup(); }
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+  }
+
+  function taBoardPrompt(message, onSubmit) {
+    var el = ensureBoardDialogEl();
+    el.querySelector('.ta-board-dialog-message').textContent = message;
+    var input = el.querySelector('.ta-board-dialog-input');
+    input.classList.remove('hidden');
+    input.value = '';
+    el.classList.remove('hidden');
+    setTimeout(function () { input.focus(); }, 0);
+
+    var confirmBtn = el.querySelector('.ta-board-dialog-confirm');
+    var cancelBtn = el.querySelector('.ta-board-dialog-cancel');
+    confirmBtn.textContent = 'Add';
+    confirmBtn.className = 'ta-board-dialog-confirm ' + DIALOG_BTN_PRIMARY;
+
+    function cleanup() {
+      confirmBtn.removeEventListener('click', onConfirmClick);
+      cancelBtn.removeEventListener('click', onCancelClick);
+      input.removeEventListener('keydown', onKeydown);
+      el.classList.add('hidden');
+    }
+    function submit() {
+      var value = input.value.trim();
+      cleanup();
+      if (value) { onSubmit(value); }
+    }
+    function onConfirmClick() { submit(); }
+    function onCancelClick() { cleanup(); }
+    function onKeydown(event) {
+      if (event.key === 'Enter') { submit(); }
+      if (event.key === 'Escape') { cleanup(); }
+    }
+    confirmBtn.addEventListener('click', onConfirmClick);
+    cancelBtn.addEventListener('click', onCancelClick);
+    input.addEventListener('keydown', onKeydown);
+  }
+
+  // Auto-scrolls a horizontally-scrolling board while a chip (or group header) is dragged near its
+  // left/right edge — otherwise moving an activity into an off-screen column means dropping it into
+  // an intermediate column, scrolling, then dragging again. Listens in the capture phase so it
+  // still sees the event even though the dropzone/header dragover handlers call stopPropagation().
+  function setupBoardAutoScroll(rootEl) {
+    var EDGE_SIZE = 56;
+    var MAX_SPEED = 16;
+    var rafId = null;
+    var pointerX = null;
+
+    function tick() {
+      rafId = null;
+      if (pointerX === null) { return; }
+
+      var rect = rootEl.getBoundingClientRect();
+      var distFromLeft = pointerX - rect.left;
+      var distFromRight = rect.right - pointerX;
+      var delta = 0;
+
+      if (distFromLeft >= 0 && distFromLeft < EDGE_SIZE) {
+        delta = -MAX_SPEED * (1 - distFromLeft / EDGE_SIZE);
+      } else if (distFromRight >= 0 && distFromRight < EDGE_SIZE) {
+        delta = MAX_SPEED * (1 - distFromRight / EDGE_SIZE);
+      }
+
+      if (delta !== 0) {
+        rootEl.scrollLeft += delta;
+        rafId = window.requestAnimationFrame(tick);
+      }
+    }
+
+    function isTaDrag(event) {
+      var types = event.dataTransfer && event.dataTransfer.types;
+      if (!types) { return false; }
+      return Array.prototype.indexOf.call(types, 'application/x-ta-chip') !== -1 ||
+        Array.prototype.indexOf.call(types, 'application/x-ta-group-reorder') !== -1;
+    }
+
+    function stop() {
+      pointerX = null;
+      if (rafId !== null) { window.cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    rootEl.addEventListener('dragover', function (event) {
+      if (!isTaDrag(event)) { return; }
+      pointerX = event.clientX;
+      if (rafId === null) { rafId = window.requestAnimationFrame(tick); }
+    }, true);
+
+    rootEl.addEventListener('drop', stop, true);
+    document.addEventListener('dragend', stop);
+  }
+
+  function TaActivityGroupBoard(rootEl, options) {
+    var state = {
+      groups: (options.groups || []).map(cloneGroup).sort(byPosition),
+      activities: (options.activities || []).slice(),
+      assignments: shallowCopy(options.assignments || {})
+    };
+
+    var ungroupedColor = options.ungroupedColor || '#9CA3AF';
+
+    function cloneGroup(g) {
+      return { id: String(g.id), name: g.name, color: g.color, position: g.position || 0 };
+    }
+
+    function byPosition(a, b) { return a.position - b.position; }
+
+    function shallowCopy(obj) {
+      var out = {};
+      Object.keys(obj).forEach(function (k) { out[k] = obj[k] === null || obj[k] === undefined ? null : String(obj[k]); });
+      return out;
+    }
+
+    function activitiesFor(groupId) {
+      return state.activities.filter(function (a) {
+        var assigned = state.assignments[String(a.id)];
+        return groupId === UNGROUPED_ID ? !assigned : assigned === String(groupId);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function chipHtml(activity) {
+      return '<div class="ta-chip" draggable="true" data-activity-id="' + activity.id + '">' +
+        escapeHtml(activity.name) + '</div>';
+    }
+
+    function groupColumnHtml(group) {
+      var chips = activitiesFor(group.id).map(chipHtml).join('');
+      return (
+        '<div class="ta-group-column" data-group-id="' + group.id + '">' +
+          '<div class="ta-group-dropzone-header" draggable="true" data-group-id="' + group.id + '">' +
+            '<span class="ta-group-dot" style="background-color:' + group.color + ';"></span>' +
+            '<span class="ta-group-name" data-group-id="' + group.id + '" title="Click to rename">' + escapeHtml(group.name) + '</span>' +
+            '<button type="button" class="ta-group-remove" data-group-id="' + group.id + '" aria-label="Remove group">&times;</button>' +
+          '</div>' +
+          '<div class="ta-group-dropzone" data-group-id="' + group.id + '">' + chips + '</div>' +
+        '</div>'
+      );
+    }
+
+    function ungroupedColumnHtml() {
+      var chips = activitiesFor(UNGROUPED_ID).map(chipHtml).join('');
+      return (
+        '<div class="ta-group-column ta-group-column-ungrouped" data-group-id="' + UNGROUPED_ID + '">' +
+          '<div class="ta-group-dropzone-header ta-group-dropzone-header-static">' +
+            '<span class="ta-group-dot" style="background-color:' + ungroupedColor + ';"></span>' +
+            '<span class="ta-group-name">Ungrouped</span>' +
+          '</div>' +
+          '<div class="ta-group-dropzone" data-group-id="' + UNGROUPED_ID + '">' + chips + '</div>' +
+        '</div>'
+      );
+    }
+
+    function render() {
+      var html = state.groups.map(groupColumnHtml).join('') + ungroupedColumnHtml() +
+        '<div class="ta-group-add-column">' +
+          '<button type="button" class="ta-group-add-btn">+ Add group</button>' +
+        '</div>';
+      rootEl.innerHTML = html;
+      wireEvents();
+    }
+
+    function withRevert(promise, onFail) {
+      if (promise && typeof promise.then === 'function') {
+        promise.catch(function (err) {
+          onFail();
+          render();
+          if (err && err.message) { window.alert(err.message); }
+        });
+      }
+    }
+
+    function assignActivity(activityId, groupId) {
+      var previous = state.assignments[String(activityId)] || null;
+      state.assignments[String(activityId)] = groupId;
+      render();
+
+      if (options.onAssign) {
+        withRevert(options.onAssign(activityId, groupId), function () {
+          state.assignments[String(activityId)] = previous;
+        });
+      }
+    }
+
+    function removeGroup(groupId) {
+      var previousGroups = state.groups.slice();
+      var previousAssignments = shallowCopy(state.assignments);
+
+      state.groups = state.groups.filter(function (g) { return g.id !== String(groupId); });
+      Object.keys(state.assignments).forEach(function (activityId) {
+        if (state.assignments[activityId] === String(groupId)) { state.assignments[activityId] = null; }
+      });
+      render();
+
+      if (options.onRemoveGroup) {
+        withRevert(options.onRemoveGroup(groupId), function () {
+          state.groups = previousGroups;
+          state.assignments = previousAssignments;
+        });
+      }
+    }
+
+    function renameGroup(groupId, name) {
+      name = (name || '').trim();
+      if (!name) { render(); return; }
+
+      var group = state.groups.filter(function (g) { return g.id === String(groupId); })[0];
+      if (!group) { return; }
+      var previousName = group.name;
+      group.name = name;
+      render();
+
+      if (options.onRenameGroup) {
+        withRevert(options.onRenameGroup(groupId, name), function () { group.name = previousName; });
+      }
+    }
+
+    function addGroup(name) {
+      name = (name || '').trim();
+      if (!name) { return; }
+
+      if (options.onAddGroup) {
+        var result = options.onAddGroup(name);
+        if (result && typeof result.then === 'function') {
+          result.then(function (group) {
+            state.groups.push(cloneGroup(group));
+            render();
+          }).catch(function (err) {
+            render();
+            if (err && err.message) { window.alert(err.message); }
+          });
+          return;
+        }
+        if (result) {
+          state.groups.push(cloneGroup(result));
+          render();
+          return;
+        }
+      }
+
+      state.groups.push({
+        id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        name: name,
+        color: TABLEAU10_COLORS[state.groups.length % TABLEAU10_COLORS.length],
+        position: state.groups.length
+      });
+      render();
+    }
+
+    function reorderGroups(draggedId, targetId) {
+      if (draggedId === targetId) { return; }
+      var ids = state.groups.map(function (g) { return g.id; });
+      var from = ids.indexOf(String(draggedId));
+      var to = ids.indexOf(String(targetId));
+      if (from === -1 || to === -1) { return; }
+
+      var previousGroups = state.groups.slice();
+      var reordered = state.groups.slice();
+      var moved = reordered.splice(from, 1)[0];
+      reordered.splice(to, 0, moved);
+      reordered.forEach(function (g, index) { g.position = index; });
+      state.groups = reordered;
+      render();
+
+      if (options.onReorderGroups) {
+        withRevert(options.onReorderGroups(reordered.map(function (g) { return g.id; })), function () {
+          state.groups = previousGroups;
+        });
+      }
+    }
+
+    function wireEvents() {
+      rootEl.querySelectorAll('.ta-chip[draggable="true"]').forEach(function (chip) {
+        chip.addEventListener('dragstart', function (event) {
+          chip.classList.add('ta-dragging');
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('application/x-ta-chip', chip.getAttribute('data-activity-id'));
+        });
+        chip.addEventListener('dragend', function () {
+          chip.classList.remove('ta-dragging');
+          rootEl.querySelectorAll('.ta-dropzone-hover').forEach(function (z) { z.classList.remove('ta-dropzone-hover'); });
+        });
+      });
+
+      // Wired to the whole column box (header + chip list), not just the narrow chip-list area,
+      // so dropping anywhere over a group — including its header — moves the activity there.
+      // The header's own dragover/drop (column reordering, application/x-ta-group-reorder) checks
+      // its type first and otherwise no-ops without stopping propagation, so both drag kinds coexist.
+      rootEl.querySelectorAll('.ta-group-column').forEach(function (zone) {
+        zone.addEventListener('dragover', function (event) {
+          if (event.dataTransfer.types.indexOf('application/x-ta-chip') === -1) { return; }
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+          zone.classList.add('ta-dropzone-hover');
+        });
+        zone.addEventListener('dragenter', function (event) {
+          if (event.dataTransfer.types.indexOf('application/x-ta-chip') === -1) { return; }
+          event.preventDefault();
+          zone.classList.add('ta-dropzone-hover');
+        });
+        zone.addEventListener('dragleave', function (event) {
+          var related = event.relatedTarget;
+          if (!related || !zone.contains(related)) { zone.classList.remove('ta-dropzone-hover'); }
+        });
+        zone.addEventListener('drop', function (event) {
+          var activityId = event.dataTransfer.getData('application/x-ta-chip');
+          if (!activityId) { return; }
+          event.preventDefault();
+          zone.classList.remove('ta-dropzone-hover');
+          var groupId = zone.getAttribute('data-group-id');
+          assignActivity(activityId, groupId === UNGROUPED_ID ? null : groupId);
+        });
+      });
+
+      rootEl.querySelectorAll('.ta-group-dropzone-header[draggable="true"]').forEach(function (header) {
+        header.addEventListener('dragstart', function (event) {
+          event.stopPropagation();
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('application/x-ta-group-reorder', header.getAttribute('data-group-id'));
+        });
+        header.addEventListener('dragover', function (event) {
+          if (event.dataTransfer.types.indexOf('application/x-ta-group-reorder') === -1) { return; }
+          event.preventDefault();
+          event.stopPropagation();
+          header.classList.add('ta-group-header-hover');
+        });
+        header.addEventListener('dragleave', function () { header.classList.remove('ta-group-header-hover'); });
+        header.addEventListener('drop', function (event) {
+          var draggedId = event.dataTransfer.getData('application/x-ta-group-reorder');
+          if (!draggedId) { return; }
+          event.preventDefault();
+          event.stopPropagation();
+          header.classList.remove('ta-group-header-hover');
+          reorderGroups(draggedId, header.getAttribute('data-group-id'));
+        });
+      });
+
+      rootEl.querySelectorAll('.ta-group-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          taBoardConfirm('Remove this group? Its activities will become Ungrouped.', function () {
+            removeGroup(btn.getAttribute('data-group-id'));
+          });
+        });
+      });
+
+      rootEl.querySelectorAll('.ta-group-name[data-group-id]').forEach(function (label) {
+        label.addEventListener('click', function () {
+          var groupId = label.getAttribute('data-group-id');
+          var input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'ta-group-name-input';
+          input.value = label.textContent;
+          label.replaceWith(input);
+          input.focus();
+          input.select();
+
+          function commit() { renameGroup(groupId, input.value); }
+          input.addEventListener('blur', commit);
+          input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') { input.blur(); }
+            if (event.key === 'Escape') { input.value = label.textContent; input.blur(); }
+          });
+        });
+      });
+
+      var addBtn = rootEl.querySelector('.ta-group-add-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', function () {
+          taBoardPrompt('New group name:', function (name) { addGroup(name); });
+        });
+      }
+    }
+
+    render();
+    setupBoardAutoScroll(rootEl);
+
+    return {
+      render: render,
+      getState: function () {
+        return { groups: state.groups.map(cloneGroup), assignments: shallowCopy(state.assignments) };
+      },
+      reset: function (newGroups, newAssignments) {
+        state.groups = (newGroups || []).map(cloneGroup).sort(byPosition);
+        state.assignments = shallowCopy(newAssignments || {});
+        render();
+      }
+    };
+  }
+
+  window.TaActivityGroupBoard = TaActivityGroupBoard;
+})(window);

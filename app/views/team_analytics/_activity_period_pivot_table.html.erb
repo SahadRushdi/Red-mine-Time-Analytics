@@ -1,0 +1,58 @@
+<%#
+  Renders a Time Period x Category pivot table. Used for both the Activity tab's Detailed view
+  (categories = raw activities, show_bars: false, byte-identical to the original inline markup)
+  and its Grouped view (categories = Activity Groups, show_bars: true).
+
+  Locals:
+    pivot_activities  - array of category names (columns), in display order
+    matrix            - { period_key => { category_name => hours } }
+    period_totals     - { period_key => hours }
+    paginated_periods  - array of display-formatted period labels for the current page
+    raw_periods       - array of period keys, same order as pivot_activities/matrix lookups
+    offset            - integer offset into raw_periods for the current page
+    colors            - array of hex colors, aligned by index to pivot_activities (only used when show_bars)
+    show_bars         - boolean, whether to render the colored inline distribution bar + percentage
+%>
+<table class="w-full text-sm text-left text-gray-500">
+  <thead class="text-sm text-gray-700 bg-gray-50">
+    <tr>
+      <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+      <% pivot_activities.each_with_index do |category, index| %>
+        <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
+          <% if show_bars %>
+            <span class="ta-group-dot" style="display:inline-block;width:8px;height:8px;border-radius:9999px;margin-right:6px;background-color:<%= colors[index] || '#9CA3AF' %>;"></span>
+          <% end %>
+          <%= category %>
+        </th>
+      <% end %>
+      <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% paginated_periods.each_with_index do |period_display, index| %>
+      <% period_key = raw_periods[(offset + index)] %>
+      <% row_total = period_totals[period_key] || 0 %>
+      <tr class="bg-white border-b hover:bg-gray-50">
+        <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+        <% pivot_activities.each_with_index do |category, cat_index| %>
+          <td class="px-6 py-4 text-center text-gray-900">
+            <% hours = matrix[period_key][category] || 0 %>
+            <% if show_bars %>
+              <% percentage = row_total > 0 ? (hours / row_total * 100) : 0 %>
+              <% color = colors[cat_index] || '#9CA3AF' %>
+              <div class="flex flex-col items-center gap-1">
+                <span><%= hours > 0 ? "#{format_hours(hours)} #{percentage.round}%" : '—' %></span>
+                <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= color %>;"></div>
+                </div>
+              </div>
+            <% else %>
+              <%= hours > 0 ? format_hours(hours) : '—' %>
+            <% end %>
+          </td>
+        <% end %>
+        <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(row_total) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

@@ -18,10 +18,16 @@
   
   <!-- Chart.js Color Schemes Plugin (local) -->
   <%= javascript_include_tag 'chartjs-plugin-colorschemes.min.js', plugin: 'redmine_time_analytics' %>
-  
+
+  <!-- Month/year separator plugin, holiday legend, and bar-chart scroll helpers -->
+  <%= javascript_include_tag 'time_analytics_chart_plugins.js', plugin: 'redmine_time_analytics' %>
+
   <!-- Flowbite JS (local) -->
   <%= javascript_include_tag 'flowbite.min.js', plugin: 'redmine_time_analytics' %>
   
   <!-- Automatic Status Badge Coloring (Automatic logic - no manual color mapping) -->
   <%= javascript_include_tag 'status_colors.js', plugin: 'redmine_time_analytics' %>
+
+  <!-- Client-side sort/paginate helper for Summary cards and the Monthly avg table -->
+  <%= javascript_include_tag 'ta_client_table.js', plugin: 'redmine_time_analytics' %>
 <% end %>

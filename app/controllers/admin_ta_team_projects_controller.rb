@@ -56,6 +56,14 @@ class AdminTaTeamProjectsController < ApplicationController
     redirect_to admin_ta_team_team_projects_path(@team)
   end
 
+  # Toggles whether Support Time (external project hours) is calculated/shown for this team.
+  # When enabled, both directly-assigned and inherited-from-child-team external projects are
+  # excluded from the Support Time calculation on the Team dashboard.
+  def toggle_support_time
+    @team.update(hide_support_time: params[:hide_support_time] == '1')
+    redirect_to admin_ta_team_team_projects_path(@team)
+  end
+
   private
 
   def load_projects

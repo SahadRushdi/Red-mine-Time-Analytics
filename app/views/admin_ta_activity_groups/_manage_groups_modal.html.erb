@@ -1,0 +1,191 @@
+<%#
+  Injected onto Redmine core's Administration -> Enumerations page by
+  RedmineTimeAnalytics::ActivityGroupsHook (see lib/redmine_time_analytics/hooks.rb). Adds a
+  "Manage groups" button next to the page heading, styled after the Team Dashboard's
+  "Customize groups" button, that opens this modal's drag-and-drop board
+  (assets/javascripts/ta_activity_group_board.js, persistImmediately: true — same board component
+  used by the Team Dashboard's session-only "Customize groups" popup, but here mutations are
+  POSTed immediately, same as the removed dedicated admin page used to do).
+
+  Locals: groups (TaActivityGroup[]), activities (TimeEntryActivity[]), assignments ({activity_id => group_id})
+%>
+<% colors = TaActivityGroup.tableau10_colors(groups.size) %>
+<div id="ta-manage-groups-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto h-[calc(100%-1rem)] max-h-full">
+  <div class="relative w-full max-w-4xl max-h-full">
+    <div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div>
+          <h3 class="text-xl font-bold text-gray-900">Manage Activity Groups</h3>
+          <p class="text-sm text-gray-500">
+            Drag activities between groups to define the default grouping shown on the Team Dashboard's
+            "Grouped" tab. Changes save immediately.
+          </p>
+        </div>
+        <button type="button" id="ta-manage-groups-close-btn"
+                class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer"
+                data-modal-hide="ta-manage-groups-modal">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="p-5">
+        <div id="ta-manage-groups-board" class="ta-group-board"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var heading = null;
+    document.querySelectorAll('#content h2').forEach(function (h) {
+      if (h.textContent.trim() === <%= raw l(:label_enumerations).to_json %>) { heading = h; }
+    });
+    if (!heading) { return; }
+
+    var wrapper = document.createElement('div');
+    wrapper.className = 'flex items-center justify-between flex-wrap gap-2';
+    heading.parentNode.insertBefore(wrapper, heading);
+    wrapper.appendChild(heading);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'ta-manage-groups-btn';
+    btn.className = 'inline-flex items-center px-3 py-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0';
+    btn.innerHTML = '<span class="material-symbols-outlined mr-2" aria-hidden="true" style="font-size: 18px;">tune</span><%= raw j(l(:label_manage_groups)) %>';
+    wrapper.appendChild(btn);
+
+    var csrf = <%= raw form_authenticity_token.to_json %>;
+    var groups = <%= raw groups.each_with_index.map { |g, i| { id: g.id, name: g.name, color: colors[i], position: g.position } }.to_json %>;
+    var activities = <%= raw activities.map { |a| { id: a.id, name: a.name } }.to_json %>;
+    var assignments = <%= raw assignments.transform_keys(&:to_s).to_json %>;
+    var ungroupedColor = <%= raw TaActivityGroup::UNGROUPED_COLOR.to_json %>;
+    var ungroupedName = <%= raw TaActivityGroup::UNGROUPED_NAME.to_json %>;
+    var board = null;
+    var modal = null;
+
+    // Adds a read-only "Groupings" column to the Activities enumeration table showing each
+    // activity's current group (or Ungrouped). Snapshot at page-load time — reflects whatever was
+    // true when the page was rendered, not live edits made via the modal above; reload to refresh.
+    (function addGroupingsColumn() {
+      var groupById = {};
+      groups.forEach(function (g) { groupById[String(g.id)] = g; });
+
+      function escapeHtml(str) {
+        return String(str == null ? '' : str).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function groupInfoFor(activityId) {
+        var groupId = activityId !== null ? assignments[String(activityId)] : null;
+        var group = groupId ? groupById[String(groupId)] : null;
+        return group ? { name: group.name, color: group.color } : { name: ungroupedName, color: ungroupedColor };
+      }
+
+      function findActivitiesHeading() {
+        var found = null;
+        document.querySelectorAll('#content h3').forEach(function (h) {
+          if (h.textContent.trim() === <%= raw l(TimeEntryActivity::OptionName).to_json %>) { found = h; }
+        });
+        return found;
+      }
+
+      function findFollowingTable(heading) {
+        var el = heading.nextElementSibling;
+        while (el && el.tagName !== 'H3') {
+          if (el.tagName === 'TABLE' && el.classList.contains('enumerations')) { return el; }
+          el = el.nextElementSibling;
+        }
+        return null;
+      }
+
+      var heading = findActivitiesHeading();
+      if (!heading) { return; }
+      var table = findFollowingTable(heading);
+      if (!table) { return; }
+
+      var headRow = table.querySelector('thead tr');
+      if (headRow && headRow.lastElementChild) {
+        var th = document.createElement('th');
+        th.setAttribute('scope', 'col');
+        th.textContent = <%= raw l(:label_groupings).to_json %>;
+        headRow.insertBefore(th, headRow.lastElementChild);
+      }
+
+      table.querySelectorAll('tbody tr').forEach(function (row) {
+        if (!row.lastElementChild) { return; }
+        var nameLink = row.querySelector('td.name a');
+        var match = nameLink ? nameLink.getAttribute('href').match(/\/enumerations\/(\d+)/) : null;
+        var info = groupInfoFor(match ? match[1] : null);
+
+        var td = document.createElement('td');
+        td.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:9999px;margin-right:6px;background-color:' +
+          info.color + ';"></span>' + escapeHtml(info.name);
+        row.insertBefore(td, row.lastElementChild);
+      });
+    })();
+
+    function sendJson(method, url, body) {
+      return fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrf,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }).then(function (response) {
+        return response.json().then(function (data) {
+          if (!response.ok || data.ok === false) { throw new Error(data.error || 'Request failed'); }
+          return data;
+        });
+      });
+    }
+
+    var modalEl = document.getElementById('ta-manage-groups-modal');
+    if (modalEl && typeof Modal !== 'undefined') {
+      modal = new Modal(modalEl, {
+        placement: 'center',
+        backdrop: 'dynamic',
+        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+        closable: true
+      });
+    }
+    var closeBtn = document.getElementById('ta-manage-groups-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () { if (modal) { modal.hide(); } });
+    }
+
+    btn.addEventListener('click', function () {
+      if (!board) {
+        board = TaActivityGroupBoard(document.getElementById('ta-manage-groups-board'), {
+          groups: groups,
+          activities: activities,
+          assignments: assignments,
+          persistImmediately: true,
+          onAssign: function (activityId, groupId) {
+            return sendJson('POST', '<%= assign_admin_ta_activity_groups_path %>', { activity_id: activityId, group_id: groupId });
+          },
+          onAddGroup: function (name) {
+            return sendJson('POST', '<%= admin_ta_activity_groups_path %>', { ta_activity_group: { name: name } })
+              .then(function (data) { return data.group; });
+          },
+          onRemoveGroup: function (groupId) {
+            return sendJson('DELETE', '<%= admin_ta_activity_groups_path %>/' + groupId, {});
+          },
+          onRenameGroup: function (groupId, name) {
+            return sendJson('PATCH', '<%= admin_ta_activity_groups_path %>/' + groupId, { ta_activity_group: { name: name } });
+          },
+          onReorderGroups: function (orderedGroupIds) {
+            return sendJson('POST', '<%= reorder_admin_ta_activity_groups_path %>', { ids: orderedGroupIds });
+          }
+        });
+      }
+      if (modal) { modal.show(); }
+    });
+  });
+</script>

@@ -112,11 +112,8 @@ module TimeAnalyticsHelper
       # Fallback if key parsing fails
       return format_chart_label(key) unless date_in_week
 
-      # Calculate ISO week number (Redmine format: YYYY-W)
-      week_number = date_in_week.cweek
-      year = date_in_week.cwyear
-      
-      "#{year}-#{week_number}"
+      # Start-of-week date with the short month name (e.g. "13 Jun").
+      date_in_week.strftime('%d %b')
     elsif grouping == 'monthly'
       # The key from the controller is now consistently a Date or a 'YYYY-MM-DD' string
       date = key.is_a?(String) ? Date.parse(key) : key.to_date
@@ -168,6 +165,142 @@ module TimeAnalyticsHelper
       # For other groupings, use the standard table format
       format_period_for_table(key, grouping, from_date, to_date)
     end
+  end
+
+  # Builds compact 2/3-line daily chart tick labels (Chart.js v2 renders each array
+  # element of a label as its own line) plus month/year boundary metadata for the
+  # monthYearSeparator plugin. Only used for chart x-axes, never for table/CSV text -
+  # format_chart_label/format_period_for_table remain the source of truth there.
+  def build_daily_chart_axis(dates)
+    labels = []
+    prev_date = nil
+
+    dates.each_with_index do |raw_date, index|
+      date = raw_date.respond_to?(:to_date) ? raw_date.to_date : raw_date
+      letter = date.strftime('%A')[0, 1]
+      year_changed = prev_date && date.year != prev_date.year
+      month_changed = prev_date.nil? || date.month != prev_date.month || year_changed
+
+      if month_changed
+        lines = [letter, date.strftime('%b %-d')]
+        lines << date.year.to_s if year_changed
+        labels << lines
+      else
+        labels << [letter, date.day.to_s]
+      end
+
+      prev_date = date
+    end
+
+    { labels: labels, boundaries: build_period_boundaries(dates, 'daily') }
+  end
+
+  # Resolves any grouping key (Date/Time/String/Integer/Array, per database adapter) into a
+  # representative Date, for chart month/year boundary detection only - returns nil if the key
+  # can't be resolved, in which case that tick is simply skipped by build_period_boundaries.
+  def normalize_period_date(key, grouping)
+    case grouping
+    when 'monthly'
+      case key
+      when Date, Time, DateTime then key.to_date
+      when Array then Date.new(key[0], key[1], 1)
+      when String then Date.parse(key)
+      end
+    when 'weekly'
+      case key
+      when Date, Time, DateTime
+        key.to_date
+      when String
+        key.match?(/^\d{6}$/) ? Date.commercial(key[0..3].to_i, key[4..5].to_i, 1) : Date.parse(key)
+      when Integer
+        key.to_s.length == 6 ? Date.commercial(key / 100, key % 100, 1) : nil
+      end
+    else
+      case key
+      when Date, Time, DateTime then key.to_date
+      when String then Date.parse(key)
+      end
+    end
+  rescue
+    nil
+  end
+
+  # Computes month/year boundary tick indices for a sorted list of period keys, for the
+  # monthYearSeparator chart plugin. Used for daily, weekly, and monthly grouping - for monthly
+  # grouping every tick is already a new month, so a boundary is marked at every tick.
+  def build_period_boundaries(keys, grouping)
+    boundaries = []
+    prev_date = nil
+
+    keys.each_with_index do |key, index|
+      date = normalize_period_date(key, grouping)
+      next unless date
+
+      if prev_date
+        year_changed = date.year != prev_date.year
+        month_changed = date.month != prev_date.month || year_changed
+        boundaries << { index: index, type: year_changed ? 'year' : 'month' } if month_changed
+      end
+
+      prev_date = date
+    end
+
+    boundaries
+  end
+
+  # Weekly chart axis labels: start-of-week day number only (e.g. "13"), with the short month
+  # name appended as a second line on the first tick and whenever the month changes (e.g.
+  # ["13", "Jun"]), plus the year as a third line whenever the year changes. Chart axis only -
+  # table/CSV/tooltip text still uses the "DD Mon" format via format_period_for_table.
+  def build_weekly_chart_axis(keys)
+    labels = []
+    prev_date = nil
+
+    keys.each do |key|
+      date = normalize_period_date(key, 'weekly')
+      unless date
+        labels << key.to_s
+        next
+      end
+
+      year_changed = prev_date && date.year != prev_date.year
+      month_changed = prev_date.nil? || date.month != prev_date.month || year_changed
+
+      if month_changed
+        lines = [date.day.to_s, date.strftime('%b')]
+        lines << date.year.to_s if year_changed
+        labels << lines
+      else
+        labels << date.day.to_s
+      end
+
+      prev_date = date
+    end
+
+    labels
+  end
+
+  # Monthly chart axis labels: full month name only (e.g. "June"), with the year appended as a
+  # second line only on the first tick and whenever the year changes from the previous tick
+  # (e.g. ["June", "2026"]). Chart axis only - table/CSV/tooltip text still uses the full
+  # "Month Year" format via format_period_for_table.
+  def build_monthly_chart_labels(keys)
+    labels = []
+    prev_date = nil
+
+    keys.each do |key|
+      date = normalize_period_date(key, 'monthly')
+      unless date
+        labels << key.to_s
+        next
+      end
+
+      month_name = date.strftime('%B')
+      labels << (prev_date.nil? || date.year != prev_date.year ? [month_name, date.year.to_s] : month_name)
+      prev_date = date
+    end
+
+    labels
   end
 
   def time_filter_options
@@ -453,5 +586,19 @@ module TimeAnalyticsHelper
     content_tag(:span, "#{number_with_precision(percentage, precision: 1)}%",
                 class: 'inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold',
                 style: "background:#{ta_hex_to_rgba(hex, 0.14)};color:#{hex};")
+  end
+
+  # Renders the "Active Days / Working Days" text (e.g. "35/38") shown per member on the
+  # My Team Members summary table, replacing the hours-share percentage badge there. Plain
+  # bold grey text, not a colour-coded pill - the colour coding is reserved for percentages.
+  def ta_active_days_text(active_days, working_days)
+    content_tag(:span, "#{format_active_days_value(active_days)}/#{format_active_days_value(working_days)}",
+                class: 'text-sm font-normal text-gray-500 whitespace-nowrap')
+  end
+
+  # Whole numbers print without a decimal (e.g. "38"); fractional values (half-day leaves)
+  # keep one decimal place (e.g. "34.5").
+  def format_active_days_value(value)
+    value == value.to_i ? value.to_i.to_s : number_with_precision(value, precision: 1)
   end
 end

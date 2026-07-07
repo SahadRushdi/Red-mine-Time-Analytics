@@ -484,6 +484,7 @@
 
   <!-- Visualization Section -->
   <div class="box visualization-section">
+    <% chart_type = params[:chart_type] || default_chart_type(@view_mode) %>
     <h3 class="text-base font-semibold text-gray-900 mb-3" style="display: flex; justify-content: space-between; align-items: center;">
       <span><%= chart_breakdown_header(@grouping) %></span>
       <div class="inline-flex items-center gap-2">
@@ -501,29 +502,30 @@
         <%# Chart type buttons %>
         <button type="button"
                 onclick="switchChartType('line')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Trend
         </button>
         <button type="button"
                 onclick="switchChartType('bar')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Stacked
         </button>
 
         <%# Hidden select kept for backend compatibility %>
-        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
+        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, chart_type),
             onchange: 'updateChart()', id: 'chart_type_select', style: 'display: none;' %>
       </div>
     </h3>
-    
-    <div id="chart-container" style="display: block;">
+
+    <div id="chart-container" class="<%= chart_type == 'bar' ? 'has-chart-legend' : '' %>" style="display: block;">
       <div class="chart-wrapper">
-        <canvas id="time-chart" class="chart" 
-                data-chart='<%= @chart_data %>' 
+        <canvas id="time-chart" class="chart"
+                data-chart='<%= @chart_data %>'
                 data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
+      <div id="individual-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
     </div>
   </div>
 </div>
@@ -673,8 +675,8 @@ function toggleHolidays() {
                  when 'issue' then @issue_view_state
                end %>
             <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_view_state == 'summary' ? '' : 'display: none;' %>">
-              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
-              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="taSummarySortClick('name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
+              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="taSummarySortClick('hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
             </div>
             <%= form_tag my_time_path, method: :get, local: true,
                 class: 'flex items-center gap-2' do %>
@@ -750,33 +752,14 @@ function toggleHolidays() {
           </table>
         </div>
         
-        <%# Summary View: Simple Activity Table (Hidden by default) %>
+        <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-2 px-2 pt-4">
-            <%
-              # Sort activities by hours (highest to lowest)
-              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index|
-            %>
-              <% hours = @activity_totals[activity] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-                <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-1 gap-3">
-                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% elsif @grouping == 'daily' %>
@@ -814,33 +797,14 @@ function toggleHolidays() {
           </table>
         </div>
         
-        <%# Summary View: Simple Activity Table (Hidden by default) %>
+        <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-2 px-2 pt-4">
-            <%
-              # Sort activities by hours (highest to lowest)
-              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index|
-            %>
-              <% hours = @activity_totals[activity] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-                <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-1 gap-3">
-                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% end %>
@@ -880,33 +844,14 @@ function toggleHolidays() {
           </table>
         </div>
         
-        <%# Summary View: Simple Project Table (Hidden by default) %>
+        <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-2 px-2 pt-4">
-            <%
-              # Sort projects by hours (highest to lowest)
-              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index|
-            %>
-              <% hours = @project_totals[project] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-                <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-1 gap-3">
-                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% elsif @grouping == 'daily' %>
@@ -944,33 +889,14 @@ function toggleHolidays() {
           </table>
         </div>
         
-        <%# Summary View: Simple Project Table (Hidden by default) %>
+        <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-2 px-2 pt-4">
-            <%
-              # Sort projects by hours (highest to lowest)
-              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index|
-            %>
-              <% hours = @project_totals[project] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-                <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-1 gap-3">
-                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% end %>
@@ -1022,43 +948,28 @@ function toggleHolidays() {
           </table>
         </div>
         
-        <%# Summary View: Simple Issue Table (Hidden by default) %>
+        <%# Summary View: Simple Issue Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="issue-summary-view" style="display: none;">
-          <div class="space-y-2 px-2 pt-4">
-            <%
-              # Sort issues by hours (highest to lowest)
-              sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
-              sorted_issues.each_with_index do |issue_info, index|
-            %>
-              <% hours = @issue_totals[issue_info[:key]] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(issue_info[:display]) %>">
-                <!-- Issue name and hours -->
-                <div class="flex items-center justify-between mb-1 gap-3">
-                    <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
-                      <% if issue_info[:issue] %>
-                        <span class="ts-tracker-badge"><%= issue_info[:issue].tracker.name %></span>
-                        <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: '_blank',
-                              class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors' %>
-                        <%= link_to ": #{h(issue_info[:issue].subject)}".html_safe, issue_path(issue_info[:issue]), target: '_blank',
-                              class: 'text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
-                      <% else %>
-                        <%= issue_info[:display] %>
-                      <% end %>
-                    </h3>
-                  <div class="flex items-center gap-3 flex-shrink-0">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="min-w-[45px] text-right"><%= ta_share_badge(bar_color, percentage) %></span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% issue_summary_payload = {
+               grandTotal: @grand_total.to_f,
+               items: @issues.map do |issue_info|
+                 issue = issue_info[:issue]
+                 {
+                   name: issue_info[:display],
+                   hours: (@issue_totals[issue_info[:key]] || 0).to_f,
+                   hasIssue: issue.present?,
+                   id: issue&.id,
+                   trackerName: issue&.tracker&.name,
+                   subject: issue&.subject,
+                   url: issue ? issue_path(issue) : nil
+                 }
+               end
+             }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= issue_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% end %>
@@ -1066,23 +977,19 @@ function toggleHolidays() {
 
     </div>
     
-    <!-- Flowbite Pagination -->
+    <!-- Flowbite Pagination (Detailed only — Summary paginates client-side within its own view) -->
     <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
-      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div class="text-sm text-gray-700" id="pagination-info-text" 
-             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-activity-count="<%= @activities&.count || 0 %>"
-             data-project-count="<%= @projects&.count || 0 %>"
-             data-issue-count="<%= @issues&.count || 0 %>"
-             data-view-mode="<%= @view_mode %>">
+      <% current_view_state = case @view_mode
+           when 'activity' then @activity_view_state
+           when 'project' then @project_view_state
+           when 'issue' then @issue_view_state
+         end %>
+      <div id="detailed-pagination-bar" class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="<%= current_view_state == 'summary' ? 'display: none;' : '' %>">
+        <div class="text-sm text-gray-700" id="pagination-info-text"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
-        <% current_view_state = case @view_mode
-             when 'activity' then @activity_view_state
-             when 'project' then @project_view_state
-             when 'issue' then @issue_view_state
-           end %>
-        <nav id="pagination-links-nav" class="flex gap-1 max-w-full overflow-x-auto" style="<%= current_view_state == 'summary' ? 'display: none;' : '' %>">
+        <nav id="pagination-links-nav" class="flex gap-1 max-w-full overflow-x-auto">
           <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
           <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :user_id, :activity_view_state, :project_view_state, :issue_view_state, :hide_holidays) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
@@ -1260,9 +1167,17 @@ function initChart() {
       
       return label;
     };
-    
+
+    if (window.TaChartPlugins) {
+      TaChartPlugins.applyHolidayLegend(config);
+    }
+
     timeAnalyticsChart = new Chart(chartElement, config);
-    
+
+    if (config.type === 'bar' && window.TaChartPlugins) {
+      TaChartPlugins.renderChartLegend(timeAnalyticsChart, 'individual-chart-legend');
+    }
+
   } catch (error) {
     console.error('Chart initialization error:', error);
     chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart</p>';
@@ -1559,35 +1474,9 @@ document.addEventListener('click', function(event) {
 
 // Update pagination info text based on view state
 function updatePaginationInfo(viewState) {
-  var paginationLinksNav = document.getElementById('pagination-links-nav');
-  if (paginationLinksNav) {
-    paginationLinksNav.style.display = viewState === 'detailed' ? '' : 'none';
-  }
-
-  var paginationInfo = document.getElementById('pagination-info-text');
-  if (!paginationInfo) {
-    return;
-  }
-
-  var detailedText = paginationInfo.getAttribute('data-detailed-text');
-  var viewMode = paginationInfo.getAttribute('data-view-mode');
-
-  if (viewState === 'detailed') {
-    // Show detailed view pagination (based on time periods)
-    paginationInfo.textContent = detailedText;
-  } else {
-    // Show summary view pagination (based on activities, projects, or issues)
-    var count;
-    if (viewMode === 'activity') {
-      count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
-    } else if (viewMode === 'project') {
-      count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
-    } else if (viewMode === 'issue') {
-      count = parseInt(paginationInfo.getAttribute('data-issue-count')) || 0;
-    }
-    
-    // Format: Redmine native format "(1-X/X)"
-    paginationInfo.textContent = '(1-' + count + '/' + count + ')';
+  var bar = document.getElementById('detailed-pagination-bar');
+  if (bar) {
+    bar.style.display = viewState === 'detailed' ? '' : 'none';
   }
 }
 
@@ -1972,6 +1861,11 @@ function generateDonutLegend(labels, values, colors, total) {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   initCustomDateRangeVisibility();
+  <% if @view_mode == 'issue' %>
+    initSummaryTable('<%= summary_view_id %>', taIssueSummaryCardHtml);
+  <% elsif @view_mode == 'activity' || @view_mode == 'project' %>
+    initSummaryTable('<%= summary_view_id %>', taSummaryCardHtml);
+  <% end %>
   restoreActivityViewState();
   restoreProjectViewState();
   restoreIssueViewState();
@@ -2031,6 +1925,99 @@ if (document.readyState === 'complete') {
   }, 100);
 }
 
+// Client-side Summary card list: renders/sorts/paginates entirely in memory from the
+// embedded payload, so a page never truncates the data (donut/legend code that reads the
+// same full dataset is unaffected by whichever page the user happens to be viewing).
+var taSummaryTable = null;
+
+function taSummaryCardHtml(item, index, grandTotal, colors) {
+  var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+  var color = colors[index % colors.length];
+  var name = taEscapeHtml(item.name);
+  return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
+    '<div class="flex items-center justify-between mb-1 gap-3">' +
+      '<h3 class="text-base font-medium text-gray-900">' + name + '</h3>' +
+      '<div class="flex items-center gap-3">' +
+        '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+        '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+      '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
+  var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+  var color = colors[index % colors.length];
+  var titleHtml;
+  if (item.hasIssue) {
+    titleHtml = '<span class="ts-tracker-badge">' + taEscapeHtml(item.trackerName) + '</span> ' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>';
+  } else {
+    titleHtml = taEscapeHtml(item.name);
+  }
+  return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + taEscapeHtml(item.name) + '">' +
+    '<div class="flex items-center justify-between mb-1 gap-3">' +
+      '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
+      '<div class="flex items-center gap-3 flex-shrink-0">' +
+        '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+        '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+      '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function taUpdateSummarySortButtonsUI(viewId) {
+  if (!taSummaryTable) { return; }
+  var state = taSummaryTable.getState();
+  var active = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
+  var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
+  var nameBtn = document.getElementById('sort-name-' + viewId);
+  var hoursBtn = document.getElementById('sort-hours-' + viewId);
+  if (nameBtn) {
+    nameBtn.style.cssText = state.sortField === 'name' ? active : inactive;
+    nameBtn.textContent = state.sortField === 'name' && state.sortDir === 'desc' ? 'Z–A ↓' : 'A–Z ↑';
+  }
+  if (hoursBtn) {
+    hoursBtn.style.cssText = state.sortField === 'hours' ? active : inactive;
+    hoursBtn.textContent = state.sortField === 'hours' && state.sortDir === 'asc' ? 'Hours ↑' : 'Hours ↓';
+  }
+}
+
+function taSummarySortClick(field) {
+  if (!taSummaryTable) { return; }
+  taSummaryTable.setSort(field, field === 'name' ? 'asc' : 'desc');
+}
+
+function initSummaryTable(viewId, renderFn) {
+  var payloadEl = document.getElementById(viewId + '-payload');
+  var container = document.getElementById(viewId + '-cards');
+  if (!payloadEl || !container) { return; }
+
+  var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
+  var colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+
+  taSummaryTable = TaClientTable({
+    getItems: function () { return payload.items; },
+    sortValue: function (item, field) { return field === 'name' ? (item.name || '').toLowerCase() : item.hours; },
+    renderRow: function (item, index) { return renderFn(item, index, payload.grandTotal, colors); },
+    container: container,
+    paginationInfo: document.getElementById(viewId + '-pagination-info'),
+    paginationLinks: document.getElementById(viewId + '-pagination-links'),
+    perPage: <%= @limit %>,
+    sortField: 'hours',
+    sortDir: 'desc',
+    onRender: function () { taUpdateSummarySortButtonsUI(viewId); }
+  });
+  taSummaryTable.render();
+}
+
 // Initialize summary table sorting to default descending (highest to lowest)
 function initSummarySorting(tableContainerId) {
   var container = document.getElementById(tableContainerId);
@@ -2047,65 +2034,6 @@ function initSummarySorting(tableContainerId) {
   var indicator = hoursHeader.querySelector('.sort-indicator');
   if (indicator) {
     indicator.textContent = '▼';
-  }
-}
-
-// Per-summary sort state: which field is active + each field's remembered direction.
-var summarySortState = {};
-
-function getSummarySortState(containerId) {
-  return summarySortState[containerId] ||
-    (summarySortState[containerId] = { field: 'hours', dir: { name: 'asc', hours: 'desc' } });
-}
-
-// Toggle-style summary sort: clicking the active field flips its direction (so it can
-// go Low→High or Z→A); clicking the other field switches to it in its own direction.
-function sortSummaryCards(containerId, sortBy) {
-  var state = getSummarySortState(containerId);
-  if (state.field === sortBy) {
-    state.dir[sortBy] = state.dir[sortBy] === 'asc' ? 'desc' : 'asc';
-  }
-  state.field = sortBy;
-  applySummarySort(containerId);
-}
-
-// Re-orders the cards using the container's current sort state (no direction flip).
-function applySummarySort(containerId) {
-  var container = document.getElementById(containerId);
-  if (!container) return;
-  var cardsContainer = container.querySelector('.space-y-2');
-  if (!cardsContainer) return;
-  var state = getSummarySortState(containerId);
-  var field = state.field, dir = state.dir[field];
-  var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
-  cards.sort(function(a, b) {
-    var r;
-    if (field === 'name') {
-      r = (a.getAttribute('data-name') || '').toLowerCase()
-        .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
-    } else {
-      r = parseFloat(a.getAttribute('data-hours') || '0') - parseFloat(b.getAttribute('data-hours') || '0');
-    }
-    return dir === 'asc' ? r : -r;
-  });
-  cards.forEach(function(card) { cardsContainer.appendChild(card); });
-  updateSummarySortButtons(containerId, state);
-}
-
-// Active button blue, the other gray; each label carries a flipping arrow
-// (A–Z ↑ / Z–A ↓, Hours ↓ / Hours ↑) — ↑ = ascending, ↓ = descending.
-function updateSummarySortButtons(containerId, state) {
-  var hoursBtn = document.getElementById('sort-hours-' + containerId);
-  var nameBtn  = document.getElementById('sort-name-'  + containerId);
-  var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
-  var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
-  if (hoursBtn) {
-    hoursBtn.style.cssText = state.field === 'hours' ? active : inactive;
-    hoursBtn.textContent = 'Hours ' + (state.dir.hours === 'asc' ? '↑' : '↓');
-  }
-  if (nameBtn) {
-    nameBtn.style.cssText = state.field === 'name' ? active : inactive;
-    nameBtn.textContent = state.dir.name === 'asc' ? 'A–Z ↑' : 'Z–A ↓';
   }
 }
 
