@@ -943,7 +943,9 @@
       <div id="team-activity-group-payload" data-payload='<%= activity_group_payload %>' style="display:none;"></div>
 
       <%# Pagination for Activity view (Detailed only — Summary paginates client-side above) %>
-      <div id="team-activity-detailed-pagination-bar" class="pagination-wrapper" style="<%= @activity_view_state == 'summary' ? 'display: none;' : '' %>">
+      <% hide_activity_pagination_bar = @activity_view_state == 'summary' ||
+                                         (@activity_view_state == 'grouped' && @activity_groups.blank?) %>
+      <div id="team-activity-detailed-pagination-bar" class="pagination-wrapper" style="<%= hide_activity_pagination_bar ? 'display: none;' : '' %>">
         <span id="team-activity-pagination-links">
           <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
           <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :team_id, :activity_view_state, temp_excluded_ids: []) %>
@@ -2116,6 +2118,10 @@
     var noGroupsMsg = document.getElementById('team-donut-no-groups-message');
     if (chartWrapper) chartWrapper.style.display = 'none';
     if (noGroupsMsg) noGroupsMsg.style.display = '';
+
+    // Nothing to paginate — there's no table.
+    var paginationBar = document.getElementById('team-activity-detailed-pagination-bar');
+    if (paginationBar) paginationBar.style.display = 'none';
   }
 
   function rebuildTeamChartsForGroups() {
@@ -2126,6 +2132,10 @@
       renderGroupedNoGroupsState();
       return;
     }
+
+    // Restore the pagination bar in case the previous render was the no-groups empty state.
+    var paginationBar = document.getElementById('team-activity-detailed-pagination-bar');
+    if (paginationBar) paginationBar.style.display = '';
 
     var pivot = computeCurrentGroupedPivot();
     renderGroupedTableFromPivot(pivot);
