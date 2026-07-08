@@ -27,6 +27,65 @@ class TaActivityGroup < ActiveRecord::Base
 
   scope :ordered, -> { order(:position, :id) }
 
+  # Re-buckets an already-computed activity pivot (see TeamAnalyticsController/TimeAnalyticsController
+  # generate_activity_pivot_table) by Activity Group instead of raw activity, without re-scanning the
+  # underlying time entries. Activities with no assignment fall back to the computed 'Ungrouped' bucket.
+  # Returns the same hash shape so it plugs directly into generate_activity_pivot_chart_data. Shared by
+  # both the Team Dashboard and Individual Dashboard's Activity "Grouped" tab.
+  def self.regroup_activity_pivot(pivot_data, activity_id_to_group_name, group_names_in_order)
+    matrix_data = {}
+    pivot_data[:raw_periods].each { |period| matrix_data[period] = Hash.new(0.0) }
+
+    pivot_data[:matrix].each do |period, by_activity|
+      by_activity.each do |activity_name, hours|
+        activity_id = pivot_data[:activity_ids][activity_name]
+        group_name = activity_id && activity_id_to_group_name[activity_id]
+        bucket = group_name || UNGROUPED_NAME
+        matrix_data[period][bucket] += hours
+      end
+    end
+
+    activities = group_names_in_order.dup
+    ungrouped_total = pivot_data[:raw_periods].sum { |period| matrix_data[period][UNGROUPED_NAME] || 0 }
+    # Only shown when it actually has hours in it — an empty Ungrouped column (e.g. every activity
+    # has been assigned to a group) is just noise.
+    activities << UNGROUPED_NAME if ungrouped_total > 0
+
+    activity_totals = {}
+    activities.each do |group_name|
+      activity_totals[group_name] = pivot_data[:raw_periods].sum { |period| matrix_data[period][group_name] || 0 }
+    end
+
+    {
+      periods: pivot_data[:periods],
+      activities: activities,
+      matrix: matrix_data,
+      period_totals: pivot_data[:period_totals],
+      activity_totals: activity_totals,
+      grand_total: pivot_data[:grand_total],
+      raw_periods: pivot_data[:raw_periods]
+    }
+  end
+
+  # Builds every ivar the Activity "Grouped" tab + "Customize groups" popup need, from an
+  # already-computed activity pivot. Shared by TeamAnalyticsController and TimeAnalyticsController
+  # so the Grouped-tab wiring only needs to be written once.
+  def self.grouped_activity_view_data(activity_pivot_data)
+    all_activities = TimeEntryActivity.shared.sorted.to_a
+    groups = TaActivityGroup.ordered.to_a
+    assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
+    group_names_by_id = groups.index_by(&:id).transform_values(&:name)
+    activity_id_to_group_name = assignments.transform_values { |gid| group_names_by_id[gid] }
+
+    {
+      all_activities: all_activities,
+      groups: groups,
+      assignments: assignments,
+      pivot_data: regroup_activity_pivot(activity_pivot_data, activity_id_to_group_name, groups.map(&:name)),
+      colors: tableau10_colors(groups.size)
+    }
+  end
+
   private
 
   # Always assigns the next position on create — the DB column has a `default: 0`, which is

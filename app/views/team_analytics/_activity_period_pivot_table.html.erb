@@ -38,14 +38,16 @@
           <td class="px-6 py-4 text-center text-gray-900">
             <% hours = matrix[period_key][category] || 0 %>
             <% if show_bars %>
-              <% percentage = row_total > 0 ? (hours / row_total * 100) : 0 %>
-              <% color = colors[cat_index] || '#9CA3AF' %>
-              <div class="flex flex-col items-center gap-1">
-                <span><%= hours > 0 ? "#{format_hours(hours)} #{percentage.round}%" : '—' %></span>
-                <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= color %>;"></div>
+              <% if hours > 0 %>
+                <% percentage = row_total > 0 ? (hours / row_total * 100) : 0 %>
+                <% color = colors[cat_index] || '#9CA3AF' %>
+                <div class="flex items-center justify-center gap-2">
+                  <span class="font-bold text-gray-900"><%= format_hours(hours) %></span>
+                  <%= ta_share_badge(color, percentage) %>
                 </div>
-              </div>
+              <% else %>
+                <span class="text-gray-400">—</span>
+              <% end %>
             <% else %>
               <%= hours > 0 ? format_hours(hours) : '—' %>
             <% end %>

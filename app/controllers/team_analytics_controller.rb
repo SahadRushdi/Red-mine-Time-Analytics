@@ -146,13 +146,12 @@ class TeamAnalyticsController < ApplicationController
       # All defined activities (not just ones with logged hours in the current range), so the
       # "Customize groups" popup lets you place a brand-new activity into a group even before
       # anyone has logged time against it.
-      @all_activities = TimeEntryActivity.shared.sorted.to_a
-      @activity_groups = TaActivityGroup.ordered.to_a
-      @activity_group_assignments = TaActivityGroupAssignment.pluck(:activity_id, :group_id).to_h
-      group_names_by_id = @activity_groups.index_by(&:id).transform_values(&:name)
-      activity_id_to_group_name = @activity_group_assignments.transform_values { |gid| group_names_by_id[gid] }
-      @activity_group_pivot_data = regroup_activity_pivot(@activity_pivot_data, activity_id_to_group_name, @activity_groups.map(&:name))
-      @activity_group_colors = TaActivityGroup.tableau10_colors(@activity_groups.size)
+      group_view = TaActivityGroup.grouped_activity_view_data(@activity_pivot_data)
+      @all_activities = group_view[:all_activities]
+      @activity_groups = group_view[:groups]
+      @activity_group_assignments = group_view[:assignments]
+      @activity_group_pivot_data = group_view[:pivot_data]
+      @activity_group_colors = group_view[:colors]
 
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
@@ -984,45 +983,6 @@ class TeamAnalyticsController < ApplicationController
       grand_total: grand_total,
       raw_periods: periods, # Keep original keys for matrix lookup
       activity_ids: activity_ids
-    }
-  end
-
-  # Re-buckets an already-computed activity pivot (see generate_activity_pivot_table) by Activity
-  # Group instead of raw activity, without re-scanning the underlying time entries. Activities with
-  # no assignment fall back to the computed 'Ungrouped' bucket. Returns the same hash shape so it
-  # plugs directly into generate_activity_pivot_chart_data.
-  def regroup_activity_pivot(pivot_data, activity_id_to_group_name, group_names_in_order)
-    matrix_data = {}
-    pivot_data[:raw_periods].each { |period| matrix_data[period] = Hash.new(0.0) }
-
-    pivot_data[:matrix].each do |period, by_activity|
-      by_activity.each do |activity_name, hours|
-        activity_id = pivot_data[:activity_ids][activity_name]
-        group_name = activity_id && activity_id_to_group_name[activity_id]
-        bucket = group_name || TaActivityGroup::UNGROUPED_NAME
-        matrix_data[period][bucket] += hours
-      end
-    end
-
-    # Always shown, like named groups, so a team with no custom groups (or an activity that hasn't
-    # been assigned yet) still reads as "everything is Ungrouped" rather than the column vanishing
-    # whenever nobody has logged time to an unassigned activity yet.
-    activities = group_names_in_order.dup
-    activities << TaActivityGroup::UNGROUPED_NAME
-
-    activity_totals = {}
-    activities.each do |group_name|
-      activity_totals[group_name] = pivot_data[:raw_periods].sum { |period| matrix_data[period][group_name] || 0 }
-    end
-
-    {
-      periods: pivot_data[:periods],
-      activities: activities,
-      matrix: matrix_data,
-      period_totals: pivot_data[:period_totals],
-      activity_totals: activity_totals,
-      grand_total: pivot_data[:grand_total],
-      raw_periods: pivot_data[:raw_periods]
     }
   end
 

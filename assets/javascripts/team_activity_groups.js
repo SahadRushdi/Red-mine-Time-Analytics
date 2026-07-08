@@ -1,17 +1,17 @@
-// Pure computation + rendering helpers for the Team Dashboard's Activity "Grouped" tab and its
-// session-only "Customize groups" popup. Kept framework-free and DOM-scoped-by-argument (no
-// references to the page's other inline globals) so it loads safely in <head>, well before the
-// big inline <script> block (further down team_analytics/index.html.erb) that defines
-// TEAM_VIEW_CONFIG/showDetailedView/etc. That inline script wires these functions together with
-// the rest of the page's existing view-toggle/chart infrastructure.
+// Pure computation + rendering helpers, plus a reusable page-wiring factory, for the Activity
+// "Grouped" tab and its session-only "Customize groups" popup — shared by the Team Dashboard
+// (team_analytics/index.html.erb) and the Individual Dashboard (individual_dashboard.html.erb).
+// Kept framework-free and DOM-scoped-by-argument (no references to either page's other inline
+// globals) so it loads safely in <head>, well before each page's big inline <script> block that
+// wires it together with that page's existing view-toggle/chart infrastructure.
 (function (window) {
   'use strict';
 
   var UNGROUPED_KEY = '__ungrouped__';
 
-  // Re-buckets the raw per-activity matrix (from the embedded #team-activity-group-payload) into
-  // a per-group matrix, mirroring TeamAnalyticsController#regroup_activity_pivot exactly so the
-  // client can recompute an identical result after a session-only "Customize groups" edit.
+  // Re-buckets the raw per-activity matrix (from the embedded payload) into a per-group matrix,
+  // mirroring TaActivityGroup.regroup_activity_pivot exactly so the client can recompute an
+  // identical result after a session-only "Customize groups" edit.
   //
   // groupsInOrder: [{ id, name, color }] in the desired column order (server defaults, or the
   //                Customize-groups popup's working copy after Apply)
@@ -35,9 +35,15 @@
       return { id: String(g.id), name: g.name, color: g.color };
     });
 
-    // Always shown, like named groups (mirrors TeamAnalyticsController#regroup_activity_pivot) —
-    // otherwise the column vanishes whenever nobody has logged time to an unassigned activity yet.
-    activities.push({ id: UNGROUPED_KEY, name: payload.ungroupedName || 'Ungrouped', color: payload.ungroupedColor || '#9CA3AF' });
+    // Only shown when it actually has hours in it (mirrors TaActivityGroup.regroup_activity_pivot) —
+    // an empty Ungrouped column is just noise.
+    var ungroupedTotal = 0;
+    payload.rawPeriods.forEach(function (period) {
+      ungroupedTotal += (matrix[period] && matrix[period][UNGROUPED_KEY]) || 0;
+    });
+    if (ungroupedTotal > 0) {
+      activities.push({ id: UNGROUPED_KEY, name: payload.ungroupedName || 'Ungrouped', color: payload.ungroupedColor || '#9CA3AF' });
+    }
 
     var periodTotals = {};
     var groupTotals = {};
@@ -85,12 +91,11 @@
       var cells = pivot.activities.map(function (a) {
         var hours = (pivot.matrix[periodKey] && pivot.matrix[periodKey][a.id]) || 0;
         var percentage = rowTotal > 0 ? (hours / rowTotal * 100) : 0;
-        var text = hours > 0 ? (formatHours(hours) + ' ' + Math.round(percentage) + '%') : '—';
-        return '<td class="px-6 py-4 text-center text-gray-900">' +
-          '<div class="flex flex-col items-center gap-1"><span>' + text + '</span>' +
-          '<div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">' +
-          '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + a.color + ';"></div>' +
-          '</div></div></td>';
+        var cellHtml = hours > 0
+          ? '<div class="flex items-center justify-center gap-2"><span class="font-bold text-gray-900">' +
+            formatHours(hours) + '</span>' + window.taShareBadgeHtml(a.color, percentage) + '</div>'
+          : '<span class="text-gray-400">—</span>';
+        return '<td class="px-6 py-4 text-center text-gray-900">' + cellHtml + '</td>';
       }).join('');
 
       return '<tr class="bg-white border-b hover:bg-gray-50">' +
@@ -144,10 +149,195 @@
     return { labels: pageLabels, datasets: datasets };
   }
 
+  // Wires up the Activity "Grouped" tab + "Customize groups" popup for a page, on top of the pure
+  // functions above. Both the Team Dashboard and Individual Dashboard call this with their own
+  // element ids/callbacks (chart internals — canvas ids, Chart.js instance globals — differ per
+  // page, so chart (re)rendering itself is always delegated back to the caller).
+  //
+  // config:
+  //   payloadElementId, groupedViewElementId, detailedViewElementId, summaryViewElementId,
+  //   groupedButtonId, detailedButtonId, summaryButtonId, customizeWrapperId,
+  //   paginationBarId, sortButtonsId (optional), hiddenFieldId, localStorageKey,
+  //   modalElementId (default 'customize-groups-modal'), boardElementId (default 'customize-groups-board'),
+  //   resetButtonId (default 'customize-groups-reset-btn'), applyButtonId (default 'customize-groups-apply-btn'),
+  //   formatHours(hours), setButtonActive(buttonEl, isActive),
+  //   renderCharts(pivot, payload) — update donut/bar charts for the grouped totals,
+  //   showNoGroupsCharts() — swap chart area to the "no groups configured" empty state,
+  //   restoreDefaultCharts() — re-show the original (ungrouped) charts, called when leaving Grouped.
+  function createGroupedActivityController(config) {
+    var modalElementId = config.modalElementId || 'customize-groups-modal';
+    var boardElementId = config.boardElementId || 'customize-groups-board';
+    var resetButtonId = config.resetButtonId || 'customize-groups-reset-btn';
+    var applyButtonId = config.applyButtonId || 'customize-groups-apply-btn';
+
+    var payloadEl = document.getElementById(config.payloadElementId);
+    var payload = payloadEl ? JSON.parse(payloadEl.getAttribute('data-payload')) : null;
+    var customGroupState = null;
+    var modal = null;
+    var board = null;
+
+    function currentGroupsAndAssignments() {
+      if (customGroupState) { return customGroupState; }
+      return { groups: payload.groups, assignments: payload.assignments };
+    }
+
+    function computeCurrentPivot() {
+      var gs = currentGroupsAndAssignments();
+      return computeGroupedPivot(payload, gs.groups, gs.assignments);
+    }
+
+    function renderTableFromPivot(pivot) {
+      var container = document.getElementById(config.groupedViewElementId);
+      if (!container || !payload) return;
+      var periodLabel = payload.periodColumnLabel || '';
+      container.innerHTML = renderGroupedTableHtml(pivot, payload, periodLabel, config.formatHours);
+    }
+
+    function renderNoGroupsState() {
+      var tableContainer = document.getElementById(config.groupedViewElementId);
+      if (tableContainer) {
+        tableContainer.innerHTML = '<div class="px-6 py-8 text-center"><p class="text-sm text-gray-500">' +
+          escapeHtml(config.noGroupsMessage || 'No activity groups have been set up yet.') + '</p></div>';
+      }
+      if (config.showNoGroupsCharts) { config.showNoGroupsCharts(); }
+      var paginationBar = config.paginationBarId && document.getElementById(config.paginationBarId);
+      if (paginationBar) paginationBar.style.display = 'none';
+    }
+
+    function rebuildForGroups() {
+      if (!payload) return;
+      var gs = currentGroupsAndAssignments();
+
+      if (!gs.groups.length) {
+        renderNoGroupsState();
+        return;
+      }
+
+      var paginationBar = config.paginationBarId && document.getElementById(config.paginationBarId);
+      if (paginationBar) paginationBar.style.display = '';
+
+      var pivot = computeCurrentPivot();
+      renderTableFromPivot(pivot);
+      if (config.renderCharts) { config.renderCharts(pivot, payload); }
+    }
+
+    function hide() {
+      var gv = document.getElementById(config.groupedViewElementId);
+      if (gv) gv.style.display = 'none';
+      config.setButtonActive(document.getElementById(config.groupedButtonId), false);
+      var wrapper = document.getElementById(config.customizeWrapperId);
+      if (wrapper) wrapper.style.display = 'none';
+      if (config.onHide) { config.onHide(); }
+    }
+
+    function show(options) {
+      var grouped = document.getElementById(config.groupedViewElementId);
+      if (!grouped) return;
+      var detailed = document.getElementById(config.detailedViewElementId);
+      var summary = document.getElementById(config.summaryViewElementId);
+      if (detailed) detailed.style.display = 'none';
+      if (summary) summary.style.display = 'none';
+      grouped.style.display = 'block';
+
+      config.setButtonActive(document.getElementById(config.summaryButtonId), false);
+      config.setButtonActive(document.getElementById(config.detailedButtonId), false);
+      config.setButtonActive(document.getElementById(config.groupedButtonId), true);
+
+      if (config.sortButtonsId) {
+        var sortButtons = document.getElementById(config.sortButtonsId);
+        if (sortButtons) sortButtons.style.display = 'none';
+      }
+
+      var wrapper = document.getElementById(config.customizeWrapperId);
+      if (wrapper) wrapper.style.display = '';
+
+      var hiddenField = document.getElementById(config.hiddenFieldId);
+      if (hiddenField) hiddenField.value = 'grouped';
+      if (!(options && options.persist === false) && config.localStorageKey) {
+        localStorage.setItem(config.localStorageKey, 'grouped');
+      }
+
+      if (config.onShow) { config.onShow(); }
+
+      rebuildForGroups();
+    }
+
+    function restoreIfSaved() {
+      if (!config.localStorageKey) return false;
+      if (localStorage.getItem(config.localStorageKey) !== 'grouped') return false;
+      show({ persist: false });
+      return true;
+    }
+
+    function openCustomizeModal() {
+      if (!payload || !modal) return;
+
+      var gs = currentGroupsAndAssignments();
+      var activities = payload.allActivities || [];
+
+      var boardEl = document.getElementById(boardElementId);
+      boardEl.innerHTML = '';
+      board = TaActivityGroupBoard(boardEl, {
+        groups: gs.groups,
+        activities: activities,
+        assignments: gs.assignments,
+        ungroupedColor: payload.ungroupedColor,
+        persistImmediately: false
+      });
+
+      modal.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var modalEl = document.getElementById(modalElementId);
+      if (modalEl && typeof Modal !== 'undefined') {
+        modal = new Modal(modalEl, {
+          placement: 'center',
+          backdrop: 'dynamic',
+          backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
+          closable: true
+        });
+      }
+
+      var resetBtn = document.getElementById(resetButtonId);
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+          if (!board || !payload) return;
+          board.reset(payload.groups, payload.assignments);
+        });
+      }
+
+      var applyBtn = document.getElementById(applyButtonId);
+      if (applyBtn) {
+        applyBtn.addEventListener('click', function () {
+          if (!board) return;
+          customGroupState = board.getState();
+          rebuildForGroups();
+          if (modal) modal.hide();
+        });
+      }
+
+      var closeBtn = document.getElementById('customize-groups-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function () {
+          if (modal) modal.hide();
+        });
+      }
+    });
+
+    return {
+      show: show,
+      hide: hide,
+      restoreIfSaved: restoreIfSaved,
+      openCustomizeModal: openCustomizeModal
+    };
+  }
+
   window.TeamActivityGroups = {
     computeGroupedPivot: computeGroupedPivot,
     renderGroupedTableHtml: renderGroupedTableHtml,
     buildDonutDatasets: buildDonutDatasets,
-    buildStackedBarChartData: buildStackedBarChartData
+    buildStackedBarChartData: buildStackedBarChartData,
+    createGroupedActivityController: createGroupedActivityController
   };
 })(window);

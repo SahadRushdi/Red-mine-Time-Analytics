@@ -109,6 +109,16 @@ class TimeAnalyticsController < ApplicationController
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
+
+      # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
+      # Computed unconditionally (not gated on activity_view_state) since Summary/Detailed/Grouped
+      # are all rendered server-side and toggled client-side. See TaActivityGroup#grouped_activity_view_data.
+      group_view = TaActivityGroup.grouped_activity_view_data(@activity_pivot_data)
+      @all_activities = group_view[:all_activities]
+      @activity_groups = group_view[:groups]
+      @activity_group_assignments = group_view[:assignments]
+      @activity_group_pivot_data = group_view[:pivot_data]
+      @activity_group_colors = group_view[:colors]
     elsif @view_mode == 'project'
       # Generate Project × Time Period pivot table for ALL groupings (including daily)
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
@@ -1591,10 +1601,11 @@ class TimeAnalyticsController < ApplicationController
       {
         period_key: period_key,
         activity_name: activity_name,
+        activity_id: entry.activity_id,
         hours: entry.hours
       }
     end
-    
+
     # Get unique periods and activities
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
     activities = entries_with_details.map { |e| e[:activity_name] }.uniq
@@ -1627,7 +1638,10 @@ class TimeAnalyticsController < ApplicationController
     
     # Sort activities by total hours (highest to lowest) for summary view
     activities = activities.sort_by { |activity| -activity_totals[activity] }
-    
+
+    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
+    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       activities: activities,
@@ -1635,7 +1649,8 @@ class TimeAnalyticsController < ApplicationController
       period_totals: period_totals,
       activity_totals: activity_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      activity_ids: activity_ids
     }
   end
 

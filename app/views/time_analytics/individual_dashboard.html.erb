@@ -1,5 +1,9 @@
 <%= render 'includes' %>
+<%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'ta_activity_group_board.js', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'team_activity_groups.js', plugin: 'redmine_time_analytics' %>
 <% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
+<% no_activity_groups_message = "No activity groups have been set up yet. Group your activities to see rolled-up hours here." %>
 
 <%# Modern Dashboard Header with Tailwind %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -625,12 +629,19 @@ function toggleHolidays() {
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-                <button type="button" id="show-detailed-btn-activity" 
-                        onclick="showDetailedView('activity');" 
-                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-activity"
+                        onclick="showDetailedView('activity');"
+                        style="<%= (@activity_view_state == 'detailed') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state == 'detailed') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
+                </button>
+                <button type="button" id="show-grouped-btn-activity"
+                        onclick="showGroupedView();"
+                        style="<%= (@activity_view_state == 'grouped') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state == 'grouped') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">category</span>
+                  Grouped
                 </button>
               <% elsif @view_mode == 'project' %>
                 <button type="button" id="show-summary-btn-project" 
@@ -664,8 +675,17 @@ function toggleHolidays() {
                 </button>
               <% end %>
             </div>
+            <% if @view_mode == 'activity' %>
+              <div id="activity-customize-groups-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+                <button type="button" id="customize-groups-btn" onclick="openCustomizeGroupsModal();"
+                        class="inline-flex items-center px-3 py-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">tune</span>
+                  <%= l(:label_customize_groups) %>
+                </button>
+              </div>
+            <% end %>
           </div>
-          
+
           <!-- Right: Sort Buttons and Per Page -->
           <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <% summary_view_id = @view_mode == 'activity' ? 'daily-summary-view' : "#{@view_mode}-summary-view" %>
@@ -717,43 +737,42 @@ function toggleHolidays() {
     <!-- Flowbite Table with Modern Design -->
     <div class="ta-analysis-table-scroll overflow-x-auto">
       <% if @view_mode == 'activity' %>
-      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Activity pivot table for cross-tabulation (Activity × Time Period matrix) - Dual View System %>
-        
+
         <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
-        <div id="daily-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
-                <% @activities.each do |activity| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @activities.each do |activity| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+        <div id="daily-detailed-view" class="pivot-table-wrapper" style="<%= @activity_view_state == 'detailed' ? '' : 'display: none;' %>">
+          <%= render 'team_analytics/activity_period_pivot_table',
+                     pivot_activities: @activities,
+                     matrix: @matrix_data,
+                     period_totals: @period_totals,
+                     paginated_periods: @paginated_periods,
+                     raw_periods: @activity_pivot_data[:raw_periods],
+                     offset: @offset,
+                     colors: [],
+                     show_bars: false %>
         </div>
-        
+
+        <%# Grouped View: Pivot Table (Time Period × Activity Group matrix) %>
+        <div id="daily-grouped-view" class="pivot-table-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+          <% if @activity_groups.present? %>
+            <%= render 'team_analytics/activity_period_pivot_table',
+                       pivot_activities: @activity_group_pivot_data[:activities],
+                       matrix: @activity_group_pivot_data[:matrix],
+                       period_totals: @activity_group_pivot_data[:period_totals],
+                       paginated_periods: @paginated_periods,
+                       raw_periods: @activity_pivot_data[:raw_periods],
+                       offset: @offset,
+                       colors: @activity_group_colors,
+                       show_bars: true %>
+          <% else %>
+            <div class="px-6 py-8 text-center">
+              <p class="text-sm text-gray-500"><%= no_activity_groups_message %></p>
+            </div>
+          <% end %>
+        </div>
+
         <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
-        <div id="daily-summary-view" style="display: none;">
+        <div id="daily-summary-view" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>">
           <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
           <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
           <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
@@ -762,52 +781,25 @@ function toggleHolidays() {
             <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
-      <% elsif @grouping == 'daily' %>
-        <%# Daily Activity Analysis - Dual View System %>
-        
-        <%# Detailed View: Daily Pivot Table (Date × Activity matrix) - Default %>
-        <div id="daily-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
-                <% @activities.each do |activity| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @activities.each do |activity| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-        
-        <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
-        <div id="daily-summary-view" style="display: none;">
-          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
-          <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
-          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
-          <div class="pagination-wrapper">
-            <span id="<%= summary_view_id %>-pagination-links"></span>
-            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
-          </div>
-        </div>
-      <% end %>
+
+        <%# Session-only recompute payload for the Grouped tab and "Customize groups" popup — see team_activity_groups.js %>
+        <% activity_group_payload = {
+             rawPeriods: @activity_pivot_data[:raw_periods].reverse, # Chronological — Stacked chart always plots the full range left-to-right
+             periodDisplay: @activity_pivot_data[:periods].reverse,
+             displayRawPeriods: @activity_pivot_data[:raw_periods], # Most-recent-first + paginated — used by the Grouped table
+             displayPeriodDisplay: @time_periods,
+             matrix: @activity_pivot_data[:matrix],
+             activityIds: @activity_pivot_data[:activity_ids],
+             allActivities: @all_activities.map { |a| { id: a.id, name: a.name } },
+             assignments: @activity_group_assignments.each_with_object({}) { |(aid, gid), h| h[aid.to_s] = gid.to_s },
+             groups: @activity_groups.each_with_index.map { |g, i| { id: g.id.to_s, name: g.name, color: @activity_group_colors[i], position: g.position } },
+             ungroupedColor: TaActivityGroup::UNGROUPED_COLOR,
+             ungroupedName: TaActivityGroup::UNGROUPED_NAME,
+             periodColumnLabel: (@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}")),
+             offset: @offset,
+             limit: @limit
+           }.to_json %>
+        <div id="activity-group-payload" data-payload='<%= activity_group_payload %>' style="display:none;"></div>
     <% elsif @view_mode == 'project' %>
       <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Project pivot table for cross-tabulation (Project × Time Period matrix) - Dual View System %>
@@ -984,7 +976,9 @@ function toggleHolidays() {
            when 'project' then @project_view_state
            when 'issue' then @issue_view_state
          end %>
-      <div id="detailed-pagination-bar" class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="<%= current_view_state == 'summary' ? 'display: none;' : '' %>">
+      <% hide_detailed_pagination_bar = current_view_state == 'summary' ||
+                                        (current_view_state == 'grouped' && @activity_groups.blank?) %>
+      <div id="detailed-pagination-bar" class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="<%= hide_detailed_pagination_bar ? 'display: none;' : '' %>">
         <div class="text-sm text-gray-700" id="pagination-info-text"
              data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
@@ -1481,14 +1475,14 @@ function updatePaginationInfo(viewState) {
 }
 
 // Simplified view toggle functions - toggle display AND update button styling
-function showDetailedView(viewType) {
+function showDetailedView(viewType, options) {
   // Map viewType to actual div IDs (activity uses 'daily' prefix)
   var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
   var detailedView = document.getElementById(viewPrefix + '-detailed-view');
   var summaryView = document.getElementById(viewPrefix + '-summary-view');
-  
+
   if (!detailedView || !summaryView) return;
-  
+
   // Show detailed view, hide summary view
   detailedView.style.display = 'block';
   summaryView.style.display = 'none';
@@ -1500,38 +1494,42 @@ function showDetailedView(viewType) {
   // Update button styling - Detail button blue, Summary button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
-  
+
   if (detailBtn && summaryBtn) {
     // Make detail button blue (selected)
     detailBtn.style.backgroundColor = '#3b82f6';
     detailBtn.style.color = 'white';
     detailBtn.className = detailBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
-    
+
     // Make summary button white (unselected)
     summaryBtn.style.backgroundColor = '';
     summaryBtn.style.color = '';
     summaryBtn.className = summaryBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
-  
+
+  if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
+
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
   if (hiddenField) hiddenField.value = 'detailed';
-  
+
   // Update pagination info
   updatePaginationInfo('detailed');
-  
+
   // Save preference
-  localStorage.setItem(viewType + '_view_mode', 'detailed');
+  if (!(options && options.persist === false)) {
+    localStorage.setItem(viewType + '_view_mode', 'detailed');
+  }
 }
 
-function showSummaryView(viewType) {
+function showSummaryView(viewType, options) {
   // Map viewType to actual div IDs (activity uses 'daily' prefix)
   var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
   var detailedView = document.getElementById(viewPrefix + '-detailed-view');
   var summaryView = document.getElementById(viewPrefix + '-summary-view');
-  
+
   if (!detailedView || !summaryView) return;
-  
+
   // Show summary view, hide detailed view
   detailedView.style.display = 'none';
   summaryView.style.display = 'block';
@@ -1543,29 +1541,33 @@ function showSummaryView(viewType) {
   // Update button styling - Summary button blue, Detail button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
-  
+
   if (detailBtn && summaryBtn) {
     // Make summary button blue (selected)
     summaryBtn.style.backgroundColor = '#3b82f6';
     summaryBtn.style.color = 'white';
     summaryBtn.className = summaryBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
-    
+
     // Make detail button white (unselected)
     detailBtn.style.backgroundColor = '';
     detailBtn.style.color = '';
     detailBtn.className = detailBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
-  
+
+  if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
+
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
   if (hiddenField) hiddenField.value = 'summary';
-  
+
   // Update pagination info
   updatePaginationInfo('summary');
-  
+
   // Save preference
-  localStorage.setItem(viewType + '_view_mode', 'summary');
-  
+  if (!(options && options.persist === false)) {
+    localStorage.setItem(viewType + '_view_mode', 'summary');
+  }
+
   // Auto-sort summary table by hours (descending)
   var tableId = viewType === 'activity' ? 'daily-summary-view' : viewType + '-summary-view';
   initSummarySorting(tableId);
@@ -1619,23 +1621,27 @@ function regenerateChartForIssueViewState(viewState) {
   window.location.href = newUrl;
 }
 
-// Restore activity view preference
+// Restore activity view preference (supports the extra "Grouped" state)
 function restoreActivityViewState() {
-  var savedMode = localStorage.getItem('activity_view_mode');
   var detailedView = document.getElementById('daily-detailed-view');
   var summaryView = document.getElementById('daily-summary-view');
-  
+
   if (!detailedView || !summaryView) {
     return;
   }
-  
+
+  var hiddenField = document.getElementById('activity_view_state_field');
+  var serverMode = hiddenField ? hiddenField.value : null;
+  var savedMode = localStorage.getItem('activity_view_mode');
   // Default to detailed view if no saved preference
-  var currentMode = savedMode || 'detailed';
-  
-  if (currentMode === 'summary') {
-    showSummaryView('activity');
+  var currentMode = savedMode || serverMode || 'detailed';
+
+  if (currentMode === 'grouped') {
+    showGroupedView({ persist: false });
+  } else if (currentMode === 'summary') {
+    showSummaryView('activity', { persist: false });
   } else {
-    showDetailedView('activity');
+    showDetailedView('activity', { persist: false });
   }
 }
 
@@ -1714,24 +1720,13 @@ function syncChartTypeDropdown() {
 // Donut Chart for Activity/Project/Issue Distribution
 var donutChartInstance = null;
 
+var TA_DONUT_TABLEAU10 = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+
 function initDonutChart() {
-  var donutCanvas = document.getElementById('donut-chart');
-  if (!donutCanvas) {
-    return;
-  }
-  
-  // Destroy existing chart if any
-  if (donutChartInstance) {
-    donutChartInstance.destroy();
-    donutChartInstance = null;
-  }
-  
   // Get data based on view mode and view state
-  var viewMode = '<%= @view_mode %>';
-  var chartData = null;
   var chartLabels = [];
   var chartValues = [];
-  
+
   // Collect data
   <% if @view_mode == 'activity' && @activity_totals %>
     <% sorted_activities = @activity_totals.sort_by { |_, hours| -hours } %>
@@ -1754,29 +1749,46 @@ function initDonutChart() {
       chartValues.push(<%= hours.to_f %>);
     <% end %>
   <% end %>
-  
-  if (chartLabels.length === 0 || chartValues.length === 0) {
+
+  var chartColors = chartLabels.map(function(_, index) { return TA_DONUT_TABLEAU10[index % TA_DONUT_TABLEAU10.length]; });
+  renderDonutFromArrays(chartLabels, chartValues, chartColors);
+}
+
+// Builds/replaces the donut chart + its legend from plain labels/values/colors arrays. Shared by
+// initDonutChart (per-activity/project/issue, from server-rendered data) and the Activity tab's
+// "Grouped" view (from the client-side regrouped pivot, see team_activity_groups.js).
+function renderDonutFromArrays(labels, values, colors) {
+  var donutCanvas = document.getElementById('donut-chart');
+  if (!donutCanvas) return;
+
+  if (donutChartInstance) {
+    donutChartInstance.destroy();
+    donutChartInstance = null;
+  }
+
+  if (labels.length === 0 || values.length === 0) {
     renderEmptyState(donutCanvas.closest('.ta-analysis-donut'), emptyChartMessage);
     return;
   }
-  
+
   // Calculate total for percentages and center display
-  var total = chartValues.reduce(function(sum, val) { return sum + val; }, 0);
-  
+  var total = values.reduce(function(sum, val) { return sum + val; }, 0);
+
   // Update center text with total hours
   var centerText = document.getElementById('total-hours-display');
   if (centerText) {
     centerText.textContent = formatHours(total);
   }
-  
+
   // Create donut chart
   var ctx = donutCanvas.getContext('2d');
   donutChartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: chartLabels,
+      labels: labels,
       datasets: [{
-        data: chartValues,
+        data: values,
+        backgroundColor: colors,
         borderColor: '#ffffff',
         borderWidth: 2
       }]
@@ -1804,30 +1816,11 @@ function initDonutChart() {
             return label + ': ' + formattedHours + ' (' + percentage + '%)';
           }
         }
-      },
-      plugins: {
-        colorschemes: {
-          scheme: 'tableau.Tableau10'
-        }
       }
     }
   });
-  
-  // Wait for chart to fully render, then get colors and generate legend
-  setTimeout(function() {
-    var colors = donutChartInstance.data.datasets[0].backgroundColor;
-    // If colors array is not defined or empty, use Tableau10 colors manually
-    if (!colors || colors.length === 0) {
-      var tableau10 = [
-        '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
-        '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
-      ];
-      colors = chartLabels.map(function(_, i) { return tableau10[i % tableau10.length]; });
-      donutChartInstance.data.datasets[0].backgroundColor = colors;
-      donutChartInstance.update();
-    }
-    generateDonutLegend(chartLabels, chartValues, colors, total);
-  }, 100);
+
+  generateDonutLegend(labels, values, colors, total);
 }
 
 function generateDonutLegend(labels, values, colors, total) {
@@ -1857,6 +1850,72 @@ function generateDonutLegend(labels, values, colors, total) {
     legendContainer.appendChild(legendItem);
   }
 }
+
+<% if @view_mode == 'activity' %>
+// ── Activity "Grouped" tab + session-only "Customize groups" popup ──────────────────────────
+// Shared wiring with the Team Dashboard via TeamActivityGroups.createGroupedActivityController
+// (team_activity_groups.js); only the chart-rebuild callback below is page-specific.
+var noActivityGroupsMessage = '<%= j no_activity_groups_message %>';
+
+function setActivityButtonActive(btn, active) {
+  if (!btn) return;
+  if (active) {
+    btn.style.backgroundColor = '#3b82f6';
+    btn.style.color = 'white';
+    btn.className = btn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+  } else {
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
+    btn.className = btn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
+  }
+}
+
+var activityGroupedController = window.TeamActivityGroups.createGroupedActivityController({
+  payloadElementId: 'activity-group-payload',
+  groupedViewElementId: 'daily-grouped-view',
+  detailedViewElementId: 'daily-detailed-view',
+  summaryViewElementId: 'daily-summary-view',
+  groupedButtonId: 'show-grouped-btn-activity',
+  detailedButtonId: 'show-detailed-btn-activity',
+  summaryButtonId: 'show-summary-btn-activity',
+  customizeWrapperId: 'activity-customize-groups-wrapper',
+  paginationBarId: 'detailed-pagination-bar',
+  sortButtonsId: 'summary-sort-buttons',
+  hiddenFieldId: 'activity_view_state_field',
+  localStorageKey: 'activity_view_mode',
+  noGroupsMessage: noActivityGroupsMessage,
+  formatHours: formatHours,
+  setButtonActive: setActivityButtonActive,
+  renderCharts: function (pivot, payload) {
+    var donut = window.TeamActivityGroups.buildDonutDatasets(pivot);
+    renderDonutFromArrays(donut.labels, donut.values, donut.colors);
+
+    if (timeAnalyticsChart && timeAnalyticsChart.config && timeAnalyticsChart.config.type === 'bar') {
+      var chartElement = document.getElementById('time-chart');
+      var barData = window.TeamActivityGroups.buildStackedBarChartData(pivot, payload);
+      timeAnalyticsChart.destroy();
+      timeAnalyticsChart = new Chart(chartElement, {
+        type: 'bar',
+        data: barData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
+        }
+      });
+    }
+  },
+  // Shown instead of the table/donut when no custom Activity Groups have been defined yet.
+  showNoGroupsCharts: function () {
+    if (donutChartInstance) { donutChartInstance.destroy(); donutChartInstance = null; }
+    renderEmptyState(document.getElementById('donut-chart').closest('.ta-analysis-donut'), noActivityGroupsMessage);
+  }
+});
+
+function hideGroupedView() { activityGroupedController.hide(); }
+function showGroupedView(options) { activityGroupedController.show(options); }
+function openCustomizeGroupsModal() { activityGroupedController.openCustomizeModal(); }
+<% end %>
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
@@ -2132,3 +2191,7 @@ function toggleViewMode(event, viewMode) {
   window.location.href = newUrl;
 }
 </script>
+
+<% if @view_mode == 'activity' %>
+  <%= render 'team_analytics/customize_groups_modal' %>
+<% end %>
