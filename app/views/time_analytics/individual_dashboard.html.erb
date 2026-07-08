@@ -8,8 +8,9 @@
 <%# Modern Dashboard Header with Tailwind %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900">
+    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
       <%= individual_dashboard_title %>
+      <%= ta_locked_badge if @user.present? && @user != User.current && @user.locked? %>
     </h1>
     <p class="text-sm text-gray-500">
       <%= date_range_label %>
