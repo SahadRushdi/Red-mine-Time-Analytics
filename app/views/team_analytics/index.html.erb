@@ -1020,34 +1020,17 @@
 
       <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
       <div id="team-project-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
-          <thead class="text-sm text-gray-700 bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
-              <% @projects.each do |project| %>
-                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-              <% end %>
-              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @paginated_periods.each_with_index do |period_display, index| %>
-              <% period_key = @display_raw_periods[(@offset + index)] %>
-              <tr class="bg-white border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                <% @projects.each do |project| %>
-                  <td class="px-6 py-4 text-center text-gray-900">
-                    <% hours = @matrix_data[period_key][project] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '—' %>
-                  </td>
-                <% end %>
-                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+        <%= render 'team_analytics/activity_period_pivot_table',
+                   pivot_activities: @projects,
+                   matrix: @matrix_data,
+                   period_totals: @period_totals,
+                   paginated_periods: @paginated_periods,
+                   raw_periods: @display_raw_periods,
+                   offset: @offset,
+                   colors: [],
+                   show_bars: false %>
       </div>
-      
+
       <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
         <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
@@ -1140,30 +1123,39 @@
 
       <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
       <div id="team-member-detailed-view" style="display: <%= (@member_view_state == 'summary' || @member_view_state == 'monthly_avg') ? 'none' : 'block' %>;" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
+        <table class="w-full text-sm text-left text-gray-500 ta-sortable-table">
           <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">
+                <%= ta_sortable_th(@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}"), 'period') %>
+              </th>
               <% @members.each do |member| %>
                 <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                  <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                  <div class="inline-flex items-center gap-1">
+                    <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                    <%= ta_locked_badge if member[:locked] %>
+                    <%= ta_sort_button("member_#{member[:id]}") %>
+                  </div>
                 </th>
               <% end %>
-              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">
+                <%= ta_sortable_th(l(:label_hours), 'total') %>
+              </th>
             </tr>
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
               <% period_key = @display_raw_periods[(@offset + index)] %>
+              <% row_total = @period_totals[period_key] || 0 %>
               <tr class="bg-white border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="<%= period_key %>"><%= period_display %></td>
                 <% @members.each do |member| %>
-                  <td class="px-6 py-4 text-center text-gray-900">
-                    <% hours = @matrix_data[period_key][member[:name]] || 0 %>
+                  <% hours = @matrix_data[period_key][member[:name]] || 0 %>
+                  <td class="px-6 py-4 text-center text-gray-900" data-sort-value="<%= hours %>">
                     <%= hours > 0 ? format_hours(hours) : '—' %>
                   </td>
                 <% end %>
-                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="<%= row_total %>"><%= format_hours(row_total) %></td>
               </tr>
             <% end %>
           </tbody>
@@ -1181,7 +1173,8 @@
                  hours: hours.to_f,
                  memberId: member_id,
                  url: member ? my_time_path(@member_dashboard_params.merge(user_id: member_id)) : nil,
-                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil
+                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil,
+                 locked: member ? member[:locked] : false
                }
              end
            }.to_json %>
@@ -1806,6 +1799,7 @@
     var color = colors[index % colors.length];
     var name = taEscapeHtml(item.name);
     var nameHtml = item.url ? ('<a href="' + item.url + '" target="_blank" class="text-gray-900 hover:text-gray-900 hover:no-underline">' + name + '</a>') : name;
+    if (item.locked) { nameHtml += ' ' + window.taLockedBadgeHtml(); }
     var activeDaysHtml = item.activeDaysHtml || '<span class="text-sm font-medium text-gray-400">—</span>';
     var toggleHtml = item.memberId ? (
       '<label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">' +
@@ -2073,91 +2067,61 @@
   }
 
   // ── Activity "Grouped" tab + session-only "Customize groups" popup ──────────────────────────
-  // The raw per-activity payload is parsed once; customGroupState (null = server defaults) holds
-  // the in-memory-only working copy after "Apply" in the Customize-groups modal. Nothing here is
-  // ever persisted — a reload always reverts to the admin's real defaults.
-  // Parsed eagerly (not inside a DOMContentLoaded listener) because restoreActivityViewState()
+  // Wiring is shared with the Individual Dashboard via TeamActivityGroups.createGroupedActivityController
+  // (team_activity_groups.js); only the chart-rebuild callbacks below are page-specific (chart
+  // instance globals/canvas ids differ between pages).
+  // Created eagerly (not inside a DOMContentLoaded listener) because restoreActivityViewState()
   // runs from the page's main DOMContentLoaded handler above, which is registered earlier in this
-  // script and therefore fires first — the payload must already be available by then. Safe to
-  // read synchronously here since this <script> executes after the payload <div> above it in the
-  // document has already been parsed into the DOM.
-  var activityGroupPayloadEl = document.getElementById('team-activity-group-payload');
-  var activityGroupPayload = activityGroupPayloadEl ? JSON.parse(activityGroupPayloadEl.getAttribute('data-payload')) : null;
-  var customGroupState = null;
-  var customizeGroupsModal = null;
-  var customizeGroupsBoard = null;
+  // script and therefore fires first — the controller must already exist by then. Safe to create
+  // synchronously here since this <script> executes after the payload <div> above it in the
+  // document has already been parsed into the DOM. (The controller's own modal/button wiring is
+  // still deferred to its internal DOMContentLoaded listener, same as before.)
+  var teamGroupedActivity = window.TeamActivityGroups.createGroupedActivityController({
+    payloadElementId: 'team-activity-group-payload',
+    groupedViewElementId: 'team-activity-grouped-view',
+    detailedViewElementId: 'team-activity-detailed-view',
+    summaryViewElementId: 'team-activity-summary-view',
+    groupedButtonId: 'show-grouped-btn-activity',
+    detailedButtonId: 'show-detailed-btn-activity',
+    summaryButtonId: 'show-summary-btn-activity',
+    customizeWrapperId: 'team-activity-customize-groups-wrapper',
+    paginationBarId: 'team-activity-detailed-pagination-bar',
+    sortButtonsId: 'summary-sort-buttons',
+    hiddenFieldId: 'activity_view_state_field',
+    localStorageKey: 'team_activity_view_mode',
+    noGroupsMessage: noActivityGroupsMessage,
+    formatHours: taFormatHours,
+    setButtonActive: setTeamMemberButtonStyle,
+    renderCharts: function (pivot, payload) {
+      var donut = window.TeamActivityGroups.buildDonutDatasets(pivot);
+      renderTeamDonutFromArrays(donut.labels, donut.values, donut.colors);
 
-  function currentGroupsAndAssignments() {
-    if (customGroupState) { return customGroupState; }
-    return { groups: activityGroupPayload.groups, assignments: activityGroupPayload.assignments };
-  }
-
-  function computeCurrentGroupedPivot() {
-    var gs = currentGroupsAndAssignments();
-    return window.TeamActivityGroups.computeGroupedPivot(activityGroupPayload, gs.groups, gs.assignments);
-  }
-
-  function renderGroupedTableFromPivot(pivot) {
-    var container = document.getElementById('team-activity-grouped-view');
-    if (!container || !activityGroupPayload) return;
-    var periodLabel = activityGroupPayload.periodColumnLabel || '';
-    container.innerHTML = window.TeamActivityGroups.renderGroupedTableHtml(pivot, activityGroupPayload, periodLabel, taFormatHours);
-  }
-
-  // Shown instead of the table/donut when no custom Activity Groups have been defined yet — at
-  // that point every activity is Ungrouped, so a table/chart with a single 100% "Ungrouped" slice
-  // isn't a useful rollup to show.
-  function renderGroupedNoGroupsState() {
-    var tableContainer = document.getElementById('team-activity-grouped-view');
-    if (tableContainer) {
-      tableContainer.innerHTML = '<div class="px-6 py-8 text-center"><p class="text-sm text-gray-500">' + noActivityGroupsMessage + '</p></div>';
+      if (teamChart && teamChart.config && teamChart.config.type === 'bar') {
+        var chartElement = document.getElementById('time-chart');
+        var barData = window.TeamActivityGroups.buildStackedBarChartData(pivot, payload);
+        teamChart.destroy();
+        teamChart = new Chart(chartElement, {
+          type: 'bar',
+          data: barData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
+          }
+        });
+      }
+    },
+    // Shown instead of the table/donut when no custom Activity Groups have been defined yet — at
+    // that point every activity is Ungrouped, so a table/chart with a single 100% "Ungrouped"
+    // slice isn't a useful rollup to show.
+    showNoGroupsCharts: function () {
+      if (teamDonutChart) { teamDonutChart.destroy(); teamDonutChart = null; }
+      var chartWrapper = document.getElementById('team-donut-chart-wrapper');
+      var noGroupsMsg = document.getElementById('team-donut-no-groups-message');
+      if (chartWrapper) chartWrapper.style.display = 'none';
+      if (noGroupsMsg) noGroupsMsg.style.display = '';
     }
-
-    if (teamDonutChart) { teamDonutChart.destroy(); teamDonutChart = null; }
-    var chartWrapper = document.getElementById('team-donut-chart-wrapper');
-    var noGroupsMsg = document.getElementById('team-donut-no-groups-message');
-    if (chartWrapper) chartWrapper.style.display = 'none';
-    if (noGroupsMsg) noGroupsMsg.style.display = '';
-
-    // Nothing to paginate — there's no table.
-    var paginationBar = document.getElementById('team-activity-detailed-pagination-bar');
-    if (paginationBar) paginationBar.style.display = 'none';
-  }
-
-  function rebuildTeamChartsForGroups() {
-    if (!activityGroupPayload) return;
-    var gs = currentGroupsAndAssignments();
-
-    if (!gs.groups.length) {
-      renderGroupedNoGroupsState();
-      return;
-    }
-
-    // Restore the pagination bar in case the previous render was the no-groups empty state.
-    var paginationBar = document.getElementById('team-activity-detailed-pagination-bar');
-    if (paginationBar) paginationBar.style.display = '';
-
-    var pivot = computeCurrentGroupedPivot();
-    renderGroupedTableFromPivot(pivot);
-
-    var donut = window.TeamActivityGroups.buildDonutDatasets(pivot);
-    renderTeamDonutFromArrays(donut.labels, donut.values, donut.colors);
-
-    if (teamChart && teamChart.config && teamChart.config.type === 'bar') {
-      var chartElement = document.getElementById('time-chart');
-      var barData = window.TeamActivityGroups.buildStackedBarChartData(pivot, activityGroupPayload);
-      teamChart.destroy();
-      teamChart = new Chart(chartElement, {
-        type: 'bar',
-        data: barData,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
-        }
-      });
-    }
-  }
+  });
 
   // Re-shows the original per-activity chart data (untouched by any grouping), used when leaving
   // the Grouped tab back to Summary/Detailed.
@@ -2166,84 +2130,9 @@
     initTeamDonutChart();
   }
 
-  function hideGroupedView() {
-    var gv = document.getElementById('team-activity-grouped-view');
-    if (gv) gv.style.display = 'none';
-    setTeamMemberButtonStyle(document.getElementById('show-grouped-btn-activity'), false);
-    var wrapper = document.getElementById('team-activity-customize-groups-wrapper');
-    if (wrapper) wrapper.style.display = 'none';
-  }
-
-  function showGroupedView(options) {
-    var grouped = document.getElementById('team-activity-grouped-view');
-    if (!grouped) return;
-    var detailed = document.getElementById('team-activity-detailed-view');
-    var summary = document.getElementById('team-activity-summary-view');
-    if (detailed) detailed.style.display = 'none';
-    if (summary) summary.style.display = 'none';
-    grouped.style.display = 'block';
-
-    setTeamMemberButtonStyle(document.getElementById('show-summary-btn-activity'), false);
-    setTeamMemberButtonStyle(document.getElementById('show-detailed-btn-activity'), false);
-    setTeamMemberButtonStyle(document.getElementById('show-grouped-btn-activity'), true);
-
-    var sortButtons = document.getElementById('summary-sort-buttons');
-    if (sortButtons) sortButtons.style.display = 'none';
-
-    updateTeamPaginationInfo('activity', 'grouped');
-
-    var wrapper = document.getElementById('team-activity-customize-groups-wrapper');
-    if (wrapper) wrapper.style.display = '';
-
-    var hiddenField = document.getElementById('activity_view_state_field');
-    if (hiddenField) hiddenField.value = 'grouped';
-    if (!(options && options.persist === false)) {
-      localStorage.setItem('team_activity_view_mode', 'grouped');
-    }
-
-    rebuildTeamChartsForGroups();
-  }
-
-  function openCustomizeGroupsModal() {
-    if (!activityGroupPayload || !customizeGroupsModal) return;
-
-    var gs = currentGroupsAndAssignments();
-    // All defined activities, not just ones with logged hours in the current range — otherwise a
-    // brand-new activity can't be dragged into a group until someone has logged time to it.
-    var activities = activityGroupPayload.allActivities || [];
-
-    var boardEl = document.getElementById('customize-groups-board');
-    boardEl.innerHTML = '';
-    customizeGroupsBoard = TaActivityGroupBoard(boardEl, {
-      groups: gs.groups,
-      activities: activities,
-      assignments: gs.assignments,
-      ungroupedColor: activityGroupPayload.ungroupedColor,
-      persistImmediately: false
-    });
-
-    customizeGroupsModal.show();
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    var resetBtn = document.getElementById('customize-groups-reset-btn');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', function () {
-        if (!customizeGroupsBoard || !activityGroupPayload) return;
-        customizeGroupsBoard.reset(activityGroupPayload.groups, activityGroupPayload.assignments);
-      });
-    }
-
-    var applyBtn = document.getElementById('customize-groups-apply-btn');
-    if (applyBtn) {
-      applyBtn.addEventListener('click', function () {
-        if (!customizeGroupsBoard) return;
-        customGroupState = customizeGroupsBoard.getState();
-        rebuildTeamChartsForGroups();
-        if (customizeGroupsModal) customizeGroupsModal.hide();
-      });
-    }
-  });
+  function hideGroupedView() { teamGroupedActivity.hide(); }
+  function showGroupedView(options) { teamGroupedActivity.show(options); }
+  function openCustomizeGroupsModal() { teamGroupedActivity.openCustomizeModal(); }
 
   function csvEscape(value) {
     return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
@@ -2333,8 +2222,9 @@
               </td>
             </tr>`;
           }
+          const lockedBadge = m.locked ? ' ' + window.taLockedBadgeHtml() : '';
           return `<tr class="bg-white border-b hover:bg-gray-50 transition-colors ${extraClass || ''}"${hiddenAttr}>
-            <td style="${indentStyle}" class="font-medium text-gray-900">${m.name}</td>
+            <td style="${indentStyle}" class="font-medium text-gray-900">${m.name}${lockedBadge}</td>
           </tr>`;
         }
 
@@ -2660,6 +2550,7 @@
         '<span class="flex items-center gap-2 min-w-0">' +
           breakdownAvatarHtml(member.name) +
           '<span class="font-semibold text-gray-900 truncate" title="' + bdEscape(member.name) + '">' + bdEscape(member.name) + '</span>' +
+          (member.locked ? window.taLockedBadgeHtml() : '') +
         '</span>' +
         '<button type="button" class="member-bd-expand ta-bd-icon-btn inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" data-member-index="' + index + '" title="' + bdEscape(BREAKDOWN_EXPAND_TITLE) + '">' +
           '<span class="material-symbols-outlined" style="font-size:18px;">open_in_full</span>' +
@@ -2796,6 +2687,7 @@
     var dot = document.getElementById('member-breakdown-modal-dot');
     if (dot) dot.textContent = initialsFor(member.name);
     document.getElementById('member-breakdown-modal-title').textContent = member.name;
+    document.getElementById('member-breakdown-modal-locked').innerHTML = member.locked ? window.taLockedBadgeHtml() : '';
     document.getElementById('member-breakdown-modal-grouping').textContent = '· ' + (BREAKDOWN_GROUPING_LABEL[currentBreakdownGrouping] || '');
     document.getElementById('member-breakdown-modal-total').textContent = formatTeamHours(member.total_hours);
     document.getElementById('member-breakdown-modal-count').textContent = BREAKDOWN_TOTAL_LABEL;
@@ -2890,22 +2782,6 @@
     }
 
     initMemberBreakdown();
-
-    var customizeGroupsModalEl = document.getElementById('customize-groups-modal');
-    if (customizeGroupsModalEl && typeof Modal !== 'undefined') {
-      customizeGroupsModal = new Modal(customizeGroupsModalEl, {
-        placement: 'center',
-        backdrop: 'dynamic',
-        backdropClasses: 'bg-gray-900/50 fixed inset-0 z-40',
-        closable: true
-      });
-    }
-    var customizeGroupsCloseBtn = document.getElementById('customize-groups-close-btn');
-    if (customizeGroupsCloseBtn) {
-      customizeGroupsCloseBtn.addEventListener('click', function () {
-        if (customizeGroupsModal) customizeGroupsModal.hide();
-      });
-    }
   });
 
 </script>
@@ -2957,6 +2833,7 @@
         <div class="flex items-center gap-2 min-w-0">
           <span id="member-breakdown-modal-dot" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-600 text-sm font-semibold shrink-0"></span>
           <h3 id="member-breakdown-modal-title" class="text-xl font-bold text-gray-900 truncate"></h3>
+          <span id="member-breakdown-modal-locked" class="shrink-0"></span>
           <span id="member-breakdown-modal-grouping" class="text-sm font-medium text-gray-500 whitespace-nowrap"></span>
         </div>
         <button type="button" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="member-breakdown-modal">
@@ -2987,39 +2864,7 @@
   </div>
 </div>
 
-<!-- Customize Groups Modal (session-only — nothing here is ever persisted) -->
-<div id="customize-groups-modal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto h-[calc(100%-1rem)] max-h-full">
-  <div class="relative w-full max-w-4xl max-h-full">
-    <div class="relative bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
-      <!-- Header -->
-      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
-        <div>
-          <h3 class="text-xl font-bold text-gray-900"><%= l(:label_customize_groups) %></h3>
-          <p class="text-sm text-gray-500">Drag activities between groups. Applies to your view only.</p>
-        </div>
-        <button type="button" id="customize-groups-close-btn" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="customize-groups-modal">
-          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-          </svg>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
-      <!-- Body -->
-      <div class="p-5">
-        <div id="customize-groups-board" class="ta-group-board"></div>
-      </div>
-      <!-- Footer -->
-      <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-between">
-        <button type="button" id="customize-groups-reset-btn" class="!text-blue-600 !bg-transparent hover:!underline !border-none !outline-none !shadow-none !ring-0 text-sm font-semibold cursor-pointer">
-          Reset to default
-        </button>
-        <button type="button" id="customize-groups-apply-btn" class="!text-white !bg-[#3b82f6] hover:!bg-[#2563eb] !border-none !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer">
-          Apply
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+<%= render 'team_analytics/customize_groups_modal' %>
 
 <style>
   /* Custom scrollbar for better look in the modal */

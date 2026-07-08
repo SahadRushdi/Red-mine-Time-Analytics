@@ -13,19 +13,23 @@
     colors            - array of hex colors, aligned by index to pivot_activities (only used when show_bars)
     show_bars         - boolean, whether to render the colored inline distribution bar + percentage
 %>
-<table class="w-full text-sm text-left text-gray-500">
+<table class="w-full text-sm text-left text-gray-500 ta-sortable-table">
   <thead class="text-sm text-gray-700 bg-gray-50">
     <tr>
-      <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+      <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">
+        <%= ta_sortable_th(@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}"), 'period') %>
+      </th>
       <% pivot_activities.each_with_index do |category, index| %>
         <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
           <% if show_bars %>
             <span class="ta-group-dot" style="display:inline-block;width:8px;height:8px;border-radius:9999px;margin-right:6px;background-color:<%= colors[index] || '#9CA3AF' %>;"></span>
           <% end %>
-          <%= category %>
+          <%= ta_sortable_th(category, category) %>
         </th>
       <% end %>
-      <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+      <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">
+        <%= ta_sortable_th(l(:label_hours), 'total') %>
+      </th>
     </tr>
   </thead>
   <tbody>
@@ -33,25 +37,27 @@
       <% period_key = raw_periods[(offset + index)] %>
       <% row_total = period_totals[period_key] || 0 %>
       <tr class="bg-white border-b hover:bg-gray-50">
-        <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+        <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="<%= period_key %>"><%= period_display %></td>
         <% pivot_activities.each_with_index do |category, cat_index| %>
-          <td class="px-6 py-4 text-center text-gray-900">
-            <% hours = matrix[period_key][category] || 0 %>
+          <% hours = matrix[period_key][category] || 0 %>
+          <td class="px-6 py-4 text-center text-gray-900" data-sort-value="<%= hours %>">
             <% if show_bars %>
-              <% percentage = row_total > 0 ? (hours / row_total * 100) : 0 %>
-              <% color = colors[cat_index] || '#9CA3AF' %>
-              <div class="flex flex-col items-center gap-1">
-                <span><%= hours > 0 ? "#{format_hours(hours)} #{percentage.round}%" : '—' %></span>
-                <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= color %>;"></div>
+              <% if hours > 0 %>
+                <% percentage = row_total > 0 ? (hours / row_total * 100) : 0 %>
+                <% color = colors[cat_index] || '#9CA3AF' %>
+                <div class="flex items-center justify-center gap-2">
+                  <span class="font-bold text-gray-900"><%= format_hours(hours) %></span>
+                  <%= ta_share_badge(color, percentage) %>
                 </div>
-              </div>
+              <% else %>
+                <span class="text-gray-400">—</span>
+              <% end %>
             <% else %>
               <%= hours > 0 ? format_hours(hours) : '—' %>
             <% end %>
           </td>
         <% end %>
-        <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(row_total) %></td>
+        <td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="<%= row_total %>"><%= format_hours(row_total) %></td>
       </tr>
     <% end %>
   </tbody>
