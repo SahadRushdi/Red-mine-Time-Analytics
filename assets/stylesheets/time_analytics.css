@@ -2088,3 +2088,31 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   0% { margin-left: -40%; }
   100% { margin-left: 100%; }
 }
+
+/* Sortable column-header buttons for the Detailed/Grouped pivot tables (My Time / My Team).
+   Reset only the button-chrome (border/outline/background/box-shadow) so Redmine's base theme
+   never bleeds a blue focus/active ring onto them; color/font are left to inherit from whatever
+   the <th> already sets (e.g. the bold Hours column stays bold). Mirrors the same reset pattern
+   already used for .ta-titles-sort on the Titles admin page. */
+.ta-col-sort,
+.ta-col-sort:hover,
+.ta-col-sort:focus,
+.ta-col-sort:focus-visible,
+.ta-col-sort:active {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  font: inherit !important;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Grey, matching .ta-titles-sort on the Titles admin page - not the primary blue, so it doesn't
+   read as an active link/selection state. */
+.ta-col-sort-ind {
+  color: #6b7280;
+}

@@ -83,7 +83,7 @@
     var theadCells = pivot.activities.map(function (a) {
       return '<th scope="col" class="px-6 py-3 text-center border-r border-gray-200">' +
         '<span style="display:inline-block;width:8px;height:8px;border-radius:9999px;margin-right:6px;background-color:' + a.color + ';"></span>' +
-        escapeHtml(a.name) + '</th>';
+        window.taSortableThHtml(escapeHtml(a.name), a.name) + '</th>';
     }).join('');
 
     var rows = pagePeriods.map(function (periodKey, i) {
@@ -95,21 +95,21 @@
           ? '<div class="flex items-center justify-center gap-2"><span class="font-bold text-gray-900">' +
             formatHours(hours) + '</span>' + window.taShareBadgeHtml(a.color, percentage) + '</div>'
           : '<span class="text-gray-400">—</span>';
-        return '<td class="px-6 py-4 text-center text-gray-900">' + cellHtml + '</td>';
+        return '<td class="px-6 py-4 text-center text-gray-900" data-sort-value="' + hours + '">' + cellHtml + '</td>';
       }).join('');
 
       return '<tr class="bg-white border-b hover:bg-gray-50">' +
-        '<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">' + escapeHtml(pageLabels[i]) + '</td>' +
+        '<td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="' + escapeHtml(periodKey) + '">' + escapeHtml(pageLabels[i]) + '</td>' +
         cells +
-        '<td class="px-6 py-4 text-right font-semibold text-gray-900">' + formatHours(rowTotal) + '</td>' +
+        '<td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="' + rowTotal + '">' + formatHours(rowTotal) + '</td>' +
         '</tr>';
     }).join('');
 
-    return '<table class="w-full text-sm text-left text-gray-500">' +
+    return '<table class="w-full text-sm text-left text-gray-500 ta-sortable-table">' +
       '<thead class="text-sm text-gray-700 bg-gray-50"><tr>' +
-      '<th scope="col" class="px-6 py-3 border-r-2 border-gray-300">' + escapeHtml(periodLabel) + '</th>' +
+      '<th scope="col" class="px-6 py-3 border-r-2 border-gray-300">' + window.taSortableThHtml(escapeHtml(periodLabel), 'period') + '</th>' +
       theadCells +
-      '<th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">Hours</th>' +
+      '<th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">' + window.taSortableThHtml('Hours', 'total') + '</th>' +
       '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
 
@@ -191,6 +191,8 @@
       if (!container || !payload) return;
       var periodLabel = payload.periodColumnLabel || '';
       container.innerHTML = renderGroupedTableHtml(pivot, payload, periodLabel, config.formatHours);
+      // Replacing innerHTML drops any previous TaSortableTable listeners, so re-wire the fresh table.
+      if (window.TaSortableTable) { window.TaSortableTable(container.querySelector('table')); }
     }
 
     function renderNoGroupsState() {

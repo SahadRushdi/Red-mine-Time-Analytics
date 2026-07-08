@@ -1020,34 +1020,17 @@
 
       <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
       <div id="team-project-detailed-view" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
-          <thead class="text-sm text-gray-700 bg-gray-50">
-            <tr>
-              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
-              <% @projects.each do |project| %>
-                <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-              <% end %>
-              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @paginated_periods.each_with_index do |period_display, index| %>
-              <% period_key = @display_raw_periods[(@offset + index)] %>
-              <tr class="bg-white border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                <% @projects.each do |project| %>
-                  <td class="px-6 py-4 text-center text-gray-900">
-                    <% hours = @matrix_data[period_key][project] || 0 %>
-                    <%= hours > 0 ? format_hours(hours) : '—' %>
-                  </td>
-                <% end %>
-                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+        <%= render 'team_analytics/activity_period_pivot_table',
+                   pivot_activities: @projects,
+                   matrix: @matrix_data,
+                   period_totals: @period_totals,
+                   paginated_periods: @paginated_periods,
+                   raw_periods: @display_raw_periods,
+                   offset: @offset,
+                   colors: [],
+                   show_bars: false %>
       </div>
-      
+
       <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
         <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
@@ -1140,30 +1123,38 @@
 
       <%# Detailed View: Pivot Table (Time Period × Member matrix) - Default %>
       <div id="team-member-detailed-view" style="display: <%= (@member_view_state == 'summary' || @member_view_state == 'monthly_avg') ? 'none' : 'block' %>;" class="pivot-table-wrapper ta-analysis-table-scroll overflow-x-auto">
-        <table class="w-full text-sm text-left text-gray-500">
+        <table class="w-full text-sm text-left text-gray-500 ta-sortable-table">
           <thead class="text-sm text-gray-700 bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= @grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}") %></th>
+              <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">
+                <%= ta_sortable_th(@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}"), 'period') %>
+              </th>
               <% @members.each do |member| %>
                 <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                  <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                  <div class="inline-flex items-center gap-1">
+                    <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                    <%= ta_sort_button("member_#{member[:id]}") %>
+                  </div>
                 </th>
               <% end %>
-              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+              <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">
+                <%= ta_sortable_th(l(:label_hours), 'total') %>
+              </th>
             </tr>
           </thead>
           <tbody>
             <% @paginated_periods.each_with_index do |period_display, index| %>
               <% period_key = @display_raw_periods[(@offset + index)] %>
+              <% row_total = @period_totals[period_key] || 0 %>
               <tr class="bg-white border-b hover:bg-gray-50">
-                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="<%= period_key %>"><%= period_display %></td>
                 <% @members.each do |member| %>
-                  <td class="px-6 py-4 text-center text-gray-900">
-                    <% hours = @matrix_data[period_key][member[:name]] || 0 %>
+                  <% hours = @matrix_data[period_key][member[:name]] || 0 %>
+                  <td class="px-6 py-4 text-center text-gray-900" data-sort-value="<%= hours %>">
                     <%= hours > 0 ? format_hours(hours) : '—' %>
                   </td>
                 <% end %>
-                <td class="px-6 py-4 text-right font-semibold text-gray-900"><%= format_hours(@period_totals[period_key] || 0) %></td>
+                <td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="<%= row_total %>"><%= format_hours(row_total) %></td>
               </tr>
             <% end %>
           </tbody>

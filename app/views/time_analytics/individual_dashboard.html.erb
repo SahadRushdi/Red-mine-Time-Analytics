@@ -801,41 +801,21 @@ function toggleHolidays() {
            }.to_json %>
         <div id="activity-group-payload" data-payload='<%= activity_group_payload %>' style="display:none;"></div>
     <% elsif @view_mode == 'project' %>
-      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Project pivot table for cross-tabulation (Project × Time Period matrix) - Dual View System %>
-        
+
         <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
         <div id="project-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
-                <% @projects.each do |project| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @projects.each do |project| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <%= render 'team_analytics/activity_period_pivot_table',
+                     pivot_activities: @projects,
+                     matrix: @matrix_data,
+                     period_totals: @period_totals,
+                     paginated_periods: @paginated_periods,
+                     raw_periods: @project_pivot_data[:raw_periods],
+                     offset: @offset,
+                     colors: [],
+                     show_bars: false %>
         </div>
-        
+
         <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;">
           <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
@@ -846,93 +826,57 @@ function toggleHolidays() {
             <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
-      <% elsif @grouping == 'daily' %>
-        <%# Daily Project Analysis - Dual View System %>
-        
-        <%# Detailed View: Daily Pivot Table (Date × Project matrix) - Default %>
-        <div id="project-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
-                <% @projects.each do |project| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @projects.each do |project| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-        
-        <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
-        <div id="project-summary-view" style="display: none;">
-          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
-          <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
-          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
-          <div class="pagination-wrapper">
-            <span id="<%= summary_view_id %>-pagination-links"></span>
-            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
-          </div>
-        </div>
-      <% end %>
     <% elsif @view_mode == 'issue' %>
       <% if ['daily', 'weekly', 'monthly'].include?(@grouping) %>
         <%# Issue pivot table for cross-tabulation (Issue × Time Period matrix) - Dual View System %>
         
         <%# Detailed View: Pivot Table (Time Period × Issue matrix) - Default %>
         <div id="issue-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
+          <table class="w-full text-sm text-left text-gray-500 ta-sortable-table">
             <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
+                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">
+                  <%= ta_sortable_th(l("label_#{@grouping}"), 'period') %>
+                </th>
                 <% @issues.each do |issue_info| %>
                   <% if issue_info[:issue] %>
                     <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                      <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), 
-                          target: "_blank", class: "text-blue-600 hover:underline", 
-                          data: { "tooltip-target": "tooltip-issue-det-#{issue_info[:key]}" } %>
+                      <div class="inline-flex items-center gap-1">
+                        <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]),
+                            target: "_blank", class: "text-blue-600 hover:underline",
+                            data: { "tooltip-target": "tooltip-issue-det-#{issue_info[:key]}" } %>
+                        <%= ta_sort_button(issue_info[:key]) %>
+                      </div>
                       <div id="tooltip-issue-det-<%= issue_info[:key] %>" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip">
                           <%= issue_info[:display] %>
                           <div class="tooltip-arrow" data-popper-arrow></div>
                       </div>
                     </th>
                   <% else %>
-                    <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">No Issue</th>
+                    <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
+                      <%= ta_sortable_th('No Issue', issue_info[:key]) %>
+                    </th>
                   <% end %>
                 <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">
+                  <%= ta_sortable_th(l(:label_hours), 'total') %>
+                </th>
               </tr>
             </thead>
             <tbody>
               <% @paginated_periods.each_with_index do |period_display, index| %>
                 <% period_key = @issue_pivot_data[:raw_periods][(@offset + index)] %>
+                <% row_total = @period_totals[period_key] || 0 %>
                 <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="<%= period_key %>"><%= period_display %></td>
                   <% @issues.each do |issue_info| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][issue_info[:key]] || 0 %>
+                    <% hours = @matrix_data[period_key][issue_info[:key]] || 0 %>
+                    <td class="px-6 py-4 text-center text-gray-900" data-sort-value="<%= hours %>">
                       <%= hours > 0 ? format_hours(hours) : '—' %>
                     </td>
                   <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
+                  <td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="<%= row_total %>">
+                    <%= format_hours(row_total) %>
                   </td>
                 </tr>
               <% end %>

@@ -601,4 +601,27 @@ module TimeAnalyticsHelper
   def format_active_days_value(value)
     value == value.to_i ? value.to_i.to_s : number_with_precision(value, precision: 1)
   end
+
+  # Renders a clickable column-header label for the Detailed/Grouped pivot tables (My Time /
+  # My Team). Paired with TaSortableTable (assets/javascripts/ta_client_table.js), which sorts a
+  # table's rows client-side by whichever column's button was clicked, reading each row's
+  # data-sort-value. `sort_key` must be unique within the table (a period/category name/"total"
+  # is enough - callers don't need a separate id). The .ta-col-sort CSS reset (time_analytics.css)
+  # keeps this free of Redmine's default button/focus styling; color/weight are inherited from
+  # the surrounding <th> so it matches non-sortable headers exactly.
+  def ta_sortable_th(label, sort_key)
+    content_tag(:button, type: 'button', class: 'ta-col-sort inline-flex items-center gap-1', data: { sort_key: sort_key }) do
+      content_tag(:span, label) + content_tag(:span, '', class: 'ta-col-sort-ind text-[10px]')
+    end
+  end
+
+  # Bare sort-toggle button (no label), for column headers whose label is already a link or
+  # other non-plain-text content (e.g. the Issue/Members Detailed tables) - a link can't be
+  # nested inside the ta_sortable_th button above, so those headers place this next to the link
+  # instead.
+  def ta_sort_button(sort_key)
+    content_tag(:button, type: 'button', class: 'ta-col-sort inline-flex items-center', data: { sort_key: sort_key }) do
+      content_tag(:span, '', class: 'ta-col-sort-ind text-[10px]')
+    end
+  end
 end
