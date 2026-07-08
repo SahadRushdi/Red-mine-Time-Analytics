@@ -247,7 +247,19 @@ module RedmineTimeAnalytics
     - "22/05/2026" → single date (day/month/year sequence) → 2026-05-22
     - "21,22/05/2026" → day list (comma before slash) → 2026-05-21, 2026-05-22
     - "28/29 May" → day list (two small numbers before month name) → 2026-05-28, 2026-05-29
-  
+
+    FORMAT A IS NOT FOR COMMA-SEPARATED COMPLETE DATES:
+    If EACH token on either side of the comma already contains its own
+    day/month/year (i.e. each one independently matches DD/MM/YYYY, with
+    TWO slashes of its own) → they are NOT a shared-month day-list. They are
+    TWO INDEPENDENT COMPLETE DATES. Extract each one exactly as written.
+    - "02/07/2026, 03/07/2026" → 2026-07-02 AND 2026-07-03 (two full dates,
+      NOT Format A — do NOT split "02/07/2026, 03" off the final "/2026")
+    - "Sick Leave - (02/07/2026, 03/07/2026)" → 2026-07-02 AND 2026-07-03
+    CRITICAL: never drop the first date in this pattern. Only apply the
+    FORMAT A splitting rule when the LEFT side of the comma is a bare day
+    number (no slashes of its own), e.g. "21,22/05/2026".
+
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     STEP 6: BRACKET DATE LIST FORMAT
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -318,7 +330,16 @@ module RedmineTimeAnalytics
     - If resolved date would be >60 days in the past relative to sent date, assume next year.
     - Never guess a year if no sent date available — flag instead.
     - Date format is DD/MM/YYYY (Sri Lanka standard). "01/02/2026" = February 1st.
-  
+    - AMBIGUOUS DD/MM VS MM/DD CROSS-CHECK: if both the day and month numbers
+      are ≤12 (so the format is genuinely ambiguous), and the standard DD/MM
+      reading does NOT match the "Sent at" date, but swapping to MM/DD makes
+      it match the "Sent at" date exactly → use the MM/DD reading instead.
+      This only applies when DD/MM disagrees with the sent date; if DD/MM
+      already matches the sent date, keep DD/MM.
+      Example: subject "Half day leave (AM): 07/02/2026", sent 2026-07-02
+      → DD/MM would give 2026-02-07 (does not match sent date) but MM/DD
+      gives 2026-07-02 (matches sent date exactly) → use 2026-07-02.
+
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     STEP 11: AMBIGUOUS — FLAG RULES
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -915,6 +936,7 @@ module RedmineTimeAnalytics
       return parsed unless parsed_dates.include?(sent_date)
 
       explicit_dates = explicit_entries.map { |entry| entry[:date] }.uniq
+      return parsed if explicit_dates.include?(sent_date)
       return parsed unless explicit_dates.any? && (explicit_dates - [sent_date]).any?
 
       filtered_entries = parsed.leave_entries.reject { |entry| entry[:date] == sent_date }
@@ -934,7 +956,7 @@ module RedmineTimeAnalytics
     def parse_explicit_entries(text, reference_time)
       normalized = normalize_date_text(text.to_s)
       entries = explicit_segments(normalized).flat_map do |segment|
-        dates = extract_dates_from_text(segment)
+        dates = extract_dates_from_text(segment, reference_time)
         dates.concat(expand_comma_day_lists(segment, reference_time))
         dates.concat(expand_ampersand_day_lists(segment, reference_time))
         dates = expand_range_dates(segment, dates)
@@ -946,7 +968,7 @@ module RedmineTimeAnalytics
       end
 
       if entries.empty?
-        entries = extract_dates_from_text(normalized).map do |date|
+        entries = extract_dates_from_text(normalized, reference_time).map do |date|
           { date: date, fraction: fraction_for_text(normalized) }
         end
       end
@@ -1009,7 +1031,7 @@ module RedmineTimeAnalytics
       1.0
     end
 
-    def extract_dates_from_text(text)
+    def extract_dates_from_text(text, reference_time = nil)
       normalized = text.to_s
       dates = []
 
@@ -1025,7 +1047,7 @@ module RedmineTimeAnalytics
       end
 
       normalized.scan(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/).each do |candidate|
-        date = parse_slash_date(candidate)
+        date = parse_slash_date(candidate, reference_time)
         dates << date if date
       end
 
@@ -1095,17 +1117,29 @@ module RedmineTimeAnalytics
       dates.compact.uniq.sort
     end
 
-    def parse_slash_date(candidate)
+    def parse_slash_date(candidate, reference_time = nil)
       parts = candidate.split('/').map(&:to_i)
       return nil if parts.length != 3
 
       first, second, year = parts
+      ambiguous = first <= 12 && second <= 12
       format = if first > 12 || second <= 12
                  '%d/%m/%Y'
                else
                  '%m/%d/%Y'
                end
-      Date.strptime(candidate, format)
+      date = Date.strptime(candidate, format)
+      return date unless ambiguous && reference_time
+
+      reference_date = reference_time.to_date
+      return date if date == reference_date
+
+      alternate = begin
+        Date.new(year, first, second)
+      rescue ArgumentError
+        nil
+      end
+      alternate && alternate == reference_date ? alternate : date
     rescue ArgumentError
       nil
     end
