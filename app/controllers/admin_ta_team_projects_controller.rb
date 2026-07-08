@@ -29,10 +29,13 @@ class AdminTaTeamProjectsController < ApplicationController
       flash[:notice] = l(:notice_successful_create)
       redirect_to admin_ta_team_team_projects_path(@team)
     else
-      load_available_projects
-      load_projects
-      @show_add_project_modal = true
-      render :index, status: :unprocessable_entity
+      # Redirect back to `index` (a fresh GET) instead of re-rendering it directly here - `index`
+      # sets up several ivars (e.g. @inherited_projects) that this action never needed before, and
+      # re-rendering its template without them raised a NoMethodError (e.g. assigning a project
+      # whose URL/identifier is already active for this team, which fails validation and used to
+      # crash instead of showing the validation message).
+      flash[:error] = @team_project.errors.full_messages.to_sentence
+      redirect_to admin_ta_team_team_projects_path(@team, open_add_project_modal: 1)
     end
   end
 
