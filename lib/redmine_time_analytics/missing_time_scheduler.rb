@@ -5,9 +5,13 @@ require 'fugit'
 
 module RedmineTimeAnalytics
   class MissingTimeScheduler
+    # Hard-coded end-of-month reminder: fires every Friday 18:00 (scheduler timezone) and only
+    # acts when that Friday is the last Friday of the month (gated inside the service).
+    MONTHLY_REMINDER_CRON = '0 18 * * 5'
+
     @mutex = Mutex.new
     @scheduler = nil
-    @job = nil
+    @jobs = []
 
     class << self
       def start
@@ -33,14 +37,15 @@ module RedmineTimeAnalytics
       def next_run_at(settings: TaTeamSetting.missing_time_settings, from_time: Time.zone.now)
         return nil unless settings[:enabled]
 
-        cron_line = cron_line_for(settings[:cron])
-        next_time = cron_line&.next_time(from_time)
-        return nil unless next_time
+        times = settings[:crons].filter_map do |cron|
+          line = cron_line_for(cron)
+          next_t = line&.next_time(from_time)
+          next unless next_t
 
-        return next_time.to_t if next_time.respond_to?(:to_t)
-        return next_time.to_time if next_time.respond_to?(:to_time)
+          next_t.respond_to?(:to_t) ? next_t.to_t : next_t.to_time
+        end
 
-        next_time
+        times.min
       end
 
       def cron_line_for(cron)
@@ -52,26 +57,32 @@ module RedmineTimeAnalytics
       private
 
       def schedule_current!
-        if @job
-          if @job.respond_to?(:unschedule)
-            @job.unschedule
+        @jobs.each do |job|
+          if job.respond_to?(:unschedule)
+            job.unschedule
           else
-            @scheduler.unschedule(@job)
+            @scheduler.unschedule(job)
           end
         end
-        @job = nil
+        @jobs = []
 
         settings = TaTeamSetting.missing_time_settings
         return unless settings[:enabled]
-        return if settings[:cron].blank?
 
-        @job = @scheduler.cron settings[:cron] do
-          run_notification!
+        settings[:crons].each do |cron|
+          next if cron.blank?
+
+          job = @scheduler.cron cron do
+            run_notification!
+          end
+          @jobs << job
         end
+
+        @jobs << @scheduler.cron(MONTHLY_REMINDER_CRON) { run_notification!(period: :monthly) }
       end
 
-      def run_notification!
-        result = RedmineTimeAnalytics::MissingTimeNotificationService.new.notify_missing_time!
+      def run_notification!(period: nil)
+        result = RedmineTimeAnalytics::MissingTimeNotificationService.new.notify_missing_time!(period: period)
         if result.errors.any?
           unique_errors = result.errors.uniq
           Rails.logger.warn(
@@ -81,7 +92,6 @@ module RedmineTimeAnalytics
         end
         result
       rescue StandardError => e
-        # Log but do not re-raise to avoid crashing scheduler. Errors are captured in result where possible.
         Rails.logger.error("[MissingTimeScheduler] failed: #{e.class}: #{e.message}")
         nil
       end

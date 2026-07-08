@@ -32,8 +32,8 @@
               (None - Root Team)
             </button>
           </li>
-          <% TaTeam.ordered_by_name.where.not(id: @team.id).each do |team| %>
-            <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+          <% ta_teams_in_tree_order(nil, @team.id).each do |team, level| %>
+            <% indent = '&nbsp;&nbsp;' * level %>
             <li>
               <button type="button"
                       class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"

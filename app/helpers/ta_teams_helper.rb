@@ -152,18 +152,33 @@ module TaTeamsHelper
     ], selected)
   end
 
+  # Returns [[team, level], ...] in depth-first pre-order (children directly under their
+  # parent), matching the Teams admin tree. `teams` should be the full set so the tree is
+  # complete; `exclude_ids` prunes those teams AND their subtrees (used for Parent Team).
+  def ta_teams_in_tree_order(teams = nil, exclude_ids = [])
+    teams ||= TaTeam.ordered_by_name.to_a
+    exclude = Array(exclude_ids).compact.map(&:to_i).to_set
+    by_parent = teams.group_by(&:parent_team_id)
+    ordered = []
+    walk = lambda do |parent_id, level|
+      (by_parent[parent_id] || []).each do |team|
+        next if exclude.include?(team.id) # prune team + its subtree
+        ordered << [team, level]
+        walk.call(team.id, level + 1)
+      end
+    end
+    walk.call(nil, 0)
+    ordered
+  end
+
   def ta_team_select_options(selected = nil, exclude_ids = [])
-    teams = TaTeam.ordered_by_name
-    teams = teams.where.not(id: exclude_ids) if exclude_ids.any?
-    
     grouped_options = [[l(:label_none), '']]
-    teams.each do |team|
-      level = team.all_ancestors.count
+    ta_teams_in_tree_order(nil, exclude_ids).each do |team, level|
       indent = '&nbsp;&nbsp;' * level
       label = "#{indent}#{team.name}".html_safe
       grouped_options << [label, team.id]
     end
-    
+
     options_for_select(grouped_options, selected)
   end
 
@@ -177,12 +192,24 @@ module TaTeamsHelper
     ]
   end
 
-  # Team-specific grouping options (only Week and Month)
+  # Team-specific grouping options (Daily, Weekly, Month)
   def team_grouping_options
     [
-      [l(:label_weekly), 'weekly'],
-      [l(:label_monthly), 'monthly']
+      [l(:label_team_grouping_daily), 'daily'],
+      [l(:label_team_grouping_weekly), 'weekly'],
+      [l(:label_team_grouping_monthly), 'monthly']
     ]
+  end
+
+  def team_grouping_label(grouping)
+    case grouping
+    when 'daily'
+      l(:label_team_grouping_daily)
+    when 'monthly'
+      l(:label_team_grouping_monthly)
+    else
+      l(:label_team_grouping_weekly)
+    end
   end
 
   def ta_team_action_icon(type)

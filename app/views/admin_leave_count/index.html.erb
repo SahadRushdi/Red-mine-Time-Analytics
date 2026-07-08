@@ -21,232 +21,349 @@
 <% end %>
 
 <div class="space-y-6">
-  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-    <div>
-      <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leave_count_settings) %></h2>
-      <p class="text-sm text-gray-500">
-        <%= l(:text_leave_count_settings_description) %>
-        <% if @leave_sync_configured %>
-          <span class="text-emerald-600 font-medium"><%= l(:label_configured) %></span>
-        <% else %>
-          <span class="text-amber-600 font-medium"><%= l(:label_not_configured) %></span>
-        <% end %>
-      </p>
+  <div>
+    <div class="flex flex-wrap items-center gap-3">
+      <h2 class="!mb-0 text-2xl font-bold text-gray-900"><%= l(:label_leave_count_settings) %></h2>
+      <% if @leave_sync_configured %>
+        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <%= l(:label_configured) %>
+        </span>
+      <% else %>
+        <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_not_configured) %></span>
+      <% end %>
     </div>
+    <p class="mt-1 text-sm text-gray-500"><%= l(:text_leave_count_settings_description) %></p>
   </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
-    <%= form_tag admin_leave_count_path, method: :post, id: 'leave-count-settings-form', class: 'space-y-6' do %>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <%= form_tag admin_leave_count_path, method: :post, id: 'leave-count-settings-form', class: 'space-y-6' do %>
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+          </svg>
+        </div>
         <div>
-          <%= label_tag :leave_sync_recipient_email, l(:label_leave_recipient_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-          <%= email_field_tag :leave_sync_recipient_email, @leave_sync_settings[:recipient_email], required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-        </div>
-       <div id="leave-sync-date-range-picker" class="md:col-span-2">
-         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-           <div>
-             <%= label_tag :leave_sync_start_date, l(:label_historical_sync_start_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-             <%= text_field_tag :leave_sync_start_date, @leave_sync_settings[:historical_sync_start_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-start-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-blue-400 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
-           </div>
-           <div>
-             <%= label_tag :leave_sync_end_date, l(:label_historical_sync_end_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-             <%= text_field_tag :leave_sync_end_date, @leave_sync_settings[:historical_sync_end_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-end-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-blue-400 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
-           </div>
-         </div>
-        </div>
-      </div>
-
-      <%= hidden_field_tag :leave_sync_approach, 'oauth' %>
-
-      <div id="leave-approach-oauth" class="rounded-lg border border-blue-100 bg-blue-50 p-4 space-y-3" data-approach-panel="oauth">
-        <p class="text-sm text-gray-700"><%= l(:text_leave_oauth_description) %></p>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <%= label_tag :leave_oauth_client_id, l(:label_leave_oauth_client_id), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= text_field_tag :leave_oauth_client_id, @leave_sync_settings[:oauth_client_id], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-          </div>
-          <div>
-            <%= label_tag :leave_oauth_account_email, l(:label_leave_oauth_account_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= email_field_tag :leave_oauth_account_email, @leave_sync_settings[:oauth_account_email], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-          </div>
-          <div class="md:col-span-2">
-            <%= label_tag :leave_oauth_client_secret, l(:label_leave_oauth_client_secret), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= password_field_tag :leave_oauth_client_secret, '', placeholder: @leave_sync_settings[:oauth_client_secret].present? ? l(:text_saved_leave_blank_to_keep) : '', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-          </div>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <%= link_to l(:button_connect_gmail_oauth), admin_leave_count_oauth_start_path, class: 'ta-btn-primary inline-flex items-center rounded-lg px-4 py-2 text-sm font-medium' %>
-          <% if @leave_sync_settings[:oauth_refresh_token].present? %>
-            <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><%= l(:label_oauth_connected) %>: <%= h(@leave_sync_settings[:oauth_account_email]) %></span>
-          <% else %>
-            <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_oauth_not_connected) %></span>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="rounded-lg border border-purple-100 bg-purple-50 p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-gray-900"><%= l(:label_leave_ai_extraction_mode) %></span>
-        </div>
-        <p class="text-sm text-gray-700">Provide your AI API key to enable AI extraction for complex leave cases.</p>
-        <%= hidden_field_tag :leave_ai_extraction_enabled, '1' %>
-        <div id="leave-ai-model-panel" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <%= label_tag :leave_ai_provider, l(:label_leave_ai_provider), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= hidden_field_tag :leave_ai_provider, 'google' %>
-            <input type="text" value="Google AI Studio (Gemini)" disabled class="ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900" />
-          </div>
-          <div>
-            <%= label_tag :leave_ai_model, l(:label_leave_ai_model), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= text_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], placeholder: 'gemini-2.0-flash', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-          </div>
-          <div>
-            <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
-            <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-          </div>
+          <h3 class="text-base font-semibold text-gray-900"><%= l(:label_email_date_range) %></h3>
+          <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_email_date_range_description) %></p>
         </div>
       </div>
 
       <div>
-        <%= label_tag :leave_sync_enabled, l(:label_sync_status), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-        <label class="inline-flex items-center cursor-pointer">
-          <%= hidden_field_tag :leave_sync_enabled, '0' %>
-          <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], class: 'sr-only peer' %>
-          <div class="ta-custom-toggle-track"></div>
-          <span class="ms-3 text-sm font-medium text-gray-700"><%= l(:label_enable_mailbox_sync) %></span>
-        </label>
+        <%= label_tag :leave_sync_recipient_email, l(:label_leave_recipient_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+        <%= email_field_tag :leave_sync_recipient_email, @leave_sync_settings[:recipient_email], required: true, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
       </div>
 
-      <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <span class="text-sm font-semibold text-gray-900"><%= l(:label_scheduler_status) %></span>
-          <% if @leave_sync_scheduler_active %>
-            <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><%= l(:label_scheduler_active) %></span>
-          <% else %>
-            <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_scheduler_inactive) %></span>
-          <% end %>
+      <div id="leave-sync-date-range-picker" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <%= label_tag :leave_sync_start_date, l(:label_historical_sync_start_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= text_field_tag :leave_sync_start_date, @leave_sync_settings[:historical_sync_start_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-start-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
         </div>
-        
-        <% if @leave_sync_settings[:enabled] %>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <%= label_tag :leave_sync_freq_type, l(:label_frequency_type), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-              <div class="relative" id="leave-sync-freq-type-wrapper">
-                <button type="button"
-                        id="leave-sync-freq-type-btn"
-                        class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
-                  <span id="leave-sync-freq-type-text" class="text-gray-700 truncate flex-1 text-left">
-                    <%= @leave_sync_settings[:freq_type] == 'daily' ? l(:label_freq_daily) : l(:label_freq_interval) %>
-                  </span>
-                  <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </button>
-                <%= hidden_field_tag :leave_sync_freq_type, @leave_sync_settings[:freq_type], id: 'leave-sync-freq-type-value' %>
-                <div id="leave-sync-freq-type-list"
-                     class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-                  <ul class="py-1 text-sm text-gray-700">
-                    <li>
-                      <button type="button"
-                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                              onclick="selectFreqType('interval', '<%= l(:label_freq_interval) %>')">
-                        <%= l(:label_freq_interval) %>
-                      </button>
-                    </li>
-                    <li>
-                      <button type="button"
-                              class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                              onclick="selectFreqType('daily', '<%= l(:label_freq_daily) %>')">
-                        <%= l(:label_freq_daily) %>
-                      </button>
-                    </li>
-                  </ul>
-                </div>
+        <div>
+          <%= label_tag :leave_sync_end_date, l(:label_historical_sync_end_date), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+          <%= text_field_tag :leave_sync_end_date, @leave_sync_settings[:historical_sync_end_date]&.strftime('%m/%d/%Y'), id: 'leave-sync-end-date', autocomplete: 'off', placeholder: 'mm/dd/yyyy', datepicker: true, 'datepicker-format' => 'mm/dd/yyyy', 'datepicker-show-on-focus' => 'false', 'datepicker-autohide' => 'true', class: 'block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !py-2.5 !text-sm !text-gray-900 !leading-[1.2] !shadow-sm placeholder:!text-gray-400 focus:!border-[#3b82f6] focus:!outline-none focus:!ring-0 focus:!ring-offset-0' %>
+        </div>
+      </div>
+    </div>
+
+    <%= hidden_field_tag :leave_sync_approach, 'oauth' %>
+
+    <div id="leave-approach-oauth" class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4" data-approach-panel="oauth">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5M10.172 13.828a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-gray-900"><%= l(:label_gmail_connection) %></h3>
+            <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_gmail_connection_description) %></p>
+          </div>
+        </div>
+        <% if @leave_sync_settings[:oauth_refresh_token].present? %>
+          <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <%= l(:label_connected) %>
+          </span>
+        <% else %>
+          <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_not_connected) %></span>
+        <% end %>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <%= label_tag :leave_oauth_client_id, l(:label_leave_oauth_client_id), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= text_field_tag :leave_oauth_client_id, @leave_sync_settings[:oauth_client_id], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <div>
+          <%= label_tag :leave_oauth_account_email, l(:label_leave_oauth_account_email), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= email_field_tag :leave_oauth_account_email, @leave_sync_settings[:oauth_account_email], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <div class="md:col-span-2">
+          <%= label_tag :leave_oauth_client_secret, l(:label_leave_oauth_client_secret), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= password_field_tag :leave_oauth_client_secret, '', placeholder: @leave_sync_settings[:oauth_client_secret].present? ? l(:text_saved_leave_blank_to_keep) : '', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <%= link_to admin_leave_count_oauth_start_path, class: 'ta-btn-primary inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium' do %>
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5M10.172 13.828a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
+          </svg>
+          <%= @leave_sync_settings[:oauth_refresh_token].present? ? l(:button_reconnect_gmail_oauth) : l(:button_connect_gmail_oauth) %>
+        <% end %>
+      </div>
+      <% if @leave_sync_settings[:oauth_refresh_token].present? %>
+        <p class="text-xs text-gray-500"><%= l(:text_oauth_currently_authenticated, email: @leave_sync_settings[:oauth_account_email]) %></p>
+      <% end %>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-gray-900"><%= l(:label_leave_ai_extraction_mode) %></h3>
+            <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_leave_ai_description) %></p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          Google AI Studio (Gemini)
+        </span>
+      </div>
+
+      <%= hidden_field_tag :leave_ai_extraction_enabled, '1' %>
+      <%= hidden_field_tag :leave_ai_provider, 'google' %>
+      <div id="leave-ai-model-panel" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <%= label_tag :leave_ai_api_key, l(:label_leave_ai_api_key), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <%= password_field_tag :leave_ai_api_key, '', placeholder: @leave_sync_settings[:ai_api_key].present? ? l(:text_saved_leave_blank_to_keep) : 'Enter AI API key', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+        </div>
+        <div>
+          <%= label_tag :leave_ai_model, l(:label_leave_ai_model), class: 'mb-1 block text-sm font-medium text-gray-700 required' %>
+          <% if @leave_ai_api_key_present %>
+            <div class="relative" id="leave-ai-model-wrapper">
+              <button type="button"
+                      id="leave-ai-model-btn"
+                      class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <span id="leave-ai-model-text" class="text-gray-700 truncate flex-1 text-left">
+                  <%= @leave_sync_settings[:ai_model].presence || l(:text_leave_ai_model_loading) %>
+                </span>
+                <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <%= hidden_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], id: 'leave-ai-model-value' %>
+              <div id="leave-ai-model-list"
+                   class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full max-h-64 overflow-y-auto bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                <ul class="py-1 text-sm text-gray-700"></ul>
               </div>
             </div>
-            <div>
-              <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_next_run_at) %></span>
-              <div class="flex h-[43px] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
+            <p id="leave-ai-model-notice" class="mt-1 hidden text-xs"></p>
+          <% else %>
+            <%= text_field_tag :leave_ai_model, @leave_sync_settings[:ai_model], placeholder: 'gemini-2.0-flash', class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+            <p class="mt-1 text-xs text-gray-500"><%= l(:text_leave_ai_model_save_key_first) %></p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-gray-900"><%= l(:label_automatic_sync_schedule) %></h3>
+            <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_automatic_sync_schedule_description) %></p>
+          </div>
+        </div>
+        <% if @leave_sync_scheduler_active %>
+          <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700"><%= l(:label_scheduler_active) %></span>
+        <% else %>
+          <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"><%= l(:label_scheduler_inactive) %></span>
+        <% end %>
+      </div>
+
+      <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <span class="text-sm font-medium text-gray-900"><%= l(:label_enable_automatic_sync) %></span>
+            <p class="text-xs text-gray-500"><%= l(:text_enable_automatic_sync_description) %></p>
+          </div>
+          <label class="inline-flex items-center cursor-pointer">
+            <%= hidden_field_tag :leave_sync_enabled, '0' %>
+            <%= check_box_tag :leave_sync_enabled, '1', @leave_sync_settings[:enabled], id: 'leave-sync-enabled-toggle', class: 'sr-only peer' %>
+            <div class="ta-custom-toggle-track"></div>
+          </label>
+        </div>
+      </div>
+
+      <div id="leave-sync-schedule-section" class="space-y-4 <%= 'hidden' unless @leave_sync_settings[:enabled] %>">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <%= label_tag :leave_sync_freq_type, l(:label_frequency_type), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <div class="relative" id="leave-sync-freq-type-wrapper">
+              <button type="button"
+                      id="leave-sync-freq-type-btn"
+                      class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                <span id="leave-sync-freq-type-text" class="text-gray-700 truncate flex-1 text-left">
+                  <% freq_type_labels = { 'interval' => l(:label_freq_interval), 'everyday' => l(:label_freq_everyday), 'daily' => l(:label_freq_daily) } %>
+                  <%= freq_type_labels[@leave_sync_settings[:freq_type]] || l(:label_freq_interval) %>
+                </span>
+                <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              <%= hidden_field_tag :leave_sync_freq_type, @leave_sync_settings[:freq_type], id: 'leave-sync-freq-type-value' %>
+              <div id="leave-sync-freq-type-list"
+                   class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                <ul class="py-1 text-sm text-gray-700">
+                  <li>
+                    <button type="button"
+                            class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                            onclick="selectFreqType('interval', '<%= l(:label_freq_interval) %>')">
+                      <%= l(:label_freq_interval) %>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button"
+                            class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                            onclick="selectFreqType('everyday', '<%= l(:label_freq_everyday) %>')">
+                      <%= l(:label_freq_everyday) %>
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button"
+                            class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                            onclick="selectFreqType('daily', '<%= l(:label_freq_daily) %>')">
+                      <%= l(:label_freq_daily) %>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div>
+            <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_next_run_at) %></span>
+            <div class="flex h-[43px] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
+              <span id="leave-sync-next-run-text">
                 <% if @leave_sync_scheduler_active && @leave_sync_next_run_at.present? %>
                   <%= format_time(@leave_sync_next_run_at) %>
                 <% else %>
                   <%= l(:label_not_scheduled) %>
                 <% end %>
-              </div>
+              </span>
             </div>
           </div>
+          <div>
+            <span class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_last_sync_at) %></span>
+            <div class="flex h-[43px] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
+              <span id="leave-sync-last-sync-text">
+                <% if @leave_sync_settings[:last_synced_at].present? %>
+                  <%= format_time(@leave_sync_settings[:last_synced_at]) %>
+                <% else %>
+                  <%= l(:label_never_synced) %>
+                <% end %>
+              </span>
+            </div>
+          </div>
+        </div>
 
-          <div id="freq-panel-interval" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'interval' %> space-y-3 pt-2">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <%= label_tag :leave_sync_interval_value, l(:label_interval_value), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-                <%= number_field_tag :leave_sync_interval_value, @leave_sync_settings[:interval_value], min: 1, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-              </div>
-              <div>
-                <%= label_tag :leave_sync_interval_unit, l(:label_interval_unit), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-                <div class="relative" id="leave-sync-interval-unit-wrapper">
-                  <button type="button"
-                          id="leave-sync-interval-unit-btn"
-                          class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
-                    <span id="leave-sync-interval-unit-text" class="text-gray-700 truncate flex-1 text-left">
-                      <%= l("label_unit_#{@leave_sync_settings[:interval_unit]}".to_sym) %>
-                    </span>
-                    <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </button>
-                  <%= hidden_field_tag :leave_sync_interval_unit, @leave_sync_settings[:interval_unit], id: 'leave-sync-interval-unit-value' %>
-                  <div id="leave-sync-interval-unit-list"
-                       class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
-                    <ul class="py-1 text-sm text-gray-700">
-                      <% [['minutes', l(:label_unit_minutes)], ['hours', l(:label_unit_hours)], ['days', l(:label_unit_days)]].each do |val, label| %>
-                        <li>
-                          <button type="button"
-                                  class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
-                                  onclick="selectIntervalUnit('<%= val %>', '<%= label %>')">
-                            <%= label %>
-                          </button>
-                        </li>
-                      <% end %>
-                    </ul>
-                  </div>
+        <div id="freq-panel-interval" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'interval' %> space-y-3 pt-2">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <%= label_tag :leave_sync_interval_value, l(:label_interval_value), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <%= number_field_tag :leave_sync_interval_value, @leave_sync_settings[:interval_value], min: 1, class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+            </div>
+            <div>
+              <%= label_tag :leave_sync_interval_unit, l(:label_interval_unit), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+              <div class="relative" id="leave-sync-interval-unit-wrapper">
+                <button type="button"
+                        id="leave-sync-interval-unit-btn"
+                        class="ts-search-input !inline-flex !h-[43px] !w-full !items-center !justify-between !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !font-medium !text-gray-900 !shadow-none focus:!outline-none focus:!ring-2 focus:!ring-[#3b82f6] focus:!border-[#3b82f6]">
+                  <span id="leave-sync-interval-unit-text" class="text-gray-700 truncate flex-1 text-left">
+                    <%= l("label_unit_#{@leave_sync_settings[:interval_unit]}".to_sym) %>
+                  </span>
+                  <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <%= hidden_field_tag :leave_sync_interval_unit, @leave_sync_settings[:interval_unit], id: 'leave-sync-interval-unit-value' %>
+                <div id="leave-sync-interval-unit-list"
+                     class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
+                  <ul class="py-1 text-sm text-gray-700">
+                    <% [['minutes', l(:label_unit_minutes)], ['hours', l(:label_unit_hours)], ['days', l(:label_unit_days)]].each do |val, label| %>
+                      <li>
+                        <button type="button"
+                                class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
+                                onclick="selectIntervalUnit('<%= val %>', '<%= label %>')">
+                          <%= label %>
+                        </button>
+                      </li>
+                    <% end %>
+                  </ul>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <div id="freq-panel-daily" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'daily' %> space-y-4 pt-2">
-            <div>
-              <%= label_tag :leave_sync_daily_time, l(:label_specific_time), class: 'mb-1 block text-sm font-medium text-gray-700' %>
-              <%= time_field_tag :leave_sync_daily_time, @leave_sync_settings[:daily_time], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
-            </div>
-            <div>
-              <span class="mb-2 block text-sm font-medium text-gray-700"><%= l(:label_select_days) %></span>
-              <div class="flex flex-wrap gap-2">
-                <% [[l(:label_day_mon), '1'], [l(:label_day_tue), '2'], [l(:label_day_wed), '3'], [l(:label_day_thu), '4'], [l(:label_day_fri), '5'], [l(:label_day_sat), '6'], [l(:label_day_sun), '7']].each do |label, val| %>
-                  <label class="inline-flex items-center cursor-pointer">
-                    <%= check_box_tag 'leave_sync_daily_days[]', val, @leave_sync_settings[:daily_days].include?(val), class: 'sr-only day-pill-checkbox', id: "day_#{val}" %>
-                    <div class="day-pill-visual px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200">
-                      <%= label %>
-                    </div>
-                  </label>
-                <% end %>
-              </div>
+        <div id="freq-panel-everyday" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'everyday' %> space-y-4 pt-2">
+          <div>
+            <%= label_tag :leave_sync_everyday_time, l(:label_specific_time), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= time_field_tag :leave_sync_everyday_time, @leave_sync_settings[:everyday_time], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+        </div>
+
+        <div id="freq-panel-daily" class="<%= 'hidden' unless @leave_sync_settings[:freq_type] == 'daily' %> space-y-4 pt-2">
+          <div>
+            <%= label_tag :leave_sync_daily_time, l(:label_specific_time), class: 'mb-1 block text-sm font-medium text-gray-700' %>
+            <%= time_field_tag :leave_sync_daily_time, @leave_sync_settings[:daily_time], class: 'ts-search-input !block !h-[43px] !w-full !rounded-lg !border !border-gray-300 !bg-white !px-3 !text-sm !text-gray-900' %>
+          </div>
+          <div>
+            <span class="mb-2 block text-sm font-medium text-gray-700"><%= l(:label_select_days) %></span>
+            <div class="flex flex-wrap gap-2">
+              <% [[l(:label_day_mon), '1'], [l(:label_day_tue), '2'], [l(:label_day_wed), '3'], [l(:label_day_thu), '4'], [l(:label_day_fri), '5'], [l(:label_day_sat), '6'], [l(:label_day_sun), '7']].each do |label, val| %>
+                <label class="inline-flex items-center cursor-pointer">
+                  <%= check_box_tag 'leave_sync_daily_days[]', val, @leave_sync_settings[:daily_days].include?(val), class: 'sr-only day-pill-checkbox', id: "day_#{val}" %>
+                  <div class="day-pill-visual px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-50 border border-gray-200 rounded-lg transition-all duration-200">
+                    <%= label %>
+                  </div>
+                </label>
+              <% end %>
             </div>
           </div>
-        <% else %>
-          <p class="text-sm text-gray-600"><%= l(:text_leave_sync_cron_disabled) %></p>
-        <% end %>
+        </div>
       </div>
-
-      <div class="flex justify-end">
-        <%= button_tag l(:button_save_leave_count_settings), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #2563eb !important;' %>
+      <div id="leave-sync-cron-disabled" class="<%= 'hidden' if @leave_sync_settings[:enabled] %>">
+        <p class="text-sm text-gray-600"><%= l(:text_leave_sync_cron_disabled) %></p>
       </div>
-    <% end %>
-  </div>
+    </div>
 
-  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
-    <div id="sync-progress-container" class="hidden mb-6 space-y-3">
+    <div class="flex justify-end">
+      <%= button_tag l(:button_save_leave_count_settings), type: 'submit', class: 'tep-action-btn inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg !text-white !border-0', style: 'background-color: #2563eb !important;' %>
+    </div>
+  <% end %>
+
+  <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-6 space-y-4">
+    <div id="sync-progress-container" class="hidden space-y-3">
       <div class="flex items-center justify-between">
         <h3 id="sync-status-text" class="text-sm font-semibold text-blue-700 italic">Initializing...</h3>
         <span id="sync-percent-text" class="text-xs font-medium text-blue-700">0%</span>
@@ -256,16 +373,39 @@
       </div>
     </div>
 
-    <h3 class="text-base font-semibold text-gray-900 mb-3"><%= l(:label_manual_sync_actions) %></h3>
+    <div class="flex items-start gap-3">
+      <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-semibold text-gray-900"><%= l(:label_manual_sync_actions) %></h3>
+        <p class="mt-0.5 text-sm text-gray-500"><%= l(:text_run_sync_now_description) %></p>
+      </div>
+    </div>
+
     <% if @manual_pull_available %>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_incremental_sync) %></p>
-          <button type="button" onclick="startManualSync('incremental')" class="tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #2563eb !important;"><%= l(:button_run_incremental_sync) %></button>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <h4 class="text-sm font-semibold text-gray-900"><%= l(:label_quick_sync) %></h4>
+          <p class="mt-1 mb-3 text-sm text-gray-500"><%= l(:text_leave_incremental_sync) %></p>
+          <button type="button" onclick="startManualSync('incremental')" class="tep-action-btn inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #2563eb !important;">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <%= l(:button_run_incremental_sync) %>
+          </button>
         </div>
-        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <p class="text-sm text-gray-700 mb-2"><%= l(:text_leave_historical_sync) %></p>
-          <button type="button" onclick="startManualSync('historical')" class="tep-action-btn inline-flex items-center px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #1d4ed8 !important;"><%= l(:button_run_historical_sync) %></button>
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <h4 class="text-sm font-semibold text-gray-900"><%= l(:label_full_backfill) %></h4>
+          <p class="mt-1 mb-3 text-sm text-gray-500"><%= l(:text_leave_historical_sync) %></p>
+          <button type="button" onclick="startManualSync('historical')" class="tep-action-btn inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg !text-white !border-0" style="background-color: #1d4ed8 !important;">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <%= l(:button_run_historical_sync) %>
+          </button>
         </div>
       </div>
     <% else %>
@@ -318,7 +458,7 @@
 
   function pollSyncStatus(syncId) {
     if (syncPollInterval) clearInterval(syncPollInterval);
-    
+
     syncPollInterval = setInterval(() => {
       fetch(`<%= admin_leave_count_sync_status_path %>?sync_id=${syncId}`)
       .then(response => response.json())
@@ -355,30 +495,157 @@
     document.getElementById('leave-sync-freq-type-value').value = val;
     document.getElementById('leave-sync-freq-type-text').textContent = label;
     document.getElementById('leave-sync-freq-type-list').classList.add('hidden');
-    
-    const intervalPanel = document.getElementById('freq-panel-interval');
-    const dailyPanel = document.getElementById('freq-panel-daily');
-    
-    if (val === 'interval') {
-      intervalPanel.classList.remove('hidden');
-      dailyPanel.classList.add('hidden');
-    } else {
-      intervalPanel.classList.add('hidden');
-      dailyPanel.classList.remove('hidden');
-    }
+
+    const panels = {
+      interval: document.getElementById('freq-panel-interval'),
+      everyday: document.getElementById('freq-panel-everyday'),
+      daily: document.getElementById('freq-panel-daily')
+    };
+
+    Object.keys(panels).forEach(function (key) {
+      if (panels[key]) panels[key].classList.toggle('hidden', key !== val);
+    });
+    updateNextRun();
   }
 
   function selectIntervalUnit(val, label) {
     document.getElementById('leave-sync-interval-unit-value').value = val;
     document.getElementById('leave-sync-interval-unit-text').textContent = label;
     document.getElementById('leave-sync-interval-unit-list').classList.add('hidden');
+    updateNextRun();
+  }
+
+  // Recompute the "Next Run At" preview from the current (unsaved) schedule inputs.
+  function updateNextRun() {
+    const field = document.getElementById('leave-sync-next-run-text');
+    if (!field) return;
+
+    const notScheduled = '<%= j l(:label_not_scheduled) %>';
+    const enableToggle = document.getElementById('leave-sync-enabled-toggle');
+    if (enableToggle && !enableToggle.checked) {
+      field.textContent = notScheduled;
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append('leave_sync_freq_type', document.getElementById('leave-sync-freq-type-value').value);
+    params.append('leave_sync_interval_unit', document.getElementById('leave-sync-interval-unit-value').value);
+    const intervalValue = document.getElementById('leave_sync_interval_value');
+    if (intervalValue) params.append('leave_sync_interval_value', intervalValue.value);
+    const dailyTime = document.getElementById('leave_sync_daily_time');
+    if (dailyTime) params.append('leave_sync_daily_time', dailyTime.value);
+    const everydayTime = document.getElementById('leave_sync_everyday_time');
+    if (everydayTime) params.append('leave_sync_everyday_time', everydayTime.value);
+    document.querySelectorAll('input[name="leave_sync_daily_days[]"]:checked').forEach(function (cb) {
+      params.append('leave_sync_daily_days[]', cb.value);
+    });
+
+    fetch('<%= admin_leave_count_next_run_path %>?' + params.toString(), { headers: { 'Accept': 'application/json' } })
+      .then(response => response.ok ? response.json() : Promise.reject(response))
+      .then(data => { field.textContent = data.next_run || notScheduled; })
+      .catch(() => {});
+  }
+
+  function selectAiModel(val) {
+    document.getElementById('leave-ai-model-value').value = val;
+    document.getElementById('leave-ai-model-text').textContent = val;
+    document.getElementById('leave-ai-model-list').classList.add('hidden');
+  }
+
+  function loadAiModels() {
+    const wrapper = document.getElementById('leave-ai-model-wrapper');
+    if (!wrapper) return;
+
+    const listEl = document.querySelector('#leave-ai-model-list ul');
+    const notice = document.getElementById('leave-ai-model-notice');
+    const textEl = document.getElementById('leave-ai-model-text');
+    const currentModel = document.getElementById('leave-ai-model-value').value;
+
+    const messages = {
+      loadFailed: '<%= j l(:text_leave_ai_model_load_failed) %>',
+      deprecated: '<%= j l(:text_leave_ai_model_deprecated) %>',
+      none: '<%= j l(:text_leave_ai_model_none) %>'
+    };
+
+    const showNotice = (msg, tone) => {
+      notice.textContent = msg;
+      notice.className = 'mt-1 text-xs ' + (tone === 'error' ? 'text-red-600' : 'text-amber-600');
+      notice.classList.remove('hidden');
+    };
+
+    const addOption = (model, deprecated) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tep-activity-option w-full text-left px-4 py-2 text-sm hover:!bg-gray-100 hover:!text-gray-900 '
+        + (deprecated ? '!text-red-600' : '!text-gray-700');
+      btn.textContent = deprecated ? (model + ' ⚠') : model;
+      btn.addEventListener('click', () => selectAiModel(model));
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    };
+
+    fetch('<%= admin_leave_count_ai_models_path %>', { headers: { 'Accept': 'application/json' } })
+      .then(response => response.ok ? response.json() : Promise.reject(response))
+      .then(data => {
+        const models = Array.isArray(data.models) ? data.models : [];
+        listEl.innerHTML = '';
+
+        if (models.length === 0) {
+          showNotice(messages.none, 'error');
+          return;
+        }
+
+        // Edge case 3: saved model not in the live list -> flag as deprecated.
+        if (currentModel && !models.includes(currentModel)) {
+          addOption(currentModel, true);
+          showNotice(messages.deprecated, 'error');
+        } else if (!currentModel) {
+          textEl.textContent = models[0];
+          document.getElementById('leave-ai-model-value').value = models[0];
+        }
+
+        models.forEach(model => addOption(model, false));
+      })
+      .catch(() => {
+        // Edge case 2: keep the last known value, surface an error notice.
+        showNotice(messages.loadFailed, 'error');
+      });
+  }
+
+  // Flowbite's datepicker can render itself open on page load when the
+  // input already has a value (e.g. after saving the form). Hide it so the
+  // calendar only appears when the user actually interacts with the field.
+  function hideLeaveSyncDatePickers() {
+    ['leave-sync-start-date', 'leave-sync-end-date'].forEach(function(id) {
+      const input = document.getElementById(id);
+      if (input && input.datepicker && input.datepicker.active && input.datepicker.hide) {
+        input.datepicker.hide();
+      }
+      if (document.activeElement === input) input.blur();
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(hideLeaveSyncDatePickers, 0);
+    setTimeout(hideLeaveSyncDatePickers, 120);
+
     const freqBtn = document.getElementById('leave-sync-freq-type-btn');
     const freqList = document.getElementById('leave-sync-freq-type-list');
     const unitBtn = document.getElementById('leave-sync-interval-unit-btn');
     const unitList = document.getElementById('leave-sync-interval-unit-list');
+    const aiModelBtn = document.getElementById('leave-ai-model-btn');
+    const aiModelList = document.getElementById('leave-ai-model-list');
+
+    if (aiModelBtn) {
+      aiModelBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        aiModelList.classList.toggle('hidden');
+        if (freqList) freqList.classList.add('hidden');
+        if (unitList) unitList.classList.add('hidden');
+      });
+      loadAiModels();
+    }
 
     if (freqBtn) {
       freqBtn.addEventListener('click', function(e) {
@@ -399,6 +666,29 @@
     document.addEventListener('click', function() {
       if (freqList) freqList.classList.add('hidden');
       if (unitList) unitList.classList.add('hidden');
+      if (aiModelList) aiModelList.classList.add('hidden');
+    });
+
+    // Show/hide the schedule section live when the "Enable automatic sync" toggle changes,
+    // without requiring a save. Persistence still happens on form submit.
+    const enableToggle = document.getElementById('leave-sync-enabled-toggle');
+    const scheduleSection = document.getElementById('leave-sync-schedule-section');
+    const cronDisabled = document.getElementById('leave-sync-cron-disabled');
+    if (enableToggle && scheduleSection && cronDisabled) {
+      enableToggle.addEventListener('change', function () {
+        scheduleSection.classList.toggle('hidden', !enableToggle.checked);
+        cronDisabled.classList.toggle('hidden', enableToggle.checked);
+        updateNextRun();
+      });
+    }
+
+    // Live "Next Run At" preview: recompute whenever any schedule input changes.
+    ['leave_sync_interval_value', 'leave_sync_daily_time', 'leave_sync_everyday_time'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', updateNextRun);
+    });
+    document.querySelectorAll('input[name="leave_sync_daily_days[]"]').forEach(function (cb) {
+      cb.addEventListener('change', updateNextRun);
     });
   });
 </script>

@@ -128,8 +128,8 @@
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                        <% @all_teams.each do |team| %>
-                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                        <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                          <% indent = '&nbsp;&nbsp;' * level %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
@@ -292,8 +292,8 @@
                         <span class="material-icons text-base text-gray-500">arrow_drop_down</span>
                       </button>
                       <div id="<%= edit_team_list_id %>" data-ta-hiring-inline-menu="true" class="hidden absolute left-0 top-full z-[10050] mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                        <% @all_teams.each do |team| %>
-                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                        <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                          <% indent = '&nbsp;&nbsp;' * level %>
                           <button type="button"
                                   class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
                                   data-ta-hiring-inline-value="<%= team.id %>"
@@ -415,6 +415,13 @@
                         <%= h(hiring_title.title) %>
                       </button>
                       <button type="button"
+                              class="ta-inline-icon-btn"
+                              data-ta-hiring-create-title-edit-id="<%= hiring_title.id %>"
+                              data-ta-hiring-create-title-edit-label="<%= h(hiring_title.title) %>"
+                              data-ta-hiring-create-title-edit-url="<%= admin_ta_hiring_title_path(hiring_title) %>">
+                        <span class="material-icons ta-inline-material-icon">edit</span>
+                      </button>
+                      <button type="button"
                               class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                               title="Delete title"
                               data-ta-hiring-create-title-delete-id="<%= hiring_title.id %>"
@@ -457,8 +464,8 @@
                    data-ta-hiring-create-team-menu="true"
                    class="tep-activity-dropdown hidden absolute z-[10050] mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl py-1">
                 <ul class="max-h-60 overflow-auto py-1 text-sm text-gray-700">
-                  <% @all_teams.each do |team| %>
-                    <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                  <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                    <% indent = '&nbsp;&nbsp;' * level %>
                     <li>
                       <button type="button"
                               class="tep-activity-option w-full text-left px-4 py-2 text-sm !text-gray-700 hover:!bg-gray-100 hover:!text-gray-900"
@@ -886,6 +893,12 @@
               'data-ta-hiring-create-title-id="' + item.id + '" ' +
               'data-ta-hiring-create-title-value="' + safeTitle + '" ' +
               'data-ta-hiring-create-title-label="' + safeTitle + '">' + safeTitle + '</button>' +
+            '<button type="button" class="ta-inline-icon-btn" ' +
+              'data-ta-hiring-create-title-edit-id="' + item.id + '" ' +
+              'data-ta-hiring-create-title-edit-label="' + safeTitle + '" ' +
+              'data-ta-hiring-create-title-edit-url="' + safeDeleteUrl + '">' +
+              '<span class="material-icons ta-inline-material-icon">edit</span>' +
+            '</button>' +
             '<button type="button" class="ta-inline-icon-btn ta-inline-icon-btn--danger" ' +
               'title="Delete title" ' +
               'data-ta-hiring-create-title-delete-id="' + item.id + '" ' +
@@ -932,6 +945,50 @@
         .catch(function(error) {
           alert(error.message);
         });
+    }
+
+    function hiringOpenCreateTitleEditMode(editBtn) {
+      var editId = editBtn.getAttribute('data-ta-hiring-create-title-edit-id');
+      var editLabel = editBtn.getAttribute('data-ta-hiring-create-title-edit-label');
+      var editUrl = editBtn.getAttribute('data-ta-hiring-create-title-edit-url');
+      var li = editBtn.closest('li');
+      if (!li || !editUrl) return;
+
+      li.dataset.hiringTitleEditOriginal = li.innerHTML;
+      li.innerHTML =
+        '<input type="text" maxlength="255" value="' + escapeHtml(editLabel) + '" ' +
+        'style="flex:1;min-width:0;height:32px;padding:0 8px;font-size:0.875rem;' +
+        'border:1px solid #d1d5db !important;border-radius:0.5rem;' +
+        'background:#fff !important;color:#111827 !important;box-shadow:none !important;outline:none !important;">' +
+        '<button type="button" class="ta-inline-icon-btn ta-inline-icon-btn--success" title="Save" ' +
+        'data-ta-hiring-title-edit-save data-save-url="' + escapeHtml(editUrl) + '" data-save-label="' + escapeHtml(editLabel) + '">' +
+        '<span class="material-icons ta-inline-material-icon">done</span></button>' +
+        '<button type="button" class="ta-inline-icon-btn" title="Cancel" data-ta-hiring-title-edit-cancel>' +
+        '<span class="material-icons ta-inline-material-icon">close</span></button>';
+
+      var inp = li.querySelector('input');
+      if (inp) {
+        inp.focus();
+        inp.select();
+        inp.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') { e.preventDefault(); var s = li.querySelector('[data-ta-hiring-title-edit-save]'); if (s) s.click(); }
+          if (e.key === 'Escape') { e.preventDefault(); li.innerHTML = li.dataset.hiringTitleEditOriginal || ''; delete li.dataset.hiringTitleEditOriginal; }
+        });
+      }
+    }
+
+    function hiringConfirmCreateTitleEdit(saveBtn) {
+      var editUrl = saveBtn.getAttribute('data-save-url');
+      var editLabel = saveBtn.getAttribute('data-save-label');
+      var li = saveBtn.closest('li');
+      var inp = li ? li.querySelector('input') : null;
+      var newTitle = inp ? inp.value.trim() : '';
+      if (!newTitle || !editUrl) return;
+
+      fetchHiringTitle(editUrl, 'PATCH', { title: newTitle }, function(body) {
+        var titleValue = document.getElementById('ta-hiring-create-title-value');
+        if (titleValue && titleValue.value === editLabel) setCreateHiringTitle(newTitle);
+      });
     }
 
     function switchHiringTab(targetPanelId) {
@@ -1003,6 +1060,31 @@
         var selectedTitleLabel = titleOptionButton.getAttribute('data-ta-hiring-create-title-label');
         setCreateHiringTitle(selectedTitleValue || selectedTitleLabel);
         closeCreateHiringDropdowns();
+        return;
+      }
+
+      var editTitleButton = event.target.closest('[data-ta-hiring-create-title-edit-id]');
+      if (editTitleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        hiringOpenCreateTitleEditMode(editTitleButton);
+        return;
+      }
+
+      var saveTitleButton = event.target.closest('[data-ta-hiring-title-edit-save]');
+      if (saveTitleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        hiringConfirmCreateTitleEdit(saveTitleButton);
+        return;
+      }
+
+      var cancelTitleButton = event.target.closest('[data-ta-hiring-title-edit-cancel]');
+      if (cancelTitleButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        var cancelLi = cancelTitleButton.closest('li');
+        if (cancelLi) { cancelLi.innerHTML = cancelLi.dataset.hiringTitleEditOriginal || ''; delete cancelLi.dataset.hiringTitleEditOriginal; }
         return;
       }
 

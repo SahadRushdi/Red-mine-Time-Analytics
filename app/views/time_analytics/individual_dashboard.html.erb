@@ -1,11 +1,16 @@
 <%= render 'includes' %>
+<%= stylesheet_link_tag 'team_management.css', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'ta_activity_group_board.js', plugin: 'redmine_time_analytics' %>
+<%= javascript_include_tag 'team_activity_groups.js', plugin: 'redmine_time_analytics' %>
 <% date_range_label = @from && @to ? "#{@from.strftime('%b %d')} – #{@to.strftime('%b %d, %Y')}" : l(:label_all_time) %>
+<% no_activity_groups_message = "No activity groups have been set up yet. Group your activities to see rolled-up hours here." %>
 
 <%# Modern Dashboard Header with Tailwind %>
 <div class="flex items-center justify-between mb-6 flex-wrap gap-4">
   <div>
-    <h1 class="text-2xl font-bold text-gray-900">
+    <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
       <%= individual_dashboard_title %>
+      <%= ta_locked_badge if @user.present? && @user != User.current && @user.locked? %>
     </h1>
     <p class="text-sm text-gray-500">
       <%= date_range_label %>
@@ -455,11 +460,13 @@
           </thead>
           <tbody>
             <% @time_overview_data.slice(@overview_offset, @overview_limit).each do |entry| %>
+              <% is_holiday = entry.respond_to?(:holiday) && entry.holiday %>
               <tr class="bg-white border-b hover:bg-gray-50">
-                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                <th scope="row" class="px-6 py-4 font-medium whitespace-nowrap" style="color: <%= is_holiday ? '#b45309' : '#111827' %>;">
                   <%= entry.period %>
+                  <% if is_holiday %><span class="ml-1 text-xs" title="Weekend, holiday or leave" style="color:#f59e0b;">●</span><% end %>
                 </th>
-                <td class="px-6 py-4 text-right font-mono text-gray-900">
+                <td class="px-6 py-4 text-right font-mono" style="color: <%= is_holiday ? '#b45309' : '#111827' %>;">
                   <%= format_hours(entry.hours) %>
                 </td>
               </tr>
@@ -470,7 +477,7 @@
       
       <!-- Pagination -->
       <div class="pagination-wrapper">
-        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state, :user_id) %>
+        <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :page, :view_mode, :activity_view_state, :project_view_state, :user_id, :hide_holidays) %>
         <%= overview_pagination_links(@overview_page, @overview_total_pages, permitted_params).html_safe %>
         
         <div class="pagination-info">
@@ -482,35 +489,48 @@
 
   <!-- Visualization Section -->
   <div class="box visualization-section">
+    <% chart_type = params[:chart_type] || default_chart_type(@view_mode) %>
     <h3 class="text-base font-semibold text-gray-900 mb-3" style="display: flex; justify-content: space-between; align-items: center;">
       <span><%= chart_breakdown_header(@grouping) %></span>
-      <div class="inline-flex gap-2">
-        <%# Two buttons for chart type selection - consistent with other Flowbite buttons %>
-        <button type="button" 
+      <div class="inline-flex items-center gap-2">
+        <%# Flowbite toggle: Show Active Days (daily only) — hides weekends, holidays & full-day leaves %>
+        <% if @grouping == 'daily' %>
+          <label class="relative inline-flex items-center gap-2 cursor-pointer select-none"
+                 title="Show only working days (hides weekends, holidays & full-day leaves; half-days kept)">
+            <input type="checkbox" class="sr-only peer" <%= 'checked' if @hide_holidays %> onchange="toggleHolidays()">
+            <div class="ta-custom-toggle-track"></div>
+            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Show Active Days</span>
+          </label>
+          <span class="text-gray-300 select-none px-1">|</span>
+        <% end %>
+
+        <%# Chart type buttons %>
+        <button type="button"
                 onclick="switchChartType('line')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'line' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'line' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Trend
         </button>
-        <button type="button" 
+        <button type="button"
                 onclick="switchChartType('bar')"
-                style="<%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (params[:chart_type] || default_chart_type(@view_mode)) == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                style="<%= chart_type == 'bar' ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= chart_type == 'bar' ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
           Stacked
         </button>
-        
+
         <%# Hidden select kept for backend compatibility %>
-        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, params[:chart_type] || default_chart_type(@view_mode)),
+        <%= select_tag 'chart_type_select', options_for_select(chart_type_options, chart_type),
             onchange: 'updateChart()', id: 'chart_type_select', style: 'display: none;' %>
       </div>
     </h3>
-    
-    <div id="chart-container" style="display: block;">
+
+    <div id="chart-container" class="<%= chart_type == 'bar' ? 'has-chart-legend' : '' %>" style="display: block;">
       <div class="chart-wrapper">
-        <canvas id="time-chart" class="chart" 
-                data-chart='<%= @chart_data %>' 
+        <canvas id="time-chart" class="chart"
+                data-chart='<%= @chart_data %>'
                 data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
+      <div id="individual-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
     </div>
   </div>
 </div>
@@ -526,6 +546,17 @@ function switchChartType(chartType) {
     url.searchParams.set('chart_type', chartType);
     window.location.href = url.toString();
   }
+}
+
+// Toggle hiding weekends/holidays/full-day-leaves from the Trend chart + Time Overview.
+function toggleHolidays() {
+  var url = new URL(window.location.href);
+  if (url.searchParams.get('hide_holidays') === '1') {
+    url.searchParams.delete('hide_holidays');
+  } else {
+    url.searchParams.set('hide_holidays', '1');
+  }
+  window.location.href = url.toString();
 }
 </script>
 
@@ -599,12 +630,19 @@ function switchChartType(chartType) {
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">summarize</span>
                   Summary
                 </button>
-                <button type="button" id="show-detailed-btn-activity" 
-                        onclick="showDetailedView('activity');" 
-                        style="<%= (@activity_view_state != 'summary') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state != 'summary') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                <button type="button" id="show-detailed-btn-activity"
+                        onclick="showDetailedView('activity');"
+                        style="<%= (@activity_view_state == 'detailed') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state == 'detailed') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
                   <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">data_table</span>
                   Detailed
+                </button>
+                <button type="button" id="show-grouped-btn-activity"
+                        onclick="showGroupedView();"
+                        style="<%= (@activity_view_state == 'grouped') ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
+                        class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= (@activity_view_state == 'grouped') ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">category</span>
+                  Grouped
                 </button>
               <% elsif @view_mode == 'project' %>
                 <button type="button" id="show-summary-btn-project" 
@@ -638,8 +676,17 @@ function switchChartType(chartType) {
                 </button>
               <% end %>
             </div>
+            <% if @view_mode == 'activity' %>
+              <div id="activity-customize-groups-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+                <button type="button" id="customize-groups-btn" onclick="openCustomizeGroupsModal();"
+                        class="inline-flex items-center px-3 py-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+                  <span class="material-symbols-outlined mr-2" aria-hidden='true' style="font-size: 18px;">tune</span>
+                  <%= l(:label_customize_groups) %>
+                </button>
+              </div>
+            <% end %>
           </div>
-          
+
           <!-- Right: Sort Buttons and Per Page -->
           <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <% summary_view_id = @view_mode == 'activity' ? 'daily-summary-view' : "#{@view_mode}-summary-view" %>
@@ -649,8 +696,8 @@ function switchChartType(chartType) {
                  when 'issue' then @issue_view_state
                end %>
             <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_view_state == 'summary' ? '' : 'display: none;' %>">
-              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z</button>
-              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="sortSummaryCards('<%= summary_view_id %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+              <button type="button" id="sort-name-<%= summary_view_id %>" onclick="taSummarySortClick('name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
+              <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="taSummarySortClick('hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
             </div>
             <%= form_tag my_time_path, method: :get, local: true,
                 class: 'flex items-center gap-2' do %>
@@ -662,9 +709,21 @@ function switchChartType(chartType) {
               <%= hidden_field_tag :chart_type, params[:chart_type] %>
               <%= hidden_field_tag :view_mode, @view_mode %>
               <%= label_tag :per_page, 'Per page:', class: 'text-sm text-gray-600 whitespace-nowrap' %>
-              <%= select_tag :per_page, options_for_select(per_page_options, @limit),
-                  onchange: 'this.form.submit()',
-                  class: 'ts-per-page-select px-3 py-1.5 text-sm text-center border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500' %>
+              <%= hidden_field_tag :per_page, @limit, id: 'per-page-field' %>
+              <div class="relative">
+                <button type="button" id="per-page-dropdown-button" onclick="togglePerPageDropdown()"
+                        class="inline-flex h-[34px] min-w-[100px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-0">
+                  <span id="per-page-label"><%= @limit %></span>
+                  <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <div id="per-page-dropdown" class="hidden absolute right-0 z-20 mt-1 min-w-[100px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+                  <% per_page_options.each do |label, value| %>
+                    <button type="button" class="leaves-dropdown-option <%= 'leaves-dropdown-option--active' if value == @limit %> w-full px-4 py-2 text-left text-sm text-gray-700" onclick="selectPerPage(<%= value %>)"><%= label %></button>
+                  <% end %>
+                </div>
+              </div>
             <% end %>
           </div>
         </div>
@@ -679,306 +738,146 @@ function switchChartType(chartType) {
     <!-- Flowbite Table with Modern Design -->
     <div class="ta-analysis-table-scroll overflow-x-auto">
       <% if @view_mode == 'activity' %>
-      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Activity pivot table for cross-tabulation (Activity × Time Period matrix) - Dual View System %>
-        
+
         <%# Detailed View: Pivot Table (Time Period × Activity matrix) - Default %>
-        <div id="daily-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
-                <% @activities.each do |activity| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @activities.each do |activity| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+        <div id="daily-detailed-view" class="pivot-table-wrapper" style="<%= @activity_view_state == 'detailed' ? '' : 'display: none;' %>">
+          <%= render 'team_analytics/activity_period_pivot_table',
+                     pivot_activities: @activities,
+                     matrix: @matrix_data,
+                     period_totals: @period_totals,
+                     paginated_periods: @paginated_periods,
+                     raw_periods: @activity_pivot_data[:raw_periods],
+                     offset: @offset,
+                     colors: [],
+                     show_bars: false %>
         </div>
-        
-        <%# Summary View: Simple Activity Table (Hidden by default) %>
-        <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
-            <%
-              # Sort activities by hours (highest to lowest)
-              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index|
-            %>
-              <% hours = @activity_totals[activity] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-                <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+
+        <%# Grouped View: Pivot Table (Time Period × Activity Group matrix) %>
+        <div id="daily-grouped-view" class="pivot-table-wrapper" style="<%= @activity_view_state == 'grouped' ? '' : 'display: none;' %>">
+          <% if @activity_groups.present? %>
+            <%= render 'team_analytics/activity_period_pivot_table',
+                       pivot_activities: @activity_group_pivot_data[:activities],
+                       matrix: @activity_group_pivot_data[:matrix],
+                       period_totals: @activity_group_pivot_data[:period_totals],
+                       paginated_periods: @paginated_periods,
+                       raw_periods: @activity_pivot_data[:raw_periods],
+                       offset: @offset,
+                       colors: @activity_group_colors,
+                       show_bars: true %>
+          <% else %>
+            <div class="px-6 py-8 text-center">
+              <p class="text-sm text-gray-500"><%= no_activity_groups_message %></p>
+            </div>
+          <% end %>
+        </div>
+
+        <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
+        <div id="daily-summary-view" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>">
+          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
-      <% elsif @grouping == 'daily' %>
-        <%# Daily Activity Analysis - Dual View System %>
-        
-        <%# Detailed View: Daily Pivot Table (Date × Activity matrix) - Default %>
-        <div id="daily-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
-                <% @activities.each do |activity| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= activity %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @activity_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @activities.each do |activity| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][activity] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-        
-        <%# Summary View: Simple Activity Table (Hidden by default) %>
-        <div id="daily-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
-            <%
-              # Sort activities by hours (highest to lowest)
-              sorted_activities = @activities.sort_by { |activity| -(@activity_totals[activity] || 0) }
-              sorted_activities.each_with_index do |activity, index|
-            %>
-              <% hours = @activity_totals[activity] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(activity) %>">
-                <!-- Activity name and hours -->
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-base font-medium text-gray-900"><%= activity %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
+
+        <%# Session-only recompute payload for the Grouped tab and "Customize groups" popup — see team_activity_groups.js %>
+        <% activity_group_payload = {
+             rawPeriods: @activity_pivot_data[:raw_periods].reverse, # Chronological — Stacked chart always plots the full range left-to-right
+             periodDisplay: @activity_pivot_data[:periods].reverse,
+             displayRawPeriods: @activity_pivot_data[:raw_periods], # Most-recent-first + paginated — used by the Grouped table
+             displayPeriodDisplay: @time_periods,
+             matrix: @activity_pivot_data[:matrix],
+             activityIds: @activity_pivot_data[:activity_ids],
+             allActivities: @all_activities.map { |a| { id: a.id, name: a.name } },
+             assignments: @activity_group_assignments.each_with_object({}) { |(aid, gid), h| h[aid.to_s] = gid.to_s },
+             groups: @activity_groups.each_with_index.map { |g, i| { id: g.id.to_s, name: g.name, color: @activity_group_colors[i], position: g.position } },
+             ungroupedColor: TaActivityGroup::UNGROUPED_COLOR,
+             ungroupedName: TaActivityGroup::UNGROUPED_NAME,
+             periodColumnLabel: (@grouping == 'daily' ? l(:label_date) : l("label_#{@grouping}")),
+             offset: @offset,
+             limit: @limit
+           }.to_json %>
+        <div id="activity-group-payload" data-payload='<%= activity_group_payload %>' style="display:none;"></div>
     <% elsif @view_mode == 'project' %>
-      <% if ['weekly', 'monthly'].include?(@grouping) %>
         <%# Project pivot table for cross-tabulation (Project × Time Period matrix) - Dual View System %>
-        
+
         <%# Detailed View: Pivot Table (Time Period × Project matrix) - Default %>
         <div id="project-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
-                <% @projects.each do |project| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @projects.each do |project| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <%= render 'team_analytics/activity_period_pivot_table',
+                     pivot_activities: @projects,
+                     matrix: @matrix_data,
+                     period_totals: @period_totals,
+                     paginated_periods: @paginated_periods,
+                     raw_periods: @project_pivot_data[:raw_periods],
+                     offset: @offset,
+                     colors: [],
+                     show_bars: false %>
         </div>
-        
-        <%# Summary View: Simple Project Table (Hidden by default) %>
+
+        <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
-            <%
-              # Sort projects by hours (highest to lowest)
-              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index|
-            %>
-              <% hours = @project_totals[project] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-                <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
-      <% elsif @grouping == 'daily' %>
-        <%# Daily Project Analysis - Dual View System %>
-        
-        <%# Detailed View: Daily Pivot Table (Date × Project matrix) - Default %>
-        <div id="project-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
-            <thead class="text-sm text-gray-700 bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">Date</th>
-                <% @projects.each do |project| %>
-                  <th scope="col" class="px-6 py-3 text-center border-r border-gray-200"><%= project %></th>
-                <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% @paginated_periods.each_with_index do |period_display, index| %>
-                <% period_key = @project_pivot_data[:raw_periods][(@offset + index)] %>
-                <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
-                  <% @projects.each do |project| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][project] || 0 %>
-                      <%= hours > 0 ? format_hours(hours) : '—' %>
-                    </td>
-                  <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-        
-        <%# Summary View: Simple Project Table (Hidden by default) %>
-        <div id="project-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
-            <%
-              # Sort projects by hours (highest to lowest)
-              sorted_projects = @projects.sort_by { |project| -(@project_totals[project] || 0) }
-              sorted_projects.each_with_index do |project, index|
-            %>
-              <% hours = @project_totals[project] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(project) %>">
-                <!-- Project name and hours -->
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-base font-medium text-gray-900"><%= project %></h3>
-                  <div class="flex items-center gap-3">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
-          </div>
-        </div>
-      <% end %>
     <% elsif @view_mode == 'issue' %>
       <% if ['daily', 'weekly', 'monthly'].include?(@grouping) %>
         <%# Issue pivot table for cross-tabulation (Issue × Time Period matrix) - Dual View System %>
         
         <%# Detailed View: Pivot Table (Time Period × Issue matrix) - Default %>
         <div id="issue-detailed-view" class="pivot-table-wrapper">
-          <table class="w-full text-sm text-left text-gray-500">
+          <table class="w-full text-sm text-left text-gray-500 ta-sortable-table">
             <thead class="text-sm text-gray-700 bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300"><%= l("label_#{@grouping}") %></th>
+                <th scope="col" class="px-6 py-3 border-r-2 border-gray-300">
+                  <%= ta_sortable_th(l("label_#{@grouping}"), 'period') %>
+                </th>
                 <% @issues.each do |issue_info| %>
                   <% if issue_info[:issue] %>
                     <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
-                      <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), 
-                          target: "_blank", class: "text-blue-600 hover:underline", 
-                          data: { "tooltip-target": "tooltip-issue-det-#{issue_info[:key]}" } %>
+                      <div class="inline-flex items-center gap-1">
+                        <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]),
+                            target: "_blank", class: "text-blue-600 hover:underline",
+                            data: { "tooltip-target": "tooltip-issue-det-#{issue_info[:key]}" } %>
+                        <%= ta_sort_button(issue_info[:key]) %>
+                      </div>
                       <div id="tooltip-issue-det-<%= issue_info[:key] %>" role="tooltip" class="absolute z-10 invisible inline-block px-3 py-2 text-sm font-medium text-white transition-opacity duration-300 bg-gray-900 rounded-lg shadow-sm opacity-0 tooltip">
                           <%= issue_info[:display] %>
                           <div class="tooltip-arrow" data-popper-arrow></div>
                       </div>
                     </th>
                   <% else %>
-                    <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">No Issue</th>
+                    <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
+                      <%= ta_sortable_th('No Issue', issue_info[:key]) %>
+                    </th>
                   <% end %>
                 <% end %>
-                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold"><%= l(:label_hours) %></th>
+                <th scope="col" class="px-6 py-3 text-right border-l-2 border-gray-300 font-bold">
+                  <%= ta_sortable_th(l(:label_hours), 'total') %>
+                </th>
               </tr>
             </thead>
             <tbody>
               <% @paginated_periods.each_with_index do |period_display, index| %>
                 <% period_key = @issue_pivot_data[:raw_periods][(@offset + index)] %>
+                <% row_total = @period_totals[period_key] || 0 %>
                 <tr class="bg-white border-b hover:bg-gray-50">
-                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap"><%= period_display %></td>
+                  <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-sort-value="<%= period_key %>"><%= period_display %></td>
                   <% @issues.each do |issue_info| %>
-                    <td class="px-6 py-4 text-center text-gray-900">
-                      <% hours = @matrix_data[period_key][issue_info[:key]] || 0 %>
+                    <% hours = @matrix_data[period_key][issue_info[:key]] || 0 %>
+                    <td class="px-6 py-4 text-center text-gray-900" data-sort-value="<%= hours %>">
                       <%= hours > 0 ? format_hours(hours) : '—' %>
                     </td>
                   <% end %>
-                  <td class="px-6 py-4 text-right font-semibold text-gray-900">
-                    <%= format_hours(@period_totals[period_key] || 0) %>
+                  <td class="px-6 py-4 text-right font-semibold text-gray-900" data-sort-value="<%= row_total %>">
+                    <%= format_hours(row_total) %>
                   </td>
                 </tr>
               <% end %>
@@ -986,43 +885,28 @@ function switchChartType(chartType) {
           </table>
         </div>
         
-        <%# Summary View: Simple Issue Table (Hidden by default) %>
+        <%# Summary View: Simple Issue Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="issue-summary-view" style="display: none;">
-          <div class="space-y-6 px-2 pt-4">
-            <%
-              # Sort issues by hours (highest to lowest)
-              sorted_issues = @issues.sort_by { |issue_info| -(@issue_totals[issue_info[:key]] || 0) }
-              sorted_issues.each_with_index do |issue_info, index|
-            %>
-              <% hours = @issue_totals[issue_info[:key]] || 0 %>
-              <% percentage = @grand_total > 0 ? (hours / @grand_total * 100) : 0 %>
-              <% bar_color = summary_chart_colors[index % summary_chart_colors.length] %>
-              <div class="bg-white hover:bg-gray-50 rounded-lg p-2 transition-colors duration-200" data-hours="<%= hours.to_f %>" data-name="<%= h(issue_info[:display]) %>">
-                <!-- Issue name and hours -->
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-base font-medium text-gray-900 flex-1 mr-4">
-                      <% if issue_info[:issue] %>
-                        <span class="ts-tracker-badge"><%= issue_info[:issue].tracker.name %></span>
-                        <%= link_to "##{issue_info[:issue].id}", issue_path(issue_info[:issue]), target: '_blank',
-                              class: 'text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors' %>
-                        <%= link_to ": #{h(issue_info[:issue].subject)}".html_safe, issue_path(issue_info[:issue]), target: '_blank',
-                              class: 'text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors' %>
-                      <% else %>
-                        <%= issue_info[:display] %>
-                      <% end %>
-                    </h3>
-                  <div class="flex items-center gap-3 flex-shrink-0">
-                    <span class="text-base font-semibold text-gray-900"><%= format_hours(hours) %></span>
-                    <span class="text-sm font-medium text-gray-500 min-w-[45px] text-right"><%= number_with_precision(percentage, precision: 1) %>%</span>
-                  </div>
-                </div>
-                <!-- Progress bar -->
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full transition-all duration-300" style="width: <%= percentage %>%; background-color: <%= bar_color %>;"></div>
-                </div>
-                <!-- Subtitle -->
-              </div>
-            <% end %>
+          <% issue_summary_payload = {
+               grandTotal: @grand_total.to_f,
+               items: @issues.map do |issue_info|
+                 issue = issue_info[:issue]
+                 {
+                   name: issue_info[:display],
+                   hours: (@issue_totals[issue_info[:key]] || 0).to_f,
+                   hasIssue: issue.present?,
+                   id: issue&.id,
+                   trackerName: issue&.tracker&.name,
+                   subject: issue&.subject,
+                   url: issue ? issue_path(issue) : nil
+                 }
+               end
+             }.to_json %>
+          <div id="<%= summary_view_id %>-payload" data-payload='<%= issue_summary_payload %>' style="display:none;"></div>
+          <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
+          <div class="pagination-wrapper">
+            <span id="<%= summary_view_id %>-pagination-links"></span>
+            <div class="pagination-info" id="<%= summary_view_id %>-pagination-info"></div>
           </div>
         </div>
       <% end %>
@@ -1030,20 +914,23 @@ function switchChartType(chartType) {
 
     </div>
     
-    <!-- Flowbite Pagination -->
+    <!-- Flowbite Pagination (Detailed only — Summary paginates client-side within its own view) -->
     <% if @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'issue' %>
-      <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div class="text-sm text-gray-700" id="pagination-info-text" 
-             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)"
-             data-activity-count="<%= @activities&.count || 0 %>"
-             data-project-count="<%= @projects&.count || 0 %>"
-             data-issue-count="<%= @issues&.count || 0 %>"
-             data-view-mode="<%= @view_mode %>">
+      <% current_view_state = case @view_mode
+           when 'activity' then @activity_view_state
+           when 'project' then @project_view_state
+           when 'issue' then @issue_view_state
+         end %>
+      <% hide_detailed_pagination_bar = current_view_state == 'summary' ||
+                                        (current_view_state == 'grouped' && @activity_groups.blank?) %>
+      <div id="detailed-pagination-bar" class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style="<%= hide_detailed_pagination_bar ? 'display: none;' : '' %>">
+        <div class="text-sm text-gray-700" id="pagination-info-text"
+             data-detailed-text="(<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)">
           (<%= @offset + 1 %>-<%= [@offset + @limit, @entry_count].min %>/<%= @entry_count %>)
         </div>
-        <nav class="flex gap-1 max-w-full overflow-x-auto">
+        <nav id="pagination-links-nav" class="flex gap-1 max-w-full overflow-x-auto">
           <% current_page = params[:page].to_i > 0 ? params[:page].to_i : 1 %>
-          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :user_id) %>
+          <% permitted_params = params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :view_mode, :user_id, :activity_view_state, :project_view_state, :issue_view_state, :hide_holidays) %>
           <%= pagination_links(current_page, @total_pages, permitted_params).html_safe %>
         </nav>
       </div>
@@ -1069,7 +956,7 @@ function switchChartType(chartType) {
       </div>
       
       <!-- Legend -->
-      <div id="donut-legend" class="mt-4 space-y-1.5 max-h-60 overflow-y-auto text-sm">
+      <div id="donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm">
         <!-- Legend items will be generated by JavaScript -->
       </div>
     </div>
@@ -1219,9 +1106,17 @@ function initChart() {
       
       return label;
     };
-    
+
+    if (window.TaChartPlugins) {
+      TaChartPlugins.applyHolidayLegend(config);
+    }
+
     timeAnalyticsChart = new Chart(chartElement, config);
-    
+
+    if (config.type === 'bar' && window.TaChartPlugins) {
+      TaChartPlugins.renderChartLegend(timeAnalyticsChart, 'individual-chart-legend');
+    }
+
   } catch (error) {
     console.error('Chart initialization error:', error);
     chartElement.parentElement.innerHTML = '<p style="text-align: center; color: #red; padding: 20px;">Error loading chart</p>';
@@ -1377,13 +1272,34 @@ function transformChartType(originalConfig, newType) {
     
     // Line chart styling
     if (newConfig.data && newConfig.data.datasets && newConfig.data.datasets[0]) {
-      newConfig.data.datasets[0].borderColor = '#36a2eb';
-      newConfig.data.datasets[0].backgroundColor = 'rgba(54, 162, 235, 0.1)';
-      newConfig.data.datasets[0].fill = true;
-      newConfig.data.datasets[0].tension = 0.2;
-      newConfig.data.datasets[0].borderWidth = 2;
-      newConfig.data.datasets[0].pointRadius = 3;
-      newConfig.data.datasets[0].pointHoverRadius = 5;
+      var ds = newConfig.data.datasets[0];
+      ds.borderColor = '#36a2eb';
+      ds.backgroundColor = 'rgba(54, 162, 235, 0.1)';
+      ds.fill = true;
+      ds.tension = 0.2;
+      ds.borderWidth = 2;
+
+      // Center a lone data point so it renders in the middle of the chart, not the left edge.
+      var dsData = ds.data || [];
+      var realCount = dsData.filter(function(v) { return v !== null && v !== undefined; }).length;
+      var isSingle = realCount === 1;
+      if (isSingle && dsData.length === 1) {
+        newConfig.data.labels = ['', newConfig.data.labels[0], ''];
+        ds.data = [null, dsData[0], null];
+        if (ds.formattedHours) { ds.formattedHours = ['', ds.formattedHours[0], '']; }
+      }
+
+      // Solid dots so points stay clearly visible with one or many data points.
+      // Holidays/leaves keep their amber colour when the dataset carries holidayFlags.
+      ds.pointRadius = isSingle ? 6 : 4;
+      ds.pointHoverRadius = isSingle ? 8 : 6;
+      var pointColors = '#1d4ed8';
+      if (ds.holidayFlags && ds.holidayFlags.length) {
+        pointColors = ds.holidayFlags.map(function (h) { return h ? '#f59e0b' : '#1d4ed8'; });
+      }
+      ds.pointBackgroundColor = pointColors;
+      ds.pointBorderColor = pointColors;
+      ds.pointBorderWidth = 1;
     }
     
   } else {
@@ -1469,44 +1385,49 @@ function transformChartType(originalConfig, newType) {
   return newConfig;
 }
 
+// Per-page Flowbite dropdown
+function togglePerPageDropdown() {
+  var menu = document.getElementById('per-page-dropdown');
+  if (menu) menu.classList.toggle('hidden');
+}
+
+function selectPerPage(value) {
+  var field = document.getElementById('per-page-field');
+  var label = document.getElementById('per-page-label');
+  if (label) label.textContent = value;
+  if (field) {
+    field.value = value;
+    field.closest('form').submit();
+  }
+}
+
+document.addEventListener('click', function(event) {
+  var menu = document.getElementById('per-page-dropdown');
+  var button = document.getElementById('per-page-dropdown-button');
+  if (menu && !menu.classList.contains('hidden')) {
+    if (!menu.contains(event.target) && button && !button.contains(event.target)) {
+      menu.classList.add('hidden');
+    }
+  }
+});
+
 // Update pagination info text based on view state
 function updatePaginationInfo(viewState) {
-  var paginationInfo = document.getElementById('pagination-info-text');
-  if (!paginationInfo) {
-    return;
-  }
-  
-  var detailedText = paginationInfo.getAttribute('data-detailed-text');
-  var viewMode = paginationInfo.getAttribute('data-view-mode');
-  
-  if (viewState === 'detailed') {
-    // Show detailed view pagination (based on time periods)
-    paginationInfo.textContent = detailedText;
-  } else {
-    // Show summary view pagination (based on activities, projects, or issues)
-    var count;
-    if (viewMode === 'activity') {
-      count = parseInt(paginationInfo.getAttribute('data-activity-count')) || 0;
-    } else if (viewMode === 'project') {
-      count = parseInt(paginationInfo.getAttribute('data-project-count')) || 0;
-    } else if (viewMode === 'issue') {
-      count = parseInt(paginationInfo.getAttribute('data-issue-count')) || 0;
-    }
-    
-    // Format: Redmine native format "(1-X/X)"
-    paginationInfo.textContent = '(1-' + count + '/' + count + ')';
+  var bar = document.getElementById('detailed-pagination-bar');
+  if (bar) {
+    bar.style.display = viewState === 'detailed' ? '' : 'none';
   }
 }
 
 // Simplified view toggle functions - toggle display AND update button styling
-function showDetailedView(viewType) {
+function showDetailedView(viewType, options) {
   // Map viewType to actual div IDs (activity uses 'daily' prefix)
   var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
   var detailedView = document.getElementById(viewPrefix + '-detailed-view');
   var summaryView = document.getElementById(viewPrefix + '-summary-view');
-  
+
   if (!detailedView || !summaryView) return;
-  
+
   // Show detailed view, hide summary view
   detailedView.style.display = 'block';
   summaryView.style.display = 'none';
@@ -1518,38 +1439,42 @@ function showDetailedView(viewType) {
   // Update button styling - Detail button blue, Summary button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
-  
+
   if (detailBtn && summaryBtn) {
     // Make detail button blue (selected)
     detailBtn.style.backgroundColor = '#3b82f6';
     detailBtn.style.color = 'white';
     detailBtn.className = detailBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
-    
+
     // Make summary button white (unselected)
     summaryBtn.style.backgroundColor = '';
     summaryBtn.style.color = '';
     summaryBtn.className = summaryBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
-  
+
+  if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
+
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
   if (hiddenField) hiddenField.value = 'detailed';
-  
+
   // Update pagination info
   updatePaginationInfo('detailed');
-  
+
   // Save preference
-  localStorage.setItem(viewType + '_view_mode', 'detailed');
+  if (!(options && options.persist === false)) {
+    localStorage.setItem(viewType + '_view_mode', 'detailed');
+  }
 }
 
-function showSummaryView(viewType) {
+function showSummaryView(viewType, options) {
   // Map viewType to actual div IDs (activity uses 'daily' prefix)
   var viewPrefix = viewType === 'activity' ? 'daily' : viewType;
   var detailedView = document.getElementById(viewPrefix + '-detailed-view');
   var summaryView = document.getElementById(viewPrefix + '-summary-view');
-  
+
   if (!detailedView || !summaryView) return;
-  
+
   // Show summary view, hide detailed view
   detailedView.style.display = 'none';
   summaryView.style.display = 'block';
@@ -1561,29 +1486,33 @@ function showSummaryView(viewType) {
   // Update button styling - Summary button blue, Detail button white
   var detailBtn = document.getElementById('show-detailed-btn-' + viewType);
   var summaryBtn = document.getElementById('show-summary-btn-' + viewType);
-  
+
   if (detailBtn && summaryBtn) {
     // Make summary button blue (selected)
     summaryBtn.style.backgroundColor = '#3b82f6';
     summaryBtn.style.color = 'white';
     summaryBtn.className = summaryBtn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
-    
+
     // Make detail button white (unselected)
     detailBtn.style.backgroundColor = '';
     detailBtn.style.color = '';
     detailBtn.className = detailBtn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
   }
-  
+
+  if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
+
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
   if (hiddenField) hiddenField.value = 'summary';
-  
+
   // Update pagination info
   updatePaginationInfo('summary');
-  
+
   // Save preference
-  localStorage.setItem(viewType + '_view_mode', 'summary');
-  
+  if (!(options && options.persist === false)) {
+    localStorage.setItem(viewType + '_view_mode', 'summary');
+  }
+
   // Auto-sort summary table by hours (descending)
   var tableId = viewType === 'activity' ? 'daily-summary-view' : viewType + '-summary-view';
   initSummarySorting(tableId);
@@ -1637,23 +1566,27 @@ function regenerateChartForIssueViewState(viewState) {
   window.location.href = newUrl;
 }
 
-// Restore activity view preference
+// Restore activity view preference (supports the extra "Grouped" state)
 function restoreActivityViewState() {
-  var savedMode = localStorage.getItem('activity_view_mode');
   var detailedView = document.getElementById('daily-detailed-view');
   var summaryView = document.getElementById('daily-summary-view');
-  
+
   if (!detailedView || !summaryView) {
     return;
   }
-  
+
+  var hiddenField = document.getElementById('activity_view_state_field');
+  var serverMode = hiddenField ? hiddenField.value : null;
+  var savedMode = localStorage.getItem('activity_view_mode');
   // Default to detailed view if no saved preference
-  var currentMode = savedMode || 'detailed';
-  
-  if (currentMode === 'summary') {
-    showSummaryView('activity');
+  var currentMode = savedMode || serverMode || 'detailed';
+
+  if (currentMode === 'grouped') {
+    showGroupedView({ persist: false });
+  } else if (currentMode === 'summary') {
+    showSummaryView('activity', { persist: false });
   } else {
-    showDetailedView('activity');
+    showDetailedView('activity', { persist: false });
   }
 }
 
@@ -1732,24 +1665,13 @@ function syncChartTypeDropdown() {
 // Donut Chart for Activity/Project/Issue Distribution
 var donutChartInstance = null;
 
+var TA_DONUT_TABLEAU10 = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+
 function initDonutChart() {
-  var donutCanvas = document.getElementById('donut-chart');
-  if (!donutCanvas) {
-    return;
-  }
-  
-  // Destroy existing chart if any
-  if (donutChartInstance) {
-    donutChartInstance.destroy();
-    donutChartInstance = null;
-  }
-  
   // Get data based on view mode and view state
-  var viewMode = '<%= @view_mode %>';
-  var chartData = null;
   var chartLabels = [];
   var chartValues = [];
-  
+
   // Collect data
   <% if @view_mode == 'activity' && @activity_totals %>
     <% sorted_activities = @activity_totals.sort_by { |_, hours| -hours } %>
@@ -1772,29 +1694,46 @@ function initDonutChart() {
       chartValues.push(<%= hours.to_f %>);
     <% end %>
   <% end %>
-  
-  if (chartLabels.length === 0 || chartValues.length === 0) {
+
+  var chartColors = chartLabels.map(function(_, index) { return TA_DONUT_TABLEAU10[index % TA_DONUT_TABLEAU10.length]; });
+  renderDonutFromArrays(chartLabels, chartValues, chartColors);
+}
+
+// Builds/replaces the donut chart + its legend from plain labels/values/colors arrays. Shared by
+// initDonutChart (per-activity/project/issue, from server-rendered data) and the Activity tab's
+// "Grouped" view (from the client-side regrouped pivot, see team_activity_groups.js).
+function renderDonutFromArrays(labels, values, colors) {
+  var donutCanvas = document.getElementById('donut-chart');
+  if (!donutCanvas) return;
+
+  if (donutChartInstance) {
+    donutChartInstance.destroy();
+    donutChartInstance = null;
+  }
+
+  if (labels.length === 0 || values.length === 0) {
     renderEmptyState(donutCanvas.closest('.ta-analysis-donut'), emptyChartMessage);
     return;
   }
-  
+
   // Calculate total for percentages and center display
-  var total = chartValues.reduce(function(sum, val) { return sum + val; }, 0);
-  
+  var total = values.reduce(function(sum, val) { return sum + val; }, 0);
+
   // Update center text with total hours
   var centerText = document.getElementById('total-hours-display');
   if (centerText) {
     centerText.textContent = formatHours(total);
   }
-  
+
   // Create donut chart
   var ctx = donutCanvas.getContext('2d');
   donutChartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: chartLabels,
+      labels: labels,
       datasets: [{
-        data: chartValues,
+        data: values,
+        backgroundColor: colors,
         borderColor: '#ffffff',
         borderWidth: 2
       }]
@@ -1822,30 +1761,11 @@ function initDonutChart() {
             return label + ': ' + formattedHours + ' (' + percentage + '%)';
           }
         }
-      },
-      plugins: {
-        colorschemes: {
-          scheme: 'tableau.Tableau10'
-        }
       }
     }
   });
-  
-  // Wait for chart to fully render, then get colors and generate legend
-  setTimeout(function() {
-    var colors = donutChartInstance.data.datasets[0].backgroundColor;
-    // If colors array is not defined or empty, use Tableau10 colors manually
-    if (!colors || colors.length === 0) {
-      var tableau10 = [
-        '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
-        '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
-      ];
-      colors = chartLabels.map(function(_, i) { return tableau10[i % tableau10.length]; });
-      donutChartInstance.data.datasets[0].backgroundColor = colors;
-      donutChartInstance.update();
-    }
-    generateDonutLegend(chartLabels, chartValues, colors, total);
-  }, 100);
+
+  generateDonutLegend(labels, values, colors, total);
 }
 
 function generateDonutLegend(labels, values, colors, total) {
@@ -1863,12 +1783,12 @@ function generateDonutLegend(labels, values, colors, total) {
     
     legendItem.innerHTML = `
       <div class="flex items-center gap-1.5 flex-1 min-w-0">
-        <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background-color: ${colors[i]}"></div>
+        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${colors[i]}"></div>
         <span class="text-gray-700 truncate">${labels[i]}</span>
       </div>
       <div class="flex items-center gap-1.5 ml-2 flex-shrink-0">
         <span class="font-semibold text-gray-900">${formattedHours}</span>
-        <span class="text-gray-500">(${percentage}%)</span>
+        <span class="font-semibold" style="color: ${colors[i]}">(${percentage}%)</span>
       </div>
     `;
     
@@ -1876,9 +1796,80 @@ function generateDonutLegend(labels, values, colors, total) {
   }
 }
 
+<% if @view_mode == 'activity' %>
+// ── Activity "Grouped" tab + session-only "Customize groups" popup ──────────────────────────
+// Shared wiring with the Team Dashboard via TeamActivityGroups.createGroupedActivityController
+// (team_activity_groups.js); only the chart-rebuild callback below is page-specific.
+var noActivityGroupsMessage = '<%= j no_activity_groups_message %>';
+
+function setActivityButtonActive(btn, active) {
+  if (!btn) return;
+  if (active) {
+    btn.style.backgroundColor = '#3b82f6';
+    btn.style.color = 'white';
+    btn.className = btn.className.replace(/!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900/g, '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]');
+  } else {
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
+    btn.className = btn.className.replace(/!text-white !bg-\[#3b82f6\] hover:!bg-\[#2563eb\]/g, '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900');
+  }
+}
+
+var activityGroupedController = window.TeamActivityGroups.createGroupedActivityController({
+  payloadElementId: 'activity-group-payload',
+  groupedViewElementId: 'daily-grouped-view',
+  detailedViewElementId: 'daily-detailed-view',
+  summaryViewElementId: 'daily-summary-view',
+  groupedButtonId: 'show-grouped-btn-activity',
+  detailedButtonId: 'show-detailed-btn-activity',
+  summaryButtonId: 'show-summary-btn-activity',
+  customizeWrapperId: 'activity-customize-groups-wrapper',
+  paginationBarId: 'detailed-pagination-bar',
+  sortButtonsId: 'summary-sort-buttons',
+  hiddenFieldId: 'activity_view_state_field',
+  localStorageKey: 'activity_view_mode',
+  noGroupsMessage: noActivityGroupsMessage,
+  formatHours: formatHours,
+  setButtonActive: setActivityButtonActive,
+  renderCharts: function (pivot, payload) {
+    var donut = window.TeamActivityGroups.buildDonutDatasets(pivot);
+    renderDonutFromArrays(donut.labels, donut.values, donut.colors);
+
+    if (timeAnalyticsChart && timeAnalyticsChart.config && timeAnalyticsChart.config.type === 'bar') {
+      var chartElement = document.getElementById('time-chart');
+      var barData = window.TeamActivityGroups.buildStackedBarChartData(pivot, payload);
+      timeAnalyticsChart.destroy();
+      timeAnalyticsChart = new Chart(chartElement, {
+        type: 'bar',
+        data: barData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
+        }
+      });
+    }
+  },
+  // Shown instead of the table/donut when no custom Activity Groups have been defined yet.
+  showNoGroupsCharts: function () {
+    if (donutChartInstance) { donutChartInstance.destroy(); donutChartInstance = null; }
+    renderEmptyState(document.getElementById('donut-chart').closest('.ta-analysis-donut'), noActivityGroupsMessage);
+  }
+});
+
+function hideGroupedView() { activityGroupedController.hide(); }
+function showGroupedView(options) { activityGroupedController.show(options); }
+function openCustomizeGroupsModal() { activityGroupedController.openCustomizeModal(); }
+<% end %>
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
   initCustomDateRangeVisibility();
+  <% if @view_mode == 'issue' %>
+    initSummaryTable('<%= summary_view_id %>', taIssueSummaryCardHtml);
+  <% elsif @view_mode == 'activity' || @view_mode == 'project' %>
+    initSummaryTable('<%= summary_view_id %>', taSummaryCardHtml);
+  <% end %>
   restoreActivityViewState();
   restoreProjectViewState();
   restoreIssueViewState();
@@ -1938,6 +1929,99 @@ if (document.readyState === 'complete') {
   }, 100);
 }
 
+// Client-side Summary card list: renders/sorts/paginates entirely in memory from the
+// embedded payload, so a page never truncates the data (donut/legend code that reads the
+// same full dataset is unaffected by whichever page the user happens to be viewing).
+var taSummaryTable = null;
+
+function taSummaryCardHtml(item, index, grandTotal, colors) {
+  var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+  var color = colors[index % colors.length];
+  var name = taEscapeHtml(item.name);
+  return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
+    '<div class="flex items-center justify-between mb-1 gap-3">' +
+      '<h3 class="text-base font-medium text-gray-900">' + name + '</h3>' +
+      '<div class="flex items-center gap-3">' +
+        '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+        '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+      '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
+  var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+  var color = colors[index % colors.length];
+  var titleHtml;
+  if (item.hasIssue) {
+    titleHtml = '<span class="ts-tracker-badge">' + taEscapeHtml(item.trackerName) + '</span> ' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>';
+  } else {
+    titleHtml = taEscapeHtml(item.name);
+  }
+  return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + taEscapeHtml(item.name) + '">' +
+    '<div class="flex items-center justify-between mb-1 gap-3">' +
+      '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
+      '<div class="flex items-center gap-3 flex-shrink-0">' +
+        '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+        '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+      '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function taUpdateSummarySortButtonsUI(viewId) {
+  if (!taSummaryTable) { return; }
+  var state = taSummaryTable.getState();
+  var active = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
+  var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
+  var nameBtn = document.getElementById('sort-name-' + viewId);
+  var hoursBtn = document.getElementById('sort-hours-' + viewId);
+  if (nameBtn) {
+    nameBtn.style.cssText = state.sortField === 'name' ? active : inactive;
+    nameBtn.textContent = state.sortField === 'name' && state.sortDir === 'desc' ? 'Z–A ↓' : 'A–Z ↑';
+  }
+  if (hoursBtn) {
+    hoursBtn.style.cssText = state.sortField === 'hours' ? active : inactive;
+    hoursBtn.textContent = state.sortField === 'hours' && state.sortDir === 'asc' ? 'Hours ↑' : 'Hours ↓';
+  }
+}
+
+function taSummarySortClick(field) {
+  if (!taSummaryTable) { return; }
+  taSummaryTable.setSort(field, field === 'name' ? 'asc' : 'desc');
+}
+
+function initSummaryTable(viewId, renderFn) {
+  var payloadEl = document.getElementById(viewId + '-payload');
+  var container = document.getElementById(viewId + '-cards');
+  if (!payloadEl || !container) { return; }
+
+  var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
+  var colors = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
+
+  taSummaryTable = TaClientTable({
+    getItems: function () { return payload.items; },
+    sortValue: function (item, field) { return field === 'name' ? (item.name || '').toLowerCase() : item.hours; },
+    renderRow: function (item, index) { return renderFn(item, index, payload.grandTotal, colors); },
+    container: container,
+    paginationInfo: document.getElementById(viewId + '-pagination-info'),
+    paginationLinks: document.getElementById(viewId + '-pagination-links'),
+    perPage: <%= @limit %>,
+    sortField: 'hours',
+    sortDir: 'desc',
+    onRender: function () { taUpdateSummarySortButtonsUI(viewId); }
+  });
+  taSummaryTable.render();
+}
+
 // Initialize summary table sorting to default descending (highest to lowest)
 function initSummarySorting(tableContainerId) {
   var container = document.getElementById(tableContainerId);
@@ -1955,30 +2039,6 @@ function initSummarySorting(tableContainerId) {
   if (indicator) {
     indicator.textContent = '▼';
   }
-}
-
-// Sort card-based summary views by hours (desc) or name (A-Z)
-function sortSummaryCards(containerId, sortBy) {
-  var container = document.getElementById(containerId);
-  if (!container) return;
-  var cardsContainer = container.querySelector('.space-y-6');
-  if (!cardsContainer) return;
-  var cards = Array.from(cardsContainer.querySelectorAll('[data-hours]'));
-  cards.sort(function(a, b) {
-    if (sortBy === 'name') {
-      return (a.getAttribute('data-name') || '').toLowerCase()
-        .localeCompare((b.getAttribute('data-name') || '').toLowerCase());
-    }
-    return parseFloat(b.getAttribute('data-hours') || '0') -
-           parseFloat(a.getAttribute('data-hours') || '0');
-  });
-  cards.forEach(function(card) { cardsContainer.appendChild(card); });
-  var hoursBtn = document.getElementById('sort-hours-' + containerId);
-  var nameBtn  = document.getElementById('sort-name-'  + containerId);
-  var active   = 'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;';
-  var inactive = 'background:#fff;color:#6b7280;border-color:#d1d5db;';
-  if (hoursBtn) hoursBtn.style.cssText = sortBy === 'hours' ? active : inactive;
-  if (nameBtn)  nameBtn.style.cssText  = sortBy === 'name'  ? active : inactive;
 }
 
 // Table sorting function for summary views
@@ -2076,3 +2136,7 @@ function toggleViewMode(event, viewMode) {
   window.location.href = newUrl;
 }
 </script>
+
+<% if @view_mode == 'activity' %>
+  <%= render 'team_analytics/customize_groups_modal' %>
+<% end %>

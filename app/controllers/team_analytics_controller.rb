@@ -10,7 +10,7 @@ class TeamAnalyticsController < ApplicationController
     '#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F',
     '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
   ].freeze
-  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available, :raw_period)
+  TEAM_OVERVIEW_ROW = Struct.new(:period, :member_count, :hours, :average, :support_hours, :effective_time_percentage, :effective_time_available, :raw_period, :holiday)
 
   def index
     # Super users can access all teams; team leads can access led teams + descendants
@@ -26,14 +26,18 @@ class TeamAnalyticsController < ApplicationController
     @member_dashboard_query = @member_dashboard_params.to_query
     
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(@from, @to)
-    
+
+    # Temporary, session-only exclusions toggled from the Members summary table.
+    # Not persisted — a refresh (no param) re-activates everyone.
+    @temp_excluded_ids = Array(params[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+
     # Get all team members including sub-team members (bubble up from child teams)
     @team_members = @selected_team.hierarchical_members(@from, @to).to_a
-    
+
     @member_ids = @team_members.map(&:user_id).uniq
-    
-    # Filter out excluded users
-    @active_member_ids = @member_ids - excluded_ids
+
+    # Filter out permanently and temporarily excluded users
+    @active_member_ids = @member_ids - (excluded_ids | @temp_excluded_ids)
     @team_size = @active_member_ids.count
     
     # Get sub-teams for dashboard display
@@ -43,11 +47,19 @@ class TeamAnalyticsController < ApplicationController
     
     @time_entries = team_time_entries_scope(@team_members, @from, @to)
 
+    # Drop temporarily-excluded members from every aggregate (Total Hours, Max/Min,
+    # Time Overview, member pivot, donut) before any aggregation runs.
+    @time_entries = @time_entries.where.not(user_id: @temp_excluded_ids) if @time_entries && @temp_excluded_ids.any?
+
     @time_entries = @time_entries.includes(:user, :project, :issue, :activity)
                                  .order('time_entries.spent_on DESC, time_entries.created_on DESC') if @time_entries
-    
+
     # If no members or conditions, return empty relation
     @time_entries ||= TimeEntry.none
+
+    # Hours for temporarily-excluded members, used to still render their (struck-through)
+    # rows in the Members summary table without counting them in any aggregate.
+    @temp_excluded_members = build_temp_excluded_members
     
     Rails.logger.info "Team Analytics: Auto-discovered projects from member time logs"
     
@@ -57,10 +69,18 @@ class TeamAnalyticsController < ApplicationController
     @active_days_count = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(@from, @to)
     @team_leave_days = calculate_team_leave_days_for_period(@from, @to)
 
+    # "Show Active Days" toggle (daily only): hide weekend/holiday days from the Trend chart and
+    # Time Overview table. The checker is a pre-fetched O(1) lambda over the date range.
+    @hide_holidays = params[:hide_holidays].to_s == '1'
+    @period_working_day_checker = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(@from, @to)
+
     Rails.logger.info "Team Analytics: Found #{@entry_count} time entries, Total hours: #{@total_hours}"
     
     # Calculate summary statistics based on grouping
     case @grouping
+    when 'daily'
+      @max_period_hours, _ = calculate_max_daily_hours
+      @min_period_hours, _ = calculate_min_daily_hours
     when 'weekly'
       @max_period_hours = calculate_max_weekly_hours
       @min_period_hours = calculate_min_weekly_hours
@@ -102,20 +122,37 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'activity'
       # Activity view - Generate pivot table for Activity × Time Period matrix
       @activity_pivot_data = generate_activity_pivot_table(@time_entries, @grouping)
-      @time_periods = @activity_pivot_data[:periods]
+      # Detailed/Grouped tables show most-recent-first; @activity_pivot_data itself stays in
+      # chronological order below since generate_activity_pivot_chart_data (Trend/Stacked charts)
+      # and regroup_activity_pivot both read straight from it.
+      @time_periods = @activity_pivot_data[:periods].reverse
+      @display_raw_periods = @activity_pivot_data[:raw_periods].reverse
       @activities = @activity_pivot_data[:activities]
       @matrix_data = @activity_pivot_data[:matrix]
       @period_totals = @activity_pivot_data[:period_totals]
       @activity_totals = @activity_pivot_data[:activity_totals]
       @grand_total = @activity_pivot_data[:grand_total]
-      
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
+
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
+
       # Track activity view state for chart generation
       @activity_view_state = params[:activity_view_state] || 'detailed'
-      
+
+      # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
+      # Computed unconditionally (not gated on @activity_view_state) since Summary/Detailed/Grouped
+      # are all rendered server-side and toggled client-side.
+      # All defined activities (not just ones with logged hours in the current range), so the
+      # "Customize groups" popup lets you place a brand-new activity into a group even before
+      # anyone has logged time against it.
+      group_view = TaActivityGroup.grouped_activity_view_data(@activity_pivot_data)
+      @all_activities = group_view[:all_activities]
+      @activity_groups = group_view[:groups]
+      @activity_group_assignments = group_view[:assignments]
+      @activity_group_pivot_data = group_view[:pivot_data]
+      @activity_group_colors = group_view[:colors]
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
@@ -125,17 +162,20 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'project'
       # Project view - Generate pivot table for Project × Time Period matrix
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
-      @time_periods = @project_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @project_pivot_data itself stays chronological
+      # since generate_project_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @project_pivot_data[:periods].reverse
+      @display_raw_periods = @project_pivot_data[:raw_periods].reverse
       @projects = @project_pivot_data[:projects]
       @matrix_data = @project_pivot_data[:matrix]
       @period_totals = @project_pivot_data[:period_totals]
       @project_totals = @project_pivot_data[:project_totals]
       @grand_total = @project_pivot_data[:grand_total]
-      
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
+
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
+
       # Track project view state for chart generation
       @project_view_state = params[:project_view_state] || 'detailed'
       
@@ -148,20 +188,35 @@ class TeamAnalyticsController < ApplicationController
     elsif @view_mode == 'members'
       # Members view - Generate pivot table for Member × Time Period matrix
       @member_pivot_data = generate_member_pivot_table(@time_entries, @grouping)
-      @time_periods = @member_pivot_data[:periods]
+      # Detailed table shows most-recent-first; @member_pivot_data itself stays chronological
+      # since generate_member_pivot_chart_data (Trend/Stacked charts) reads straight from it.
+      @time_periods = @member_pivot_data[:periods].reverse
+      @display_raw_periods = @member_pivot_data[:raw_periods].reverse
       @members = @member_pivot_data[:members]
       @matrix_data = @member_pivot_data[:matrix]
       @period_totals = @member_pivot_data[:period_totals]
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
-      
-      # For pagination, use time overview count to include periods with 0 hours
-      @entry_count = @time_overview_data.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
-      # Track member view state for chart generation
-      @member_view_state = params[:member_view_state] || 'detailed'
-      
+
+      # Active Days / Working Days per member for the Summary view (replaces the hours-share
+      # percentage badge there; the donut chart still shows the percentage breakdown).
+      member_leave_days = TaLeaveRecord.total_leave_days_for_users(user_ids: @member_ids, from_date: @from, to_date: @to)
+      @member_active_days = @member_ids.each_with_object({}) do |user_id, hash|
+        hash[user_id] = [@active_days_count - member_leave_days[user_id].to_f, 0].max.round(2)
+      end
+
+      # For pagination in detailed view, count actual periods with data
+      @entry_count = @time_periods.count
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
+
+      # Track member view state for chart generation.
+      # Default to 'summary' when all members are excluded — that is the only view with re-include toggles.
+      @member_view_state = params[:member_view_state] ||
+                           (@members.empty? && @temp_excluded_members.any? ? 'summary' : 'detailed')
+
+      # Monthly-avg table (Members tab) — only relevant with monthly grouping.
+      @member_monthly_avg = @grouping == 'monthly' ? generate_member_monthly_avg_table(@time_entries, @from, @to) : nil
+
       # Generate chart data
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = generate_member_pivot_chart_data(@member_pivot_data, chart_type, @member_view_state)
@@ -171,7 +226,7 @@ class TeamAnalyticsController < ApplicationController
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
-    
+
     respond_to do |format|
       format.html { render 'team_analytics/index' }
       format.json { 
@@ -234,10 +289,10 @@ class TeamAnalyticsController < ApplicationController
     tree_nodes = []
     
     root_teams.each do |team|
-      team_node = build_team_node(team, excluded_ids, from_date, to_date)
+      team_node, _subtree_user_ids = build_team_node(team, excluded_ids, from_date, to_date)
       tree_nodes << team_node
     end
-    
+
     render json: tree_nodes
   end
 
@@ -246,63 +301,129 @@ class TeamAnalyticsController < ApplicationController
     team_id = params[:team_id]
     period_start = params[:period_start].to_date rescue nil
     grouping = params[:grouping] || 'weekly'
+    temp_excluded_ids = Array(params[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).to_set
 
     return render json: { error: 'Missing parameters' }, status: 400 unless team_id && period_start
 
     team = TaTeam.find_by(id: team_id)
     return render json: { error: 'Team not found' }, status: 404 unless team
 
-    # Calculate period end
-    period_end = if grouping == 'monthly'
-                   period_start.end_of_month
-                 else
-                   period_start.end_of_week(:monday)
+    period_end = case grouping
+                 when 'daily'   then period_start
+                 when 'monthly' then period_start.end_of_month
+                 else                period_start.end_of_week(:monday)
                  end
 
     period_label = helpers.format_period_for_table(period_start, grouping, period_start, period_end)
 
+    # Permanently-excluded users are dropped entirely; temp-excluded are kept but flagged.
+    perm_excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
+    build_members = lambda do |memberships|
+      memberships
+        .reject { |m| perm_excluded_ids.include?(m.user_id) }
+        .filter_map { |m| next unless m.user; { name: m.user.name, temp_excluded: temp_excluded_ids.include?(m.user_id), locked: m.user.locked? } }
+        .sort_by { |m| [m[:temp_excluded] ? 1 : 0, m[:name]] }
+    end
+
     if team.child_teams.any?
-      # Root/parent team: group members by sub-team (collapsed groups)
       groups = []
 
-      direct_memberships = team.active_members(period_start, period_end)
-      direct_members = direct_memberships.map { |m| m.user&.name }.compact.sort
-      groups << { team_name: team.name, members: direct_members.map { |n| { name: n } } } if direct_members.any?
+      direct = build_members.call(team.active_members(period_start, period_end))
+      groups << { team_name: team.name, members: direct } if direct.any?
 
       team.all_descendants.each do |sub_team|
-        sub_members = sub_team.active_members(period_start, period_end)
-                              .map { |m| m.user&.name }.compact.sort
-        groups << { team_name: sub_team.name, members: sub_members.map { |n| { name: n } } } if sub_members.any?
+        sub = build_members.call(sub_team.active_members(period_start, period_end))
+        groups << { team_name: sub_team.name, members: sub } if sub.any?
       end
 
-      render json: {
-        team_name: team.name,
-        period_label: period_label,
-        grouped: true,
-        groups: groups
-      }
+      render json: { team_name: team.name, period_label: period_label, grouped: true, groups: groups }
     else
-      # Leaf team: simple flat list of direct members
-      members = team.active_members(period_start, period_end)
-                    .map { |m| m.user&.name }.compact.sort
-                    .map { |n| { name: n } }
-
-      render json: {
-        team_name: team.name,
-        period_label: period_label,
-        grouped: false,
-        members: members
-      }
+      members = build_members.call(team.active_members(period_start, period_end))
+      render json: { team_name: team.name, period_label: period_label, grouped: false, members: members }
     end
   end
 
-  # Recursively build team node with sub-teams and members
+  # Lazy-loaded second-level breakdown for the Members view: each member's logged time split by
+  # Issue, Activity, and Project. Reuses the exact same team scope/exclusions as `index` so the
+  # cards stay consistent with the summary table above. All three groupings are returned at once
+  # so the client can switch between them without re-fetching.
+  def member_breakdown
+    teams = User.current.accessible_team_dashboard_teams.to_a
+    return render json: { error: 'Unauthorized' }, status: 403 unless teams.any?
+
+    team = select_accessible_team(teams)
+    return render json: { members: [] } unless team
+
+    team_members = team.hierarchical_members(@from, @to).to_a
+    permitted = params.permit(temp_excluded_ids: [])
+    temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+
+    scope = team_time_entries_scope(team_members, @from, @to)
+    scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
+
+    # One grouped SUM per dimension — no per-member queries.
+    issue_sums    = scope.group(:user_id, :issue_id).sum(:hours)
+    activity_sums = scope.group(:user_id, :activity_id).sum(:hours)
+    project_sums  = scope.group(:user_id, :project_id).sum(:hours)
+
+    issues = Issue.where(id: issue_sums.keys.filter_map { |(_, id)| id }.uniq)
+                  .includes(:tracker).index_by(&:id)
+    activity_names = Enumeration.where(id: activity_sums.keys.filter_map { |(_, id)| id }.uniq)
+                               .pluck(:id, :name).to_h
+    project_names = Project.where(id: project_sums.keys.filter_map { |(_, id)| id }.uniq)
+                          .pluck(:id, :name).to_h
+
+    user_totals = Hash.new(0.0)
+    issue_sums.each { |(uid, _), hours| user_totals[uid] += hours.to_f }
+    users = User.where(id: user_totals.keys).index_by(&:id)
+
+    # Pre-group all three dimensions by user_id to avoid O(N×M) scanning in build_breakdown_items.
+    issue_by_user    = group_sums_by_user(issue_sums)
+    activity_by_user = group_sums_by_user(activity_sums)
+    project_by_user  = group_sums_by_user(project_sums)
+
+    sorted_user_ids = user_totals.keys.sort_by { |uid| [-user_totals[uid], users[uid]&.name.to_s] }
+
+    members = sorted_user_ids.filter_map do |uid|
+      user = users[uid]
+      next unless user
+
+      total = user_totals[uid]
+      {
+        id: uid,
+        name: user.name,
+        locked: user.locked?,
+        total_hours: total,
+        groupings: {
+          issue: build_breakdown_items(issue_by_user[uid] || {}, total) do |id|
+            issue = id && issues[id]
+            next ["##{id}", "##{id}"] if id && issue.nil?
+            issue ? ["##{issue.id} #{issue.subject}", "##{issue.id}"] : [l(:label_ta_no_issue), l(:label_ta_no_issue)]
+          end,
+          activity: build_breakdown_items(activity_by_user[uid] || {}, total) do |id|
+            name = id && activity_names[id]
+            name ? [name, name] : [l(:label_ta_no_activity), l(:label_ta_no_activity)]
+          end,
+          project: build_breakdown_items(project_by_user[uid] || {}, total) do |id|
+            name = id && project_names[id]
+            name ? [name, name] : [l(:label_ta_no_project), l(:label_ta_no_project)]
+          end
+        }
+      }
+    end
+
+    render json: { members: members }
+  end
+
+  # Recursively build team node with sub-teams and members.
+  # Returns [node_hash, subtree_user_ids] where subtree_user_ids is the Set of distinct
+  # current active members across this team and all its descendants (team composition).
   def build_team_node(team, excluded_ids, from_date, to_date)
     # Get direct members for this team only (currently active only)
     memberships = TaTeamMembership.where(team: team)
                                  .where('start_date <= ? AND (end_date IS NULL OR end_date >= ?)', Date.today, Date.today)
                                  .includes(:user)
-    
+
     # Build team node
     team_node = {
       id: "team_#{team.id}",
@@ -318,18 +439,26 @@ class TeamAnalyticsController < ApplicationController
       },
       children: []
     }
-    
+
+    # Distinct active members across this team's whole subtree (includes excluded users —
+    # this is the full team composition, unlike the analytics "Team Size" which drops excluded).
+    subtree_user_ids = Set.new
+
     # Add sub-teams first (hierarchical)
     team.child_teams.ordered_by_name.each do |child_team|
-      child_node = build_team_node(child_team, excluded_ids, from_date, to_date)
+      child_node, child_user_ids = build_team_node(child_team, excluded_ids, from_date, to_date)
       team_node[:children] << child_node
+      subtree_user_ids.merge(child_user_ids)
     end
-    
+
     # Add direct members after sub-teams
     memberships.each do |membership|
-      is_excluded = excluded_ids.include?(membership.user_id)
       user = membership.user
-      
+      next unless user
+
+      is_excluded = excluded_ids.include?(membership.user_id)
+      subtree_user_ids << membership.user_id
+
       # Member node
       member_node = {
         id: "member_#{team.id}_#{user.id}",
@@ -349,11 +478,41 @@ class TeamAnalyticsController < ApplicationController
       
       team_node[:children] << member_node
     end
-    
-    team_node
+
+    # Append the total team-composition count as a styled badge after the team name.
+    # jsTree renders node text as HTML, so escape the name and inject the badge span.
+    team_node[:text] =
+      "#{ERB::Util.html_escape(team.name)}" \
+      "<span class=\"team-tree-count-badge\">#{subtree_user_ids.size}</span>"
+
+    [team_node, subtree_user_ids]
   end
 
   private
+
+  # Turns a pre-grouped {group_id => hours} hash for a single user into a sorted, colored list.
+  # The block maps a group_id to [label, short_label].
+  def build_breakdown_items(user_sums, total)
+    user_sums.filter_map { |gid, hours| [gid, hours.to_f] if hours.to_f > 0 }
+             .sort_by { |_, hours| -hours }
+             .each_with_index.map do |(gid, hours), index|
+               label, short_label = yield(gid)
+               {
+                 label: label,
+                 short_label: short_label,
+                 hours: hours,
+                 percentage: total > 0 ? (hours / total * 100).round(1) : 0,
+                 color: TABLEAU10_COLORS[index % TABLEAU10_COLORS.size]
+               }
+             end
+  end
+
+  # Groups a {[user_id, group_id] => hours} hash into {user_id => {group_id => hours}}.
+  def group_sums_by_user(sums)
+    sums.each_with_object(Hash.new { |h, k| h[k] = {} }) do |((uid, gid), hours), h|
+      h[uid][gid] = hours.to_f
+    end
+  end
 
   def select_accessible_team(teams)
     default_team = default_accessible_team(teams)
@@ -404,8 +563,9 @@ class TeamAnalyticsController < ApplicationController
 
     case @filter
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'last_month'
       @from = (Date.current - 1.month).beginning_of_month
       @to = (Date.current - 1.month).end_of_month
@@ -418,22 +578,22 @@ class TeamAnalyticsController < ApplicationController
       @from = parse_custom_date(params[:from]) || Date.current.beginning_of_month
       @to = parse_custom_date(params[:to]) || Date.current.end_of_month
     else
-      # Default to this month
+      # Default to this month (month-to-date)
       @filter = 'this_month'
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     end
   rescue ArgumentError
     # Handle invalid date format
     @filter = 'this_month'
     @from = Date.current.beginning_of_month
-    @to = Date.current.end_of_month
+    @to = Date.current
   end
 
   def set_grouping
     # Default to weekly grouping for team dashboard
     @grouping = params[:grouping].presence || 'weekly'
-    @grouping = 'weekly' unless %w[weekly monthly].include?(@grouping)
+    @grouping = 'weekly' unless %w[daily weekly monthly].include?(@grouping)
   end
 
   def build_member_dashboard_params
@@ -450,6 +610,21 @@ class TeamAnalyticsController < ApplicationController
         to: @to.strftime('%Y-%m-%d')
       )
     end
+  end
+
+  # Daily grouping calculations
+  def calculate_max_daily_hours
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    max_entry = daily_totals.max_by { |_, hours| hours }
+    [max_entry[1], max_entry[0]]
+  end
+
+  def calculate_min_daily_hours
+    daily_totals = @time_entries.reorder(nil).group(:spent_on).sum(:hours)
+    return [0, nil] if daily_totals.empty?
+    min_entry = daily_totals.min_by { |_, hours| hours }
+    [min_entry[1], min_entry[0]]
   end
 
   # Weekly grouping calculations
@@ -504,6 +679,8 @@ class TeamAnalyticsController < ApplicationController
     
     entries.each do |entry|
       period_key = case grouping
+                   when 'daily'
+                     entry.spent_on
                    when 'weekly'
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
@@ -512,13 +689,15 @@ class TeamAnalyticsController < ApplicationController
                      # Default to weekly
                      entry.spent_on.beginning_of_week(:monday)
                    end
-      
+
       data[period_key] ||= 0
       data[period_key] += entry.hours
     end
-    
-    # Fill missing periods to show unlogged weeks/months as 0.00h
-    if grouping == 'weekly'
+
+    # Fill missing periods to show unlogged days/weeks/months as 0.00h
+    if grouping == 'daily'
+      data = fill_missing_working_days_team(data, @from, @to)
+    elsif grouping == 'weekly'
       data = fill_missing_weeks_team(data, @from, @to)
     elsif grouping == 'monthly'
       data = fill_missing_months_team(data, @from, @to)
@@ -526,7 +705,10 @@ class TeamAnalyticsController < ApplicationController
     
     # Sort by period key in DESCENDING order (newest first, like Individual Dashboard)
     sorted_data = data.sort_by { |key, _| key }.reverse
-    
+
+    # "Show Active Days": drop weekend/holiday days entirely (even logged ones).
+    sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+
       # Return structured data with period, team_size (not member_count), hours, and average
     sorted_data.map do |period, hours|
       # Convert period key to appropriate format for the helper
@@ -542,8 +724,9 @@ class TeamAnalyticsController < ApplicationController
       
       # Calculate average: Total Hours / (Team Size * Active Working Days)
       average = calculate_period_average(period_for_display, grouping, hours, team_size)
-      
-      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false, period_for_display.to_s)
+
+      is_holiday = grouping == 'daily' && ta_team_holiday_date?(period_for_display)
+      TEAM_OVERVIEW_ROW.new(period_label, team_size, hours, average, nil, nil, false, period_for_display.to_s, is_holiday)
     end
   end
 
@@ -551,6 +734,8 @@ class TeamAnalyticsController < ApplicationController
     @show_effective_time_column = false
     @effective_time_error_message = nil
     return if @time_overview_data.blank?
+    # Team-level opt-out: skip support time entirely (direct + inherited) for this team.
+    return if @selected_team.hide_support_time?
 
     # Get direct external assignments
     external_assignments = @selected_team.ta_team_projects.where(source_type: 'external').active_between(@from, @to).to_a
@@ -580,7 +765,7 @@ class TeamAnalyticsController < ApplicationController
     if result.errors.any?
       @effective_time_error_message = result.errors.uniq.join('; ')
       @time_overview_data = @time_overview_data.map do |row|
-        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
+        TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period, row.holiday)
       end
       return
     end
@@ -597,20 +782,23 @@ class TeamAnalyticsController < ApplicationController
                                ((support_hours / internal_hours) * 100.0).round(2)
                              end
 
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?, row.raw_period)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, support_hours, effective_percentage, !effective_percentage.nil?, row.raw_period, row.holiday)
     end
   rescue StandardError => e
     @show_effective_time_column = true
     @effective_time_error_message = e.message
     @time_overview_data = @time_overview_data.map do |row|
-      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period)
+      TEAM_OVERVIEW_ROW.new(row.period, row.member_count, row.hours, row.average, nil, nil, false, row.raw_period, row.holiday)
     end
   end
 
   def period_keys_for_overview_data(grouping)
     grouped = {}
     @time_entries.each do |entry|
-      key = if grouping == 'monthly'
+      key = case grouping
+            when 'daily'
+              entry.spent_on
+            when 'monthly'
               [entry.spent_on.year, entry.spent_on.month]
             else
               entry.spent_on.beginning_of_week(:monday)
@@ -619,9 +807,13 @@ class TeamAnalyticsController < ApplicationController
       grouped[key] += entry.hours
     end
 
+    grouped = fill_missing_working_days_team(grouped, @from, @to) if grouping == 'daily'
     grouped = fill_missing_weeks_team(grouped, @from, @to) if grouping == 'weekly'
     grouped = fill_missing_months_team(grouped, @from, @to) if grouping == 'monthly'
-    grouped.sort_by { |key, _| key }.reverse.map(&:first)
+    sorted = grouped.sort_by { |key, _| key }.reverse
+    # Keep aligned with generate_team_time_overview_data so Effective Time columns map correctly.
+    sorted = sorted.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+    sorted.map(&:first)
   end
 
   # Generate chart data for team view
@@ -634,6 +826,8 @@ class TeamAnalyticsController < ApplicationController
     
     entries.each do |entry|
       period_key = case grouping
+                   when 'daily'
+                     entry.spent_on
                    when 'weekly'
                      entry.spent_on.beginning_of_week(:monday)
                    when 'monthly'
@@ -642,13 +836,15 @@ class TeamAnalyticsController < ApplicationController
                      # Default to weekly
                      entry.spent_on.beginning_of_week(:monday)
                    end
-      
+
       grouped_data[period_key] ||= 0
       grouped_data[period_key] += entry.hours
     end
-    
+
     # Fill missing periods for proper date range handling (show unlogged periods as 0.00)
-    if grouping == 'weekly'
+    if grouping == 'daily'
+      grouped_data = fill_missing_working_days_team(grouped_data, @from, @to)
+    elsif grouping == 'weekly'
       grouped_data = fill_missing_weeks_team(grouped_data, @from, @to)
     elsif grouping == 'monthly'
       grouped_data = fill_missing_months_team(grouped_data, @from, @to)
@@ -656,13 +852,30 @@ class TeamAnalyticsController < ApplicationController
     
     # Sort by period key in ASCENDING order (oldest first for chart, like Individual Dashboard)
     sorted_data = grouped_data.sort_by { |key, _| key }
-    
-    # Format labels and values
-    labels = sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
-    values = sorted_data.map { |_, hours| hours.round(2) }
-    
+
+    # "Show Active Days": drop weekend/holiday points entirely (even logged ones).
+    sorted_data = sorted_data.reject { |key, _| ta_team_holiday_date?(key) } if grouping == 'daily' && @hide_holidays
+
     raw_keys = sorted_data.map(&:first)
-    generate_line_chart_from_data(labels, values, raw_keys, grouping)
+    values = sorted_data.map { |_, hours| hours.round(2) }
+
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(raw_keys)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(raw_keys)
+        when 'weekly' then helpers.build_weekly_chart_axis(raw_keys)
+        else sorted_data.map { |period, _| format_chart_label_for_team(period, grouping) }
+      end
+      boundaries = helpers.build_period_boundaries(raw_keys, grouping)
+    end
+
+    # Flag weekend/holiday points (daily only) so they render amber.
+    holiday_flags = grouping == 'daily' ? raw_keys.map { |key| ta_team_holiday_date?(key) } : raw_keys.map { false }
+    generate_line_chart_from_data(labels, values, raw_keys, grouping, holiday_flags, boundaries)
   end
 
   def generate_time_entries_stacked_chart_data(entries, grouping)
@@ -721,6 +934,7 @@ class TeamAnalyticsController < ApplicationController
       {
         period_key: period_key,
         activity_name: activity_name,
+        activity_id: entry.activity_id,
         hours: entry.hours
       }
     end
@@ -757,7 +971,10 @@ class TeamAnalyticsController < ApplicationController
 
     # Keep activity order consistent across stacked chart and donut chart colors
     activities = activities.sort_by { |activity| -(activity_totals[activity] || 0) }
-    
+
+    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
+    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       activities: activities,
@@ -765,13 +982,16 @@ class TeamAnalyticsController < ApplicationController
       period_totals: period_totals,
       activity_totals: activity_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      activity_ids: activity_ids
     }
   end
 
   # Get period key for activity grouping (matches Time Entries format)
   def get_activity_period_key(date, grouping)
     case grouping
+    when 'daily'
+      date
     when 'weekly'
       # Use Monday-based week start to match Time Entries format
       days_since_monday = (date.wday - 1) % 7
@@ -790,6 +1010,8 @@ class TeamAnalyticsController < ApplicationController
   # Format period display for activity tables
   def format_activity_period_display(period_key, grouping)
     case grouping
+    when 'daily'
+      helpers.format_period_for_table(period_key, grouping, @from, @to)
     when 'weekly'
       # Reuse the same logic as Time Entries section for consistency
       helpers.format_period_for_table(period_key, grouping, @from, @to)
@@ -812,9 +1034,7 @@ class TeamAnalyticsController < ApplicationController
     when 'bar'
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:activities], pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
   end
 
@@ -893,15 +1113,39 @@ class TeamAnalyticsController < ApplicationController
   end
 
   # Generate line chart from data arrays
-  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil)
-    # Generate detailed tooltip labels for weekly grouping
+  def generate_line_chart_from_data(labels, data_values, raw_keys = nil, grouping = nil, holiday_flags = nil, boundaries = nil)
+    # Generate detailed tooltip labels for weekly grouping; full descriptive dates for daily and
+    # monthly (decoupled from the short axis labels used for daily/monthly grouping's
+    # data.labels).
     tooltip_labels = if raw_keys && grouping == 'weekly'
       raw_keys.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    elsif raw_keys && grouping == 'daily'
+      raw_keys.map { |key| helpers.format_chart_label(key) }
+    elsif raw_keys && grouping == 'monthly'
+      raw_keys.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
     else
       labels
     end
-    
+
     primary_color = '#36a2eb'
+
+    formatted_hours = data_values.map { |hours| helpers.format_hours(hours) }
+    single_point = data_values.length == 1
+
+    # Weekend/holiday points render amber (#f59e0b); regular working days stay dark blue.
+    holiday_flags ||= data_values.map { false }
+    point_colors = holiday_flags.map { |holiday| holiday ? '#f59e0b' : '#1d4ed8' }
+
+    # Center a lone data point by padding a blank slot on each side, so it renders
+    # in the middle of the chart instead of hugging the left edge.
+    if single_point
+      labels          = ['', labels.first, '']
+      tooltip_labels  = ['', tooltip_labels.first, '']
+      formatted_hours = ['', formatted_hours.first, '']
+      data_values     = [nil, data_values.first, nil]
+      holiday_flags   = [false, holiday_flags.first, false]
+      point_colors    = ['#1d4ed8', point_colors.first, '#1d4ed8']
+    end
 
     chart_data = {
       labels: labels,
@@ -913,10 +1157,15 @@ class TeamAnalyticsController < ApplicationController
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        # Solid dark dots so points stay clearly visible with one or many data points.
+        pointRadius: single_point ? 6 : 4,
+        pointHoverRadius: single_point ? 8 : 6,
+        pointBackgroundColor: point_colors,
+        pointBorderColor: point_colors,
+        pointBorderWidth: 1,
+        holidayFlags: holiday_flags,
         tooltipLabels: tooltip_labels,
-        formattedHours: data_values.map { |hours| helpers.format_hours(hours) }
+        formattedHours: formatted_hours
       }]
     }
 
@@ -924,7 +1173,13 @@ class TeamAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: false
+        display: true,
+        position: 'bottom',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          fontSize: 12
+        }
       },
       tooltips: {
         mode: 'index',
@@ -957,13 +1212,16 @@ class TeamAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
             fontSize: 11
           }
         }]
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'line',
@@ -1048,9 +1306,7 @@ class TeamAnalyticsController < ApplicationController
     when 'bar'
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], pivot_data[:projects], pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
   end
 
@@ -1062,19 +1318,30 @@ class TeamAnalyticsController < ApplicationController
     entries_with_details = time_entries.includes(:user).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
       user = entry.user
-      member_data = { id: user.id, name: user.name } # Store both ID and name
-      
+      # `locked` flags a member whose account is locked but who logged time in this range -
+      # e.g. left the company mid-period. Surfaced as a badge on the Summary cards + Team
+      # Members popup (see ta_locked_badge / taLockedBadgeHtml) so it isn't mistaken for a
+      # currently-active member.
+      member_data = { id: user.id, name: user.name, locked: user.locked? }
+
       {
         period_key: period_key,
         member_data: member_data,
         hours: entry.hours
       }
     end
-    
+
     # Get unique periods and members (temporarily without sorting members)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    members_unsorted = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
-    
+    members_with_entries = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
+
+    # Include all active team members so those with 0 logged hours still appear
+    active_members = @team_members
+      .select { |m| @active_member_ids.include?(m.user_id) }
+      .map { |m| { id: m.user_id, name: m.user.name, locked: m.user.locked? } }
+
+    members_unsorted = (active_members + members_with_entries).uniq { |m| m[:id] }
+
     # Initialize matrix with zeros (use member name as key for lookup)
     matrix_data = {}
     periods.each { |period| matrix_data[period] = {} }
@@ -1089,14 +1356,16 @@ class TeamAnalyticsController < ApplicationController
     
     # Calculate member totals via SQL SUM to avoid accumulated float errors.
     # reorder(nil) strips any ORDER BY from the scope so MySQL ONLY_FULL_GROUP_BY is satisfied.
+    # Keyed by member id (not name) so two members who happen to share a display name can
+    # never collide into a single total.
     sql_user_totals = time_entries.reorder(nil).group(:user_id).sum(:hours)
     member_totals = {}
     members_unsorted.each do |member_data|
-      member_totals[member_data[:name]] = sql_user_totals[member_data[:id]] || 0
+      member_totals[member_data[:id]] = sql_user_totals[member_data[:id]] || 0
     end
 
-    # Sort members by total hours descending (largest to smallest)
-    members = members_unsorted.sort_by { |member_data| -member_totals[member_data[:name]] }
+    # Sort members by total hours descending (largest to smallest), then by name
+    members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:id]], member_data[:name]] }
 
     # Calculate period totals and grand total
     period_totals = {}
@@ -1110,10 +1379,73 @@ class TeamAnalyticsController < ApplicationController
       members: members, # Array of {id:, name:} hashes
       matrix: matrix_data, # Still keyed by member name for lookup
       period_totals: period_totals,
-      member_totals: member_totals, # Keyed by member name
+      member_totals: member_totals, # Keyed by member id
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
+  end
+
+  # Per-member daily-average hours for each month in the period (Members tab "Monthly avg"
+  # table, only used with monthly grouping). Reuses the same daily-average definition as the
+  # individual dashboard: hours / (working days - leave days), clamped at 0 active days.
+  def generate_member_monthly_avg_table(time_entries, from, to)
+    members = @team_members
+                .select { |m| @active_member_ids.include?(m.user_id) }
+                .map { |m| { id: m.user_id, name: m.user&.name } }
+                .reject { |m| m[:name].blank? }
+                .uniq { |m| m[:id] }
+    member_ids = members.map { |m| m[:id] }
+
+    # Month buckets within the period, each clamped to the period bounds.
+    months = []
+    cursor = from.beginning_of_month
+    while cursor <= to
+      months << {
+        key:   cursor.strftime('%Y-%m'),
+        label: cursor.strftime('%b %Y'),
+        start: [cursor, from].max,
+        end:   [cursor.end_of_month, to].min
+      }
+      cursor = cursor.next_month
+    end
+
+    # Hours per member per month, bucketed in Ruby to stay DB-agnostic.
+    hours = Hash.new(0.0)
+    time_entries.each do |entry|
+      next unless entry.user_id && entry.spent_on
+      hours[[entry.user_id, entry.spent_on.strftime('%Y-%m')]] += entry.hours
+    end
+
+    # Working days + per-member leave days for each month and for the whole period.
+    working_days = {}
+    leave_by_month = {}
+    months.each do |mo|
+      working_days[mo[:key]]   = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(mo[:start], mo[:end])
+      leave_by_month[mo[:key]] = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: mo[:start], to_date: mo[:end])
+    end
+    total_working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from, to)
+    total_leave        = TaLeaveRecord.total_leave_days_for_users(user_ids: member_ids, from_date: from, to_date: to)
+
+    daily_avg = lambda { |hrs, active_days| active_days > 0 ? (hrs / active_days).round(2) : 0.0 }
+
+    rows = members.map do |m|
+      monthly = {}
+      total_hours = 0.0
+      months.each do |mo|
+        hrs = hours[[m[:id], mo[:key]]]
+        total_hours += hrs
+        active_days = [working_days[mo[:key]] - (leave_by_month[mo[:key]][m[:id]] || 0.0), 0].max
+        monthly[mo[:key]] = daily_avg.call(hrs, active_days)
+      end
+      overall_active = [total_working_days - (total_leave[m[:id]] || 0.0), 0].max
+      { id: m[:id], name: m[:name], monthly: monthly, overall: daily_avg.call(total_hours, overall_active) }
+    end
+
+    # Default order: highest overall daily average first (matches the design). The client
+    # re-sorts in memory when a column header is clicked.
+    rows.sort_by! { |r| [-r[:overall], r[:name].to_s.downcase] }
+
+    { months: months.map { |mo| { key: mo[:key], label: mo[:label] } }, rows: rows }
   end
 
   # Generate chart data for member pivot table
@@ -1123,27 +1455,69 @@ class TeamAnalyticsController < ApplicationController
       member_names = pivot_data[:members].map { |member| member[:name] }
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], member_names, pivot_data[:matrix], @grouping)
     else
-      labels = pivot_data[:raw_periods].map { |period| format_activity_period_display(period, @grouping) }
-      data_values = pivot_data[:raw_periods].map { |period| pivot_data[:period_totals][period] || 0 }
-      generate_line_chart_from_data(labels, data_values, pivot_data[:raw_periods], @grouping)
+      generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
     end
+  end
+
+  # Shared line-chart builder for the Members/Activity/Project pivot views. Applies the
+  # weekend/holiday amber flags and the "Show Active Days" filter (daily grouping only) so all
+  # trend charts behave like the My Time page.
+  def generate_pivot_line_chart(raw_periods, period_totals)
+    periods = raw_periods.dup
+    periods = periods.reject { |period| ta_team_holiday_date?(period) } if @grouping == 'daily' && @hide_holidays
+
+    boundaries = []
+    if @grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(periods)
+      labels = axis[:labels]
+      boundaries = axis[:boundaries]
+    else
+      labels = case @grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(periods)
+        else periods.map { |period| format_activity_period_display(period, @grouping) }
+      end
+      boundaries = helpers.build_period_boundaries(periods, @grouping)
+    end
+
+    data_values = periods.map { |period| period_totals[period] || 0 }
+    holiday_flags = @grouping == 'daily' ? periods.map { |period| ta_team_holiday_date?(period) } : periods.map { false }
+    generate_line_chart_from_data(labels, data_values, periods, @grouping, holiday_flags, boundaries)
   end
 
   def generate_stacked_bar_chart_from_matrix(period_keys, categories, matrix_data, grouping)
     return empty_chart_data('bar') if period_keys.blank? || categories.blank?
 
     sorted_periods = period_keys.uniq.sort
-    sorted_periods = if grouping == 'weekly'
+    sorted_periods = if grouping == 'daily'
+      fill_missing_working_days_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
+    elsif grouping == 'weekly'
       fill_missing_weeks_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
     else
       fill_missing_months_team(sorted_periods.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @from, @to).keys.sort
     end
 
-    formatted_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
-    tooltip_labels = if grouping == 'weekly'
-      sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+    boundaries = []
+    if grouping == 'daily'
+      axis = helpers.build_daily_chart_axis(sorted_periods)
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = sorted_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      full_labels = sorted_periods.map { |key| format_activity_period_display(key, grouping) }
+      formatted_labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+        else full_labels
+      end
+
+      tooltip_labels = if grouping == 'weekly'
+        sorted_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+      else
+        full_labels
+      end
+
+      boundaries = helpers.build_period_boundaries(sorted_periods, grouping)
     end
 
     datasets = categories.each_with_index.map do |category, index|
@@ -1162,63 +1536,68 @@ class TeamAnalyticsController < ApplicationController
       }
     end
 
+    chart_options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: {
+        display: false
+      },
+      tooltips: {
+        mode: 'nearest',
+        intersect: true,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: 12,
+        titleFontSize: 14,
+        titleFontStyle: 'bold',
+        bodyFontSize: 13,
+        cornerRadius: 8
+      },
+      scales: {
+        xAxes: [{
+          stacked: true,
+          scaleLabel: {
+            display: true,
+            labelString: helpers.grouping_label(grouping),
+            fontSize: 12,
+            fontStyle: 'bold'
+          },
+          ticks: {
+            maxRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            minRotation: %w[daily weekly monthly].include?(grouping) ? 0 : 45,
+            autoSkip: !%w[daily weekly monthly].include?(grouping),
+            fontSize: 11
+          }
+        }],
+        yAxes: [{
+          stacked: true,
+          ticks: {
+            beginAtZero: true,
+            fontSize: 11
+          },
+          scaleLabel: {
+            display: true,
+            labelString: 'Hours',
+            fontSize: 12,
+            fontStyle: 'bold'
+          }
+        }]
+      },
+      plugins: {
+        colorschemes: {
+          scheme: 'tableau.Tableau10'
+        }
+      }
+    }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
+
     {
       type: 'bar',
       data: {
         labels: formatted_labels,
         datasets: datasets
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          display: false
-        },
-        tooltips: {
-          mode: 'index',
-          intersect: false,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          padding: 12,
-          titleFontSize: 14,
-          titleFontStyle: 'bold',
-          bodyFontSize: 13,
-          cornerRadius: 8
-        },
-        scales: {
-          xAxes: [{
-            stacked: true,
-            scaleLabel: {
-              display: true,
-              labelString: helpers.grouping_label(grouping),
-              fontSize: 12,
-              fontStyle: 'bold'
-            },
-            ticks: {
-              maxRotation: 45,
-              minRotation: 45,
-              fontSize: 11
-            }
-          }],
-          yAxes: [{
-            stacked: true,
-            ticks: {
-              beginAtZero: true,
-              fontSize: 11
-            },
-            scaleLabel: {
-              display: true,
-              labelString: 'Hours',
-              fontSize: 12,
-              fontStyle: 'bold'
-            }
-          }]
-        },
-        plugins: {
-          colorschemes: {
-            scheme: 'tableau.Tableau10'
-          }
-        }
-      }
+      options: chart_options
     }.to_json.html_safe
   end
 
@@ -1261,6 +1640,27 @@ class TeamAnalyticsController < ApplicationController
     g = hex[2..3].to_i(16)
     b = hex[4..5].to_i(16)
     "rgba(#{r}, #{g}, #{b}, #{alpha})"
+  end
+
+  # Fill missing days for team dashboard (one entry per calendar date in range)
+  # A team "non-working" day = weekend or admin Company Holiday (no per-user leave at team level).
+  # Used both to flag a day amber and to hide it when the "Show Active Days" toggle is on.
+  def ta_team_holiday_date?(date)
+    date.is_a?(Date) && @period_working_day_checker && !@period_working_day_checker.call(date)
+  end
+
+  def fill_missing_working_days_team(grouped_data, from_date, to_date)
+    result = {}
+
+    (from_date..to_date).each do |date|
+      # Include the date only when it's a working day, OR time was logged on it (even if it's a
+      # weekend/holiday). Empty weekend/holiday days are dropped from chart + overview by default.
+      if (@period_working_day_checker && @period_working_day_checker.call(date)) || grouped_data.key?(date)
+        result[date] = grouped_data[date] || 0
+      end
+    end
+
+    result
   end
 
   # Fill missing weeks for team dashboard (includes weeks overlapping with date range)
@@ -1333,6 +1733,8 @@ class TeamAnalyticsController < ApplicationController
   def calculate_team_size_for_period(period_date, grouping)
     # Determine period start and end dates based on grouping
     period_start, period_end = case grouping
+                                when 'daily'
+                                  [period_date, period_date]
                                 when 'weekly'
                                   week_start = period_date.beginning_of_week(:monday)
                                   week_end = week_start + 6.days
@@ -1349,8 +1751,8 @@ class TeamAnalyticsController < ApplicationController
                                 end
 
     # Excluded users are still filtered by the period they overlap with
-    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end)
-    
+    excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end) | Array(@temp_excluded_ids)
+
     # Count members who were active during this period (based on membership dates, not time entries)
     active_count = @team_members.count do |membership|
       user_id = membership.user_id
@@ -1370,7 +1772,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def calculate_team_leave_days_for_period(period_start, period_end)
-    excluded_ids = TaTeamSetting.excluded_user_ids
+    excluded_ids = TaTeamSetting.excluded_user_ids | Array(@temp_excluded_ids)
     seen_user_dates = {}
     total_leave_days = 0.0
 
@@ -1395,9 +1797,36 @@ class TeamAnalyticsController < ApplicationController
     total_leave_days
   end
 
+  # Build the list of temporarily-excluded members (id/name/hours) so their rows can still
+  # be shown in the Members summary table, struck-through, without affecting any aggregate.
+  def build_temp_excluded_members
+    return [] if @temp_excluded_ids.blank?
+
+    # Permanent-excluded users are already filtered out by team_time_entries_scope;
+    # here we deliberately keep the temp set so we can display their hours.
+    hours_by_user = team_time_entries_scope(@team_members, @from, @to)
+                      .where(user_id: @temp_excluded_ids)
+                      .reorder(nil)
+                      .group(:user_id)
+                      .sum(:hours)
+
+    names_by_user = @team_members.each_with_object({}) do |membership, acc|
+      acc[membership.user_id] ||= membership.user&.name
+    end
+
+    @temp_excluded_ids.map do |user_id|
+      next unless names_by_user.key?(user_id)
+
+      { id: user_id, name: names_by_user[user_id], hours: hours_by_user[user_id] || 0 }
+    end.compact
+  end
+
   # Format chart label for team dashboard (proper week format: YYYY-WW)
   def format_chart_label_for_team(period, grouping)
     case grouping
+    when 'daily'
+      # Format as "Mon DD, YYYY" (matches Individual Dashboard daily chart labels)
+      period.strftime('%b %d, %Y')
     when 'weekly'
       # Format as YYYY-WW (ISO week number)
       year = period.cwyear

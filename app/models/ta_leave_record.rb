@@ -33,6 +33,30 @@ class TaLeaveRecord < ActiveRecord::Base
         raise ArgumentError, 'Confirmed leave records require a mapped user'
       end
 
+      # When the parser flagged a record solely because the sender was not found in
+      # the active-user set, check whether they are a *locked* Redmine user.
+      # A locked user's leave should be confirmed — the same email is confirmed for
+      # an active sender. This runs in the model (autoloaded) so it takes effect
+      # without a server restart, acting as a safety net for the parser-level fix.
+      if status == 'flagged' && user.nil? && sender_email.present?
+        flagged_reason = attrs[:raw_subject].to_s[/\A\[FLAGGED:([^\]]+)\]/, 1]
+        if flagged_reason == 'user_not_found'
+          locked_user = find_active_user_by_sender(sender_email)
+          if locked_user
+            user = locked_user
+            status = 'confirmed'
+            if leave_fraction.zero?
+              clean_subject = attrs[:raw_subject].to_s.sub(/\A\[FLAGGED:[^\]]+\]\s*/, '')
+              recovered = RedmineTimeAnalytics::LeaveEmailParser.fraction_from_email(
+                subject: clean_subject,
+                body: attrs[:raw_body].to_s
+              )
+              leave_fraction = recovered.positive? ? recovered : FULL_DAY_FRACTION
+            end
+          end
+        end
+      end
+
       record = if user.present?
                  find_or_initialize_by(user_id: user.id, leave_date: leave_date)
                elsif source_message_id.present?
@@ -65,6 +89,16 @@ class TaLeaveRecord < ActiveRecord::Base
         sync_mode: attrs[:sync_mode]
       )
       record.save!
+
+      # When confirming a record for a known user, delete any previously-flagged
+      # orphan for the same email message that had no user mapping (e.g. created
+      # while the sender's account was locked and `user_not_found` was returned).
+      if record.status == 'confirmed' && source_message_id.present?
+        where(source_message_id: source_message_id, user_id: nil, status: 'flagged')
+          .where.not(id: record.id)
+          .delete_all
+      end
+
       record
     end
 
@@ -161,8 +195,10 @@ class TaLeaveRecord < ActiveRecord::Base
       totals = Hash.new(0.0)
       return totals if user_ids.blank?
 
+      # Batch the holiday lookup once for the whole range instead of one query per record.
+      is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(from_date, to_date)
       confirmed.where(user_id: user_ids).within_range(from_date, to_date).find_each do |record|
-        next unless RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(record.leave_date)
+        next unless is_working_day.call(record.leave_date)
 
         totals[record.user_id] += record.leave_fraction.to_f
       end
@@ -184,9 +220,8 @@ class TaLeaveRecord < ActiveRecord::Base
       normalized_sender = normalize_lookup_email(extracted_email)
       return nil if normalized_sender.blank?
 
-      User.active.sorted.find do |user|
-        normalize_lookup_email(user_email(user)) == normalized_sender
-      end
+      User.active.sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender } ||
+        User.where(status: User::STATUS_LOCKED).sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender }
     end
 
     def extract_email(value)

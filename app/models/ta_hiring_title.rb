@@ -3,6 +3,12 @@
 class TaHiringTitle < ActiveRecord::Base
   self.table_name = 'ta_hiring_titles'
 
+  # Alias so Query/TimeReport value formatting (which calls .name on the klass record) works.
+  alias_attribute :name, :title
+
+  has_many :ta_user_titles, foreign_key: 'title_id', dependent: :destroy
+  has_many :users, through: :ta_user_titles
+
   DEFAULT_TITLES = [
     'Intern - Dev',
     'Intern - QA',

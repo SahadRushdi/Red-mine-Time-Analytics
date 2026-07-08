@@ -3,6 +3,15 @@ class TimeAnalyticsController < ApplicationController
   before_action :set_date_range
   before_action :set_grouping
   helper :time_analytics
+  # The Visualize tab renders the core queries/_query_form + filters partials,
+  # which rely on these helpers (e.g. query_hidden_sort_tag, render_query_columns_selection).
+  helper :queries
+  helper :issues
+  helper :custom_fields
+
+  # Keep the top "Spent time" application menu item highlighted while on the
+  # Visualize tab (which lives on this controller, not core timelog).
+  menu_item :time_entries, only: :visualize
 
   def index
     # Default to individual dashboard
@@ -53,6 +62,16 @@ class TimeAnalyticsController < ApplicationController
     @leave_days_count = calculate_leave_days_count(@from, @to)
     @active_days_count = [@working_days_count - @leave_days_count, 0].max.round(2)
 
+    # Holiday/leave context for the Trend chart + Time Overview (daily grouping only):
+    # weekends, public/company holidays, and the user's confirmed leave dates. The toggle
+    # only affects the graph + Time Overview table; summary card values are unchanged.
+    @hide_holidays = params[:hide_holidays].to_s == '1'
+    @period_working_day_checker = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(@from, @to)
+    @period_leave_fractions = {}
+    TaLeaveRecord.confirmed.where(user_id: @user.id, leave_date: @from..@to).find_each do |rec|
+      @period_leave_fractions[rec.leave_date] = [@period_leave_fractions[rec.leave_date].to_f, rec.leave_fraction.to_f].max
+    end
+
     # Calculate summary statistics based on grouping
     case @grouping
     when 'weekly'
@@ -89,18 +108,17 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
-      # Also generate simple activity summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'activity')
-        # Sort by hours (highest to lowest) for summary view
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |activity_name, hours|
-          Struct.new(:period, :hours).new(activity_name || 'No Activity', hours)
-        end
-      end
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
+
+      # Grouped tab: regroup the already-computed pivot data by the admin's Activity Groups.
+      # Computed unconditionally (not gated on activity_view_state) since Summary/Detailed/Grouped
+      # are all rendered server-side and toggled client-side. See TaActivityGroup#grouped_activity_view_data.
+      group_view = TaActivityGroup.grouped_activity_view_data(@activity_pivot_data)
+      @all_activities = group_view[:all_activities]
+      @activity_groups = group_view[:groups]
+      @activity_group_assignments = group_view[:assignments]
+      @activity_group_pivot_data = group_view[:pivot_data]
+      @activity_group_colors = group_view[:colors]
     elsif @view_mode == 'project'
       # Generate Project × Time Period pivot table for ALL groupings (including daily)
       @project_pivot_data = generate_project_pivot_table(@time_entries, @grouping)
@@ -113,18 +131,7 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
-      # Also generate simple project summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'project')
-        # Sort by hours (highest to lowest) for summary view
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |project_name, hours|
-          Struct.new(:period, :hours).new(project_name || 'No Project', hours)
-        end
-      end
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
     elsif @view_mode == 'issue'
       # Generate Issue × Time Period pivot table for ALL groupings (including daily)
       @issue_pivot_data = generate_issue_pivot_table(@time_entries, @grouping)
@@ -137,18 +144,7 @@ class TimeAnalyticsController < ApplicationController
       
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
-      @paginated_periods = @time_periods.slice(@offset, @limit)
-      
-      # Also generate simple issue summary for daily toggle view
-      if @grouping == 'daily'
-        grouped_data = group_time_entries(@time_entries, 'issue')
-        # Sort by hours (highest to lowest)
-        sorted_data = grouped_data.sort_by { |_, hours| -hours }
-        sliced_data = sorted_data.slice(@offset, @limit) || []
-        @paginated_entries = sliced_data.map do |issue_info, hours|
-          Struct.new(:period, :hours, :issue).new(issue_info[:display], hours, issue_info[:issue])
-        end
-      end
+      @paginated_periods = @time_periods.slice(@offset, @limit) || []
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       
@@ -262,12 +258,151 @@ class TimeAnalyticsController < ApplicationController
       filename = "time_analytics_#{@user.login}_#{@from}_#{@to}.csv"
     end
     
-    send_data csv_data, 
+    send_data csv_data,
               filename: filename,
               type: 'text/csv'
   end
 
+  # Selectable group-by options for the "Visualize" tab embedded in the core Spent time view.
+  # Each primary grouping declares the secondary dimension its rows expand into.
+  VISUALIZE_GROUPS = {
+    'user_title' => { label: :field_user_title, child: 'user' },
+    'user'       => { label: :label_user,       child: 'activity' },
+    'activity'   => { label: :field_activity,   child: 'user' },
+    'project'    => { label: :label_project,    child: 'user' },
+    'issue'      => { label: :field_issue,      child: 'user' },
+    'spent_on'   => { label: :label_date,       child: 'user' },
+    'created_on' => { label: :field_created_on, child: 'user' }
+  }.freeze
+
+  # SQL grouping expression for each dimension (against the title-joined base_scope).
+  # spent_on/created_on mirror the SQL Redmine's own TimeEntryQuery uses for these
+  # group-by columns (created_on is bucketed by date).
+  VISUALIZE_DIMENSION_SQL = {
+    'user_title' => 'tht.title',
+    'user'       => 'time_entries.user_id',
+    'activity'   => 'time_entries.activity_id',
+    'project'    => 'time_entries.project_id',
+    'issue'      => 'time_entries.issue_id',
+    'spent_on'   => 'time_entries.spent_on',
+    'created_on' => 'DATE(time_entries.created_on)'
+  }.freeze
+
+  # Donut/legend palette — matches the My Time dashboard donut (Tableau 10) so the
+  # visualization colours are consistent across the plugin.
+  VISUALIZE_PALETTE = %w[
+    #4E79A7 #F28E2B #E15759 #76B7B2 #59A14F
+    #EDC948 #B07AA1 #FF9DA7 #9C755F #BAB0AC
+  ].freeze
+
+  # Aggregates the time entries from the current Spent time filter (carried over via
+  # query params) by a chosen attribute (default: User's Title), with an expandable
+  # secondary breakdown per group, and renders the donut + table card.
+  def visualize
+    @project = Project.find(params[:project_id]) if params[:project_id].present?
+
+    @query =
+      if params[:query_id].present?
+        TimeEntryQuery.find(params[:query_id])
+      else
+        q = TimeEntryQuery.new(name: '_')
+        q.project = @project
+        q.build_from_params(params)
+        q
+      end
+
+    # The primary dimension is driven by the core "Group results by" select in the
+    # Options section (the query's group_by). When nothing is selected (or the
+    # selection isn't a visualizable dimension), flag it so the view renders a
+    # "select a Group by" prompt instead of a meaningless default chart.
+    selected_group    = Array(@query.group_by).first.to_s
+    @no_group_selected = !VISUALIZE_GROUPS.key?(selected_group)
+    @group_by = @no_group_selected ? 'user_title' : selected_group
+    @child_by = VISUALIZE_GROUPS[@group_by][:child]
+    @viz_groups   = (!@no_group_selected && @query.valid?) ? visualize_groups(@query.base_scope, @group_by, @child_by) : []
+    @total_hours  = @viz_groups.sum { |g| g[:hours] }
+
+    @viz_payload = {
+      no_group_selected: @no_group_selected,
+      dimension_label:   @no_group_selected ? '' : l(VISUALIZE_GROUPS[@group_by][:label]),
+      child_label:       @no_group_selected ? '' : l(VISUALIZE_GROUPS[@child_by][:label]),
+      child_dimension:   @child_by,
+      total:             @total_hours,
+      groups:            @viz_groups
+    }.to_json
+  rescue ActiveRecord::RecordNotFound
+    render_404
+  end
+
   private
+
+  # Builds the nested visualize dataset: a list of top-level groups (sorted by hours
+  # desc, colored from the palette, with grand-total share) each carrying its child
+  # breakdown (sorted by hours desc, with within-group share).
+  def visualize_groups(scope, primary, secondary)
+    scope = scope.reorder(nil)
+    sums = scope.group(VISUALIZE_DIMENSION_SQL[primary], VISUALIZE_DIMENSION_SQL[secondary]).sum(:hours)
+
+    by_parent = Hash.new { |h, k| h[k] = {} }
+    sums.each { |(pval, sval), hours| by_parent[pval][sval] = hours.to_f }
+
+    parent_labels = resolve_dimension_labels(primary, by_parent.keys)
+    child_labels  = resolve_dimension_labels(secondary, by_parent.values.flat_map(&:keys).uniq)
+
+    parents = by_parent.filter_map do |pval, child_sums|
+      total = child_sums.values.sum
+      [pval, child_sums, total] if total.positive?
+    end
+    grand_total = parents.sum { |_, _, total| total }
+
+    parents.sort_by { |_, _, total| -total }.each_with_index.map do |(pval, child_sums, total), index|
+      children = child_sums.filter_map { |sval, hours| [sval, hours] if hours.positive? }
+                           .sort_by { |_, hours| -hours }
+                           .map do |sval, hours|
+                             {
+                               label: child_labels[sval],
+                               hours: hours,
+                               percentage: total.positive? ? (hours / total * 100).round(1) : 0
+                             }
+                           end
+      {
+        label: parent_labels[pval],
+        hours: total,
+        percentage: grand_total.positive? ? (total / grand_total * 100).round(1) : 0,
+        color: VISUALIZE_PALETTE[index % VISUALIZE_PALETTE.size],
+        children: children
+      }
+    end
+  end
+
+  # Maps raw grouping values (title strings or record ids) to display labels.
+  def resolve_dimension_labels(dimension, values)
+    case dimension
+    when 'user_title'
+      values.index_with { |value| value.presence || l(:label_none_title) }
+    when 'user'
+      names = User.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'activity'
+      names = TimeEntryActivity.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'project'
+      names = Project.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| names[id]&.name || l(:label_none) }
+    when 'issue'
+      issues = Issue.where(id: values.compact).index_by(&:id)
+      values.index_with { |id| (i = issues[id]) ? "##{i.id} #{i.subject}" : l(:label_none) }
+    when 'spent_on', 'created_on'
+      values.index_with do |value|
+        next l(:label_none) if value.blank?
+
+        value.respond_to?(:strftime) ? value.strftime('%Y-%m-%d') : value.to_s
+      end
+    else
+      values.index_with(&:to_s)
+    end
+  end
+
 
   def parse_custom_date(value)
     return nil if value.blank?
@@ -297,8 +432,9 @@ class TimeAnalyticsController < ApplicationController
       @from = (Date.current - 1.week).beginning_of_week(:monday)
       @to = (Date.current - 1.week).end_of_week(:monday)
     when 'this_month'
+      # Month-to-date: from the 1st of the current month through today (not the month end).
       @from = Date.current.beginning_of_month
-      @to = Date.current.end_of_month
+      @to = Date.current
     when 'custom'
       from_param = params[:from].presence
       to_param = params[:to].presence
@@ -514,6 +650,20 @@ class TimeAnalyticsController < ApplicationController
     ).round(2)
   end
 
+  # A date worth flagging on the Trend chart / Time Overview: a weekend, a public/company
+  # holiday, or a date the user had a full-day leave. Half-day leaves stay dark blue.
+  def ta_holiday_or_leave_date?(date)
+    return false unless date.is_a?(Date) && @period_working_day_checker
+    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f >= 1.0
+  end
+
+  # A date to drop when "hide holidays + leaves" is on: weekends, holidays, and FULL-day
+  # leaves only. Half-day leaves are kept since the user still worked part of the day.
+  def ta_hidden_holiday_date?(date)
+    return false unless date.is_a?(Date) && @period_working_day_checker
+    !@period_working_day_checker.call(date) || @period_leave_fractions[date].to_f >= 1.0
+  end
+
   def calculate_active_days(from_date, to_date)
     working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(from_date, to_date)
     leave_days = calculate_leave_days_count(from_date, to_date)
@@ -637,17 +787,35 @@ class TimeAnalyticsController < ApplicationController
       end
     end
     categories_sorted = all_categories.sort_by { |_, h| -h }.map(&:first)
-    
-    # Generate labels for chart
-    formatted_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
-    
-    # Generate tooltip labels (detailed format for weekly grouping)
-    tooltip_labels = if grouping == 'weekly'
-      all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+
+    daily = grouping == 'daily'
+    boundaries = []
+
+    if daily
+      axis = helpers.build_daily_chart_axis(all_periods)
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = all_periods.map { |key| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      # Generate labels for chart
+      full_labels = all_periods.map { |key| helpers.format_period_for_table(key, grouping, @from, @to) }
+      formatted_labels = case grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(all_periods)
+        when 'weekly' then helpers.build_weekly_chart_axis(all_periods)
+        else full_labels
+      end
+
+      # Generate tooltip labels (detailed format for weekly grouping); monthly/other tooltips
+      # keep the full "Month Year" text, decoupled from the shortened monthly axis labels above.
+      tooltip_labels = if grouping == 'weekly'
+        all_periods.map { |key| helpers.format_period_for_tooltip(key, grouping, @from, @to) }
+      else
+        full_labels
+      end
+
+      boundaries = helpers.build_period_boundaries(all_periods, grouping)
     end
-    
+
     # Create datasets for each category (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = categories_sorted.map do |category|
@@ -675,17 +843,11 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,
@@ -700,8 +862,9 @@ class TimeAnalyticsController < ApplicationController
             display: false
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: (daily || %w[weekly monthly].include?(grouping)) ? 0 : 45,
+            minRotation: (daily || %w[weekly monthly].include?(grouping)) ? 0 : 45,
+            autoSkip: !(daily || %w[weekly monthly].include?(grouping)),
             fontSize: 11
           }
         }],
@@ -726,6 +889,8 @@ class TimeAnalyticsController < ApplicationController
         }
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'bar',
@@ -871,32 +1036,76 @@ class TimeAnalyticsController < ApplicationController
       end
     end
 
-    return empty_chart_data('line') if sorted_data.all? { |_, value| value.to_f.zero? }
-    
-    formatted_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
-    # Generate detailed tooltip labels for weekly grouping
-    tooltip_labels = if @grouping == 'weekly'
-      sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+    daily = @grouping == 'daily'
+    # Drop weekend/holiday/full-day-leave dates from the Trend chart when the toggle is off.
+    sorted_data = sorted_data.reject { |key, _| ta_hidden_holiday_date?(key) } if daily && @hide_holidays
+
+    return empty_chart_data('line') if sorted_data.empty? || sorted_data.all? { |_, value| value.to_f.zero? }
+
+    boundaries = []
+    if daily
+      axis = helpers.build_daily_chart_axis(sorted_data.map(&:first))
+      formatted_labels = axis[:labels]
+      boundaries = axis[:boundaries]
+      tooltip_labels = sorted_data.map { |key, _| helpers.format_chart_label(key) }
     else
-      formatted_labels
+      full_labels = sorted_data.map { |key, _| helpers.format_period_for_table(key, @grouping, @from, @to) }
+      formatted_labels = case @grouping
+        when 'monthly' then helpers.build_monthly_chart_labels(sorted_data.map(&:first))
+        when 'weekly' then helpers.build_weekly_chart_axis(sorted_data.map(&:first))
+        else full_labels
+      end
+
+      # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+      # full "Month Year" text, decoupled from the shortened monthly axis labels above.
+      tooltip_labels = if @grouping == 'weekly'
+        sorted_data.map { |key, _| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
+      else
+        full_labels
+      end
+
+      boundaries = helpers.build_period_boundaries(sorted_data.map(&:first), @grouping)
     end
-    
+
     # Generate formatted hours for tooltips
     formatted_hours = sorted_data.map { |_, value| helpers.format_hours(value) }
-    
+
+    data_values = sorted_data.map { |_, value| value }
+
+    # Flag holiday/leave dates so their points and x-axis labels can render in a distinct colour.
+    holiday_flags = daily ? sorted_data.map { |key, _| ta_holiday_or_leave_date?(key) } : sorted_data.map { false }
+
+    # Center a lone data point by padding a blank slot on each side, so it renders
+    # in the middle of the chart instead of hugging the left edge.
+    if data_values.length == 1
+      formatted_labels = ['', formatted_labels.first, '']
+      tooltip_labels   = ['', tooltip_labels.first, '']
+      formatted_hours  = ['', formatted_hours.first, '']
+      data_values      = [nil, data_values.first, nil]
+      holiday_flags    = [false, holiday_flags.first, false]
+    end
+
+    single_point = sorted_data.length == 1
+    # Holidays/leaves in amber, normal days in the usual dark blue.
+    point_colors = holiday_flags.map { |holiday| holiday ? '#f59e0b' : '#1d4ed8' }
+
     chart_data = {
       labels: formatted_labels,
       datasets: [{
         label: 'Hours',
-        data: sorted_data.map { |_, value| value },
+        data: data_values,
         borderColor: '#36a2eb',
         backgroundColor: 'rgba(54, 162, 235, 0.1)',
         fill: true,
         tension: 0.2,
         borderWidth: 2,
-        pointRadius: 3,
-        pointHoverRadius: 5,
+        # Solid dots so points stay clearly visible with one or many data points.
+        pointRadius: single_point ? 6 : 4,
+        pointHoverRadius: single_point ? 8 : 6,
+        pointBackgroundColor: point_colors,
+        pointBorderColor: point_colors,
+        pointBorderWidth: 1,
+        holidayFlags: holiday_flags,
         tooltipLabels: tooltip_labels,
         formattedHours: formatted_hours
       }]
@@ -940,12 +1149,15 @@ class TimeAnalyticsController < ApplicationController
             labelString: helpers.grouping_label(@grouping)
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45
+            maxRotation: (daily || %w[weekly monthly].include?(@grouping)) ? 0 : 45,
+            minRotation: (daily || %w[weekly monthly].include?(@grouping)) ? 0 : 45,
+            autoSkip: !(daily || %w[weekly monthly].include?(@grouping))
           }
         }]
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'line',
@@ -1050,17 +1262,25 @@ class TimeAnalyticsController < ApplicationController
 
     # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
     sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
-    
+
     # Generate labels for chart
-    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
-    # Generate detailed tooltip labels for weekly grouping
+    full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    formatted_labels = case @grouping
+      when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+      when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+      else full_labels
+    end
+
+    # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+    # full "Month Year" text, decoupled from the shortened monthly axis labels above.
     tooltip_labels = if @grouping == 'weekly'
       sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
-      formatted_labels
+      full_labels
     end
-    
+
+    boundaries = helpers.build_period_boundaries(sorted_periods, @grouping)
+
     # Create datasets for each activity (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = activities.map do |activity|
@@ -1088,17 +1308,11 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,
@@ -1116,8 +1330,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
+            minRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
             fontSize: 11
           }
         }],
@@ -1142,6 +1356,8 @@ class TimeAnalyticsController < ApplicationController
       }
     }
 
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
+
     {
       type: 'bar',
       data: {
@@ -1158,17 +1374,25 @@ class TimeAnalyticsController < ApplicationController
 
     # Include zero-hour working days/weeks/months so the stacked chart matches the line chart range.
     sorted_periods = fill_missing_periods_for_grouping(period_keys.each_with_object({}) { |period_key, hash| hash[period_key] = 0 }, @grouping).keys.sort
-    
+
     # Generate labels for chart
-    formatted_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
-    
-    # Generate detailed tooltip labels for weekly grouping
+    full_labels = sorted_periods.map { |key| helpers.format_period_for_table(key, @grouping, @from, @to) }
+    formatted_labels = case @grouping
+      when 'monthly' then helpers.build_monthly_chart_labels(sorted_periods)
+      when 'weekly' then helpers.build_weekly_chart_axis(sorted_periods)
+      else full_labels
+    end
+
+    # Generate detailed tooltip labels for weekly grouping; monthly/other tooltips keep the
+    # full "Month Year" text, decoupled from the shortened monthly axis labels above.
     tooltip_labels = if @grouping == 'weekly'
       sorted_periods.map { |key| helpers.format_period_for_tooltip(key, @grouping, @from, @to) }
     else
-      formatted_labels
+      full_labels
     end
-    
+
+    boundaries = helpers.build_period_boundaries(sorted_periods, @grouping)
+
     # Create datasets for each project (stacked)
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = projects.map do |project|
@@ -1196,17 +1420,11 @@ class TimeAnalyticsController < ApplicationController
       responsive: true,
       maintainAspectRatio: false,
       legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-          padding: 15,
-          fontSize: 12
-        }
+        display: false
       },
       tooltips: {
-        mode: 'index',
-        intersect: false,
+        mode: 'nearest',
+        intersect: true,
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFontSize: 14,
@@ -1224,8 +1442,8 @@ class TimeAnalyticsController < ApplicationController
             fontStyle: 'bold'
           },
           ticks: {
-            maxRotation: 45,
-            minRotation: 45,
+            maxRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
+            minRotation: %w[weekly monthly].include?(@grouping) ? 0 : 45,
             fontSize: 11
           }
         }],
@@ -1249,6 +1467,8 @@ class TimeAnalyticsController < ApplicationController
         }
       }
     }
+
+    chart_options[:monthYearSeparator] = { boundaries: boundaries } if boundaries.present?
 
     {
       type: 'bar',
@@ -1381,10 +1601,11 @@ class TimeAnalyticsController < ApplicationController
       {
         period_key: period_key,
         activity_name: activity_name,
+        activity_id: entry.activity_id,
         hours: entry.hours
       }
     end
-    
+
     # Get unique periods and activities
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort.reverse
     activities = entries_with_details.map { |e| e[:activity_name] }.uniq
@@ -1417,7 +1638,10 @@ class TimeAnalyticsController < ApplicationController
     
     # Sort activities by total hours (highest to lowest) for summary view
     activities = activities.sort_by { |activity| -activity_totals[activity] }
-    
+
+    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
+    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       activities: activities,
@@ -1425,7 +1649,8 @@ class TimeAnalyticsController < ApplicationController
       period_totals: period_totals,
       activity_totals: activity_totals,
       grand_total: grand_total,
-      raw_periods: periods # Keep original keys for matrix lookup
+      raw_periods: periods, # Keep original keys for matrix lookup
+      activity_ids: activity_ids
     }
   end
 
@@ -1738,16 +1963,21 @@ class TimeAnalyticsController < ApplicationController
     
     # Sort by date in descending order (latest first)
     sorted_data = grouped_data.sort_by { |key, _| key }.reverse
-    
+
+    daily = grouping == 'daily'
+    # When hiding holidays + leaves, drop weekends/holidays/full-day-leave dates (daily only).
+    sorted_data = sorted_data.reject { |key, _| ta_hidden_holiday_date?(key) } if daily && @hide_holidays
+
     # Format data with proper date display (no activity breakdown)
     sorted_data.map do |period, hours|
-      formatted_period = if grouping == 'daily'
+      formatted_period = if daily
         helpers.format_chart_label(period)
       else
         helpers.format_period_for_table(period, grouping, @from, @to)
       end
-      
-      Struct.new(:period, :hours, :date).new(formatted_period, hours, period)
+
+      holiday = daily && ta_holiday_or_leave_date?(period)
+      Struct.new(:period, :hours, :date, :holiday).new(formatted_period, hours, period, holiday)
     end
   end
 

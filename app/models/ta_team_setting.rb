@@ -219,6 +219,7 @@ class TaTeamSetting < ActiveRecord::Base
       interval_value: raw['leave_sync_interval_value'].to_s.presence || '10',
       interval_unit: raw['leave_sync_interval_unit'].to_s.presence || 'minutes',
       daily_time: raw['leave_sync_daily_time'].to_s.presence || '09:00',
+      everyday_time: raw['leave_sync_everyday_time'].to_s.presence || '09:00',
       daily_days: (raw['leave_sync_daily_days'].to_s.split(',').presence || %w[1 2 3 4 5])
     }
   end
@@ -234,6 +235,10 @@ class TaTeamSetting < ActiveRecord::Base
       when 'days'    then "0 0 */#{val} * *"
       else DEFAULT_LEAVE_SYNC_CRON
       end
+    elsif freq_type == 'everyday'
+      time = params[:leave_sync_everyday_time].to_s # HH:MM
+      hour, min = time.split(':')
+      "#{min.to_i} #{hour.to_i} * * * Asia/Kolkata"
     elsif freq_type == 'daily'
       time = params[:leave_sync_daily_time].to_s # HH:MM
       days = Array(params[:leave_sync_daily_days]).reject(&:blank?).join(',')
@@ -249,16 +254,29 @@ class TaTeamSetting < ActiveRecord::Base
     raw = Setting.plugin_redmine_time_analytics || {}
     enabled_setting = raw.key?('missing_time_enabled') ? raw['missing_time_enabled'].to_s : '1'
     recipients_raw = raw['missing_time_recipients'].to_s.strip
+
+    # Primary: new array key set by the dynamic UI.
+    crons = Array(raw['missing_time_crons']).map(&:to_s).map(&:strip).reject(&:blank?)
+
+    # Legacy fallback chain so existing installs don't silently lose notifications after upgrade.
+    if crons.empty?
+      legacy_single = raw['missing_time_cron'].to_s.strip
+      fri = raw['missing_time_cron_fri'].to_s.strip.presence || legacy_single
+      sat = raw['missing_time_cron_sat'].to_s.strip
+      mon = raw['missing_time_cron_mon'].to_s.strip
+      crons = [fri, sat, mon].reject(&:blank?)
+    end
+
     {
       enabled: enabled_setting == '1',
-      cron: raw['missing_time_cron'].to_s.strip,
+      crons: crons,
       recipients: parse_recipient_list(recipients_raw),
       from_name: raw['missing_time_from_name'].to_s.strip.presence || 'Time Analytics System',
       timezone: raw['missing_time_timezone'].to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
     }
   end
 
-  def self.update_missing_time_settings!(enabled:, recipients:, cron:, from_name: nil, timezone: nil)
+  def self.update_missing_time_settings!(enabled:, recipients:, crons: [], from_name: nil, timezone: nil)
     normalized_recipients = parse_recipient_list(recipients)
     raise ArgumentError, 'Missing time recipients are required' if normalized_recipients.empty?
 
@@ -268,19 +286,21 @@ class TaTeamSetting < ActiveRecord::Base
       raise ArgumentError, "Invalid recipient email: #{email}"
     end
 
-    cron_expression = cron.to_s.strip
-    validate_missing_time_cron!(cron_expression)
+    normalized_crons = Array(crons).map(&:to_s).map(&:strip).reject(&:blank?)
+    normalized_crons.each_with_index do |expr, i|
+      validate_missing_time_cron!(expr, label: "Schedule #{i + 1}")
+    end
 
     normalized_timezone = timezone.to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
     raise ArgumentError, 'Missing time timezone is required' if normalized_timezone.blank?
 
-    settings = (Setting.plugin_redmine_time_analytics || {}).dup
-    settings['missing_time_enabled'] = enabled.to_s == '1' ? '1' : '0'
-    settings['missing_time_cron'] = cron_expression
-    settings['missing_time_recipients'] = normalized_recipients.join(', ')
-    settings['missing_time_from_name'] = from_name.to_s.strip
-    settings['missing_time_timezone'] = normalized_timezone
-    Setting.plugin_redmine_time_analytics = settings
+    plugin_settings = (Setting.plugin_redmine_time_analytics || {}).dup
+    plugin_settings['missing_time_enabled'] = enabled.to_s == '1' ? '1' : '0'
+    plugin_settings['missing_time_crons'] = normalized_crons
+    plugin_settings['missing_time_recipients'] = normalized_recipients.join(', ')
+    plugin_settings['missing_time_from_name'] = from_name.to_s.strip
+    plugin_settings['missing_time_timezone'] = normalized_timezone
+    Setting.plugin_redmine_time_analytics = plugin_settings
 
     if defined?(RedmineTimeAnalytics::MissingTimeScheduler)
       RedmineTimeAnalytics::MissingTimeScheduler.refresh!
@@ -305,6 +325,7 @@ class TaTeamSetting < ActiveRecord::Base
     leave_sync_interval_value: nil,
     leave_sync_interval_unit: nil,
     leave_sync_daily_time: nil,
+    leave_sync_everyday_time: nil,
     leave_sync_daily_days: nil,
     ai_extraction_enabled: nil,
     ai_provider: 'google',
@@ -352,6 +373,7 @@ class TaTeamSetting < ActiveRecord::Base
     settings['leave_sync_interval_value'] = leave_sync_interval_value.to_s if leave_sync_interval_value.present?
     settings['leave_sync_interval_unit'] = leave_sync_interval_unit.to_s if leave_sync_interval_unit.present?
     settings['leave_sync_daily_time'] = leave_sync_daily_time.to_s if leave_sync_daily_time.present?
+    settings['leave_sync_everyday_time'] = leave_sync_everyday_time.to_s if leave_sync_everyday_time.present?
     if leave_sync_daily_days.present?
       settings['leave_sync_daily_days'] = Array(leave_sync_daily_days).reject(&:blank?).join(',')
     end
@@ -497,13 +519,14 @@ class TaTeamSetting < ActiveRecord::Base
     raise ArgumentError, 'Leave sync cron expression is invalid'
   end
 
-  def self.validate_missing_time_cron!(cron)
+  def self.validate_missing_time_cron!(cron, label: nil)
     cron_expression = cron.to_s.strip
-    raise ArgumentError, 'Missing time cron expression is required' if cron_expression.blank?
+    prefix = label ? "#{label} schedule" : 'Missing time cron expression'
+    raise ArgumentError, "#{prefix} is required" if cron_expression.blank?
 
     Fugit::Cron.parse(cron_expression)
   rescue StandardError
-    raise ArgumentError, 'Missing time cron expression is invalid'
+    raise ArgumentError, "#{prefix} is invalid: #{cron_expression}"
   end
 
   def self.parse_recipient_list(value)

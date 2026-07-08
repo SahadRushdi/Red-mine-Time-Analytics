@@ -14,6 +14,7 @@ class AdminLeaveCountController < ApplicationController
 
   def index
     @leave_sync_settings = TaTeamSetting.leave_sync_settings
+    @leave_ai_api_key_present = @leave_sync_settings[:ai_api_key].present?
     @leave_sync_configured = TaTeamSetting.leave_sync_configured?
     @manual_pull_available = TaTeamSetting.leave_sync_manual_pull?
     @leave_sync_enabled = @leave_sync_settings[:enabled]
@@ -50,6 +51,7 @@ class AdminLeaveCountController < ApplicationController
       leave_sync_interval_value: sync_params[:leave_sync_interval_value],
       leave_sync_interval_unit: sync_params[:leave_sync_interval_unit],
       leave_sync_daily_time: sync_params[:leave_sync_daily_time],
+      leave_sync_everyday_time: sync_params[:leave_sync_everyday_time],
       leave_sync_daily_days: sync_params[:leave_sync_daily_days],
       ai_extraction_enabled: ai_enabled,
       ai_provider: 'google',
@@ -84,6 +86,28 @@ class AdminLeaveCountController < ApplicationController
     sync_id = params[:sync_id]
     progress = RedmineTimeAnalytics::SyncTracker.get(sync_id) || { status: 'starting', message: 'Initializing...', progress: 0 }
     render json: progress
+  end
+
+  def ai_models
+    api_key = TaTeamSetting.leave_sync_settings[:ai_api_key].to_s
+    if api_key.blank?
+      return render json: { error: 'no_api_key' }, status: :unprocessable_entity
+    end
+
+    render json: { models: fetch_google_models(api_key) }
+  rescue StandardError => e
+    Rails.logger.warn("[LeaveAI] model list fetch failed: #{e.class}: #{e.message}")
+    render json: { error: 'fetch_failed' }, status: :bad_gateway
+  end
+
+  def next_run
+    cron = TaTeamSetting.generate_cron_from_ui(next_run_params)
+    cron_line = RedmineTimeAnalytics::LeaveSyncScheduler.cron_line_for(cron)
+    next_time = cron_line&.next_time(Time.zone.now)
+    formatted = next_time ? helpers.format_time(next_time.to_t) : nil
+    render json: { next_run: formatted }
+  rescue StandardError
+    render json: { next_run: nil }
   end
 
   def oauth_start
@@ -166,9 +190,42 @@ class AdminLeaveCountController < ApplicationController
       :leave_sync_interval_value,
       :leave_sync_interval_unit,
       :leave_sync_daily_time,
+      :leave_sync_everyday_time,
       :leave_ai_extraction_enabled,
       :leave_ai_model,
       :leave_ai_api_key,
+      leave_sync_daily_days: []
+    )
+  end
+
+  def fetch_google_models(api_key)
+    uri = URI.parse("https://generativelanguage.googleapis.com/v1beta/models?key=#{URI.encode_www_form_component(api_key)}&pageSize=200")
+    request = Net::HTTP::Get.new(uri)
+
+    response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 8) do |http|
+      http.request(request)
+    end
+    payload = JSON.parse(response.body.to_s)
+    unless response.code.to_i.between?(200, 299)
+      error_message = payload['error'].is_a?(Hash) ? payload['error']['message'] : payload['error']
+      raise(error_message.presence || "Model list request failed with HTTP #{response.code}")
+    end
+
+    Array(payload['models']).filter_map do |model|
+      methods = Array(model['supportedGenerationMethods'])
+      next unless methods.include?('generateContent')
+
+      model['name'].to_s.sub(%r{\Amodels/}, '').presence
+    end.uniq.sort
+  end
+
+  def next_run_params
+    params.permit(
+      :leave_sync_freq_type,
+      :leave_sync_interval_value,
+      :leave_sync_interval_unit,
+      :leave_sync_daily_time,
+      :leave_sync_everyday_time,
       leave_sync_daily_days: []
     )
   end

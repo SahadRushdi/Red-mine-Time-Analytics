@@ -12,6 +12,15 @@ class LeavesController < ApplicationController
     @filter_status = params[:status].to_s.presence
     @filter_user_id = params[:user_id].to_s.presence
     @selected_user = @filter_user_id.present? ? User.find_by(id: @filter_user_id) : nil
+
+    last_synced_at = TaTeamSetting.leave_sync_settings[:last_synced_at]
+    if last_synced_at.present?
+      # Match how the Leave Sync admin page renders the time: convert to the viewing user's
+      # time zone (falling back to the local zone) before formatting, like Redmine's format_time.
+      zone = User.current.time_zone
+      local_time = zone ? last_synced_at.in_time_zone(zone) : last_synced_at.localtime
+      @leave_last_synced_label = local_time.strftime('%b %-d, %Y, %-I:%M %p')
+    end
   end
 
   def data
@@ -142,7 +151,8 @@ class LeavesController < ApplicationController
       if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
         scope = scope.where(status: filters[:status].to_s)
       end
-      
+      scope = apply_month_filter(scope, selected_months(filters))
+
       deleted_count = scope.delete_all
       return render json: { ok: true, deleted_count: deleted_count }, status: :ok
     end
@@ -174,6 +184,7 @@ class LeavesController < ApplicationController
     if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
       scope = scope.where(status: filters[:status].to_s)
     end
+    scope = apply_month_filter(scope, selected_months(filters))
 
     deleted = scope.delete_all
     render json: { ok: true, deleted: deleted }, status: :ok
@@ -186,7 +197,29 @@ class LeavesController < ApplicationController
   private
 
   def filter_params
-    params.permit(:from, :to, :user_id, :status)
+    params.permit(:from, :to, :user_id, :status, :months)
+  end
+
+  # Parses the comma-separated `months` filter param into an array of "YYYY-MM"
+  # strings. Returns nil when absent so callers can skip month filtering entirely.
+  def selected_months(filters)
+    raw = filters[:months].to_s.strip
+    return nil if raw.blank?
+
+    months = raw.split(',').map(&:strip).select { |m| m.match?(/\A\d{4}-\d{2}\z/) }
+    months.presence
+  end
+
+  # Restricts a leave-record scope to records whose leave_date falls in one of the
+  # selected "YYYY-MM" months. Done in Ruby because month extraction is not portable
+  # across databases. Returns the scope unchanged when no months are selected.
+  def apply_month_filter(scope, months)
+    return scope if months.blank?
+
+    ids = scope.pluck(:id, :leave_date)
+                .select { |_id, date| months.include?(date.strftime('%Y-%m')) }
+                .map(&:first)
+    TaLeaveRecord.where(id: ids)
   end
 
   def manual_leave_params
@@ -203,7 +236,20 @@ class LeavesController < ApplicationController
     scope = scope.where(status: filters[:status].to_s) if filters[:status].present? && TaLeaveRecord::STATUSES.include?(filters[:status].to_s)
 
     records = scope.order(leave_date: :asc, user_id: :asc, source_sent_at: :asc).to_a
-    records.select! { |r| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(r.leave_date) }
+
+    # Filter to working days using a single batched holiday lookup (avoids one DB query per record).
+    is_working_day = RedmineTimeAnalytics::WorkingDaysCalculator.working_day_checker(from_date, to_date)
+    records.select! { |r| is_working_day.call(r.leave_date) }
+
+    # Restrict to the exact set of selected months (the from/to range is only the bounding box,
+    # so non-contiguous selections like Feb + Aug would otherwise leak the in-between months).
+    months = selected_months(filters)
+    records.select! { |r| months.include?(r.leave_date.strftime('%Y-%m')) } if months.present?
+
+    # Compute each record's effective leave fraction once and reuse it across all passes below.
+    fraction_by_record = records.each_with_object({}) { |record, memo| memo[record] = effective_leave_fraction(record) }
+    # The :user association is already eager-loaded (includes(:user)); index it for user_summary.
+    user_by_id = records.each_with_object({}) { |record, memo| memo[record.user_id] ||= record.user if record.user }
 
     grouped_by_date = records.group_by(&:leave_date)
     user_totals = Hash.new(0.0)
@@ -211,13 +257,13 @@ class LeavesController < ApplicationController
       next if record.user_id.blank?
       next if record.status == 'flagged'
 
-      user_totals[record.user_id] += effective_leave_fraction(record)
+      user_totals[record.user_id] += fraction_by_record[record]
     end
 
     {
       filters: { from: from_date, to: to_date, user_id: filters[:user_id].to_s, status: filters[:status].to_s },
       totals: {
-        overall_leave_days: records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
+        overall_leave_days: records.select { |r| r.status == 'confirmed' }.sum { |record| fraction_by_record[record] }.round(2),
         users_with_leave: user_totals.keys.compact.count,
         flagged_records: records.count { |record| record.status == 'flagged' },
         total_records: records.count
@@ -225,12 +271,12 @@ class LeavesController < ApplicationController
       daily_groups: grouped_by_date.map do |date, group_records|
         {
           date: date,
-          total_leave_days: group_records.select { |r| r.status == 'confirmed' }.sum { |record| effective_leave_fraction(record) }.round(2),
-          records: group_records.map { |record| serialize_record(record) }
+          total_leave_days: group_records.select { |r| r.status == 'confirmed' }.sum { |record| fraction_by_record[record] }.round(2),
+          records: group_records.map { |record| serialize_record(record, fraction_by_record[record]) }
         }
       end,
       user_summary: user_totals.map do |user_id, total|
-        user = records.find { |record| record.user_id == user_id }&.user
+        user = user_by_id[user_id]
         {
           user_id: user_id,
           user_name: user&.name || 'Unknown User',
@@ -240,9 +286,9 @@ class LeavesController < ApplicationController
     }
   end
 
-  def serialize_record(record)
+  def serialize_record(record, leave_fraction = nil)
     mapped_user = record.user || TaLeaveRecord.find_active_user_by_sender(record.sender_email)
-    leave_fraction = effective_leave_fraction(record)
+    leave_fraction ||= effective_leave_fraction(record)
       {
         id: record.id,
         user_id: mapped_user&.id,
@@ -257,7 +303,8 @@ class LeavesController < ApplicationController
         can_unflag: record.status == 'flagged' && mapped_user.present?,
         can_delete: %w[confirmed flagged].include?(record.status),
         can_edit: true,
-        subject: record.raw_subject.to_s
+        subject: record.raw_subject.to_s,
+        is_locked_user: mapped_user&.status == User::STATUS_LOCKED
       }
   end
 
@@ -266,7 +313,14 @@ class LeavesController < ApplicationController
     return stored if stored.positive?
 
     parsed = parse_leave_record(record)
-    parsed.leave_fraction.to_f
+    parsed_fraction = parsed&.leave_fraction.to_f
+    return parsed_fraction if parsed_fraction.positive?
+
+    # Flagged records are usually a now-locked sender (user_not_found), so the parser bails
+    # before computing a fraction. Recover the real Half/Full Day count from the email text,
+    # which does not depend on the sender still being an active user.
+    subject = record.raw_subject.to_s.sub(/\A\[FLAGGED:[^\]]+\]\s*/, '')
+    RedmineTimeAnalytics::LeaveEmailParser.fraction_from_email(subject: subject, body: record.raw_body.to_s)
   end
 
   def parse_leave_record(record)

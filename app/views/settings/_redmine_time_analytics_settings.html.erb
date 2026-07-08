@@ -1,5 +1,5 @@
 <%# Pass through every key we don't explicitly render so Redmine's full-replace doesn't wipe other plugin settings (e.g. leave_sync_*) %>
-<% managed_keys = %w[missing_time_recipients missing_time_cron] %>
+<% managed_keys = %w[missing_time_enabled missing_time_recipients missing_time_crons] %>
 <% (settings.keys - managed_keys).each do |key| %>
   <%= hidden_field_tag "settings[#{key}]", settings[key] %>
 <% end %>
@@ -8,27 +8,98 @@
   <legend><strong>Missing Time Notifications</strong></legend>
 
   <p>
+    <%# Hidden field ensures '0' is submitted when the checkbox is unchecked. %>
+    <%= hidden_field_tag 'settings[missing_time_enabled]', '0' %>
+    <%= check_box_tag 'settings[missing_time_enabled]',
+                      '1',
+                      settings['missing_time_enabled'].to_s != '0',
+                      id: 'settings_missing_time_enabled' %>
+    <%= label_tag :settings_missing_time_enabled, 'Enable missing time notifications' %>
+  </p>
+
+  <p>
     <%= label_tag :settings_missing_time_recipients, 'Notification Recipients' %>
     <%= text_field_tag 'settings[missing_time_recipients]',
                        settings['missing_time_recipients'],
                        id: 'settings_missing_time_recipients',
                        size: 60,
                        placeholder: 'e.g. admin@example.com, manager@example.com' %>
-    <br><em class="info">Comma-separated list of email addresses that receive missing time alerts. Required for notifications to run.</em>
+    <br><em class="info">Comma-separated list of email addresses that receive missing time alerts.</em>
   </p>
 
   <p>
-    <%= label_tag :settings_missing_time_cron, 'Notification Schedule (Cron Expression)' %>
-    <%= text_field_tag 'settings[missing_time_cron]',
-                       settings['missing_time_cron'],
-                       id: 'settings_missing_time_cron',
-                       size: 30,
-                       placeholder: 'e.g. 0 * * * 2-6' %>
-    <br><em class="info">
-      Controls when the missing time mailer runs. Required for notifications to run.
-      Format: <code>minute hour day month weekday</code>.
-      Example: <code>0 * * * 1-5</code> = top of every hour, Monday–Friday.
-      Changes take effect on the next scheduler tick — no restart needed.
-    </em>
+    <label>Notification Schedules</label>
+    <%# inline-block span sits right of the label float, just like a plain <input> would %>
+    <span style="display:inline-block;vertical-align:top;">
+      <%# Sentinel ensures the key is present in POST even when all rows are removed. %>
+      <%= hidden_field_tag 'settings[missing_time_crons][]', '' %>
+      <span id="missing-time-crons-list" style="display:block;">
+        <% saved_crons = Array(settings['missing_time_crons']).map(&:to_s).reject(&:blank?) %>
+        <% (saved_crons.empty? ? [''] : saved_crons).each do |cron| %>
+          <span class="missing-time-cron-row" style="display:block;margin-bottom:4px;">
+            <%= text_field_tag 'settings[missing_time_crons][]',
+                               cron,
+                               size: 28,
+                               placeholder: 'e.g. 0 18 * * 5',
+                               style: 'margin:0;vertical-align:middle;' %>
+            <a href="#" class="missing-time-cron-remove icon icon-del" title="Remove" style="vertical-align:middle;"></a>
+          </span>
+        <% end %>
+      </span>
+      <a href="#" id="missing-time-cron-add" class="icon icon-add" style="display:inline-block;margin-top:2px;">Add schedule</a>
+      <br><em class="info" style="display:block;margin-top:4px;">
+        One cron expression per row. Format: <code>minute hour day month weekday</code>
+        (e.g. <code>0 18 * * 5</code> = Friday 6 PM, <code>0 10 * * 6</code> = Saturday 10 AM, <code>0 8 * * 1</code> = Monday 8 AM).
+        Changes take effect on the next scheduler tick — no restart needed.
+      </em>
+    </span>
   </p>
 </fieldset>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var list = document.getElementById('missing-time-crons-list');
+  var addBtn = document.getElementById('missing-time-cron-add');
+  if (!list || !addBtn) return;
+
+  function buildRow(value) {
+    var row = document.createElement('span');
+    row.className = 'missing-time-cron-row';
+    row.style.cssText = 'display:block;margin-bottom:4px;';
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'settings[missing_time_crons][]';
+    input.value = value || '';
+    input.size = 28;
+    input.placeholder = 'e.g. 0 18 * * 5';
+    input.style.cssText = 'margin:0;vertical-align:middle;';
+
+    var remove = document.createElement('a');
+    remove.href = '#';
+    remove.className = 'missing-time-cron-remove icon icon-del';
+    remove.title = 'Remove';
+    remove.style.verticalAlign = 'middle';
+    remove.addEventListener('click', function (e) {
+      e.preventDefault();
+      row.remove();
+    });
+
+    row.appendChild(input);
+    row.appendChild(remove);
+    return row;
+  }
+
+  list.querySelectorAll('.missing-time-cron-remove').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      btn.closest('.missing-time-cron-row').remove();
+    });
+  });
+
+  addBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    list.appendChild(buildRow(''));
+  });
+});
+</script>

@@ -51,10 +51,99 @@
       box-shadow: none !important;
       background: transparent !important;
     }
+    /* Info icon inside Summary-by-User pivot cells (matches My Team .ta-info-icon-btn) */
+    .leaves-cell-info-btn {
+      color: #3b82f6 !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      outline: none !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .leaves-cell-info-btn:hover, .leaves-cell-info-btn:focus {
+      color: #2563eb !important;
+      background: transparent !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    /* Keep pivot columns from wrapping so horizontal scroll kicks in when wide */
+    .leaves-summary-table th, .leaves-summary-table td { white-space: nowrap; }
+    /* Flowbite date picker must float above the Add Leave modal (z-[10000]) */
+    .datepicker { z-index: 100000 !important; }
+    /* Bright blue focus border on all Add Leave fields, incl. the Leave Type button */
+    .leaves-modal-input:focus {
+      border-color: #3b82f6 !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    /* Hover / keyboard-active highlight for the shared searchable user options
+       (Add Leave modal + Leaves user filter) */
+    .leaves-modal-option:hover,
+    .leaves-modal-option--active {
+      background-color: #f3f4f6; /* gray-100 */
+    }
+    /* Leaves user filter: match the From/To date fields' height, and widen the menu so
+       long "name (email)" entries read without horizontal scrolling. (overflow-y:auto
+       makes the x-axis compute to auto, which is what produced the horizontal scrollbar.) */
+    #leaves-filter-user-search {
+      height: 43px !important;
+      padding-top: 0.625rem;
+      padding-bottom: 0.625rem;
+      line-height: 1.2;
+    }
+    #leaves-filter-user-list {
+      width: 480px;
+      max-width: 92vw;
+      overflow-x: hidden;
+    }
+    #leaves-filter-user-list .leaves-modal-option {
+      white-space: nowrap;
+    }
+    /* Override Redmine's global button theme on the locked-users toggle inside the
+       Add Leave modal and the Leaves user filter — prevents blue border, blue
+       background and invisible hover text */
+    #leaves-manual-locked-toggle,
+    #leaves-filter-locked-toggle {
+      background: transparent !important;
+      background-color: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      color: #6b7280 !important; /* gray-500 */
+      font-weight: normal !important;
+      text-align: left !important;
+      width: 100% !important;
+      padding: 0.5rem 1rem !important;
+      cursor: pointer !important;
+    }
+    #leaves-manual-locked-toggle:hover,
+    #leaves-filter-locked-toggle:hover {
+      background-color: #f9fafb !important; /* gray-50 */
+      color: #374151 !important; /* gray-700 */
+      border: none !important;
+      box-shadow: none !important;
+    }
+    #leaves-manual-locked-toggle:focus,
+    #leaves-manual-locked-toggle:active,
+    #leaves-manual-locked-toggle:focus-within,
+    #leaves-filter-locked-toggle:focus,
+    #leaves-filter-locked-toggle:active,
+    #leaves-filter-locked-toggle:focus-within {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      outline: none !important;
+      color: #6b7280 !important;
+    }
   </style>
 <% end %>
 
-<% selected_user_label = @selected_user ? h(@selected_user.name) : l(:label_all_users) %>
 <% selected_status_label =
      case @filter_status
      when 'confirmed' then l(:label_confirmed)
@@ -66,7 +155,14 @@
   <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
     <div>
       <h2 class="!mb-1 text-2xl font-bold text-gray-900"><%= l(:label_leaves) %></h2>
-      <p class="text-sm text-gray-500"><%= l(:text_leaves_admin_description) %></p>
+      <% if @leave_last_synced_label.present? %>
+        <p class="mt-1 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+          <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span><%= l(:label_last_synced) %>: <%= @leave_last_synced_label %></span>
+        </p>
+      <% end %>
     </div>
 
     <div class="flex flex-col gap-3 xl:items-end">
@@ -80,19 +176,22 @@
           </div>
         </div>
 
-        <div class="relative">
-          <label class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
-          <button type="button" id="leaves-user-dropdown-button" class="inline-flex h-[43px] min-w-[220px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:border-[#3b82f6] focus:outline-none focus:ring-0">
-            <span id="leaves-user-dropdown-label" class="truncate"><%= selected_user_label %></span>
-            <svg class="h-4 w-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
+        <div class="relative" id="leaves-filter-user-wrapper">
+          <label for="leaves-filter-user-search" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
+          <input type="text"
+                 id="leaves-filter-user-search"
+                 placeholder="<%= j l(:label_all_users) %>"
+                 autocomplete="off"
+                 value="<%= @selected_user ? h(@selected_user.name) : '' %>"
+                 class="leaves-modal-input block h-[43px] min-w-[220px] w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm focus:outline-none focus:ring-0">
           <input type="hidden" id="leaves-filter-user" value="<%= @filter_user_id %>">
-          <div id="leaves-user-dropdown" class="hidden absolute right-0 z-20 mt-1 max-h-80 min-w-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
-            <button type="button" class="leaves-dropdown-option leaves-dropdown-option--active w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-label="<%= j l(:label_all_users) %>"><%= l(:label_all_users) %></button>
+          <div id="leaves-filter-user-list" class="hidden absolute right-0 z-20 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+            <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="" data-user-text="" data-user-search=""><%= l(:label_all_users) %></button>
             <% @users.each do |user| %>
-              <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
+              <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-text="<%= j user.name %>" data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>">
+                <span class="text-gray-800"><%= h(user.name) %></span>
+                <span class="text-gray-400">(<%= h(user.mail) %>)</span>
+              </button>
             <% end %>
             <% if @locked_filter_users.present? %>
               <div class="mt-1 border-t border-gray-100 pt-1">
@@ -103,15 +202,18 @@
                   </svg>
                   <span><%= l(:label_locked) %></span>
                 </div>
-                <button type="button" id="leaves-locked-users-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
-                  <svg id="leaves-locked-users-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <button type="button" id="leaves-filter-locked-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
+                  <svg id="leaves-filter-locked-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
                   <span><%= l(:label_load_locked_users) %></span>
                 </button>
-                <div id="leaves-locked-users-list" class="hidden">
+                <div id="leaves-filter-locked-list" class="hidden">
                   <% @locked_filter_users.each do |user| %>
-                    <button type="button" class="leaves-dropdown-option w-full px-4 py-2 text-left text-sm text-gray-700" data-user-id="<%= user.id %>" data-user-label="<%= j user.name %>"><%= h(user.name) %></button>
+                    <button type="button" class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-amber-600" data-user-id="<%= user.id %>" data-user-text="<%= j user.name %>" data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>" data-locked="true">
+                      <span class="text-amber-600"><%= h(user.name) %></span>
+                      <span class="text-amber-400">(<%= h(user.mail) %>)</span>
+                    </button>
                   <% end %>
                 </div>
               </div>
@@ -182,6 +284,15 @@
         <span class="h-5 w-px bg-gray-200"></span>
         <span id="leaves-selected-label" class="font-semibold text-gray-700"></span>
       </div>
+    </div>
+  </div>
+
+  <div id="leaves-refresh-bar" class="hidden">
+    <div class="mb-1 flex items-center justify-between">
+      <span id="leaves-refresh-text" class="text-xs font-medium text-blue-700">Refreshing…</span>
+    </div>
+    <div class="w-full overflow-hidden rounded-full bg-gray-200" style="height: 6px;">
+      <div id="leaves-refresh-fill" class="h-full rounded-full bg-blue-600 leaves-refresh-indeterminate"></div>
     </div>
   </div>
 
@@ -336,42 +447,30 @@
       </div>
 
       <div id="leaves-summary-panel" class="hidden">
-        <div class="overflow-x-auto rounded-xl border border-gray-200">
-          <table class="w-full text-left text-sm text-gray-600">
-            <thead class="bg-gray-50 text-xs uppercase text-gray-500">
-              <tr class="border-b border-gray-200">
-                <th class="px-4 py-3">
-                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="user_name" data-sort-label="<%= j l(:label_user) %>">
-                    <span><%= l(:label_user) %></span>
-                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right">
-                  <button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="total_leave_days" data-sort-label="<%= j l(:label_total_leave_days) %>">
-                    <span><%= l(:label_total_leave_days) %></span>
-                    <span class="leaves-sort-indicator text-[10px] text-gray-400"></span>
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody id="leaves-summary-tbody" class="divide-y divide-gray-100"></tbody>
-          </table>
-        </div>
+        <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div class="overflow-x-auto leaves-summary-scroll">
+            <table class="w-full text-sm text-left text-gray-500 leaves-summary-table">
+              <thead id="leaves-summary-thead" class="text-sm text-gray-700 bg-gray-50"></thead>
+              <tbody id="leaves-summary-tbody"></tbody>
+              <tfoot id="leaves-summary-tfoot" class="bg-gray-50"></tfoot>
+            </table>
+          </div>
 
-        <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <span id="leaves-summary-pagination-info" class="text-sm text-gray-500"></span>
-          <nav id="leaves-summary-pagination" class="hidden" aria-label="Summary pagination">
-            <ul id="leaves-summary-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
-          </nav>
+          <div class="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <span id="leaves-summary-pagination-info" class="text-sm text-gray-500"></span>
+            <nav id="leaves-summary-pagination" class="hidden" aria-label="Summary pagination">
+              <ul id="leaves-summary-pagination-links" class="inline-flex -space-x-px text-sm"></ul>
+            </nav>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/70 p-4 sm:items-center">
+<div id="leaves-manual-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[10000] flex items-start justify-center overflow-y-auto bg-gray-900/70 p-4 sm:items-center">
   <div class="relative w-full max-w-3xl">
-    <div class="relative rounded-2xl bg-white shadow-xl flex flex-col min-h-[520px]">
+    <div class="relative rounded-2xl bg-white shadow-xl">
       <div class="flex items-start justify-between border-b border-gray-200 px-5 py-4">
         <div>
           <h3 class="text-lg font-semibold text-gray-900"><%= l(:label_add_leave) %></h3>
@@ -387,8 +486,8 @@
         </button>
       </div>
 
-      <div class="px-5 py-5 flex-1">
-        <form id="leaves-manual-form" class="flex h-full flex-col space-y-4">
+      <div class="px-5 py-5">
+        <form id="leaves-manual-form" class="space-y-4">
           <div>
             <label for="leaves-manual-user-search" class="mb-1 block text-sm font-medium text-gray-700"><%= l(:label_user) %></label>
             <div class="relative min-w-0" id="leaves-manual-user-wrapper">
@@ -396,7 +495,7 @@
                      id="leaves-manual-user-search"
                      placeholder="Select a user"
                      autocomplete="off"
-                     class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900"
+                     class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900"
                      required>
               <input type="hidden" id="leaves-manual-user-id" value="">
               <div id="leaves-manual-user-list"
@@ -412,6 +511,37 @@
                       <span class="text-gray-800"><%= h(user.name) %></span>
                       <span class="text-gray-400">(<%= h(user.mail) %>)</span>
                     </button>
+                  <% end %>
+                  <% if @locked_filter_users.present? %>
+                    <div class="mt-1 border-t border-gray-100 pt-1">
+                      <div class="flex items-center gap-1.5 px-4 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        <svg class="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span><%= l(:label_locked) %></span>
+                      </div>
+                      <button type="button" id="leaves-manual-locked-toggle" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">
+                        <svg id="leaves-manual-locked-chevron" class="h-4 w-4 flex-shrink-0 -rotate-90 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        <span><%= l(:label_load_locked_users) %></span>
+                      </button>
+                      <div id="leaves-manual-locked-list" class="hidden">
+                        <% @locked_filter_users.each do |user| %>
+                          <% user_text = "#{user.name} (#{user.mail})" %>
+                          <button type="button"
+                                  class="leaves-modal-option w-full px-4 py-2 text-left text-sm text-amber-600"
+                                  data-user-id="<%= user.id %>"
+                                  data-user-text="<%= j(user_text) %>"
+                                  data-user-search="<%= j("#{user.name} #{user.mail}".downcase) %>"
+                                  data-locked="true">
+                            <span class="text-amber-600"><%= h(user.name) %></span>
+                            <span class="text-amber-400">(<%= h(user.mail) %>)</span>
+                          </button>
+                        <% end %>
+                      </div>
+                    </div>
                   <% end %>
                 </div>
               </div>
@@ -430,7 +560,7 @@
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
             <div>
@@ -443,7 +573,7 @@
                        datepicker
                        datepicker-format="mm/dd/yyyy"
                        datepicker-autohide="true"
-                       class="leaves-modal-input block h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900">
+                       class="leaves-modal-input block h-12 w-full rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900">
               </div>
             </div>
           </div>
@@ -454,7 +584,7 @@
               <div class="relative" id="leaves-manual-fraction-wrapper">
                 <button type="button"
                         id="leaves-manual-fraction-button"
-                        class="leaves-modal-input inline-flex h-[44px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
+                        class="leaves-modal-input inline-flex h-12 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm font-medium text-gray-900">
                   <span id="leaves-manual-fraction-label">0.5</span>
                   <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -469,7 +599,7 @@
             </div>
           </div>
 
-          <div class="mt-auto flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
+          <div class="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
             <button type="button" id="leaves-manual-cancel" class="leaves-modal-cancel inline-flex h-[44px] items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
             <button type="submit" class="leaves-modal-submit inline-flex h-[44px] items-center rounded-lg bg-[#3b82f6] px-4 text-sm font-semibold text-white hover:bg-[#2563eb]"><%= l(:label_add_leave) %></button>
           </div>
@@ -505,6 +635,42 @@
   </div>
 </div>
 
+<%# Leave dates modal — lists a user's leave dates for a month (Summary-by-User info icon) %>
+<div id="leaves-dates-modal" tabindex="-1" aria-hidden="true" class="hidden fixed inset-0 z-[2147483647] flex items-start justify-center overflow-y-auto bg-gray-900/50 p-4 sm:items-center">
+  <div class="relative w-full max-w-lg">
+    <div class="relative rounded-xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex flex-col">
+          <h3 id="leaves-dates-modal-title" class="text-xl font-bold text-gray-900"><%= l(:label_user) %></h3>
+          <p id="leaves-dates-modal-subtitle" class="text-sm text-gray-500 mt-1 font-medium"></p>
+        </div>
+        <button type="button" id="leaves-dates-modal-close" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer">
+          <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+          </svg>
+          <span class="sr-only">Close modal</span>
+        </button>
+      </div>
+      <div class="p-0">
+        <div class="relative overflow-x-auto max-h-80 overflow-y-auto">
+          <table class="w-full text-sm text-left text-gray-500">
+            <thead class="text-xs uppercase text-gray-500 bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3"><%= l(:label_date) %></th>
+                <th scope="col" class="px-6 py-3 text-right"><%= l(:label_total) %></th>
+              </tr>
+            </thead>
+            <tbody id="leaves-dates-modal-body" class="divide-y divide-gray-100"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="flex items-center p-4 space-x-2 border-t border-gray-100 bg-gray-50/50 justify-end">
+        <button type="button" id="leaves-dates-modal-close-footer" class="!text-gray-600 !bg-white hover:!bg-gray-100 !border !border-gray-200 !outline-none !shadow-none !ring-0 rounded-lg text-sm font-semibold px-5 py-2.5 transition-all cursor-pointer">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var csrfToken = '<%= form_authenticity_token %>';
@@ -523,7 +689,7 @@
       summaryPage: 1,
       dailySort: 'leave_date',
       dailyDirection: 'desc',
-      summarySort: 'total_leave_days',
+      summarySort: 'total',
       summaryDirection: 'desc',
       dailyRecords: [],
       summaryRecords: [],
@@ -540,9 +706,6 @@
       yearNext: document.getElementById('leaves-year-next'),
       selectedLabel: document.getElementById('leaves-selected-label'),
       monthButtons: document.querySelectorAll('[data-leaves-month]'),
-      userButton: document.getElementById('leaves-user-dropdown-button'),
-      userLabel: document.getElementById('leaves-user-dropdown-label'),
-      userMenu: document.getElementById('leaves-user-dropdown'),
       userInput: document.getElementById('leaves-filter-user'),
       statusButton: document.getElementById('leaves-status-dropdown-button'),
       statusLabel: document.getElementById('leaves-status-dropdown-label'),
@@ -566,6 +729,8 @@
       summaryPanel: document.getElementById('leaves-summary-panel'),
       dailyBody: document.getElementById('leaves-daily-tbody'),
       summaryBody: document.getElementById('leaves-summary-tbody'),
+      summaryHead: document.getElementById('leaves-summary-thead'),
+      summaryFoot: document.getElementById('leaves-summary-tfoot'),
       dailyInfo: document.getElementById('leaves-daily-pagination-info'),
       summaryInfo: document.getElementById('leaves-summary-pagination-info'),
       dailyPagination: document.getElementById('leaves-daily-pagination'),
@@ -574,11 +739,12 @@
       summaryLinks: document.getElementById('leaves-summary-pagination-links')
     };
 
-    var dropdownIds = ['leaves-user-dropdown', 'leaves-status-dropdown', 'leaves-per-page-dropdown'];
+    var dropdownIds = ['leaves-status-dropdown', 'leaves-per-page-dropdown'];
     var deleteState = { id: null, mode: 'single' };
     var monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var monthState = { year: null, month: null };
-    var manualUserState = { activeIndex: -1 };
+    // months: Set of selected month indices (0-11) within `year`; anchor: last plain/ctrl-clicked
+    // month, used as the base for Shift+Click range selection.
+    var monthState = { year: null, months: new Set(), anchor: null };
     var manualElements = {
       modal: document.getElementById('leaves-manual-modal'),
       openButton: document.getElementById('leaves-add-button'),
@@ -593,7 +759,9 @@
       fraction: document.getElementById('leaves-manual-fraction'),
       fractionButton: document.getElementById('leaves-manual-fraction-button'),
       fractionLabel: document.getElementById('leaves-manual-fraction-label'),
-      fractionMenu: document.getElementById('leaves-manual-fraction-menu')
+      fractionMenu: document.getElementById('leaves-manual-fraction-menu'),
+      lockedList: document.getElementById('leaves-manual-locked-list'),
+      lockedChevron: document.getElementById('leaves-manual-locked-chevron')
     };
 
     function closeDropdowns(exceptId) {
@@ -635,9 +803,6 @@
       var button = document.getElementById(buttonId);
       if (!button) return;
       var width = Math.max(button.offsetWidth, button.getBoundingClientRect().width);
-      if (menuId === 'leaves-user-dropdown') {
-        width = Math.max(width, 300);
-      }
       menu.style.width = width + 'px';
       menu.style.minWidth = width + 'px';
     }
@@ -685,7 +850,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_destroy_all_path %>', {
           method: 'DELETE',
@@ -711,7 +877,8 @@
           from: elements.from.value,
           to: elements.to.value,
           user_id: elements.userInput.value,
-          status: elements.statusInput.value
+          status: elements.statusInput.value,
+          months: selectedMonthsParam()
         };
         fetch('<%= leaves_bulk_destroy_path %>', {
           method: 'DELETE',
@@ -773,23 +940,70 @@
       if (elements.to) elements.to.value = formatDateForInput(toDate);
     }
 
+    function sortedSelectedMonths() {
+      return Array.from(monthState.months).sort(function (a, b) { return a - b; });
+    }
+
+    // Comma-separated "YYYY-MM" list of the currently selected months, sent to the server
+    // so non-contiguous selections (e.g. Feb + Aug) are filtered exactly.
+    function selectedMonthsParam() {
+      return sortedSelectedMonths().map(function (month) {
+        return monthState.year + '-' + String(month + 1).padStart(2, '0');
+      }).join(',');
+    }
+
+    // Derive the selected month set from the current From/To inputs. Does NOT overwrite the
+    // inputs, so a manual fine-grained range (e.g. Jun 5-20) is preserved while the bar
+    // highlights the months it spans.
     function syncMonthPickerFromInputs() {
       var fromDate = parseDateFromInput(elements.from.value);
+      var toDate = parseDateFromInput(elements.to.value);
       var baseDate = fromDate || new Date();
       monthState.year = baseDate.getFullYear();
-      monthState.month = baseDate.getMonth();
+
+      var startMonth = baseDate.getMonth();
+      var endMonth = startMonth;
+      if (toDate && toDate.getFullYear() === monthState.year) {
+        endMonth = toDate.getMonth();
+      } else if (toDate && toDate.getFullYear() > monthState.year) {
+        endMonth = 11;
+      }
+      if (endMonth < startMonth) endMonth = startMonth;
+
+      monthState.months = new Set();
+      for (var month = startMonth; month <= endMonth; month += 1) {
+        monthState.months.add(month);
+      }
+      monthState.anchor = startMonth;
       updateMonthPickerUI();
+    }
+
+    function isContiguousSelection(months) {
+      if (months.length <= 1) return true;
+      return months[months.length - 1] - months[0] === months.length - 1;
+    }
+
+    function selectedMonthsLabel() {
+      var months = sortedSelectedMonths();
+      if (!months.length) return String(monthState.year);
+      if (months.length === 1) {
+        return monthLabels[months[0]] + ' ' + monthState.year;
+      }
+      if (isContiguousSelection(months)) {
+        return monthLabels[months[0]] + ' – ' + monthLabels[months[months.length - 1]] + ' ' + monthState.year;
+      }
+      return months.length + ' months · ' + monthState.year;
     }
 
     function updateMonthPickerUI() {
       if (!elements.yearLabel || !elements.selectedLabel || !elements.monthButtons.length) return;
       var current = new Date();
       elements.yearLabel.textContent = String(monthState.year);
-      elements.selectedLabel.textContent = monthLabels[monthState.month] + ' ' + monthState.year;
+      elements.selectedLabel.textContent = selectedMonthsLabel();
 
       elements.monthButtons.forEach(function (button) {
         var buttonMonth = parseInt(button.getAttribute('data-leaves-month'), 10);
-        var isActive = buttonMonth === monthState.month;
+        var isActive = monthState.months.has(buttonMonth);
         var dot = button.querySelector('.leaves-month-dot');
         button.classList.toggle('leaves-month-button--active', isActive);
         if (dot) {
@@ -799,11 +1013,13 @@
       });
     }
 
-    function setMonthSelection(year, month, shouldLoad) {
-      monthState.year = year;
-      monthState.month = month;
-      var fromDate = new Date(year, month, 1);
-      var toDate = new Date(year, month + 1, 0);
+    // Sync the From/To inputs to the bounding box of the selected months, refresh the UI,
+    // and (optionally) reload. The exact selected set travels separately via selectedMonthsParam().
+    function applyMonthSelection(shouldLoad) {
+      var months = sortedSelectedMonths();
+      if (!months.length) return;
+      var fromDate = new Date(monthState.year, months[0], 1);
+      var toDate = new Date(monthState.year, months[months.length - 1] + 1, 0);
       setDateRange(fromDate, toDate);
       updateMonthPickerUI();
       if (shouldLoad !== false) {
@@ -824,41 +1040,6 @@
         var label = normalize(btn.getAttribute(attrName) || btn.textContent || '');
         return label.indexOf(normalized) !== -1;
       }) || null;
-    }
-
-    var userDropdownTypeahead = {
-      buffer: '',
-      timer: null
-    };
-
-    function resetUserDropdownTypeahead() {
-      userDropdownTypeahead.buffer = '';
-      window.clearTimeout(userDropdownTypeahead.timer);
-      userDropdownTypeahead.timer = null;
-    }
-
-    function handleUserDropdownTypeahead(menu, query, attrName, selectFn) {
-      var typed = normalize(query);
-      if (!typed) return;
-
-      userDropdownTypeahead.buffer += typed;
-      window.clearTimeout(userDropdownTypeahead.timer);
-      userDropdownTypeahead.timer = window.setTimeout(function () {
-        resetUserDropdownTypeahead();
-      }, 900);
-
-      var match = findDropdownOption(menu, userDropdownTypeahead.buffer, attrName);
-      if (!match) {
-        userDropdownTypeahead.buffer = typed;
-        match = findDropdownOption(menu, typed, attrName);
-      }
-      if (!match) return;
-
-      match.focus();
-      if (normalize(match.getAttribute(attrName) || match.textContent || '') === userDropdownTypeahead.buffer) {
-        selectFn(match);
-        resetUserDropdownTypeahead();
-      }
     }
 
     function bindDropdownKeyboard(menuId, attrName, selectFn) {
@@ -894,10 +1075,6 @@
 
         if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
           event.preventDefault();
-          if (menuId === 'leaves-user-dropdown') {
-            handleUserDropdownTypeahead(menu, event.key, attrName, selectFn);
-            return;
-          }
           var match = findDropdownOption(menu, event.key, attrName);
           if (match) match.focus();
         }
@@ -911,7 +1088,6 @@
           }
         });
         button.addEventListener('click', function () {
-          if (menuId === 'leaves-user-dropdown') resetUserDropdownTypeahead();
           selectFn(button);
         });
       });
@@ -935,14 +1111,8 @@
       if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
         openDropdown(menuId);
-        if (menuId === 'leaves-user-dropdown') {
-          handleUserDropdownTypeahead(document.getElementById(menuId), event.key, attrName, function (button) {
-            button.click();
-          });
-        } else {
-          var match = findDropdownOption(document.getElementById(menuId), event.key, attrName);
-          if (match) match.focus();
-        }
+        var match = findDropdownOption(document.getElementById(menuId), event.key, attrName);
+        if (match) match.focus();
       }
     }
 
@@ -963,6 +1133,141 @@
 
     function normalize(value) {
       return String(value || '').toLowerCase().trim();
+    }
+
+    // Reusable searchable user dropdown — type to filter by name/email, keyboard
+    // navigation, and an optional collapsible "locked users" section that auto-expands
+    // on a matching search. Shared by the Add Leave modal and the Leaves user filter.
+    // config: { input, hidden, list, lockedToggle, lockedList, lockedChevron, wrapper, onSelect }
+    function createUserSearchDropdown(config) {
+      var input = config.input;
+      var hidden = config.hidden;
+      var list = config.list;
+      var lockedToggle = config.lockedToggle;
+      var lockedList = config.lockedList;
+      var lockedChevron = config.lockedChevron;
+      var onSelect = config.onSelect || function () {};
+      if (!input || !list) { return null; }
+      // `committed` holds the text of the current selection so that re-opening the
+      // dropdown shows the full list (browse mode) instead of filtering down to the
+      // already-selected name; typing anything else switches back to live filtering.
+      var local = { activeIndex: -1, committed: input.value || '' };
+
+      function visibleOptions() {
+        return Array.from(list.querySelectorAll('.leaves-modal-option')).filter(function (option) {
+          if (option.style.display === 'none') return false;
+          if (lockedList && lockedList.classList.contains('hidden') && lockedList.contains(option)) return false;
+          return true;
+        });
+      }
+
+      function setActiveOption(index) {
+        var options = visibleOptions();
+        options.forEach(function (option, optionIndex) {
+          option.classList.toggle('leaves-modal-option--active', optionIndex === index);
+        });
+        if (index >= 0 && options[index]) {
+          options[index].scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      function moveActiveOption(step) {
+        var options = visibleOptions();
+        if (!options.length) return;
+        if (local.activeIndex < 0) {
+          local.activeIndex = step > 0 ? 0 : options.length - 1;
+        } else {
+          local.activeIndex = Math.max(0, Math.min(options.length - 1, local.activeIndex + step));
+        }
+        setActiveOption(local.activeIndex);
+      }
+
+      function filter() {
+        // Browse mode: when the field still shows the committed selection, list everyone.
+        var query = input.value === local.committed ? '' : normalize(input.value);
+        var hasLockedMatch = false;
+        list.querySelectorAll('.leaves-modal-option').forEach(function (option) {
+          var searchValue = option.getAttribute('data-user-search') || '';
+          // The "All users" option (empty search value) always stays visible.
+          var matches = !searchValue || searchValue.indexOf(query) !== -1;
+          option.style.display = matches ? '' : 'none';
+          if (matches && option.getAttribute('data-locked') === 'true') hasLockedMatch = true;
+        });
+        if (lockedList) {
+          if (query && hasLockedMatch) {
+            lockedList.classList.remove('hidden');
+            if (lockedChevron) lockedChevron.classList.remove('-rotate-90');
+          } else if (!query) {
+            lockedList.classList.add('hidden');
+            if (lockedChevron) lockedChevron.classList.add('-rotate-90');
+          }
+        }
+        local.activeIndex = -1;
+        setActiveOption(-1);
+      }
+
+      function open() {
+        list.classList.remove('hidden');
+        filter();
+      }
+
+      function close() {
+        list.classList.add('hidden');
+        local.activeIndex = -1;
+        setActiveOption(-1);
+      }
+
+      function select(option) {
+        var id = option.getAttribute('data-user-id') || '';
+        var text = option.getAttribute('data-user-text') || option.textContent.trim();
+        if (hidden) hidden.value = id;
+        input.value = text;
+        local.committed = text;
+        close();
+        onSelect(id, text, option);
+      }
+
+      input.addEventListener('click', open);
+      input.addEventListener('input', open);
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') { close(); return; }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          if (list.classList.contains('hidden')) open();
+          moveActiveOption(1);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          if (list.classList.contains('hidden')) open();
+          moveActiveOption(-1);
+          return;
+        }
+        if (event.key === 'Enter') {
+          var options = visibleOptions();
+          if (local.activeIndex >= 0 && options[local.activeIndex]) {
+            event.preventDefault();
+            select(options[local.activeIndex]);
+          }
+        }
+      });
+      list.addEventListener('click', function (event) {
+        var option = event.target.closest('.leaves-modal-option');
+        if (option) select(option);
+      });
+      if (lockedToggle && lockedList) {
+        lockedToggle.addEventListener('click', function () {
+          var expanded = lockedList.classList.toggle('hidden') === false;
+          if (lockedChevron) lockedChevron.classList.toggle('-rotate-90', !expanded);
+        });
+      }
+      if (config.wrapper) {
+        document.addEventListener('click', function (event) {
+          if (!event.target.closest(config.wrapper)) { close(); }
+        });
+      }
+
+      return { open: open, close: close, filter: filter };
     }
 
     function formatNumber(value) {
@@ -1182,6 +1487,7 @@
         page.items.forEach(function (record) {
           var isChecked = state.selectedIds.has(String(record.id));
           var leaveDateValue = formatLeaveDateForInput(record.leave_date);
+          var leaveDateDisplay = formatLeaveDateForDisplay(record.leave_date);
           var leaveFractionValue = leaveFractionLabel(record.leave_fraction);
           var actionHtml = '<div class="inline-flex items-center gap-2">' +
             '<button type="button" title="<%= j l(:button_edit) %>" class="leaves-entry-icon-btn leaves-entry-icon-btn--edit inline-flex h-8 w-8 items-center justify-center" data-edit-id="' + record.id + '">' +
@@ -1209,10 +1515,10 @@
 
           html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50" data-leaves-row="' + record.id + '">' +
             '<td class="px-4 py-3"><input type="checkbox" class="leaves-row-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" data-record-id="' + record.id + '"' + (isChecked ? ' checked' : '') + '></td>' +
-            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateValue + '</td>' +
-            '<td class="px-4 py-3 text-gray-700">' + (record.user_name || '') + '</td>' +
+            '<td id="leaves-date-value-' + record.id + '" class="px-4 py-3 whitespace-nowrap text-gray-900">' + leaveDateDisplay + '</td>' +
+            '<td class="px-4 py-3 ' + (record.is_locked_user ? 'text-amber-600' : 'text-gray-700') + '" ' + (record.is_locked_user ? 'title="<%= j l(:label_locked) %>"' : '') + '>' + (record.user_name || '') + '</td>' +
             '<td id="leaves-fraction-value-' + record.id + '" class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.leave_fraction) + '</td>' +
-            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed) + '</td>' +
+            '<td class="px-4 py-3">' + statusBadge(record.status, record.flagged_reason, record.ai_analyzed, record.is_locked_user) + '</td>' +
             '<td class="px-4 py-3">' + actionHtml + '</td>' +
           '</tr>';
           html += '<tr id="leaves-edit-row-' + record.id + '" data-leaves-edit-row="' + record.id + '" data-original-leave-date="' + leaveDateValue + '" data-original-leave-fraction="' + leaveFractionValue + '" class="hidden border-b border-blue-100 bg-blue-50">' +
@@ -1221,11 +1527,11 @@
                 '<div class="flex flex-col gap-4 sm:flex-row sm:items-end">' +
                   '<div class="w-full sm:w-48">' +
                     '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_date) %></label>' +
-                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[43px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
+                    '<input type="text" value="' + leaveDateValue + '" data-leaves-date-input="' + record.id + '" datepicker datepicker-format="mm/dd/yyyy" datepicker-show-on-focus="false" datepicker-autohide="true" placeholder="Select date" class="tep-field ta-date-input block h-[44px] w-full min-w-0 shrink-0 px-3 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-0 focus:border-[#3b82f6]">' +
                   '</div>' +
-                  '<div class="relative w-full sm:w-40" id="leaves-fraction-wrapper-' + record.id + '">' +
+                  '<div class="relative w-full sm:w-48" id="leaves-fraction-wrapper-' + record.id + '">' +
                     '<label class="mb-1 block text-sm font-medium text-gray-700"><%= j l(:label_total) %></label>' +
-                    '<button type="button" class="tep-field flex h-[40px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
+                    '<button type="button" class="tep-field flex h-[44px] items-center justify-between gap-2 text-sm px-3 py-0 !border !border-gray-300 !rounded-lg !bg-white w-full text-left whitespace-nowrap !outline-none !shadow-none !ring-0" data-leaves-fraction-toggle="' + record.id + '">' +
                       '<span data-leaves-fraction-label="' + record.id + '" class="text-gray-700 truncate flex-1">' + leaveFractionValue + '</span>' +
                       '<svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
                         '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>' +
@@ -1270,34 +1576,156 @@
       );
     }
 
+    // Month columns for the Summary-by-User pivot, taken from the current month-bar selection.
+    function summaryMonthKeys() {
+      return sortedSelectedMonths().map(function (monthIndex) {
+        return {
+          index: monthIndex,
+          key: monthState.year + '-' + String(monthIndex + 1).padStart(2, '0'),
+          label: monthLabels[monthIndex] + ' ' + monthState.year
+        };
+      });
+    }
+
+    // Aggregate confirmed leave records into a user × month pivot (one column per selected month).
+    function buildSummaryPivot(query) {
+      var monthCols = summaryMonthKeys();
+      var users = {};
+
+      state.dailyRecords.forEach(function (record) {
+        if (record.status !== 'confirmed') return;
+        if (record.user_id === null || record.user_id === undefined || record.user_id === '') return;
+        var fraction = Number(record.leave_fraction) || 0;
+        if (fraction <= 0) return;
+        var name = record.user_name || '';
+        if (query && name.toLowerCase().indexOf(query) === -1) return;
+
+        var monthKey = formatLeaveDateForDisplay(record.leave_date).slice(0, 7);
+        var user = users[name] || (users[name] = { name: name, byMonth: {}, total: 0 });
+        user.total += fraction;
+        var bucket = user.byMonth[monthKey] || (user.byMonth[monthKey] = { total: 0 });
+        bucket.total += fraction;
+      });
+
+      var userList = Object.keys(users).map(function (name) { return users[name]; });
+      userList.sort(function (a, b) { return (b.total - a.total) || a.name.localeCompare(b.name); });
+
+      return { monthCols: monthCols, users: userList };
+    }
+
+    function summaryInfoButton(userName, monthKey, monthLabel) {
+      return ' <button type="button" class="leaves-cell-info-btn" title="<%= j l(:label_date) %>"' +
+        ' data-summary-info-user="' + escapeHtmlAttr(userName) + '"' +
+        ' data-summary-info-month="' + monthKey + '"' +
+        ' data-summary-info-label="' + escapeHtmlAttr(monthLabel) + '">' +
+        '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' +
+        '</button>';
+    }
+
+    function escapeHtmlAttr(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Per-user value for a given summary sort key (month column key, 'total', or 'user_name').
+    function summarySortValue(user, sortKey) {
+      if (sortKey === 'total') return user.total;
+      return (user.byMonth[sortKey] || {}).total || 0;
+    }
+
+    // A sortable column header button styled like the Daily Leaves headers.
+    function summarySortHeader(sortKey, label) {
+      return '<button type="button" class="inline-flex items-center gap-1 text-[0.95rem] font-semibold text-gray-700 transition-colors hover:text-gray-900 focus:outline-none focus:ring-0" data-table-sort="summary" data-sort-key="' + escapeHtmlAttr(sortKey) + '" data-sort-label="' + escapeHtmlAttr(label) + '">' +
+        '<span>' + escapeHtmlAttr(label) + '</span>' +
+        '<span class="leaves-sort-indicator text-[10px] text-gray-400"></span>' +
+        '</button>';
+    }
+
     function renderSummaryRows() {
       var query = normalize(elements.search.value);
-      var filtered = state.summaryRecords.filter(function (record) { return matchesSearch({ user_name: record.user_name }, query); });
-      filtered.sort(function (a, b) { return compareRecords(a, b, state.summarySort, state.summaryDirection); });
+      var pivot = buildSummaryPivot(query);
+      var columns = pivot.monthCols;
+      var totalColumns = columns.length + 2; // user + month columns + total
 
-      var page = paginate(filtered, state.summaryPage, state.perPage);
-      state.summaryPage = page.currentPage;
-
-      var html = '';
-      if (!page.items.length) {
-        html = '<tr><td colspan="2" class="px-4 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
-      } else {
-        page.items.forEach(function (record) {
-          html += '<tr class="border-b border-gray-100 transition-colors hover:bg-gray-50">' +
-            '<td class="px-4 py-3 text-gray-700">' + record.user_name + '</td>' +
-            '<td class="px-4 py-3 text-right font-medium text-gray-900">' + formatNumber(record.total_leave_days) + '</td>' +
-          '</tr>';
-        });
+      // Keep the active sort key valid as the column set changes (e.g. month bar edits).
+      var validKeys = ['user_name', 'total'].concat(columns.map(function (column) { return column.key; }));
+      if (validKeys.indexOf(state.summarySort) === -1) {
+        state.summarySort = 'total';
+        state.summaryDirection = 'desc';
       }
 
-      elements.summaryBody.innerHTML = html;
+      // Sort users by the active column/direction (numeric columns tiebreak by name asc).
+      var direction = state.summaryDirection === 'asc' ? 1 : -1;
+      pivot.users.sort(function (a, b) {
+        if (state.summarySort === 'user_name') {
+          return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) * direction;
+        }
+        var av = summarySortValue(a, state.summarySort);
+        var bv = summarySortValue(b, state.summarySort);
+        if (av !== bv) return (av - bv) * direction;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      });
+
+      // Header (the User column is frozen via sticky left-0 so it stays visible on x-scroll)
+      var headerHtml = '<tr class="border-b border-gray-200">' +
+        '<th scope="col" class="sticky left-0 z-20 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide border-r border-gray-200">' + summarySortHeader('user_name', '<%= j l(:label_user) %>') + '</th>';
+      columns.forEach(function (column) {
+        headerHtml += '<th scope="col" class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-center border-r border-gray-200">' + summarySortHeader(column.key, column.label) + '</th>';
+      });
+      headerHtml += '<th scope="col" class="px-4 py-2.5 text-sm font-semibold text-gray-600 tracking-wide text-right">' + summarySortHeader('total', '<%= j l(:label_total) %>') + '</th></tr>';
+      elements.summaryHead.innerHTML = headerHtml;
+      updateSortIndicators();
+
+      // Body (paginated users)
+      var page = paginate(pivot.users, state.summaryPage, state.perPage);
+      state.summaryPage = page.currentPage;
+
+      var bodyHtml = '';
+      if (!page.items.length) {
+        bodyHtml = '<tr><td colspan="' + totalColumns + '" class="px-6 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+        elements.summaryFoot.innerHTML = '';
+      } else {
+        page.items.forEach(function (user) {
+          var row = '<tr class="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">' +
+            '<td class="sticky left-0 z-10 bg-white px-4 py-3 font-medium text-gray-900 whitespace-nowrap border-r border-gray-200">' + escapeHtmlAttr(user.name) + '</td>';
+          columns.forEach(function (column) {
+            var value = (user.byMonth[column.key] || {}).total || 0;
+            if (value > 0) {
+              var info = summaryInfoButton(user.name, column.key, column.label);
+              row += '<td class="px-4 py-3 text-center text-gray-900 border-r border-gray-200"><div class="inline-flex items-center justify-center gap-1"><span>' + formatNumber(value) + '</span>' + info + '</div></td>';
+            } else {
+              row += '<td class="px-4 py-3 text-center text-gray-400 border-r border-gray-200">—</td>';
+            }
+          });
+          row += '<td class="px-4 py-3 text-right font-semibold text-gray-900">' + formatNumber(user.total) + '</td></tr>';
+          bodyHtml += row;
+        });
+
+        // Footer totals across all filtered users (not just the current page)
+        var columnTotals = columns.map(function (column) {
+          return pivot.users.reduce(function (sum, user) {
+            return sum + ((user.byMonth[column.key] || {}).total || 0);
+          }, 0);
+        });
+        var grandTotal = pivot.users.reduce(function (sum, user) { return sum + user.total; }, 0);
+        var footHtml = '<tr class="bg-gray-50 border-t border-gray-200"><td class="sticky left-0 z-10 bg-gray-50 px-4 py-3 font-bold text-gray-900 whitespace-nowrap border-r border-gray-200"><%= j l(:label_total) %></td>';
+        columnTotals.forEach(function (total) {
+          footHtml += '<td class="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">' + (total > 0 ? formatNumber(total) : '—') + '</td>';
+        });
+        footHtml += '<td class="px-4 py-3 text-right font-bold text-gray-900">' + formatNumber(grandTotal) + '</td></tr>';
+        elements.summaryFoot.innerHTML = footHtml;
+      }
+
+      elements.summaryBody.innerHTML = bodyHtml;
       renderPagination(
         elements.summaryPagination,
         elements.summaryLinks,
         elements.summaryInfo,
         page.currentPage,
         page.totalPages,
-        filtered.length,
+        pivot.users.length,
         page.startIndex,
         page.endIndex,
         function (nextPage) {
@@ -1305,6 +1733,45 @@
           renderSummaryRows();
         }
       );
+    }
+
+    function openLeaveDatesModal(userName, monthKey, monthLabel) {
+      var modal = document.getElementById('leaves-dates-modal');
+      var body = document.getElementById('leaves-dates-modal-body');
+      var title = document.getElementById('leaves-dates-modal-title');
+      var subtitle = document.getElementById('leaves-dates-modal-subtitle');
+      if (!modal || !body) return;
+
+      var rows = state.dailyRecords.filter(function (record) {
+        if (record.status !== 'confirmed') return false;
+        if ((record.user_name || '') !== userName) return false;
+        if ((Number(record.leave_fraction) || 0) <= 0) return false;
+        return formatLeaveDateForDisplay(record.leave_date).slice(0, 7) === monthKey;
+      }).map(function (record) {
+        return { date: formatLeaveDateForDisplay(record.leave_date), fraction: Number(record.leave_fraction) || 0 };
+      }).sort(function (a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+
+      if (title) title.textContent = userName;
+      if (subtitle) subtitle.textContent = monthLabel;
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="2" class="px-6 py-8 text-center text-gray-500"><%= j l(:label_no_data) %></td></tr>';
+      } else {
+        body.innerHTML = rows.map(function (row) {
+          return '<tr class="bg-white hover:bg-gray-50 transition-colors">' +
+            '<td class="px-6 py-3 font-medium text-gray-900 whitespace-nowrap">' + row.date + '</td>' +
+            '<td class="px-6 py-3 text-right text-gray-900">' + formatNumber(row.fraction) + '</td></tr>';
+        }).join('');
+      }
+
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeLeaveDatesModal() {
+      var modal = document.getElementById('leaves-dates-modal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
     }
 
     function renderTables() {
@@ -1341,13 +1808,62 @@
       elements.deleteAllButton.classList.toggle('opacity-50', disabled);
     }
 
+    var refreshHideTimer = null;
+
+    function showRefreshBar() {
+      var bar = document.getElementById('leaves-refresh-bar');
+      var text = document.getElementById('leaves-refresh-text');
+      var fill = document.getElementById('leaves-refresh-fill');
+      if (!bar || !text || !fill) return;
+      if (refreshHideTimer) { window.clearTimeout(refreshHideTimer); refreshHideTimer = null; }
+      text.textContent = 'Refreshing…';
+      text.className = 'text-xs font-medium text-blue-700';
+      fill.className = 'h-full rounded-full bg-blue-600 leaves-refresh-indeterminate';
+      fill.style.width = '';
+      fill.style.marginLeft = '';
+      bar.classList.remove('hidden');
+    }
+
+    function finishRefreshBar(startedAt, ok) {
+      var bar = document.getElementById('leaves-refresh-bar');
+      var text = document.getElementById('leaves-refresh-text');
+      var fill = document.getElementById('leaves-refresh-fill');
+      if (!bar || !text || !fill) return;
+      // Keep the bar visible for a short minimum so very fast loads still register visually.
+      var elapsed = Date.now() - (startedAt || Date.now());
+      var delay = Math.max(0, 400 - elapsed);
+      window.setTimeout(function () {
+        if (ok) {
+          text.textContent = 'Refreshed ✓';
+          text.className = 'text-xs font-medium text-emerald-600';
+          fill.className = 'h-full rounded-full bg-emerald-500';
+        } else {
+          text.textContent = 'Refresh failed';
+          text.className = 'text-xs font-medium text-red-600';
+          fill.className = 'h-full rounded-full bg-red-500';
+        }
+        fill.style.width = '100%';
+        fill.style.marginLeft = '0';
+        refreshHideTimer = window.setTimeout(function () {
+          bar.classList.add('hidden');
+          fill.style.width = '';
+          fill.style.marginLeft = '';
+        }, 1000);
+      }, delay);
+    }
+
     function loadData() {
       var params = new URLSearchParams({
         from: elements.from.value,
         to: elements.to.value,
         user_id: elements.userInput.value,
-        status: elements.statusInput.value
+        status: elements.statusInput.value,
+        months: selectedMonthsParam()
       });
+
+      showRefreshBar();
+      var refreshStartedAt = Date.now();
+      var refreshOk = true;
 
       return fetch('<%= leaves_data_path %>?' + params.toString(), { headers: { Accept: 'application/json' } })
         .then(function (response) { return response.json(); })
@@ -1371,8 +1887,12 @@
           setDeleteAllButtonState(state.totalCount);
         })
         .catch(function (error) {
+          refreshOk = false;
           elements.dailyBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
           elements.summaryBody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-red-600">' + error.message + '</td></tr>';
+        })
+        .then(function () {
+          finishRefreshBar(refreshStartedAt, refreshOk);
         });
     }
 
@@ -1391,12 +1911,13 @@
       window.setTimeout(hideDatePickers, 120);
     }
 
-    function statusBadge(status, flaggedReason, aiAnalyzed) {
+    function statusBadge(status, flaggedReason, aiAnalyzed, isLockedUser) {
       if (status === 'confirmed') {
-        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">Confirmed</span></div>';
+        var lockedHtml = isLockedUser ? '<div class="mt-1 text-xs text-amber-600"><%= j l(:label_user_is_locked) %></div>' : '';
+        return '<div><span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><%= j l(:label_confirmed) %></span>' + lockedHtml + '</div>';
       }
       var reasonHtml = flaggedReason ? '<div class="mt-1 text-xs text-amber-700">' + flaggedReason + '</div>' : '';
-      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">Flagged</span>' + reasonHtml + '</div>';
+      return '<div><span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700"><%= j l(:label_flagged) %></span>' + reasonHtml + '</div>';
     }
 
     function formatLeaveDateForInput(value) {
@@ -1405,6 +1926,18 @@
       if (text.indexOf('/') !== -1) return text;
       var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (parts) return parts[2] + '/' + parts[3] + '/' + parts[1];
+      return text;
+    }
+
+    // Display format for the table: YYYY-MM-DD. Server already sends ISO dates;
+    // convert any MM/DD/YYYY value defensively.
+    function formatLeaveDateForDisplay(value) {
+      var text = String(value || '');
+      if (!text) return '';
+      var iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return text;
+      var us = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (us) return us[3] + '-' + us[1] + '-' + us[2];
       return text;
     }
 
@@ -1567,10 +2100,10 @@
         .catch(function (error) { alert(error.message); });
     }
 
-    function setUserFilter(userId, userLabel) {
-      elements.userInput.value = userId || '';
-      elements.userLabel.textContent = selectedText(userLabel, '<%= j l(:label_all_users) %>');
-      syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
+    // Called by the searchable user filter when a user (or "All users") is picked.
+    // The hidden #leaves-filter-user input is already set by the dropdown factory.
+    function applyUserFilter(userId) {
+      if (!userId && filterUserSearchInput) { filterUserSearchInput.value = ''; }
       closeDropdowns();
       loadData();
     }
@@ -1596,7 +2129,12 @@
     }
 
     function handleSortClick(event) {
-      var button = event.currentTarget;
+      // Works both when bound directly to a header button (Daily) and via delegation on the
+      // dynamic Summary <thead> (where headers are rebuilt on every render).
+      var button = (event.currentTarget && event.currentTarget.getAttribute && event.currentTarget.getAttribute('data-table-sort'))
+        ? event.currentTarget
+        : (event.target.closest ? event.target.closest('[data-table-sort]') : null);
+      if (!button) return;
       var table = button.getAttribute('data-table-sort');
       var sortKey = button.getAttribute('data-sort-key');
       if (state[table + 'Sort'] === sortKey) {
@@ -1610,26 +2148,56 @@
 
     elements.dailyTab.addEventListener('click', function () { setTab('daily'); });
     elements.summaryTab.addEventListener('click', function () { setTab('summary'); });
-    elements.userButton.addEventListener('click', function () { toggleDropdown('leaves-user-dropdown'); });
-    elements.statusButton.addEventListener('click', function () { toggleDropdown('leaves-status-dropdown'); });
-    elements.perPageButton.addEventListener('click', function () { toggleDropdown('leaves-per-page-dropdown'); });
-    elements.userButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-user-dropdown', 'data-user-label'); });
-    elements.statusButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-status-dropdown', 'data-status-label'); });
-    elements.perPageButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-per-page-dropdown', 'data-per-page'); });
 
-    var lockedUsersToggle = document.getElementById('leaves-locked-users-toggle');
-    var lockedUsersList = document.getElementById('leaves-locked-users-list');
-    var lockedUsersChevron = document.getElementById('leaves-locked-users-chevron');
-    if (lockedUsersToggle && lockedUsersList) {
-      lockedUsersToggle.addEventListener('click', function () {
-        var expanded = lockedUsersList.classList.toggle('hidden') === false;
-        if (lockedUsersChevron) lockedUsersChevron.classList.toggle('-rotate-90', !expanded);
+    // Summary pivot: info icon opens the user's leave dates for that month.
+    elements.summaryBody.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-summary-info-user]');
+      if (!button) return;
+      openLeaveDatesModal(
+        button.getAttribute('data-summary-info-user'),
+        button.getAttribute('data-summary-info-month'),
+        button.getAttribute('data-summary-info-label')
+      );
+    });
+
+    // Summary pivot: column sorting (headers are rebuilt each render, so delegate on <thead>).
+    if (elements.summaryHead) {
+      elements.summaryHead.addEventListener('click', function (event) {
+        if (event.target.closest('[data-table-sort]')) handleSortClick(event);
       });
     }
 
-    bindDropdownKeyboard('leaves-user-dropdown', 'data-user-label', function (button) {
-      setUserFilter(button.getAttribute('data-user-id'), button.getAttribute('data-user-label'));
+    var leaveDatesModal = document.getElementById('leaves-dates-modal');
+    var leaveDatesClose = document.getElementById('leaves-dates-modal-close');
+    var leaveDatesCloseFooter = document.getElementById('leaves-dates-modal-close-footer');
+    if (leaveDatesClose) leaveDatesClose.addEventListener('click', closeLeaveDatesModal);
+    if (leaveDatesCloseFooter) leaveDatesCloseFooter.addEventListener('click', closeLeaveDatesModal);
+    if (leaveDatesModal) {
+      leaveDatesModal.addEventListener('click', function (event) {
+        if (event.target === leaveDatesModal) closeLeaveDatesModal();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !leaveDatesModal.classList.contains('hidden')) closeLeaveDatesModal();
+      });
+    }
+    elements.statusButton.addEventListener('click', function () { toggleDropdown('leaves-status-dropdown'); });
+    elements.perPageButton.addEventListener('click', function () { toggleDropdown('leaves-per-page-dropdown'); });
+    elements.statusButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-status-dropdown', 'data-status-label'); });
+    elements.perPageButton.addEventListener('keydown', function (event) { handleDropdownButtonKeydown(event, 'leaves-per-page-dropdown', 'data-per-page'); });
+
+    // Searchable user filter — same component as the Add Leave modal.
+    var filterUserSearchInput = document.getElementById('leaves-filter-user-search');
+    createUserSearchDropdown({
+      input: filterUserSearchInput,
+      hidden: elements.userInput,
+      list: document.getElementById('leaves-filter-user-list'),
+      lockedToggle: document.getElementById('leaves-filter-locked-toggle'),
+      lockedList: document.getElementById('leaves-filter-locked-list'),
+      lockedChevron: document.getElementById('leaves-filter-locked-chevron'),
+      wrapper: '#leaves-filter-user-wrapper',
+      onSelect: function (userId) { applyUserFilter(userId); }
     });
+
     bindDropdownKeyboard('leaves-status-dropdown', 'data-status-label', function (button) {
       setStatusFilter(button.getAttribute('data-status'), button.getAttribute('data-status-label'));
     });
@@ -1644,6 +2212,9 @@
     function bindDateAutoReload(input) {
       input.addEventListener('change', scheduleLoadData);
       input.addEventListener('changeDate', function () {
+        // Re-sync the month bar before the (debounced) reload so selectedMonthsParam() reflects
+        // the newly picked range rather than the previous selection.
+        syncMonthPickerFromInputs();
         scheduleLoadData();
         hideDatePickers();
       });
@@ -1726,8 +2297,7 @@
     });
 
     document.addEventListener('click', function (event) {
-      if (!event.target.closest('#leaves-user-dropdown-button') && !event.target.closest('#leaves-user-dropdown') &&
-          !event.target.closest('#leaves-status-dropdown-button') && !event.target.closest('#leaves-status-dropdown') &&
+      if (!event.target.closest('#leaves-status-dropdown-button') && !event.target.closest('#leaves-status-dropdown') &&
           !event.target.closest('#leaves-per-page-dropdown-button') && !event.target.closest('#leaves-per-page-dropdown')) {
         closeDropdowns();
       }
@@ -1830,6 +2400,9 @@
       manualElements.modal.setAttribute('aria-hidden', 'false');
       if (manualElements.from) manualElements.from.value = formatDateForInput(new Date());
       if (manualElements.to) manualElements.to.value = '';
+      // Default a fresh single-day leave to a half day; the user can switch it to 1.
+      if (manualElements.fraction) manualElements.fraction.value = '0.5';
+      if (manualElements.fractionLabel) manualElements.fractionLabel.textContent = '0.5';
       setManualLeaveTypeMode('single');
       if (manualElements.userSearch) manualElements.userSearch.value = '';
       if (manualElements.userId) manualElements.userId.value = '';
@@ -1845,47 +2418,26 @@
       manualElements.modal.setAttribute('aria-hidden', 'true');
     }
 
-    function filterManualUsers() {
-      if (!manualElements.userList || !manualElements.userSearch) return;
-      var query = normalize(manualElements.userSearch.value);
-      manualElements.userList.querySelectorAll('.leaves-modal-option').forEach(function (option) {
-        var searchValue = option.getAttribute('data-user-search') || '';
-        option.style.display = searchValue.indexOf(query) !== -1 ? '' : 'none';
-      });
-      manualUserState.activeIndex = -1;
-      setManualUserActiveOption(-1);
-    }
-
-    function openManualUserDropdown() {
-      if (!manualElements.userList) return;
-      manualElements.userList.classList.remove('hidden');
-      filterManualUsers();
-    }
-
+    // Thin shim so the existing reset / outside-click call sites keep working;
+    // the actual behaviour lives in the shared createUserSearchDropdown instance below.
     function closeManualUserDropdown() {
-      if (!manualElements.userList) return;
-      manualElements.userList.classList.add('hidden');
-      manualUserState.activeIndex = -1;
-      setManualUserActiveOption(-1);
-    }
-
-    function selectManualUser(option) {
-      if (!manualElements.userId || !manualElements.userSearch) return;
-      manualElements.userId.value = option.getAttribute('data-user-id') || '';
-      manualElements.userSearch.value = option.getAttribute('data-user-text') || option.textContent.trim();
-      closeManualUserDropdown();
+      if (manualUserDropdown) manualUserDropdown.close();
     }
 
     function setManualLeaveTypeMode(mode) {
       if (!manualElements.fraction || !manualElements.fractionButton || !manualElements.fractionLabel || !manualElements.fractionMenu) return;
       var isRange = mode === 'range';
-      manualElements.fraction.value = isRange ? '1' : '0.5';
-      manualElements.fractionLabel.textContent = isRange ? '1' : '0.5';
+      // A multi-day range is always full days, so lock the selector to 1. In single-day
+      // mode keep whatever the user picked (0.5 or 1) — never reset it on submit/sync.
+      if (isRange) {
+        manualElements.fraction.value = '1';
+        manualElements.fractionLabel.textContent = '1';
+        manualElements.fractionMenu.classList.add('hidden');
+      }
       manualElements.fractionButton.disabled = isRange;
       manualElements.fractionButton.classList.toggle('cursor-not-allowed', isRange);
       manualElements.fractionButton.classList.toggle('opacity-70', isRange);
       manualElements.fractionButton.classList.toggle('pointer-events-none', isRange);
-      manualElements.fractionMenu.classList.toggle('hidden', isRange);
     }
 
     function syncManualLeaveTypeMode() {
@@ -1895,34 +2447,6 @@
       } else {
         setManualLeaveTypeMode('single');
       }
-    }
-
-    function getVisibleManualUserOptions() {
-      if (!manualElements.userList) return [];
-      return Array.from(manualElements.userList.querySelectorAll('.leaves-modal-option')).filter(function (option) {
-        return option.style.display !== 'none';
-      });
-    }
-
-    function setManualUserActiveOption(index) {
-      var options = getVisibleManualUserOptions();
-      options.forEach(function (option, optionIndex) {
-        option.classList.toggle('leaves-modal-option--active', optionIndex === index);
-      });
-      if (index >= 0 && options[index]) {
-        options[index].scrollIntoView({ block: 'nearest' });
-      }
-    }
-
-    function moveManualUserActiveOption(step) {
-      var options = getVisibleManualUserOptions();
-      if (!options.length) return;
-      if (manualUserState.activeIndex < 0) {
-        manualUserState.activeIndex = step > 0 ? 0 : options.length - 1;
-      } else {
-        manualUserState.activeIndex = Math.max(0, Math.min(options.length - 1, manualUserState.activeIndex + step));
-      }
-      setManualUserActiveOption(manualUserState.activeIndex);
     }
 
     function toggleManualFractionMenu() {
@@ -1979,10 +2503,8 @@
     elements.to.value = initialFilters.to;
     elements.userInput.value = initialFilters.user_id;
     elements.statusInput.value = initialFilters.status;
-    elements.userLabel.textContent = initialFilters.user_id ? elements.userLabel.textContent : '<%= j l(:label_all_users) %>';
     elements.statusLabel.textContent = initialFilters.status === 'confirmed' ? '<%= j l(:label_confirmed) %>' : (initialFilters.status === 'flagged' ? '<%= j l(:label_flagged) %>' : '<%= j l(:label_all_statuses) %>');
     elements.perPageLabel.textContent = String(state.perPage);
-    syncDropdownActiveState('leaves-user-dropdown', 'data-user-id', elements.userInput.value);
     syncDropdownActiveState('leaves-status-dropdown', 'data-status', elements.statusInput.value);
     syncDropdownActiveState('leaves-per-page-dropdown', 'data-per-page', String(state.perPage));
     updateSortIndicators();
@@ -1993,22 +2515,59 @@
 
     if (elements.monthButtons.length) {
       elements.monthButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
           var month = parseInt(button.getAttribute('data-leaves-month'), 10);
-          setMonthSelection(monthState.year, month);
+
+          if (event.shiftKey) {
+            // Contiguous range from the anchor to the clicked month (anchor unchanged).
+            var anchor = monthState.anchor == null ? month : monthState.anchor;
+            var start = Math.min(anchor, month);
+            var end = Math.max(anchor, month);
+            monthState.months = new Set();
+            for (var m = start; m <= end; m += 1) monthState.months.add(m);
+          } else if (event.ctrlKey || event.metaKey) {
+            // Toggle the clicked month, but never allow an empty selection.
+            if (monthState.months.has(month)) {
+              if (monthState.months.size > 1) monthState.months.delete(month);
+            } else {
+              monthState.months.add(month);
+            }
+            monthState.anchor = month;
+          } else {
+            // Plain click: single-month selection.
+            monthState.months = new Set([month]);
+            monthState.anchor = month;
+          }
+
+          applyMonthSelection();
         });
+      });
+    }
+
+    if (elements.yearLabel) {
+      elements.yearLabel.style.cursor = 'pointer';
+      elements.yearLabel.setAttribute('title', 'Select all months');
+      elements.yearLabel.addEventListener('click', function () {
+        // Select all 12 months of the displayed year.
+        monthState.months = new Set();
+        for (var m = 0; m < 12; m += 1) monthState.months.add(m);
+        monthState.anchor = 0;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearPrev) {
       elements.yearPrev.addEventListener('click', function () {
-        setMonthSelection(monthState.year - 1, monthState.month);
+        // Keep the same selected month set, shift to the previous year.
+        monthState.year -= 1;
+        applyMonthSelection();
       });
     }
 
     if (elements.yearNext) {
       elements.yearNext.addEventListener('click', function () {
-        setMonthSelection(monthState.year + 1, monthState.month);
+        monthState.year += 1;
+        applyMonthSelection();
       });
     }
 
@@ -2020,44 +2579,16 @@
         if (event.target === manualElements.modal) closeManualModal();
       });
     }
-    if (manualElements.userSearch) {
-      manualElements.userSearch.addEventListener('click', openManualUserDropdown);
-      manualElements.userSearch.addEventListener('input', function () {
-        openManualUserDropdown();
-        filterManualUsers();
-      });
-      manualElements.userSearch.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-          closeManualUserDropdown();
-          return;
-        }
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
-          moveManualUserActiveOption(1);
-          return;
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          if (manualElements.userList && manualElements.userList.classList.contains('hidden')) openManualUserDropdown();
-          moveManualUserActiveOption(-1);
-          return;
-        }
-        if (event.key === 'Enter') {
-          var options = getVisibleManualUserOptions();
-          if (manualUserState.activeIndex >= 0 && options[manualUserState.activeIndex]) {
-            event.preventDefault();
-            selectManualUser(options[manualUserState.activeIndex]);
-          }
-        }
-      });
-    }
-    if (manualElements.userList) {
-      manualElements.userList.addEventListener('click', function (event) {
-        var option = event.target.closest('.leaves-modal-option');
-        if (option) selectManualUser(option);
-      });
-    }
+    // Add Leave modal user picker — same shared searchable dropdown as the filter.
+    // (The modal keeps its own outside-click handler below, so no `wrapper` here.)
+    var manualUserDropdown = createUserSearchDropdown({
+      input: manualElements.userSearch,
+      hidden: manualElements.userId,
+      list: manualElements.userList,
+      lockedToggle: document.getElementById('leaves-manual-locked-toggle'),
+      lockedList: manualElements.lockedList,
+      lockedChevron: manualElements.lockedChevron
+    });
     if (manualElements.fractionButton) {
       manualElements.fractionButton.addEventListener('click', function () {
         toggleManualFractionMenu();

@@ -383,8 +383,8 @@
                       <div id="ta-add-team-member-team-list"
                            class="tep-issue-dropdown hidden absolute left-0 z-[10050] bg-white border border-gray-200 rounded-lg shadow-xl overflow-y-auto"
                            style="min-width: 320px; max-height: 220px; top: calc(100% + 2px);">
-                        <% @all_teams.each do |team| %>
-                          <% indent = '&nbsp;&nbsp;' * team.all_ancestors.count %>
+                        <% ta_teams_in_tree_order(@all_teams).each do |team, level| %>
+                          <% indent = '&nbsp;&nbsp;' * level %>
                           <div class="tep-issue-option px-3 py-2 text-sm cursor-pointer flex items-start gap-2 border-b border-gray-50 last:border-0"
                                tabindex="0"
                                data-id="<%= team.id %>"
@@ -1003,6 +1003,9 @@
   function teamMembersOpenDeleteModal() {
     var modal = document.getElementById('taTeamMembersDeleteModal');
     if (!modal) return;
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     modal.setAttribute('aria-hidden', 'false');
@@ -1223,6 +1226,10 @@
     var modal = document.getElementById('taTeamMemberMoveModal');
     if (!modal) return;
 
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
+
     document.getElementById('ta-move-member-name').textContent = teamManagementMoveState.userName;
     document.getElementById('ta-move-target-team-name').textContent = teamManagementMoveState.targetTeamName;
 
@@ -1348,6 +1355,10 @@
   function teamAssignOpenModal(state) {
     var modal = document.getElementById('taTeamAssignModal');
     if (!modal) return;
+
+    // Re-parent to <body> so the fixed overlay covers the whole viewport (escapes any
+    // clipping/transformed ancestor), mirroring the working Add Member modal.
+    if (modal.parentNode !== document.body) { document.body.appendChild(modal); }
 
     teamAssignState = {
       userId: state.userId,

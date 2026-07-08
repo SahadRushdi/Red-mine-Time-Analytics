@@ -20,6 +20,10 @@ Thumbs.db
 TASK_SUMMARY*
 Screenshot *
 
+# AI Files
+CLAUDE.md
+.claude
+
 # Note: We commit the following for deployment simplicity:
 # - package-lock.json (dependency locking)
 # - assets/stylesheets/tailwind.output.css (compiled CSS - no Node.js needed on deployment)

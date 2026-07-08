@@ -210,7 +210,8 @@ module RedmineTimeAnalytics
       normalized_sender = normalize_lookup_email(sender_email)
       return nil if normalized_sender.to_s.empty?
 
-      User.active.sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender }
+      User.active.sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender } ||
+        User.where(status: User::STATUS_LOCKED).sorted.find { |user| normalize_lookup_email(user_email(user)) == normalized_sender }
     end
 
     def normalize_lookup_email(value)

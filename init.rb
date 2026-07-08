@@ -17,7 +17,17 @@ require File.expand_path('lib/redmine_time_analytics/leave_sync_scheduler', __di
 require File.expand_path('lib/redmine_time_analytics/missing_time_email_template', __dir__)
 require File.expand_path('lib/redmine_time_analytics/missing_time_notification_service', __dir__)
 require File.expand_path('lib/redmine_time_analytics/missing_time_scheduler', __dir__)
+require File.expand_path('lib/redmine_time_analytics/external_time_cache_scheduler', __dir__)
 require File.expand_path('app/mailers/missing_time_mailer', __dir__)
+require File.expand_path('lib/redmine_time_analytics/activity_groups_hook', __dir__)
+
+# User Title query/report patches (module definitions; applied after the register block below)
+require File.expand_path('lib/redmine_time_analytics/user_patch', __dir__)
+require File.expand_path('lib/redmine_time_analytics/time_entry_patch', __dir__)
+require File.expand_path('lib/redmine_time_analytics/issue_patch', __dir__)
+require File.expand_path('lib/redmine_time_analytics/time_entry_query_patch', __dir__)
+require File.expand_path('lib/redmine_time_analytics/issue_query_patch', __dir__)
+require File.expand_path('lib/redmine_time_analytics/time_report_patch', __dir__)
 
 Redmine::Plugin.register :redmine_time_analytics do
   name 'Redmine Time Analytics Plugin'
@@ -28,7 +38,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   settings partial: 'redmine_time_analytics_settings',
            default: {
              'missing_time_recipients' => '',
-             'missing_time_cron'       => ''
+             'missing_time_crons'      => []
            }
 
   # Add to top menu
@@ -56,7 +66,12 @@ Redmine::Plugin.register :redmine_time_analytics do
   # Add to admin menu
   menu :admin_menu, :positions_hiring, { controller: 'admin_ta_hiring_needs', action: 'index' },
        caption: 'Positions & Hiring',
-       html: { class: 'icon', style: 'background-image: url(/images/group.png)' }
+       html: { class: 'icon', style: 'background-image: url(/images/user.png)' }
+
+  # Add to admin menu
+  menu :admin_menu, :titles, { controller: 'admin_ta_titles', action: 'index' },
+       caption: 'Titles',
+       html: { class: 'icon', style: 'background-image: url(/images/user.png)' }
 
   # Add to admin menu
   menu :admin_menu, :custom_holidays, { controller: 'custom_holidays', action: 'index' },
@@ -75,6 +90,7 @@ Redmine::Plugin.register :redmine_time_analytics do
   Rails.application.config.after_initialize do
     RedmineTimeAnalytics::LeaveSyncScheduler.start
     RedmineTimeAnalytics::MissingTimeScheduler.start
+    RedmineTimeAnalytics::ExternalTimeCacheScheduler.start
 
     Setting.after_commit(on: %i[create update]) do
       if name == 'plugin_redmine_time_analytics'
@@ -83,3 +99,21 @@ Redmine::Plugin.register :redmine_time_analytics do
     end
   end
 end
+
+# Apply User Title patches to core (reloadable) classes.
+# Redmine's PluginLoader runs this init.rb inside a `to_prepare` block (see
+# lib/redmine/plugin_loader.rb), so this code re-runs on every dev reload — exactly
+# when the reloadable core classes need re-patching. The include?/included_modules
+# guards make re-application idempotent.
+User.include(RedmineTimeAnalytics::UserPatch) unless
+  User.included_modules.include?(RedmineTimeAnalytics::UserPatch)
+TimeEntry.include(RedmineTimeAnalytics::TimeEntryPatch) unless
+  TimeEntry.included_modules.include?(RedmineTimeAnalytics::TimeEntryPatch)
+Issue.include(RedmineTimeAnalytics::IssuePatch) unless
+  Issue.included_modules.include?(RedmineTimeAnalytics::IssuePatch)
+TimeEntryQuery.prepend(RedmineTimeAnalytics::TimeEntryQueryPatch) unless
+  TimeEntryQuery.include?(RedmineTimeAnalytics::TimeEntryQueryPatch)
+IssueQuery.prepend(RedmineTimeAnalytics::IssueQueryPatch) unless
+  IssueQuery.include?(RedmineTimeAnalytics::IssueQueryPatch)
+Redmine::Helpers::TimeReport.prepend(RedmineTimeAnalytics::TimeReportPatch) unless
+  Redmine::Helpers::TimeReport.include?(RedmineTimeAnalytics::TimeReportPatch)
