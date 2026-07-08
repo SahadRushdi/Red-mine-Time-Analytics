@@ -480,7 +480,7 @@ module RedmineTimeAnalytics
       end
 
       normalized.scan(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/).each do |candidate|
-        dates << parse_slash_date(candidate)
+        dates << parse_slash_date(candidate, reference_time)
       end
 
       normalized.scan(/\b#{MONTH_REGEX}\s+\d{1,2}(?:,\s*\d{4})?\b/i).each do |candidate|
@@ -576,18 +576,30 @@ module RedmineTimeAnalytics
       nil
     end
 
-    def parse_slash_date(candidate)
+    def parse_slash_date(candidate, reference_time = nil)
       parts = candidate.split('/').map(&:to_i)
       return nil if parts.length != 3
 
       first, second, year = parts
+      ambiguous = first <= 12 && second <= 12
       # Prefer DD/MM/YYYY because the organization emails leave dates in that format.
       format = if first > 12 || second <= 12
                  '%d/%m/%Y'
                else
                  '%m/%d/%Y'
       end
-      Date.strptime(candidate, format)
+      date = Date.strptime(candidate, format)
+      return date unless ambiguous && reference_time
+
+      reference_date = reference_time.to_date
+      return date if date == reference_date
+
+      alternate = begin
+        Date.new(year, first, second)
+      rescue ArgumentError
+        nil
+      end
+      alternate && alternate == reference_date ? alternate : date
     rescue ArgumentError
       nil
     end
@@ -723,8 +735,8 @@ module RedmineTimeAnalytics
 
       expanded = dates.dup
       text.scan(/(#{date_token_regex})\s*(?:to|-)\s*(#{date_token_regex})/i).each do |start_token, end_token|
-        start_date = normalize_extracted_date(safe_parse_date_token(start_token), reference_time)
-        end_date = normalize_extracted_date(safe_parse_date_token(end_token), reference_time)
+        start_date = normalize_extracted_date(safe_parse_date_token(start_token, reference_time), reference_time)
+        end_date = normalize_extracted_date(safe_parse_date_token(end_token, reference_time), reference_time)
         next if start_date.nil? || end_date.nil? || end_date < start_date
 
         (start_date..end_date).each { |date| expanded << date }
@@ -739,9 +751,9 @@ module RedmineTimeAnalytics
         '\d{1,2}\s+(?:' + MONTH_REGEX + ')(?:\s+\d{4})?'
     end
 
-    def safe_parse_date_token(token)
+    def safe_parse_date_token(token, reference_time = nil)
       return Date.strptime(token, '%Y-%m-%d') if token.match?(/\A\d{4}-\d{2}-\d{2}\z/)
-      return parse_slash_date(token) if token.match?(/\A\d{1,2}\/\d{1,2}\/\d{4}\z/)
+      return parse_slash_date(token, reference_time) if token.match?(/\A\d{1,2}\/\d{1,2}\/\d{4}\z/)
 
       Date.parse(token)
     rescue ArgumentError

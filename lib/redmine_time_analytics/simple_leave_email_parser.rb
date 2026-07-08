@@ -88,7 +88,7 @@ module RedmineTimeAnalytics
       end
 
       normalized.scan(/\b\d{1,2}\/\d{1,2}\/\d{4}\b/).each do |candidate|
-        dates << parse_slash_date(candidate)
+        dates << parse_slash_date(candidate, reference_time)
       end
 
       month_regex = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
@@ -115,17 +115,29 @@ module RedmineTimeAnalytics
       "#{candidate} #{reference_time.to_date.year}"
     end
 
-    def parse_slash_date(candidate)
+    def parse_slash_date(candidate, reference_time = nil)
       parts = candidate.split('/').map(&:to_i)
       return nil if parts.length != 3
 
       first, second, year = parts
+      ambiguous = first <= 12 && second <= 12
       format = if first > 12 || second <= 12
                  '%d/%m/%Y'
                else
                  '%m/%d/%Y'
                end
-      Date.strptime(candidate, format)
+      date = Date.strptime(candidate, format)
+      return date unless ambiguous && reference_time
+
+      reference_date = reference_time.to_date
+      return date if date == reference_date
+
+      alternate = begin
+        Date.new(year, first, second)
+      rescue ArgumentError
+        nil
+      end
+      alternate && alternate == reference_date ? alternate : date
     rescue ArgumentError
       nil
     end
