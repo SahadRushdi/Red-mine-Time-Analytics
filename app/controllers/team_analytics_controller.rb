@@ -321,7 +321,7 @@ class TeamAnalyticsController < ApplicationController
     build_members = lambda do |memberships|
       memberships
         .reject { |m| perm_excluded_ids.include?(m.user_id) }
-        .filter_map { |m| next unless m.user; { name: m.user.name, temp_excluded: temp_excluded_ids.include?(m.user_id) } }
+        .filter_map { |m| next unless m.user; { name: m.user.name, temp_excluded: temp_excluded_ids.include?(m.user_id), locked: m.user.locked? } }
         .sort_by { |m| [m[:temp_excluded] ? 1 : 0, m[:name]] }
     end
 
@@ -392,6 +392,7 @@ class TeamAnalyticsController < ApplicationController
       {
         id: uid,
         name: user.name,
+        locked: user.locked?,
         total_hours: total,
         groupings: {
           issue: build_breakdown_items(issue_by_user[uid] || {}, total) do |id|
@@ -1317,15 +1318,19 @@ class TeamAnalyticsController < ApplicationController
     entries_with_details = time_entries.includes(:user).map do |entry|
       period_key = get_activity_period_key(entry.spent_on, grouping)
       user = entry.user
-      member_data = { id: user.id, name: user.name } # Store both ID and name
-      
+      # `locked` flags a member whose account is locked but who logged time in this range -
+      # e.g. left the company mid-period. Surfaced as a badge on the Summary cards + Team
+      # Members popup (see ta_locked_badge / taLockedBadgeHtml) so it isn't mistaken for a
+      # currently-active member.
+      member_data = { id: user.id, name: user.name, locked: user.locked? }
+
       {
         period_key: period_key,
         member_data: member_data,
         hours: entry.hours
       }
     end
-    
+
     # Get unique periods and members (temporarily without sorting members)
     periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
     members_with_entries = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
@@ -1333,7 +1338,7 @@ class TeamAnalyticsController < ApplicationController
     # Include all active team members so those with 0 logged hours still appear
     active_members = @team_members
       .select { |m| @active_member_ids.include?(m.user_id) }
-      .map { |m| { id: m.user_id, name: m.user.name } }
+      .map { |m| { id: m.user_id, name: m.user.name, locked: m.user.locked? } }
 
     members_unsorted = (active_members + members_with_entries).uniq { |m| m[:id] }
 

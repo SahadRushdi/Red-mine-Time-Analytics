@@ -21,6 +21,16 @@
       percentage.toFixed(1) + '%</span>';
   }
 
+  // "Locked" badge (amber, lock icon) for a member who logged time in the selected period but
+  // whose Redmine account is now locked. Mirrors ta_locked_badge (TimeAnalyticsHelper) exactly,
+  // for the places this needs to be built client-side (Members Summary cards, the Team Members
+  // period popup) instead of server-rendered.
+  function lockedBadgeHtml(label) {
+    return '<span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">' +
+      '<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
+      (label || 'Locked') + '</span>';
+  }
+
   // Mirrors TimeAnalyticsHelper#format_hours (app/helpers/time_analytics_helper.rb): a
   // fixed "H:MM" format, not dependent on any server Setting, so it's safe to reproduce here.
   function formatHours(hours) {
@@ -258,6 +268,7 @@
   global.TaSortableTable = TaSortableTable;
   global.taHexToRgba = hexToRgba;
   global.taShareBadgeHtml = shareBadgeHtml;
+  global.taLockedBadgeHtml = lockedBadgeHtml;
   global.taSortableThHtml = sortableThHtml;
   global.taFormatHours = formatHours;
   global.taEscapeHtml = escapeHtml;

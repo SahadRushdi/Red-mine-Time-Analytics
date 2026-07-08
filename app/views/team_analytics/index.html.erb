@@ -1133,6 +1133,7 @@
                 <th scope="col" class="px-6 py-3 text-center border-r border-gray-200">
                   <div class="inline-flex items-center gap-1">
                     <%= link_to member[:name], my_time_path(@member_dashboard_params.merge(user_id: member[:id])), target: "_blank", class: "text-blue-600 hover:underline" %>
+                    <%= ta_locked_badge if member[:locked] %>
                     <%= ta_sort_button("member_#{member[:id]}") %>
                   </div>
                 </th>
@@ -1172,7 +1173,8 @@
                  hours: hours.to_f,
                  memberId: member_id,
                  url: member ? my_time_path(@member_dashboard_params.merge(user_id: member_id)) : nil,
-                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil
+                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil,
+                 locked: member ? member[:locked] : false
                }
              end
            }.to_json %>
@@ -1797,6 +1799,7 @@
     var color = colors[index % colors.length];
     var name = taEscapeHtml(item.name);
     var nameHtml = item.url ? ('<a href="' + item.url + '" target="_blank" class="text-gray-900 hover:text-gray-900 hover:no-underline">' + name + '</a>') : name;
+    if (item.locked) { nameHtml += ' ' + window.taLockedBadgeHtml(); }
     var activeDaysHtml = item.activeDaysHtml || '<span class="text-sm font-medium text-gray-400">—</span>';
     var toggleHtml = item.memberId ? (
       '<label class="relative inline-flex items-center cursor-pointer" title="Include in team analytics">' +
@@ -2219,8 +2222,9 @@
               </td>
             </tr>`;
           }
+          const lockedBadge = m.locked ? ' ' + window.taLockedBadgeHtml() : '';
           return `<tr class="bg-white border-b hover:bg-gray-50 transition-colors ${extraClass || ''}"${hiddenAttr}>
-            <td style="${indentStyle}" class="font-medium text-gray-900">${m.name}</td>
+            <td style="${indentStyle}" class="font-medium text-gray-900">${m.name}${lockedBadge}</td>
           </tr>`;
         }
 
@@ -2546,6 +2550,7 @@
         '<span class="flex items-center gap-2 min-w-0">' +
           breakdownAvatarHtml(member.name) +
           '<span class="font-semibold text-gray-900 truncate" title="' + bdEscape(member.name) + '">' + bdEscape(member.name) + '</span>' +
+          (member.locked ? window.taLockedBadgeHtml() : '') +
         '</span>' +
         '<button type="button" class="member-bd-expand ta-bd-icon-btn inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0" data-member-index="' + index + '" title="' + bdEscape(BREAKDOWN_EXPAND_TITLE) + '">' +
           '<span class="material-symbols-outlined" style="font-size:18px;">open_in_full</span>' +
@@ -2682,6 +2687,7 @@
     var dot = document.getElementById('member-breakdown-modal-dot');
     if (dot) dot.textContent = initialsFor(member.name);
     document.getElementById('member-breakdown-modal-title').textContent = member.name;
+    document.getElementById('member-breakdown-modal-locked').innerHTML = member.locked ? window.taLockedBadgeHtml() : '';
     document.getElementById('member-breakdown-modal-grouping').textContent = '· ' + (BREAKDOWN_GROUPING_LABEL[currentBreakdownGrouping] || '');
     document.getElementById('member-breakdown-modal-total').textContent = formatTeamHours(member.total_hours);
     document.getElementById('member-breakdown-modal-count').textContent = BREAKDOWN_TOTAL_LABEL;
@@ -2827,6 +2833,7 @@
         <div class="flex items-center gap-2 min-w-0">
           <span id="member-breakdown-modal-dot" class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-slate-100 text-slate-600 text-sm font-semibold shrink-0"></span>
           <h3 id="member-breakdown-modal-title" class="text-xl font-bold text-gray-900 truncate"></h3>
+          <span id="member-breakdown-modal-locked" class="shrink-0"></span>
           <span id="member-breakdown-modal-grouping" class="text-sm font-medium text-gray-500 whitespace-nowrap"></span>
         </div>
         <button type="button" class="!text-gray-400 !bg-transparent hover:!bg-gray-200 hover:!text-gray-900 !rounded-lg text-sm w-8 h-8 ml-auto inline-flex justify-center items-center focus:!outline-none !ring-0 !border-0 !shadow-none transition-colors cursor-pointer" data-modal-hide="member-breakdown-modal">

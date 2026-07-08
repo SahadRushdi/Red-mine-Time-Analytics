@@ -602,6 +602,21 @@ module TimeAnalyticsHelper
     value == value.to_i ? value.to_i.to_s : number_with_precision(value, precision: 1)
   end
 
+  # "Locked" badge (amber, lock icon) shown next to a member's name on the Team Dashboard when
+  # they logged time in the selected period but their Redmine account is now locked - team leads
+  # otherwise have no way to tell such a member apart from a currently-active one. Mirrors the
+  # exact badge already used for the Titles admin page's Locked tab, so the same visual language
+  # means the same thing everywhere in the plugin. The JS-rendered equivalent (Members Summary
+  # cards + the Team Members period popup) is `taLockedBadgeHtml` in ta_client_table.js.
+  def ta_locked_badge
+    <<~HTML.html_safe
+      <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        #{l(:label_locked)}
+      </span>
+    HTML
+  end
+
   # Renders a clickable column-header label for the Detailed/Grouped pivot tables (My Time /
   # My Team). Paired with TaSortableTable (assets/javascripts/ta_client_table.js), which sorts a
   # table's rows client-side by whichever column's button was clicked, reading each row's
