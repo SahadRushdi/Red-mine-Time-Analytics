@@ -483,6 +483,8 @@ module RedmineTimeAnalytics
         dates << parse_slash_date(candidate, reference_time)
       end
 
+      dates.concat(expand_numeric_day_lists(normalized, reference_time))
+
       normalized.scan(/\b#{MONTH_REGEX}\s+\d{1,2}(?:,\s*\d{4})?\b/i).each do |candidate|
         dates << Date.parse(candidate)
       rescue ArgumentError
@@ -602,6 +604,23 @@ module RedmineTimeAnalytics
       alternate && alternate == reference_date ? alternate : date
     rescue ArgumentError
       nil
+    end
+
+    # Handles day-lists sharing a numeric month/year, e.g. "08,09/07/2026" or "08,09/07"
+    # (year falls back to reference_time). Distinct from a single DD/MM/YYYY date because
+    # the day-list requires at least one comma-separated sibling before the month.
+    def expand_numeric_day_lists(text, reference_time)
+      dates = []
+      text.scan(%r{\b(\d{1,2}(?:\s*,\s*\d{1,2})+)\s*/\s*(\d{1,2})(?:\s*/\s*(\d{4}))?\b}) do |day_list, month_str, year_str|
+        month = month_str.to_i
+        year = year_str.present? ? year_str.to_i : reference_time.to_date.year
+        day_list.split(/\s*,\s*/).each do |day_str|
+          dates << Date.new(year, month, day_str.to_i)
+        rescue ArgumentError
+          next
+        end
+      end
+      dates
     end
 
     def parse_year_first_date(candidate)

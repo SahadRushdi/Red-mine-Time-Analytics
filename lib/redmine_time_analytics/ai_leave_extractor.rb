@@ -959,6 +959,7 @@ module RedmineTimeAnalytics
         dates = extract_dates_from_text(segment, reference_time)
         dates.concat(expand_comma_day_lists(segment, reference_time))
         dates.concat(expand_ampersand_day_lists(segment, reference_time))
+        dates.concat(expand_numeric_day_lists(segment, reference_time))
         dates = expand_range_dates(segment, dates)
         fraction = fraction_for_text(segment)
 
@@ -1114,6 +1115,23 @@ module RedmineTimeAnalytics
         end
       end
 
+      dates.compact.uniq.sort
+    end
+
+    # Handles day-lists sharing a numeric month/year, e.g. "08,09/07/2026" or "08,09/07"
+    # (year falls back to reference_time). Distinct from a single DD/MM/YYYY date because
+    # the day-list requires at least one comma-separated sibling before the month.
+    def expand_numeric_day_lists(text, reference_time)
+      dates = []
+      text.to_s.scan(%r{\b(\d{1,2}(?:\s*,\s*\d{1,2})+)\s*/\s*(\d{1,2})(?:\s*/\s*(\d{4}))?\b}) do |day_list, month_str, year_str|
+        month = month_str.to_i
+        year = year_str.present? ? year_str.to_i : reference_time.year
+        day_list.split(/\s*,\s*/).each do |day_str|
+          dates << Date.new(year, month, day_str.to_i)
+        rescue ArgumentError
+          next
+        end
+      end
       dates.compact.uniq.sort
     end
 
