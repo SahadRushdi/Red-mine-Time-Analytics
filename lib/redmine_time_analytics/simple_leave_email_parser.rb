@@ -31,18 +31,18 @@ module RedmineTimeAnalytics
         return result(status: :flagged, reason: 'no_date_found', user: user)
       end
 
-      leave_date = subject_dates.first
-      unless RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(leave_date)
-        return result(status: :flagged, reason: 'no_working_day_found', user: user, leave_dates: [leave_date])
+      working_dates = subject_dates.select { |date| RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date) }
+      if working_dates.empty?
+        return result(status: :flagged, reason: 'no_working_day_found', user: user, leave_dates: subject_dates)
       end
 
       fraction = determine_leave_fraction(normalized_subject)
       result(
         status: :confirmed,
         user: user,
-        leave_dates: [leave_date],
+        leave_dates: working_dates,
         leave_fraction: fraction,
-        leave_entries: [{ date: leave_date, fraction: fraction }],
+        leave_entries: working_dates.map { |date| { date: date, fraction: fraction } },
         date_source: :subject
       )
     rescue StandardError
@@ -91,6 +91,8 @@ module RedmineTimeAnalytics
         dates << parse_slash_date(candidate, reference_time)
       end
 
+      dates.concat(expand_numeric_day_lists(normalized, reference_time))
+
       month_regex = '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|' \
                     'jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|' \
                     'nov(?:ember)?|dec(?:ember)?)'
@@ -107,6 +109,23 @@ module RedmineTimeAnalytics
       end
 
       dates.compact.uniq.sort
+    end
+
+    # Handles day-lists sharing a numeric month/year, e.g. "08,09/07/2026" or "08,09/07"
+    # (year falls back to reference_time). Distinct from a single DD/MM/YYYY date because
+    # the day-list requires at least one comma-separated sibling before the month.
+    def expand_numeric_day_lists(text, reference_time)
+      dates = []
+      text.scan(%r{\b(\d{1,2}(?:\s*,\s*\d{1,2})+)\s*/\s*(\d{1,2})(?:\s*/\s*(\d{4}))?\b}) do |day_list, month_str, year_str|
+        month = month_str.to_i
+        year = year_str.present? ? year_str.to_i : reference_time.to_date.year
+        day_list.split(/\s*,\s*/).each do |day_str|
+          dates << Date.new(year, month, day_str.to_i)
+        rescue ArgumentError
+          next
+        end
+      end
+      dates
     end
 
     def apply_reference_year(candidate, reference_time)
