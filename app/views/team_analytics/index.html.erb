@@ -2106,9 +2106,18 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Suppressed in favour of the DOM legend below, which highlights on click rather
+            // than hiding the dataset. Without this the canvas draws its own legend too.
+            legend: { display: false },
             scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
           }
         });
+
+        // Re-render the legend so it lists the custom groups rather than the ungrouped
+        // activities the chart was originally built with.
+        if (window.TaChartPlugins) {
+          TaChartPlugins.renderChartLegend(teamChart, 'team-chart-legend');
+        }
       }
     },
     // Shown instead of the table/donut when no custom Activity Groups have been defined yet — at
