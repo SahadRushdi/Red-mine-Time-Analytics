@@ -181,6 +181,22 @@ table.ta-support-cols-visible .ta-support-col {
   transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
+/* Redmine's theme paints every <button> blue on :focus/:active (button:hover,button:focus
+   {background-color:#004dc2;color:#fff}), which otherwise sticks to a legend entry after it is
+   clicked. Class+pseudo selectors here out-rank the theme's bare element selectors, so the
+   neutralised state wins without !important. Keep these BEFORE the :hover/.is-active rules -
+   those carry the same specificity and must win on order. */
+.ta-legend-item:focus,
+.ta-legend-item:active {
+  background-color: transparent;
+  border-color: transparent;
+  color: inherit;
+  box-shadow: none;
+  outline: none;
+  /* Undoes the theme's button:active nudge. */
+  transform: none;
+}
+
 .ta-legend-item:hover {
   background-color: #f8fafc;
 }
@@ -232,6 +248,18 @@ table.ta-support-cols-visible .ta-support-col {
   height: 12px;
 }
 
+/* Same theme override as .ta-legend-item: without this the arrow keeps a solid blue fill after
+   being clicked. Must stay ahead of :hover, which shares its specificity. */
+.ta-legend-nav:focus,
+.ta-legend-nav:active {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  color: #6b7280;
+  box-shadow: none;
+  outline: none;
+  transform: none;
+}
+
 .ta-legend-nav:hover {
   background-color: #f3f4f6;
   color: #374151;
@@ -240,6 +268,13 @@ table.ta-support-cols-visible .ta-support-col {
 .ta-legend-nav:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* Focus styling is only suppressed for pointer clicks - keyboard users still get a visible ring. */
+.ta-legend-item:focus-visible,
+.ta-legend-nav:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
 }
 
 .ta-legend-nav[hidden] {
