@@ -131,8 +131,8 @@ table.ta-support-cols-visible .ta-support-col {
   min-width: 0;
 }
 
-/* When #chart-container also holds a below-chart legend (.ts-chart-legend-scroll), the chart
-   itself needs a shorter fixed height to leave guaranteed room for the legend within the
+/* When #chart-container also holds a below-chart legend (.ta-chart-legend), the chart itself
+   needs a shorter fixed height to leave guaranteed room for the legend within the
    fixed-height card. Only applied on Stacked (bar) chart views, which are the only ones that
    populate the legend div - Trend (line) charts draw their small legend inside the canvas
    itself and use the full chart-wrapper height above. */
@@ -140,27 +140,145 @@ table.ta-support-cols-visible .ta-support-col {
   height: 300px !important;
 }
 
-.ts-chart-legend-scroll {
+/* Single-row legend for Stacked charts: entries sit close together and scroll horizontally
+   between the ‹/› buttons, which JS keeps hidden while the whole set fits. */
+.ta-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  max-height: 70px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: #e2e8f0 transparent;
+  padding: 4px 0;
 }
 
-.ts-chart-legend-scroll::-webkit-scrollbar {
-  width: 4px;
+.ta-legend-track {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  /* The ‹/› buttons replace the scrollbar, so hide it in every engine. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.ts-chart-legend-scroll::-webkit-scrollbar-track {
+.ta-legend-track::-webkit-scrollbar {
+  display: none;
+}
+
+.ta-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.ts-chart-legend-scroll::-webkit-scrollbar-thumb {
-  background-color: #e2e8f0;
-  border-radius: 20px;
+/* Redmine's theme paints every <button> blue on :focus/:active (button:hover,button:focus
+   {background-color:#004dc2;color:#fff}), which otherwise sticks to a legend entry after it is
+   clicked. Class+pseudo selectors here out-rank the theme's bare element selectors, so the
+   neutralised state wins without !important. Keep these BEFORE the :hover/.is-active rules -
+   those carry the same specificity and must win on order. */
+.ta-legend-item:focus,
+.ta-legend-item:active {
+  background-color: transparent;
+  border-color: transparent;
+  color: inherit;
+  box-shadow: none;
+  outline: none;
+  /* Undoes the theme's button:active nudge. */
+  transform: none;
+}
+
+.ta-legend-item:hover {
+  background-color: #f8fafc;
+}
+
+.ta-legend-item.is-dimmed {
+  opacity: 0.4;
+}
+
+.ta-legend-item.is-active {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.ta-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.ta-legend-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.ta-legend-item.is-active .ta-legend-label {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.ta-legend-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.ta-legend-nav svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Same theme override as .ta-legend-item: without this the arrow keeps a solid blue fill after
+   being clicked. Must stay ahead of :hover, which shares its specificity. */
+.ta-legend-nav:focus,
+.ta-legend-nav:active {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  color: #6b7280;
+  box-shadow: none;
+  outline: none;
+  transform: none;
+}
+
+.ta-legend-nav:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.ta-legend-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Focus styling is only suppressed for pointer clicks - keyboard users still get a visible ring. */
+.ta-legend-item:focus-visible,
+.ta-legend-nav:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.ta-legend-nav[hidden] {
+  display: none;
 }
 
 .chart-wrapper canvas {

@@ -815,7 +815,7 @@
                   data-chart='<%= @chart_data %>'
                   data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
         </div>
-        <div id="team-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
+        <div id="team-chart-legend" class="ta-chart-legend mt-4"></div>
       </div>
     <% else %>
       <div id="chart-container" style="display: block;">
@@ -1173,7 +1173,7 @@
                  hours: hours.to_f,
                  memberId: member_id,
                  url: member ? my_time_path(@member_dashboard_params.merge(user_id: member_id)) : nil,
-                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_active_days[member_id].to_f, @active_days_count) : nil,
+                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_logged_days[member_id].to_i, @member_active_days[member_id].to_f) : nil,
                  locked: member ? member[:locked] : false
                }
              end
@@ -1812,7 +1812,7 @@
         '<h3 class="text-base font-medium text-gray-900">' + nameHtml + '</h3>' +
         '<div class="flex items-center gap-3">' +
           '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
-          '<span class="min-w-[56px] text-right" title="Active Days / Working Days">' + activeDaysHtml + '</span>' +
+          '<span class="min-w-[56px] text-right" title="Logged Days / Active Days">' + activeDaysHtml + '</span>' +
           toggleHtml +
         '</div>' +
       '</div>' +
@@ -2106,9 +2106,18 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Suppressed in favour of the DOM legend below, which highlights on click rather
+            // than hiding the dataset. Without this the canvas draws its own legend too.
+            legend: { display: false },
             scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
           }
         });
+
+        // Re-render the legend so it lists the custom groups rather than the ungrouped
+        // activities the chart was originally built with.
+        if (window.TaChartPlugins) {
+          TaChartPlugins.renderChartLegend(teamChart, 'team-chart-legend');
+        }
       }
     },
     // Shown instead of the table/donut when no custom Activity Groups have been defined yet — at

@@ -588,11 +588,11 @@ module TimeAnalyticsHelper
                 style: "background:#{ta_hex_to_rgba(hex, 0.14)};color:#{hex};")
   end
 
-  # Renders the "Active Days / Working Days" text (e.g. "35/38") shown per member on the
+  # Renders the "Logged Days / Active Days" text (e.g. "18/20") shown per member on the
   # My Team Members summary table, replacing the hours-share percentage badge there. Plain
   # bold grey text, not a colour-coded pill - the colour coding is reserved for percentages.
-  def ta_active_days_text(active_days, working_days)
-    content_tag(:span, "#{format_active_days_value(active_days)}/#{format_active_days_value(working_days)}",
+  def ta_active_days_text(logged_days, active_days)
+    content_tag(:span, "#{format_active_days_value(logged_days)}/#{format_active_days_value(active_days)}",
                 class: 'text-sm font-normal text-gray-500 whitespace-nowrap')
   end
 

@@ -198,12 +198,23 @@ class TeamAnalyticsController < ApplicationController
       @member_totals = @member_pivot_data[:member_totals]
       @grand_total = @member_pivot_data[:grand_total]
 
-      # Active Days / Working Days per member for the Summary view (replaces the hours-share
+      # Logged Days / Active Days per member for the Summary view (replaces the hours-share
       # percentage badge there; the donut chart still shows the percentage breakdown).
+      # Active Days = Working Days - Leave Days (unchanged).
       member_leave_days = TaLeaveRecord.total_leave_days_for_users(user_ids: @member_ids, from_date: @from, to_date: @to)
       @member_active_days = @member_ids.each_with_object({}) do |user_id, hash|
         hash[user_id] = [@active_days_count - member_leave_days[user_id].to_f, 0].max.round(2)
       end
+
+      # Logged Days = distinct days within the period with at least one time log (SUM(hours) > 0),
+      # counted from the already-filtered @time_entries scope (active projects, exclusions applied).
+      # reorder(nil)/unscope(:includes) strip the eager-load and ORDER BY carried over from
+      # @time_entries - Postgres rejects an ORDER BY column that isn't grouped or aggregated.
+      @member_logged_days = @time_entries.unscope(:includes).reorder(nil)
+                                          .group(:user_id, :spent_on)
+                                          .having('SUM(time_entries.hours) > 0')
+                                          .pluck(:user_id, :spent_on)
+                                          .each_with_object(Hash.new(0)) { |(user_id, _date), hash| hash[user_id] += 1 }
 
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count

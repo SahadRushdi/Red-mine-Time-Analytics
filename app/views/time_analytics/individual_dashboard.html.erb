@@ -530,7 +530,7 @@
                 data-chart='<%= @chart_data %>'
                 data-grouping-label="<%= grouping_label(@grouping) %>"></canvas>
       </div>
-      <div id="individual-chart-legend" class="ts-chart-legend-scroll mt-4"></div>
+      <div id="individual-chart-legend" class="ta-chart-legend mt-4"></div>
     </div>
   </div>
 </div>
@@ -1845,9 +1845,18 @@ var activityGroupedController = window.TeamActivityGroups.createGroupedActivityC
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          // Suppressed in favour of the DOM legend below, which highlights on click rather
+          // than hiding the dataset. Without this the canvas draws its own legend too.
+          legend: { display: false },
           scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
         }
       });
+
+      // Re-render the legend so it lists the custom groups rather than the ungrouped
+      // activities the chart was originally built with.
+      if (window.TaChartPlugins) {
+        TaChartPlugins.renderChartLegend(timeAnalyticsChart, 'individual-chart-legend');
+      }
     }
   },
   // Shown instead of the table/donut when no custom Activity Groups have been defined yet.
