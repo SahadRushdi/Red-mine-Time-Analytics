@@ -14,6 +14,12 @@ module RedmineTimeAnalytics
                               'changed to', 'correction', 'correct', 'next week', 'next day',
                               'tomorrow', 'today', 'yesterday', 'this afternoon', 'this morning',
                               'tonight', 'later', 'replacement', 'revised'].freeze
+    PARTIAL_CANCEL_KEYWORDS = ['did not take', "didn't take", 'not take leave', 'no leave on',
+                               'was postponed', 'got postponed', 'is cancelled', 'is canceled',
+                               'was cancelled', 'was canceled', 'not required', 'no longer need',
+                               'not needed', 'taken only on', 'only on', 'worked the full day',
+                               'worked as usual', 'was in the office', 'came to office',
+                               'only needed leave'].freeze
 
     SYSTEM_PROMPT = <<~PROMPT.freeze
     You are a strict data extractor for leave requests from a Sri Lankan company. Output JSON ONLY.
@@ -56,29 +62,87 @@ module RedmineTimeAnalytics
     → STOP HERE.
   
     ██████████████████████████████████████████████████
+    PARTIAL CANCELLATION RULE — ONE DATE OUT OF SEVERAL IS DROPPED
+    ██████████████████████████████████████████████████
+
+    This rule is CHECKED FIRST and is COMPLETELY INDEPENDENT of the
+    CANCELLATION RULE below. It does NOT require the words "cancel",
+    "cancelled", or "canceled" to appear anywhere in the email.
+
+    IF the original leave request (subject or an earlier message in the
+    thread) lists TWO OR MORE dates, AND a LATER unquoted reply states —
+    in ANY wording, even without the word "cancel" — that leave was NOT
+    actually taken / is not needed / did not happen for ONE OR MORE of
+    those specific dates, while the remaining date(s) are unaffected or
+    explicitly confirmed as taken
+    → DROP only the negated date(s) from leave_entries.
+    → KEEP the remaining date(s) as "confirmed", with their original
+      fraction unchanged.
+    → Do NOT set status to "cancelled" for this — the overall request
+      stays "confirmed" as long as at least one date still remains.
+    → Do NOT keep the negated date "just in case" — dropping it is the
+      CORRECT and REQUIRED behavior, not an optional interpretation.
+
+    Trigger phrasings (and natural variations of them) — NONE of these
+    contain the word "cancel", yet ALL of them must trigger this rule for
+    the date(s) they reference:
+    - "did not take leave on <date>", "didn't take leave on <date>"
+    - "no leave on <date>", "not on <date>"
+    - "<date> was postponed", "<date> got postponed"
+    - "worked the full day on <date>", "worked as usual on <date>"
+    - "was in the office on <date>", "came to office on <date>"
+    - "leave was taken only on <date>" (implies every OTHER date in the
+      SAME request that is not named was NOT taken)
+    - "only needed leave for <date>", "only <date> applies"
+
+    Example — read this carefully, this exact pattern must be handled:
+      Subject: "Halfday Leave(Evening) - 15,17/07/2026"
+      Message 1 body: "Please note the $subject due to uni work."
+        → thread state so far = 2026-07-15 (0.5), 2026-07-17 (0.5)
+      Reply (the word "cancel" is NEVER used anywhere in this reply):
+        "Hi all, Please note that I did not take leave on July 17, as the
+         uni work was postponed. I worked the full day as usual. The
+         half-day leave was taken only on July 15. Thank you, Kalana"
+        → "did not take leave on July 17" negates July 17
+        → "worked the full day as usual" reinforces July 17 was NOT leave
+        → "taken only on July 15" confirms July 15 and negates any other
+           date from the original request
+      CORRECT RESULT:
+        {"status":"confirmed","reason":"partial_cancellation","leave_entries":[{"date":"2026-07-15","fraction":0.5}]}
+      INCORRECT: leave_entries containing 2026-07-17 ← WRONG. This date
+                 was explicitly negated in the reply. Keeping it is a bug.
+      INCORRECT: {"status":"cancelled","leave_entries":[]} ← WRONG. Only
+                 ONE date was negated, not the entire request.
+
+    IF the negation phrasing covers EVERY date from the original request
+    (not just one) → then treat it as a full cancellation instead:
+      {"status":"cancelled","reason":"leave_cancelled_by_sender","leave_entries":[]}
+
+    ██████████████████████████████████████████████████
     CANCELLATION RULE
     ██████████████████████████████████████████████████
-  
+
     IF the latest unquoted reply contains cancellation language:
     - "cancelled", "canceled", "cancelling", "canceling"
     - "please note this leave is cancelled"
     - "will not be taking leave", "disregard my previous"
     - "I will be working", "not taking leave anymore"
     - "leave is cancelled", "withdrawing my leave"
-  
+
     AND there is NO later message after the cancellation that books a new date
     → Return EXACTLY:
       {"status":"cancelled","reason":"leave_cancelled_by_sender","leave_entries":[]}
     → leave_entries MUST be empty []. NEVER include dates for a cancelled status.
-  
+
     CANCEL-THEN-REBOOK EXCEPTION:
     If a cancellation is followed by a NEW leave booking in a LATER message
     → Return "confirmed" with the NEW date only.
-  
+
     Thread state machine:
       confirmed → cancelled → (nothing after)     = FINAL: cancelled, leave_entries:[]
       confirmed → cancelled → confirmed (new date) = FINAL: confirmed, new date only
       confirmed → shifted   → confirmed (new date) = FINAL: confirmed, new date only
+      confirmed (multi-date) → one date negated    = FINAL: confirmed, remaining date(s) only (see PARTIAL CANCELLATION RULE above)
   
     ██████████████████████████████████████████████████
     REMINDER EXCEPTION
@@ -527,16 +591,19 @@ module RedmineTimeAnalytics
       end
 
       if explicit_entries.length > 1 && parsed.leave_dates.length < explicit_entries.length
-        fallback = result(
-          status: :confirmed,
-          reason: 'ai_analyzed',
-          user: user,
-          leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
-          leave_fraction: explicit_entries.map { |entry| entry[:fraction].to_f }.max || 1.0,
-          leave_entries: explicit_entries,
-          date_source: :ai
-        )
-        return fallback
+        missing_dates = explicit_entries.map { |entry| entry[:date] } - parsed.leave_dates
+        unless missing_dates.all? { |date| date_negated_in_latest_reply?(date, message[:body].to_s) }
+          fallback = result(
+            status: :confirmed,
+            reason: 'ai_analyzed',
+            user: user,
+            leave_dates: explicit_entries.map { |entry| entry[:date] }.uniq.sort,
+            leave_fraction: explicit_entries.map { |entry| entry[:fraction].to_f }.max || 1.0,
+            leave_entries: explicit_entries,
+            date_source: :ai
+          )
+          return fallback
+        end
       end
 
       sanitized = remove_sent_date_leak(parsed: parsed, message: message, explicit_entries: explicit_entries)
@@ -1008,6 +1075,28 @@ module RedmineTimeAnalytics
                .map { |segment| segment.gsub('__AMP__', '&') }
                .map(&:strip)
                .reject(&:empty?)
+    end
+
+    # True only when the LATEST unquoted reply both (a) mentions this specific date and
+    # (b) contains partial-cancellation/negation language — so a legitimately-reduced AI
+    # result isn't stomped back to the full regex-detected set by the safety net above.
+    def date_negated_in_latest_reply?(date, body_text)
+      latest_reply = primary_body_text(body_text).to_s.downcase
+      return false if latest_reply.blank?
+      return false unless PARTIAL_CANCEL_KEYWORDS.any? { |keyword| latest_reply.include?(keyword) }
+
+      date_mentions_for(date).any? { |mention| latest_reply.include?(mention) }
+    end
+
+    def date_mentions_for(date)
+      [
+        date.strftime('%B %-d').downcase,
+        date.strftime('%b %-d').downcase,
+        date.strftime('%d/%m/%Y'),
+        date.strftime('%-d/%-m/%Y'),
+        date.strftime('%d.%m.%Y'),
+        date.strftime('%-d.%-m.%Y')
+      ].uniq
     end
 
     def body_override_subject?(body_text, subject_entries, body_entries)
