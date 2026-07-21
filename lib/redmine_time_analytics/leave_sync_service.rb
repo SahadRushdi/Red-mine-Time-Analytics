@@ -234,6 +234,13 @@ module RedmineTimeAnalytics
       latest_dates = latest_entries.map { |entry| entry[:date] }.compact.uniq.sort
       return latest_entries.map { |entry| { date: entry[:date], fraction: parsed.leave_fraction.to_f } } if parsed.used_sent_fallback
 
+      # A later reply can legitimately narrow the thread to a subset of the
+      # already-known dates (e.g. one date explicitly negated/partially
+      # cancelled while the rest are confirmed). Trust that reduced set
+      # instead of re-inflating it back to every previously-known date —
+      # otherwise a correctly-narrowed AI result is silently discarded.
+      return leave_entries if incoming_dates.any? && (incoming_dates - latest_dates).empty?
+
       latest_date = latest_dates.max
       incoming_date = incoming_dates.max
       return leave_entries if incoming_date.present? && latest_date.present? && incoming_date > latest_date
