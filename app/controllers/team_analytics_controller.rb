@@ -1772,21 +1772,26 @@ class TeamAnalyticsController < ApplicationController
     # Excluded users are still filtered by the period they overlap with
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end) | Array(@temp_excluded_ids)
 
-    # Count members who were active during this period (based on membership dates, not time entries)
-    active_count = @team_members.count do |membership|
-      user_id = membership.user_id
-      start_date = membership.start_date
-      end_date = membership.end_date
-      
-      # Skip if member is in excluded list
-      next false if excluded_ids.include?(user_id)
-      
-      # Member is active during period if:
-      # - Their start_date is on or before the period ends (start_date <= period_end)
-      # - AND their end_date is either NULL (still active) OR on or after the period starts (end_date >= period_start)
-      start_date <= period_end && (end_date.nil? || end_date >= period_start)
-    end
-    
+    # Count DISTINCT members active during this period (based on membership dates, not time
+    # entries). A member holding multiple concurrent memberships (e.g. bubbled up from two
+    # different sub-teams, like belonging to both "Automation" and "Manufacturing Automation")
+    # must still only count once toward team size — grouping by user_id first, then counting a
+    # user as active if ANY of their memberships overlaps the period, avoids double-counting.
+    active_count = @team_members
+      .reject { |membership| excluded_ids.include?(membership.user_id) }
+      .select do |membership|
+        start_date = membership.start_date
+        end_date = membership.end_date
+
+        # Member is active during period if:
+        # - Their start_date is on or before the period ends (start_date <= period_end)
+        # - AND their end_date is either NULL (still active) OR on or after the period starts (end_date >= period_start)
+        start_date <= period_end && (end_date.nil? || end_date >= period_start)
+      end
+      .map(&:user_id)
+      .uniq
+      .count
+
     active_count
   end
 

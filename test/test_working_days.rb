@@ -145,6 +145,50 @@ check(failures, "clamped range uses the 15 elapsed working days from the screens
 check(failures, "fixed average is higher than the buggy month-to-date average", true, fixed_average > buggy_average)
 check(failures, "fixed team_active_days matches Working Days * Team Size - Leave Days", 539.5, fixed_team_active_days)
 
+# Test 10: Team size must count DISTINCT members, not membership rows — a member who belongs
+# to two sub-teams (e.g. Lasantha in both "Automation" and "Manufacturing Automation") must
+# only count once toward Team Size, and that deduplicated count is what Average divides by.
+puts "\nTest 10: Team size dedup - a member in 2 concurrent teams counts once"
+FakeMembership = Struct.new(:user_id, :start_date, :end_date)
+
+period_start = Date.new(2026, 6, 29)
+period_end   = Date.new(2026, 7, 5)
+
+team_members = [
+  FakeMembership.new(1, Date.new(2026, 1, 1), nil), # Charitha - AI Automation Specialists
+  FakeMembership.new(2, Date.new(2026, 1, 1), nil), # Kaif - AI Automation Specialists
+  FakeMembership.new(3, Date.new(2026, 1, 1), nil), # Kaveesh - AI Automation Specialists
+  FakeMembership.new(4, Date.new(2026, 1, 1), nil), # Sanuka - AI Automation Specialists
+  FakeMembership.new(5, Date.new(2026, 1, 1), nil), # Turbo Turtle - AI Automation Specialists
+  FakeMembership.new(6, Date.new(2026, 1, 1), nil), # Lasantha - Automation
+  FakeMembership.new(6, Date.new(2026, 1, 1), nil), # Lasantha - Manufacturing Automation (2nd membership, same user)
+  FakeMembership.new(7, Date.new(2026, 1, 1), nil)  # Sandali - Automation
+]
+
+# Old (buggy) behavior: counts membership rows.
+buggy_team_size = team_members.count do |m|
+  m.start_date <= period_end && (m.end_date.nil? || m.end_date >= period_start)
+end
+
+# Fixed behavior: distinct user_ids.
+fixed_team_size = team_members
+  .select { |m| m.start_date <= period_end && (m.end_date.nil? || m.end_date >= period_start) }
+  .map(&:user_id)
+  .uniq
+  .count
+
+check(failures, "buggy count double-counts Lasantha's 2 memberships", 8, buggy_team_size)
+check(failures, "fixed count dedupes to 7 distinct members", 7, fixed_team_size)
+
+# Average must divide by the deduplicated team size, not the raw membership count.
+hours = 100.0
+working_days = 5
+buggy_average = (hours / (working_days * buggy_team_size)).round(2)
+fixed_average = (hours / (working_days * fixed_team_size)).round(2)
+puts "  Buggy average (team_size=8): #{buggy_average}h"
+puts "  Fixed average (team_size=7): #{fixed_average}h"
+check(failures, "fixed average uses the deduplicated team size", (100.0 / (5 * 7)).round(2), fixed_average)
+
 puts "\n" + "=" * 60
 if failures.empty?
   puts "Test Complete! All checks passed."
