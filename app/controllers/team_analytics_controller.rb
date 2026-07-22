@@ -1714,9 +1714,13 @@ class TeamAnalyticsController < ApplicationController
   # Calculate average for a period:
   # Team Active Days = (Working Days * Team Size) - Team Leave Days
   # Average = Hours / Team Active Days
+  #
+  # Working/leave days are clamped to the selected filter range (@from..@to), not the full
+  # calendar week/month a period bucket belongs to — otherwise an in-progress period (e.g.
+  # "This Month" month-to-date) would count days that haven't happened yet, deflating the average.
   def calculate_period_average(period_date, grouping, hours, team_size)
     return 0 if team_size.zero? || hours.zero?
-    
+
     period_start, period_end = case grouping
                                when 'weekly'
                                  week_start = period_date.beginning_of_week(:monday)
@@ -1729,7 +1733,11 @@ class TeamAnalyticsController < ApplicationController
                                else
                                  [period_date, period_date]
                                end
-    
+
+    clamped = RedmineTimeAnalytics::WorkingDaysCalculator.clamp_to_range(period_start, period_end, @from, @to)
+    return 0 if clamped.nil?
+    period_start, period_end = clamped
+
     working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(period_start, period_end)
     return 0 if working_days.zero?
 
