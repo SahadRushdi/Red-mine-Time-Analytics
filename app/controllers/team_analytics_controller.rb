@@ -652,13 +652,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def get_weekly_totals(entries)
-    weekly_data = {}
-    entries.each do |entry|
-      week_start = entry.spent_on.beginning_of_week(:monday)
-      weekly_data[week_start] ||= 0
-      weekly_data[week_start] += entry.hours
-    end
-    weekly_data
+    sql_bucket_hours_totals(entries, 'weekly')
   end
 
   # Monthly grouping calculations
@@ -675,35 +669,49 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def get_monthly_totals(entries)
-    monthly_data = {}
-    entries.each do |entry|
-      month_key = [entry.spent_on.year, entry.spent_on.month]
-      monthly_data[month_key] ||= 0
-      monthly_data[month_key] += entry.hours
+    sql_bucket_hours_totals(entries, 'monthly')
+  end
+
+  # SQL-computed hours total for each week/month bucket present in `entries`, keyed the same
+  # way the old Ruby-loop bucketing was (Date for weekly, [year, month] Array for monthly).
+  #
+  # `time_entries.hours` is a SQL float column, so manually accumulating `entry.hours` across
+  # hundreds of loaded records in Ruby drifts from the DB's own SUM() for the same rows (each
+  # value round-trips through decimal<->float text parsing once per row instead of being
+  # accumulated once, internally, by the database). Running one SUM(:hours) query per bucket
+  # keeps every total on the same computation path as `@total_hours` (`entries.sum(:hours)`),
+  # so e.g. a "Max Month" bucket that spans the entire filtered range matches Total Hours exactly.
+  def sql_bucket_hours_totals(entries, unit)
+    dates = entries.reorder(nil).distinct.pluck(:spent_on)
+    return {} if dates.empty?
+
+    bucket_ranges = dates.each_with_object({}) do |date, ranges|
+      if unit == 'monthly'
+        month_start = Date.new(date.year, date.month, 1)
+        key = [date.year, date.month]
+        ranges[key] ||= [month_start, month_start.end_of_month]
+      else
+        week_start = date.beginning_of_week(:monday)
+        ranges[week_start] ||= [week_start, week_start + 6.days]
+      end
     end
-    monthly_data
+
+    bucket_ranges.each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
+      totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).sum(:hours)
+    end
   end
 
   # Generate team time overview data with member count per period
   def generate_team_time_overview_data(entries, grouping)
-    data = {}
-    
-    entries.each do |entry|
-      period_key = case grouping
-                   when 'daily'
-                     entry.spent_on
-                   when 'weekly'
-                     entry.spent_on.beginning_of_week(:monday)
-                   when 'monthly'
-                     [entry.spent_on.year, entry.spent_on.month]
-                   else
-                     # Default to weekly
-                     entry.spent_on.beginning_of_week(:monday)
-                   end
-
-      data[period_key] ||= 0
-      data[period_key] += entry.hours
-    end
+    data = case grouping
+           when 'daily'
+             entries.reorder(nil).group(:spent_on).sum(:hours)
+           when 'monthly'
+             sql_bucket_hours_totals(entries, 'monthly')
+           else
+             # weekly, and the invalid-grouping fallback (both bucket by week)
+             sql_bucket_hours_totals(entries, 'weekly')
+           end
 
     # Fill missing periods to show unlogged days/weeks/months as 0.00h
     if grouping == 'daily'
