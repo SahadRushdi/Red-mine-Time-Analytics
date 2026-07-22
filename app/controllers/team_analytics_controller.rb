@@ -652,13 +652,7 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def get_weekly_totals(entries)
-    weekly_data = {}
-    entries.each do |entry|
-      week_start = entry.spent_on.beginning_of_week(:monday)
-      weekly_data[week_start] ||= 0
-      weekly_data[week_start] += entry.hours
-    end
-    weekly_data
+    sql_bucket_hours_totals(entries, 'weekly')
   end
 
   # Monthly grouping calculations
@@ -675,35 +669,49 @@ class TeamAnalyticsController < ApplicationController
   end
 
   def get_monthly_totals(entries)
-    monthly_data = {}
-    entries.each do |entry|
-      month_key = [entry.spent_on.year, entry.spent_on.month]
-      monthly_data[month_key] ||= 0
-      monthly_data[month_key] += entry.hours
+    sql_bucket_hours_totals(entries, 'monthly')
+  end
+
+  # SQL-computed hours total for each week/month bucket present in `entries`, keyed the same
+  # way the old Ruby-loop bucketing was (Date for weekly, [year, month] Array for monthly).
+  #
+  # `time_entries.hours` is a SQL float column, so manually accumulating `entry.hours` across
+  # hundreds of loaded records in Ruby drifts from the DB's own SUM() for the same rows (each
+  # value round-trips through decimal<->float text parsing once per row instead of being
+  # accumulated once, internally, by the database). Running one SUM(:hours) query per bucket
+  # keeps every total on the same computation path as `@total_hours` (`entries.sum(:hours)`),
+  # so e.g. a "Max Month" bucket that spans the entire filtered range matches Total Hours exactly.
+  def sql_bucket_hours_totals(entries, unit)
+    dates = entries.reorder(nil).distinct.pluck(:spent_on)
+    return {} if dates.empty?
+
+    bucket_ranges = dates.each_with_object({}) do |date, ranges|
+      if unit == 'monthly'
+        month_start = Date.new(date.year, date.month, 1)
+        key = [date.year, date.month]
+        ranges[key] ||= [month_start, month_start.end_of_month]
+      else
+        week_start = date.beginning_of_week(:monday)
+        ranges[week_start] ||= [week_start, week_start + 6.days]
+      end
     end
-    monthly_data
+
+    bucket_ranges.each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
+      totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).sum(:hours)
+    end
   end
 
   # Generate team time overview data with member count per period
   def generate_team_time_overview_data(entries, grouping)
-    data = {}
-    
-    entries.each do |entry|
-      period_key = case grouping
-                   when 'daily'
-                     entry.spent_on
-                   when 'weekly'
-                     entry.spent_on.beginning_of_week(:monday)
-                   when 'monthly'
-                     [entry.spent_on.year, entry.spent_on.month]
-                   else
-                     # Default to weekly
-                     entry.spent_on.beginning_of_week(:monday)
-                   end
-
-      data[period_key] ||= 0
-      data[period_key] += entry.hours
-    end
+    data = case grouping
+           when 'daily'
+             entries.reorder(nil).group(:spent_on).sum(:hours)
+           when 'monthly'
+             sql_bucket_hours_totals(entries, 'monthly')
+           else
+             # weekly, and the invalid-grouping fallback (both bucket by week)
+             sql_bucket_hours_totals(entries, 'weekly')
+           end
 
     # Fill missing periods to show unlogged days/weeks/months as 0.00h
     if grouping == 'daily'
@@ -1714,9 +1722,13 @@ class TeamAnalyticsController < ApplicationController
   # Calculate average for a period:
   # Team Active Days = (Working Days * Team Size) - Team Leave Days
   # Average = Hours / Team Active Days
+  #
+  # Working/leave days are clamped to the selected filter range (@from..@to), not the full
+  # calendar week/month a period bucket belongs to — otherwise an in-progress period (e.g.
+  # "This Month" month-to-date) would count days that haven't happened yet, deflating the average.
   def calculate_period_average(period_date, grouping, hours, team_size)
     return 0 if team_size.zero? || hours.zero?
-    
+
     period_start, period_end = case grouping
                                when 'weekly'
                                  week_start = period_date.beginning_of_week(:monday)
@@ -1729,7 +1741,11 @@ class TeamAnalyticsController < ApplicationController
                                else
                                  [period_date, period_date]
                                end
-    
+
+    clamped = RedmineTimeAnalytics::WorkingDaysCalculator.clamp_to_range(period_start, period_end, @from, @to)
+    return 0 if clamped.nil?
+    period_start, period_end = clamped
+
     working_days = RedmineTimeAnalytics::WorkingDaysCalculator.working_days_count(period_start, period_end)
     return 0 if working_days.zero?
 
@@ -1764,21 +1780,26 @@ class TeamAnalyticsController < ApplicationController
     # Excluded users are still filtered by the period they overlap with
     excluded_ids = TaTeamSetting.excluded_user_ids_for_range(period_start, period_end) | Array(@temp_excluded_ids)
 
-    # Count members who were active during this period (based on membership dates, not time entries)
-    active_count = @team_members.count do |membership|
-      user_id = membership.user_id
-      start_date = membership.start_date
-      end_date = membership.end_date
-      
-      # Skip if member is in excluded list
-      next false if excluded_ids.include?(user_id)
-      
-      # Member is active during period if:
-      # - Their start_date is on or before the period ends (start_date <= period_end)
-      # - AND their end_date is either NULL (still active) OR on or after the period starts (end_date >= period_start)
-      start_date <= period_end && (end_date.nil? || end_date >= period_start)
-    end
-    
+    # Count DISTINCT members active during this period (based on membership dates, not time
+    # entries). A member holding multiple concurrent memberships (e.g. bubbled up from two
+    # different sub-teams, like belonging to both "Automation" and "Manufacturing Automation")
+    # must still only count once toward team size — grouping by user_id first, then counting a
+    # user as active if ANY of their memberships overlaps the period, avoids double-counting.
+    active_count = @team_members
+      .reject { |membership| excluded_ids.include?(membership.user_id) }
+      .select do |membership|
+        start_date = membership.start_date
+        end_date = membership.end_date
+
+        # Member is active during period if:
+        # - Their start_date is on or before the period ends (start_date <= period_end)
+        # - AND their end_date is either NULL (still active) OR on or after the period starts (end_date >= period_start)
+        start_date <= period_end && (end_date.nil? || end_date >= period_start)
+      end
+      .map(&:user_id)
+      .uniq
+      .count
+
     active_count
   end
 

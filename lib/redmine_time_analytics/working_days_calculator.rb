@@ -33,6 +33,18 @@ module RedmineTimeAnalytics
         !weekend?(date) && !Holidays.holiday?(date)
       end
 
+      # Clamp a period's date range (e.g. a full calendar week/month bucket) to the overall
+      # filter range actually being queried, so an in-progress period (e.g. "This Month"
+      # month-to-date) doesn't count days outside what was actually queried/logged.
+      # Returns nil if the two ranges don't overlap at all.
+      def clamp_to_range(period_start, period_end, filter_from, filter_to)
+        clamped_start = [period_start, filter_from].max
+        clamped_end = [period_end, filter_to].min
+        return nil if clamped_end < clamped_start
+
+        [clamped_start, clamped_end]
+      end
+
       # Build a working-day predicate for the [from_date, to_date] range that performs the
       # custom-holiday lookup ONCE (via Holidays.holidays_between) instead of one DB query per
       # date. Returns a lambda usable as a per-record filter, e.g.
