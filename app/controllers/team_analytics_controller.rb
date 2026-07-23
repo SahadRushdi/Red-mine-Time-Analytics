@@ -1471,7 +1471,12 @@ class TeamAnalyticsController < ApplicationController
   def generate_member_pivot_chart_data(pivot_data, chart_type, member_view_state = 'detailed')
     case chart_type
     when 'bar'
-      member_names = pivot_data[:members].map { |member| member[:name] }
+      # Drop 0-hour members (e.g. active members with no logged time in range) from the stacked
+      # chart/legend, same as the donut chart's `m.hours > 0` filter — they'd otherwise show up
+      # as an empty legend entry with no visible segment in any bar.
+      member_names = pivot_data[:members]
+        .select { |member| (pivot_data[:member_totals][member[:id]] || 0) > 0 }
+        .map { |member| member[:name] }
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], member_names, pivot_data[:matrix], @grouping)
     else
       generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])
