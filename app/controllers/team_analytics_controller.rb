@@ -384,8 +384,9 @@ class TeamAnalyticsController < ApplicationController
     project_names = Project.where(id: project_sums.keys.filter_map { |(_, id)| id }.uniq)
                           .pluck(:id, :name).to_h
 
-    user_totals = Hash.new(0.0)
-    issue_sums.each { |(uid, _), hours| user_totals[uid] += hours.to_f }
+    # Single SQL SUM per user rather than re-summing the per-issue sums above in Ruby, so this
+    # total matches the Detailed table/donut chart total for the same member exactly.
+    user_totals = scope.group(:user_id).sum(:hours)
     users = User.where(id: user_totals.keys).index_by(&:id)
 
     # Pre-group all three dimensions by user_id to avoid O(N×M) scanning in build_breakdown_items.
@@ -682,6 +683,8 @@ class TeamAnalyticsController < ApplicationController
   # keeps every total on the same computation path as `@total_hours` (`entries.sum(:hours)`),
   # so e.g. a "Max Month" bucket that spans the entire filtered range matches Total Hours exactly.
   def sql_bucket_hours_totals(entries, unit)
+    return entries.reorder(nil).group(:spent_on).sum(:hours) if unit == 'daily'
+
     dates = entries.reorder(nil).distinct.pluck(:spent_on)
     return {} if dates.empty?
 
@@ -698,6 +701,47 @@ class TeamAnalyticsController < ApplicationController
 
     bucket_ranges.each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
       totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).sum(:hours)
+    end
+  end
+
+  # Period-bucket boundaries for the Members/Activity/Project pivot tables, keyed the same way
+  # get_activity_period_key keys their periods (Date for daily/weekly, Date.new(y,m,1) for
+  # monthly) — distinct from sql_bucket_hours_totals's [year, month] Array keying, which the
+  # Time Overview table / Max-Min-Month cards depend on and which this deliberately leaves alone.
+  def pivot_period_bucket_ranges(entries, grouping)
+    dates = entries.reorder(nil).distinct.pluck(:spent_on)
+    return {} if dates.empty?
+
+    dates.each_with_object({}) do |date, ranges|
+      key = get_activity_period_key(date, grouping)
+      range_end = grouping == 'monthly' ? key.end_of_month : key + 6.days
+      ranges[key] ||= [key, range_end]
+    end
+  end
+
+  # SQL SUM(:hours) per pivot-table period bucket — see pivot_period_bucket_ranges. Replaces
+  # manually accumulating `entry.hours` (a SQL float column) row-by-row in Ruby, which drifts
+  # from the database's own SUM() over the same rows (the root cause of the Detailed
+  # table/donut chart not matching Total Hours).
+  def pivot_bucket_hours_totals(entries, grouping)
+    return entries.reorder(nil).group(:spent_on).sum(:hours) if grouping == 'daily'
+
+    pivot_period_bucket_ranges(entries, grouping).each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
+      totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).sum(:hours)
+    end
+  end
+
+  # Same bucketing as pivot_bucket_hours_totals, further grouped by `group_column` (:user_id,
+  # :activity_id, :project_id) — returns { period_key => { group_value => hours } }, each value
+  # a single SQL SUM rather than a Ruby-loop accumulation.
+  def pivot_bucket_category_totals(entries, grouping, group_column)
+    if grouping == 'daily'
+      return entries.reorder(nil).group(:spent_on, group_column).sum(:hours)
+                    .each_with_object({}) { |((date, gval), hrs), acc| (acc[date] ||= {})[gval] = hrs }
+    end
+
+    pivot_period_bucket_ranges(entries, grouping).each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
+      totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).group(group_column).sum(:hours)
     end
   end
 
@@ -841,24 +885,10 @@ class TeamAnalyticsController < ApplicationController
       return generate_time_entries_stacked_chart_data(entries, grouping)
     end
 
-    grouped_data = {}
-    
-    entries.each do |entry|
-      period_key = case grouping
-                   when 'daily'
-                     entry.spent_on
-                   when 'weekly'
-                     entry.spent_on.beginning_of_week(:monday)
-                   when 'monthly'
-                     [entry.spent_on.year, entry.spent_on.month]
-                   else
-                     # Default to weekly
-                     entry.spent_on.beginning_of_week(:monday)
-                   end
-
-      grouped_data[period_key] ||= 0
-      grouped_data[period_key] += entry.hours
-    end
+    # SQL SUM(:hours) per bucket instead of a manual Ruby-loop accumulation over `entry.hours`
+    # (a SQL float column) — keeps the Trend chart's points on the same computation path as
+    # Total Hours / Max-Min Month, which already use sql_bucket_hours_totals.
+    grouped_data = sql_bucket_hours_totals(entries, grouping)
 
     # Fill missing periods for proper date range handling (show unlogged periods as 0.00)
     if grouping == 'daily'
@@ -900,21 +930,26 @@ class TeamAnalyticsController < ApplicationController
   def generate_time_entries_stacked_chart_data(entries, grouping)
     return empty_chart_data('bar') if entries.blank?
 
+    # SQL SUM(:hours) per (period, activity) bucket instead of accumulating `entry.hours` (a SQL
+    # float column) row-by-row in Ruby — same fix as the Members/Activity/Project pivot tables.
+    hours_by_period = pivot_bucket_category_totals(entries, grouping, :activity_id)
+    return empty_chart_data('bar') if hours_by_period.empty?
+
+    activity_ids = hours_by_period.values.flat_map(&:keys).uniq.compact
+    activity_names_by_id = Enumeration.where(id: activity_ids).pluck(:id, :name).to_h
+    name_for = ->(id) { activity_names_by_id[id] || 'No Activity' }
+
     category_breakdown = {}
-
-    entries.includes(:activity).each do |entry|
-      period_key = get_activity_period_key(entry.spent_on, grouping)
-      activity_name = entry.activity&.name || 'No Activity'
-
-      category_breakdown[period_key] ||= {}
-      category_breakdown[period_key][activity_name] ||= 0
-      category_breakdown[period_key][activity_name] += entry.hours
+    hours_by_period.each do |period_key, hours_by_activity_id|
+      category_breakdown[period_key] = {}
+      hours_by_activity_id.each do |activity_id, hrs|
+        name = name_for.call(activity_id)
+        category_breakdown[period_key][name] = (category_breakdown[period_key][name] || 0) + hrs
+      end
     end
 
-    activity_totals = Hash.new(0)
-    category_breakdown.each_value do |activities|
-      activities.each { |activity, hours| activity_totals[activity] += hours }
-    end
+    activity_totals = entries.reorder(nil).group(:activity_id).sum(:hours)
+                              .each_with_object(Hash.new(0.0)) { |(id, hrs), h| h[name_for.call(id)] += hrs }
     activities = activity_totals.sort_by { |_, total| -total }.map(&:first)
 
     generate_stacked_bar_chart_from_matrix(category_breakdown.keys, activities, category_breakdown, grouping)
@@ -946,53 +981,41 @@ class TeamAnalyticsController < ApplicationController
   def generate_activity_pivot_table(time_entries, grouping)
     Rails.logger.info "Generating activity pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
     
-    # Get all time entries with their details
-    entries_with_details = time_entries.includes(:activity).map do |entry|
-      period_key = get_activity_period_key(entry.spent_on, grouping)
-      activity_name = entry.activity&.name || 'No Activity'
-      {
-        period_key: period_key,
-        activity_name: activity_name,
-        activity_id: entry.activity_id,
-        hours: entry.hours
-      }
-    end
-    
-    # Get unique periods and activities
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    activities = entries_with_details.map { |e| e[:activity_name] }.uniq
-    
-    # Initialize matrix with zeros
+    # Period totals and per-(period, activity) cells are computed via SQL SUM — not by
+    # accumulating `entry.hours` (a SQL float column) row-by-row in Ruby — so every number here
+    # lines up exactly with Total Hours / Max-Min Month and the donut chart.
+    period_totals = pivot_bucket_hours_totals(time_entries, grouping)
+    hours_by_period = pivot_bucket_category_totals(time_entries, grouping, :activity_id)
+
+    periods = period_totals.keys.sort
+    activity_ids_with_entries = hours_by_period.values.flat_map(&:keys).uniq.compact
+    activity_names_by_id = Enumeration.where(id: activity_ids_with_entries).pluck(:id, :name).to_h
+    name_for = ->(id) { activity_names_by_id[id] || 'No Activity' }
+
+    # Matrix keyed by activity name for lookup (matches existing view code)
     matrix_data = {}
-    periods.each { |period| matrix_data[period] = {} }
-    
-    # Populate matrix data
-    entries_with_details.each do |entry|
-      period = entry[:period_key]
-      activity = entry[:activity_name]
-      matrix_data[period][activity] ||= 0
-      matrix_data[period][activity] += entry[:hours]
-    end
-    
-    # Calculate totals
-    period_totals = {}
-    activity_totals = {}
-    grand_total = 0
-    
     periods.each do |period|
-      period_totals[period] = activities.sum { |activity| matrix_data[period][activity] || 0 }
-      grand_total += period_totals[period]
+      matrix_data[period] = {}
+      (hours_by_period[period] || {}).each do |activity_id, hrs|
+        name = name_for.call(activity_id)
+        matrix_data[period][name] = (matrix_data[period][name] || 0) + hrs
+      end
     end
-    
-    activities.each do |activity|
-      activity_totals[activity] = periods.sum { |period| matrix_data[period][activity] || 0 }
+
+    # Activity totals + grand total via a single SQL SUM query each (not summed from the
+    # per-bucket hashes above).
+    sql_activity_totals = time_entries.reorder(nil).group(:activity_id).sum(:hours)
+    activity_totals = Hash.new(0.0)
+    activity_ids = {}
+    sql_activity_totals.each do |activity_id, hours|
+      name = name_for.call(activity_id)
+      activity_totals[name] += hours
+      activity_ids[name] ||= activity_id
     end
+    grand_total = time_entries.reorder(nil).sum(:hours)
 
     # Keep activity order consistent across stacked chart and donut chart colors
-    activities = activities.sort_by { |activity| -(activity_totals[activity] || 0) }
-
-    # name => id (first-seen), used to regroup this pivot by Activity Group without a second DB scan
-    activity_ids = entries_with_details.each_with_object({}) { |e, h| h[e[:activity_name]] ||= e[:activity_id] }
+    activities = activity_totals.keys.sort_by { |activity| -(activity_totals[activity] || 0) }
 
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
@@ -1255,59 +1278,46 @@ class TeamAnalyticsController < ApplicationController
     
     # Get personal project IDs if configured
     personal_project_ids = @selected_team.personal_project_ids
-    
-    # Get all time entries with their details
-    entries_with_details = time_entries.includes(:project).map do |entry|
-      period_key = get_activity_period_key(entry.spent_on, grouping)
-      
-      # Group personal projects under "Personal Projects"
-      project_name = if personal_project_ids.include?(entry.project_id)
-                       'Personal Projects'
-                     else
-                       entry.project&.name || 'No Project'
-                     end
-      
-      {
-        period_key: period_key,
-        project_name: project_name,
-        hours: entry.hours
-      }
+
+    # Period totals and per-(period, project) cells are computed via SQL SUM — not by
+    # accumulating `entry.hours` (a SQL float column) row-by-row in Ruby — so every number here
+    # lines up exactly with Total Hours / Max-Min Month and the donut chart.
+    period_totals = pivot_bucket_hours_totals(time_entries, grouping)
+    hours_by_period = pivot_bucket_category_totals(time_entries, grouping, :project_id)
+
+    periods = period_totals.keys.sort
+    project_ids_with_entries = hours_by_period.values.flat_map(&:keys).uniq.compact
+    project_names_by_id = Project.where(id: project_ids_with_entries).pluck(:id, :name).to_h
+    name_for = lambda do |id|
+      return 'No Project' if id.nil?
+      return 'Personal Projects' if personal_project_ids.include?(id)
+      project_names_by_id[id] || 'No Project'
     end
-    
-    # Get unique periods and projects (temporarily without sorting projects)
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    projects_unsorted = entries_with_details.map { |e| e[:project_name] }.uniq
-    
-    # Initialize matrix with zeros
+
+    # Matrix keyed by project name for lookup (matches existing view code). Multiple personal
+    # sub-projects collapse into a single "Personal Projects" cell, so this += combines at most a
+    # handful of already-SQL-summed values per period — nowhere near the per-entry Ruby-loop
+    # accumulation this replaces.
     matrix_data = {}
-    periods.each { |period| matrix_data[period] = {} }
-    
-    # Populate matrix data
-    entries_with_details.each do |entry|
-      period = entry[:period_key]
-      project = entry[:project_name]
-      matrix_data[period][project] ||= 0
-      matrix_data[period][project] += entry[:hours]
-    end
-    
-    # Calculate project totals first
-    project_totals = {}
-    projects_unsorted.each do |project|
-      project_totals[project] = periods.sum { |period| matrix_data[period][project] || 0 }
-    end
-    
-    # Sort projects by total hours descending (largest to smallest)
-    projects = projects_unsorted.sort_by { |project| -project_totals[project] }
-    
-    # Calculate period totals and grand total
-    period_totals = {}
-    grand_total = 0
-    
     periods.each do |period|
-      period_totals[period] = projects.sum { |project| matrix_data[period][project] || 0 }
-      grand_total += period_totals[period]
+      matrix_data[period] = {}
+      (hours_by_period[period] || {}).each do |project_id, hrs|
+        name = name_for.call(project_id)
+        matrix_data[period][name] = (matrix_data[period][name] || 0) + hrs
+      end
     end
-    
+
+    # Project totals + grand total via a single SQL SUM query each.
+    sql_project_totals = time_entries.reorder(nil).group(:project_id).sum(:hours)
+    project_totals = Hash.new(0.0)
+    sql_project_totals.each do |project_id, hours|
+      project_totals[name_for.call(project_id)] += hours
+    end
+    grand_total = time_entries.reorder(nil).sum(:hours)
+
+    # Sort projects by total hours descending (largest to smallest)
+    projects = project_totals.keys.sort_by { |project| -project_totals[project] }
+
     {
       periods: periods.map { |p| format_activity_period_display(p, grouping) },
       projects: projects,
@@ -1333,26 +1343,23 @@ class TeamAnalyticsController < ApplicationController
   def generate_member_pivot_table(time_entries, grouping)
     Rails.logger.info "Generating member pivot table for grouping: #{grouping}, entries count: #{time_entries.count}"
     
-    # Get all time entries with their details, including user IDs
-    entries_with_details = time_entries.includes(:user).map do |entry|
-      period_key = get_activity_period_key(entry.spent_on, grouping)
-      user = entry.user
-      # `locked` flags a member whose account is locked but who logged time in this range -
-      # e.g. left the company mid-period. Surfaced as a badge on the Summary cards + Team
-      # Members popup (see ta_locked_badge / taLockedBadgeHtml) so it isn't mistaken for a
-      # currently-active member.
-      member_data = { id: user.id, name: user.name, locked: user.locked? }
+    # Period totals and per-(period, member) cells are computed via SQL SUM — not by
+    # accumulating `entry.hours` (a SQL float column) row-by-row in Ruby — so every number here
+    # lines up exactly with Total Hours / Max-Min Month and the donut chart.
+    period_totals = pivot_bucket_hours_totals(time_entries, grouping)
+    hours_by_period = pivot_bucket_category_totals(time_entries, grouping, :user_id)
 
-      {
-        period_key: period_key,
-        member_data: member_data,
-        hours: entry.hours
-      }
+    periods = period_totals.keys.sort
+    user_ids_with_entries = hours_by_period.values.flat_map(&:keys).uniq
+    users_by_id = User.where(id: user_ids_with_entries).index_by(&:id)
+    # `locked` flags a member whose account is locked but who logged time in this range -
+    # e.g. left the company mid-period. Surfaced as a badge on the Summary cards + Team
+    # Members popup (see ta_locked_badge / taLockedBadgeHtml) so it isn't mistaken for a
+    # currently-active member.
+    members_with_entries = user_ids_with_entries.map do |uid|
+      user = users_by_id[uid]
+      { id: uid, name: user.name, locked: user.locked? }
     end
-
-    # Get unique periods and members (temporarily without sorting members)
-    periods = entries_with_details.map { |e| e[:period_key] }.uniq.sort
-    members_with_entries = entries_with_details.map { |e| e[:member_data] }.uniq { |m| m[:id] }
 
     # Include all active team members so those with 0 logged hours still appear
     active_members = @team_members
@@ -1361,18 +1368,16 @@ class TeamAnalyticsController < ApplicationController
 
     members_unsorted = (active_members + members_with_entries).uniq { |m| m[:id] }
 
-    # Initialize matrix with zeros (use member name as key for lookup)
+    # Matrix keyed by member name for lookup (matches existing view code)
     matrix_data = {}
-    periods.each { |period| matrix_data[period] = {} }
-    
-    # Populate matrix data (use member name as key)
-    entries_with_details.each do |entry|
-      period = entry[:period_key]
-      member_name = entry[:member_data][:name]
-      matrix_data[period][member_name] ||= 0
-      matrix_data[period][member_name] += entry[:hours]
+    periods.each do |period|
+      matrix_data[period] = {}
+      members_unsorted.each do |member_data|
+        hrs = hours_by_period.dig(period, member_data[:id])
+        matrix_data[period][member_data[:name]] = hrs if hrs
+      end
     end
-    
+
     # Calculate member totals via SQL SUM to avoid accumulated float errors.
     # reorder(nil) strips any ORDER BY from the scope so MySQL ONLY_FULL_GROUP_BY is satisfied.
     # Keyed by member id (not name) so two members who happen to share a display name can
@@ -1386,11 +1391,6 @@ class TeamAnalyticsController < ApplicationController
     # Sort members by total hours descending (largest to smallest), then by name
     members = members_unsorted.sort_by { |member_data| [-member_totals[member_data[:id]], member_data[:name]] }
 
-    # Calculate period totals and grand total
-    period_totals = {}
-    periods.each do |period|
-      period_totals[period] = members.sum { |member_data| matrix_data[period][member_data[:name]] || 0 }
-    end
     grand_total = time_entries.reorder(nil).sum(:hours)
     
     {
@@ -1471,7 +1471,12 @@ class TeamAnalyticsController < ApplicationController
   def generate_member_pivot_chart_data(pivot_data, chart_type, member_view_state = 'detailed')
     case chart_type
     when 'bar'
-      member_names = pivot_data[:members].map { |member| member[:name] }
+      # Drop 0-hour members (e.g. active members with no logged time in range) from the stacked
+      # chart/legend, same as the donut chart's `m.hours > 0` filter — they'd otherwise show up
+      # as an empty legend entry with no visible segment in any bar.
+      member_names = pivot_data[:members]
+        .select { |member| (pivot_data[:member_totals][member[:id]] || 0) > 0 }
+        .map { |member| member[:name] }
       generate_stacked_bar_chart_from_matrix(pivot_data[:raw_periods], member_names, pivot_data[:matrix], @grouping)
     else
       generate_pivot_line_chart(pivot_data[:raw_periods], pivot_data[:period_totals])

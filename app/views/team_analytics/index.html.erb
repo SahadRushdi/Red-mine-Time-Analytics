@@ -1440,9 +1440,13 @@
   }
 
   function formatTeamHours(hours) {
-    var value = parseFloat(hours || 0);
-    var h = Math.floor(value);
-    var m = Math.round((value - h) * 60);
+    // Round to whole minutes FIRST, then split into h/m — rounding h and m separately (the old
+    // `Math.floor(value)` / `Math.round((value - h) * 60)` approach) lets the minutes remainder
+    // round up to 60 (e.g. 259.999 -> "259:60") instead of carrying into the next hour. Matches
+    // the server-side format_hours helper (TimeAnalyticsHelper#format_hours).
+    var totalMinutes = Math.round(parseFloat(hours || 0) * 60);
+    var h = Math.floor(totalMinutes / 60);
+    var m = totalMinutes % 60;
     return h + ':' + (m < 10 ? '0' : '') + m;
   }
 
@@ -1478,14 +1482,21 @@
     <% end %>
 
     var colors = labels.map(function(_, index) { return TEAM_TABLEAU10[index % TEAM_TABLEAU10.length]; });
-    renderTeamDonutFromArrays(labels, values, colors);
+    // Use the same server-computed grand_total (SQL SUM over @time_entries) that the Detailed
+    // table/Summary percentages already use, instead of re-summing `values` in JS — so the donut
+    // can never drift from the rest of the page even by a rounding hair.
+    var serverTotal = <%= @grand_total.to_f.to_json %>;
+    renderTeamDonutFromArrays(labels, values, colors, serverTotal);
   }
 
   // Builds/replaces the team donut chart + its legend from plain labels/values/colors arrays.
   // Shared by initTeamDonutChart (per-activity/project/member, from server-rendered data) and
   // the Activity tab's "Grouped" view (from the client-side regrouped pivot, see
-  // team_activity_groups.js + rebuildTeamChartsForGroups below).
-  function renderTeamDonutFromArrays(labels, values, colors) {
+  // team_activity_groups.js + rebuildTeamChartsForGroups below). `serverTotal`, when given, is
+  // used as the displayed/percentage-basis total instead of summing `values` in JS — the Grouped
+  // view has no single server total to hand in (it's regrouped entirely client-side), so it
+  // omits the arg and falls back to the JS sum.
+  function renderTeamDonutFromArrays(labels, values, colors, serverTotal) {
     var donutCanvas = document.getElementById('team-donut-chart');
     if (!donutCanvas) return;
 
@@ -1516,7 +1527,7 @@
       return;
     }
 
-    var total = values.reduce(function(sum, val) { return sum + val; }, 0);
+    var total = typeof serverTotal === 'number' ? serverTotal : values.reduce(function(sum, val) { return sum + val; }, 0);
     var totalDisplay = document.getElementById('team-total-hours-display');
     if (totalDisplay) totalDisplay.textContent = formatTeamHours(total);
 
