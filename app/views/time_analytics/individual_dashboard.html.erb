@@ -974,9 +974,13 @@ var timeAnalyticsChart = null;
 var timespanFormat = '<%= Setting.timespan_format %>';
 
 function formatHours(hours) {
-  var value = parseFloat(hours || 0);
-  var h = Math.floor(value);
-  var m = Math.round((value - h) * 60);
+  // Round to whole minutes FIRST, then split into h/m — rounding h and m separately (the old
+  // `Math.floor(value)` / `Math.round((value - h) * 60)` approach) lets the minutes remainder
+  // round up to 60 (e.g. 259.999 -> "259:60") instead of carrying into the next hour. Matches
+  // the server-side format_hours helper (TimeAnalyticsHelper#format_hours).
+  var totalMinutes = Math.round(parseFloat(hours || 0) * 60);
+  var h = Math.floor(totalMinutes / 60);
+  var m = totalMinutes % 60;
   return h + ':' + (m < 10 ? '0' : '') + m;
 }
 
