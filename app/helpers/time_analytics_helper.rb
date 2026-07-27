@@ -591,9 +591,27 @@ module TimeAnalyticsHelper
   # Renders the "Logged Days / Active Days" text (e.g. "18/20") shown per member on the
   # My Team Members summary table, replacing the hours-share percentage badge there. Plain
   # bold grey text, not a colour-coded pill - the colour coding is reserved for percentages.
-  def ta_active_days_text(logged_days, active_days)
+  #
+  # off_day_dates are dates the member logged time on outside their active days (weekends,
+  # holidays, full-day leave). They are excluded from the numerator but named in the tooltip so
+  # the hours are not silently dropped - they still count toward Total Hours.
+  def ta_active_days_text(logged_days, active_days, off_day_dates = nil)
     content_tag(:span, "#{format_active_days_value(logged_days)}/#{format_active_days_value(active_days)}",
-                class: 'text-sm font-normal text-gray-500 whitespace-nowrap')
+                class: 'text-sm font-normal text-gray-500 whitespace-nowrap',
+                title: ta_active_days_tooltip(off_day_dates))
+  end
+
+  # Tooltip for the badge above. Always names what the two numbers are; appends the excluded
+  # off-day logs when there are any, listing the first few dates and summarising the rest.
+  def ta_active_days_tooltip(off_day_dates)
+    label = l(:label_logged_days_over_active_days)
+    dates = Array(off_day_dates)
+    return label if dates.empty?
+
+    shown = dates.first(3).map { |date| format_date(date) }
+    shown << l(:label_off_day_logs_more, total: dates.size - 3) if dates.size > 3
+
+    "#{label} • #{l(:label_off_day_logs_excluded, total: dates.size, dates: shown.join(', '))}"
   end
 
   # Whole numbers print without a decimal (e.g. "38"); fractional values (half-day leaves)

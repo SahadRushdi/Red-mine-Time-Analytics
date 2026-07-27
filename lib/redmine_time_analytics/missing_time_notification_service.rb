@@ -140,12 +140,16 @@ module RedmineTimeAnalytics
                                         .pluck(:user_id, :start_date, :end_date)
       excluded_dates_by_user = dates_by_user_from_windows(exclusion_windows, working_dates)
 
-      leave_dates_by_user = TaLeaveRecord.confirmed
-                                         .where(leave_date: working_dates, user_id: team_user_ids)
-                                         .pluck(:user_id, :leave_date)
-                                         .each_with_object(Hash.new { |h, k| h[k] = [] }) do |(uid, d), h|
-                                           h[uid] << d.to_date
-                                         end
+      # Only FULL-day leave exempts a date. A half-day leave still leaves the member working the
+      # other half, so they still owe a time log - previously any confirmed record, half-day
+      # included, silently suppressed the reminder for the whole day.
+      leave_dates_by_user = TaLeaveRecord.leave_fractions_by_user(
+        user_ids: team_user_ids, from_date: working_dates.min, to_date: working_dates.max
+      ).each_with_object(Hash.new { |h, k| h[k] = [] }) do |(uid, fractions_by_date), h|
+        fractions_by_date.each do |date, fraction|
+          h[uid] << date if fraction >= TaLeaveRecord::FULL_DAY_FRACTION
+        end
+      end
 
       logged_dates_by_user = TimeEntry.joins(:project)
                                       .where(user_id: team_user_ids, spent_on: working_dates)

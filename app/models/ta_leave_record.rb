@@ -205,6 +205,21 @@ class TaLeaveRecord < ActiveRecord::Base
       totals
     end
 
+    # { user_id => { Date => leave_fraction } } for confirmed leave in the range. Unlike
+    # total_leave_days_for_users this keeps the per-date fraction, so callers can distinguish a
+    # half-day from a full day: the Team Dashboard credits a logged day 1.0 - fraction, while the
+    # missing-time reminder exempts a date only when the fraction is a full day.
+    def leave_fractions_by_user(user_ids:, from_date:, to_date:)
+      return {} if user_ids.blank?
+
+      confirmed.where(user_id: user_ids)
+               .within_range(from_date, to_date)
+               .pluck(:user_id, :leave_date, :leave_fraction)
+               .each_with_object(Hash.new { |hash, key| hash[key] = {} }) do |(user_id, date, fraction), hash|
+                 hash[user_id][date.to_date] = fraction.to_f
+               end
+    end
+
     def sum_for_users_in_period(user_ids:, from_date:, to_date:)
       total_leave_days_for_users(
         user_ids: user_ids,
