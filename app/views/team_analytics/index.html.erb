@@ -1173,7 +1173,7 @@
                  hours: hours.to_f,
                  memberId: member_id,
                  url: member ? my_time_path(@member_dashboard_params.merge(user_id: member_id)) : nil,
-                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_logged_days[member_id].to_i, @member_active_days[member_id].to_f) : nil,
+                 activeDaysHtml: @member_active_days ? ta_active_days_text(@member_logged_days[member_id].to_f, @member_active_days[member_id].to_f, @member_off_day_logs[member_id]) : nil,
                  locked: member ? member[:locked] : false
                }
              end
@@ -1823,7 +1823,7 @@
         '<h3 class="text-base font-medium text-gray-900">' + nameHtml + '</h3>' +
         '<div class="flex items-center gap-3">' +
           '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
-          '<span class="min-w-[56px] text-right" title="Logged Days / Active Days">' + activeDaysHtml + '</span>' +
+          '<span class="min-w-[56px] text-right">' + activeDaysHtml + '</span>' +
           toggleHtml +
         '</div>' +
       '</div>' +

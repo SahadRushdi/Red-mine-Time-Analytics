@@ -206,15 +206,7 @@ class TeamAnalyticsController < ApplicationController
         hash[user_id] = [@active_days_count - member_leave_days[user_id].to_f, 0].max.round(2)
       end
 
-      # Logged Days = distinct days within the period with at least one time log (SUM(hours) > 0),
-      # counted from the already-filtered @time_entries scope (active projects, exclusions applied).
-      # reorder(nil)/unscope(:includes) strip the eager-load and ORDER BY carried over from
-      # @time_entries - Postgres rejects an ORDER BY column that isn't grouped or aggregated.
-      @member_logged_days = @time_entries.unscope(:includes).reorder(nil)
-                                          .group(:user_id, :spent_on)
-                                          .having('SUM(time_entries.hours) > 0')
-                                          .pluck(:user_id, :spent_on)
-                                          .each_with_object(Hash.new(0)) { |(user_id, _date), hash| hash[user_id] += 1 }
+      @member_logged_days, @member_off_day_logs = calculate_member_logged_days
 
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
@@ -1806,6 +1798,55 @@ class TeamAnalyticsController < ApplicationController
       .count
 
     active_count
+  end
+
+  # Logged Days for the Members summary badge, measured in the SAME day-equivalent units as the
+  # Active Days denominator: a logged working day earns 1.0, a logged half-day leave earns 0.5
+  # (the member still works the other half), and full-day leaves / weekends / holidays earn
+  # nothing. Counting whole dates here instead would let the numerator exceed the denominator -
+  # e.g. logging on a weekend used to render "20/18" - and would hide a real logging gap for
+  # anyone with leave in the period.
+  #
+  # Returns [logged_days_by_user, off_day_dates_by_user]; the second value feeds the badge
+  # tooltip so hours logged outside the active-day set are surfaced rather than silently dropped.
+  # Those hours still count toward Total Hours - only the day *count* excludes them.
+  def calculate_member_logged_days
+    leave_fractions = TaLeaveRecord.leave_fractions_by_user(
+      user_ids: @member_ids, from_date: @from, to_date: @to
+    )
+
+    logged_days = Hash.new(0.0)
+    off_day_dates = Hash.new { |hash, key| hash[key] = [] }
+
+    # reorder(nil)/unscope(:includes) strip the eager-load and ORDER BY carried over from
+    # @time_entries - Postgres rejects an ORDER BY column that isn't grouped or aggregated.
+    # The scope is already filtered to active projects with exclusions applied.
+    @time_entries.unscope(:includes).reorder(nil)
+                 .group(:user_id, :spent_on)
+                 .having('SUM(time_entries.hours) > 0')
+                 .pluck(:user_id, :spent_on)
+                 .each do |user_id, date|
+      spent_on = date.to_date
+      # @period_working_day_checker is the pre-fetched O(1) lambda built once for @from..@to;
+      # leave falling on a weekend/holiday never applies, matching total_leave_days_for_users.
+      credit = if @period_working_day_checker.call(spent_on)
+                 1.0 - leave_fractions.dig(user_id, spent_on).to_f
+               else
+                 0.0
+               end
+
+      if credit > 0
+        logged_days[user_id] += credit
+      else
+        off_day_dates[user_id] << spent_on
+      end
+    end
+
+    # Mirrors the rounding applied to the Active Days denominator so both sides format alike.
+    logged_days.transform_values! { |value| value.round(2) }
+    off_day_dates.each_value(&:sort!)
+
+    [logged_days, off_day_dates]
   end
 
   def calculate_team_leave_days_for_period(period_start, period_end)
