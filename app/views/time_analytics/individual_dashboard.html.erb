@@ -898,7 +898,6 @@ function toggleHolidays() {
                    id: issue&.id,
                    trackerName: issue&.tracker&.name,
                    projectName: issue&.project&.name,
-                   statusName: issue&.status&.name,
                    subject: issue&.subject,
                    url: issue ? issue_path(issue) : nil
                  }
@@ -1971,15 +1970,11 @@ function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
   var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
   var color = colors[index % colors.length];
   var titleHtml;
-  var statusHtml = '';
   if (item.hasIssue) {
     titleHtml = '<span class="ts-tracker-badge">' + taEscapeHtml(item.trackerName) + '</span> ' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
-      '<a href="' + item.url + '" target="_blank" class="text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>' +
       (item.projectName ? ' <span class="ts-project-badge">' + taEscapeHtml(item.projectName) + '</span>' : '');
-    if (item.statusName) {
-      statusHtml = '<span class="ts-status-badge">' + taEscapeHtml(item.statusName) + '</span>';
-    }
   } else {
     titleHtml = taEscapeHtml(item.name);
   }
@@ -1987,7 +1982,6 @@ function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
     '<div class="flex items-center justify-between mb-1 gap-3">' +
       '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
       '<div class="flex items-center gap-3 flex-shrink-0">' +
-        statusHtml +
         '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
         '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
       '</div>' +

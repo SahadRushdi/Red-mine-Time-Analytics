@@ -49,8 +49,12 @@
       <a href="#" id="missing-time-cron-add" class="icon icon-add" style="display:inline-block;margin-top:2px;">Add schedule</a>
       <br><em class="info" style="display:block;margin-top:4px;">
         One cron expression per row. Format: <code>minute hour day month weekday</code>
-        (e.g. <code>0 18 * * 5</code> = Friday 6 PM, <code>0 10 * * 6</code> = Saturday 10 AM, <code>0 8 * * 1</code> = Monday 8 AM).
+        (e.g. <code>0 10 * * 6</code> = Saturday 10 AM, <code>0 8 * * 1</code> = Monday 8 AM).
         Changes take effect on the next scheduler tick — no restart needed.
+      </em>
+      <br><em class="info" style="display:block;margin-top:4px;">
+        A separate, automatic end-of-month compliance check also runs every last Friday of the
+        month at 6 PM — it does not need a row here.
       </em>
     </span>
   </p>
