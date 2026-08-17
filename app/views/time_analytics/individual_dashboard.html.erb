@@ -1853,6 +1853,9 @@ var activityGroupedController = window.TeamActivityGroups.createGroupedActivityC
           // Suppressed in favour of the DOM legend below, which highlights on click rather
           // than hiding the dataset. Without this the canvas draws its own legend too.
           legend: { display: false },
+          tooltips: {
+            callbacks: window.TeamActivityGroups.buildStackedBarTooltipCallbacks(formatHours)
+          },
           scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
         }
       });

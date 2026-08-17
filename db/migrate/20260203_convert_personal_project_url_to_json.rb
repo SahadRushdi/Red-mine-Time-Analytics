@@ -1,4 +1,8 @@
 class ConvertPersonalProjectUrlToJson < ActiveRecord::Migration[6.1]
+  class MigrationTaTeam < ActiveRecord::Base
+    self.table_name = 'ta_teams'
+  end
+
   def up
     # Add new column for storing multiple URLs as JSON
     unless column_exists?(:ta_teams, :personal_project_urls)
@@ -6,8 +10,8 @@ class ConvertPersonalProjectUrlToJson < ActiveRecord::Migration[6.1]
     end
     
     # Migrate existing single URL to JSON array format
-    TaTeam.reset_column_information
-    TaTeam.find_each do |team|
+    MigrationTaTeam.reset_column_information
+    MigrationTaTeam.find_each do |team|
       if team.personal_project_url.present?
         team.update_column(:personal_project_urls, [team.personal_project_url].to_json)
       end
@@ -26,8 +30,8 @@ class ConvertPersonalProjectUrlToJson < ActiveRecord::Migration[6.1]
     end
     
     # Migrate back to single URL (take first URL from array)
-    TaTeam.reset_column_information
-    TaTeam.find_each do |team|
+    MigrationTaTeam.reset_column_information
+    MigrationTaTeam.find_each do |team|
       if team.personal_project_urls.present?
         urls = JSON.parse(team.personal_project_urls) rescue []
         team.update_column(:personal_project_url, urls.first) if urls.any?

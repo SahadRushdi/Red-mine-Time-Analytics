@@ -14,7 +14,9 @@ require 'digest'
 # immediately; ExternalTimeCacheScheduler#sweep! refreshes stale rows in the background
 # (current ranges every 10 min, past ranges every 24h) and prunes rows that stop being read.
 class TaExternalTimeCache < ActiveRecord::Base
-  serialize :payload, JSON
+  # Rails 8 removed the positional `serialize :payload, JSON` API. The public JSON
+  # attribute type works with the text column used by both Rails 6.1 and Rails 8.
+  attribute :payload, :json
 
   # Hardcoded defaults (see plan: config exposed as constants, no admin UI).
   CURRENT_RANGE_REFRESH = 10.minutes

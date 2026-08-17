@@ -149,6 +149,27 @@
     return { labels: pageLabels, datasets: datasets };
   }
 
+  // Chart.js v2 callback used by both dashboards when the Grouped tab rebuilds the stacked
+  // chart in the browser. The rebuilt datasets contain decimal hours for plotting, so format
+  // only the tooltip text to match the H:MM convention used throughout the dashboards.
+  function buildStackedBarTooltipCallbacks(formatHours) {
+    return {
+      label: function (tooltipItem, data) {
+        if (!tooltipItem || !data || !data.datasets) return '';
+
+        var dataset = data.datasets[tooltipItem.datasetIndex];
+        if (!dataset) return '';
+
+        var label = dataset.label || '';
+        var value = tooltipItem.yLabel !== undefined
+          ? tooltipItem.yLabel
+          : (dataset.data && dataset.data[tooltipItem.index]);
+
+        return value === undefined ? label : label + ': ' + formatHours(value);
+      }
+    };
+  }
+
   // Wires up the Activity "Grouped" tab + "Customize groups" popup for a page, on top of the pure
   // functions above. Both the Team Dashboard and Individual Dashboard call this with their own
   // element ids/callbacks (chart internals — canvas ids, Chart.js instance globals — differ per
@@ -340,6 +361,7 @@
     renderGroupedTableHtml: renderGroupedTableHtml,
     buildDonutDatasets: buildDonutDatasets,
     buildStackedBarChartData: buildStackedBarChartData,
+    buildStackedBarTooltipCallbacks: buildStackedBarTooltipCallbacks,
     createGroupedActivityController: createGroupedActivityController
   };
 })(window);

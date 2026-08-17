@@ -104,9 +104,9 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
    bundle install
    ```
 
-3. Run migrations (if any):
+3. Run migrations from the Redmine root:
    ```bash
-   bundle exec rake redmine:plugins:migrate RAILS_ENV=production
+   RAILS_ENV=production bundle exec rake redmine:plugins:migrate NAME=redmine_time_analytics
    ```
 
 4. Restart your Redmine instance.
@@ -228,10 +228,18 @@ Advanced Chart.js integration with custom wrapper and intelligent defaults:
 - Consistent date grouping logic across view modes
 - Optimized for performance with large datasets
 
-## Requirements
+## Requirements and Compatibility
 
 - Redmine 5.0.0 or higher
+- Compatibility targets: Redmine 5.1.4 (Rails 6.1) and Redmine 7.0.0 (Rails 8.1)
+- Use a Ruby and database version supported by the selected Redmine release
 - Modern web browser with JavaScript enabled
+
+Run the plugin's host-integrated compatibility tests from the Redmine root:
+
+```bash
+RAILS_ENV=test bundle exec rake redmine:plugins:test NAME=redmine_time_analytics
+```
 
 ## Key Features Highlights
 
@@ -288,11 +296,6 @@ All dates display in a user-friendly format:
 - **Monthly views**: "December 2025"
 
 Consistent formatting across tables, charts, and exports ensures clarity and professionalism.
-
-## Requirements
-
-- Redmine 5.0.0 or higher
-- Modern web browser with JavaScript enabled
 
 ## Development
 
