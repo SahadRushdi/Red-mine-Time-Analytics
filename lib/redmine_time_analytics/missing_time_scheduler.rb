@@ -118,7 +118,9 @@ module RedmineTimeAnalytics
       end
 
       def scheduler_disabled?
-        ENV['MISSING_TIME_SCHEDULER_DISABLED'].to_s == '1' || File.basename($PROGRAM_NAME) == 'rake'
+        ENV['MISSING_TIME_SCHEDULER_DISABLED'].to_s == '1' ||
+          File.basename($PROGRAM_NAME) == 'rake' ||
+          (defined?(Rails) && Rails.env.test?)
       end
     end
   end

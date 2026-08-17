@@ -288,7 +288,7 @@
                   <td class="px-4 py-3 text-right">
                     <% if setting_id.present? %>
                       <button type="button"
-                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>', 'exclusions')"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_setting_path(setting_id) %>', '<%= form_authenticity_token %>', 'exclusions')"
                               class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                               title="Delete"
                               aria-label="Delete exclusion">
@@ -424,7 +424,7 @@
                   <td class="px-4 py-3 text-right">
                     <% if setting_id.present? %>
                       <button type="button"
-                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_settings_path(id: setting_id) %>', '<%= form_authenticity_token %>', 'super-users')"
+                              onclick="event.stopPropagation(); teamSettingsDelete(<%= setting_id %>, '<%= admin_ta_team_setting_path(setting_id) %>', '<%= form_authenticity_token %>', 'super-users')"
                               class="ta-inline-icon-btn ta-inline-icon-btn--danger"
                               title="Delete"
                               aria-label="Delete super user">

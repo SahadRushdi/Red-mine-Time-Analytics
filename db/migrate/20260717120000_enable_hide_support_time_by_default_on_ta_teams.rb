@@ -1,15 +1,19 @@
 class EnableHideSupportTimeByDefaultOnTaTeams < ActiveRecord::Migration[6.1]
+  class MigrationTaTeam < ActiveRecord::Base
+    self.table_name = 'ta_teams'
+  end
+
   def up
     return unless column_exists?(:ta_teams, :hide_support_time)
 
     # New teams pick this up automatically via the column default (TaTeam.new reads it).
     change_column_default :ta_teams, :hide_support_time, from: false, to: true
-    TaTeam.reset_column_information
+    MigrationTaTeam.reset_column_information
 
     # Every existing team was created under the old `false` default, so bring them in line -
     # without this the change would only apply to teams created from now on. update_all skips
     # callbacks/validations (none are relevant here) and quotes the boolean per adapter.
-    TaTeam.where(hide_support_time: false).update_all(hide_support_time: true)
+    MigrationTaTeam.where(hide_support_time: false).update_all(hide_support_time: true)
   end
 
   def down

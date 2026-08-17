@@ -33,8 +33,9 @@ Redmine::Plugin.register :redmine_time_analytics do
   name 'Redmine Time Analytics Plugin'
   author 'Sahad Rushdi'
   description 'Comprehensive time tracking analytics and reporting for Redmine'
-  version '3.0.0'
+  version '3.0.1'
   url 'https://github.com/SahadRushdi/Red-mine-Time-Analytics'
+  requires_redmine version_or_higher: '5.0.0'
   settings partial: 'redmine_time_analytics_settings',
            default: {
              'missing_time_recipients' => '',
