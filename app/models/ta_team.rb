@@ -30,8 +30,9 @@ class TaTeam < ActiveRecord::Base
   # Safe attributes for mass assignment
   safe_attributes 'name', 'parent_team_id', 'description', 'personal_project_urls', 'hide_support_time'
   
-  # Serialize personal_project_urls as JSON array
-  serialize :personal_project_urls, JSON
+  # Use Active Record's public JSON attribute type instead of the legacy positional
+  # serialize coder API removed by Rails 8. Existing text-column JSON remains compatible.
+  attribute :personal_project_urls, :json
 
   # Scopes
   scope :root_teams, -> { where(parent_team_id: nil) }

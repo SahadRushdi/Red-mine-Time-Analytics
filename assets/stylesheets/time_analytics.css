@@ -2044,6 +2044,18 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   letter-spacing: 0.025em !important;
 }
 
+/* === Project Badge (gray pill) === */
+.ts-project-badge {
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  background-color: #f3f4f6 !important;
+  color: #4b5563 !important;
+}
+
 /* === Flowbite delete confirmation modal (My Work Log) === */
 #deleteModal button,
 #deleteModal button:hover,

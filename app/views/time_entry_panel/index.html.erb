@@ -423,11 +423,6 @@
                       </td>
                       <td class="px-4 py-3">
                         <div class="flex items-start gap-1.5">
-                          <% if issue.priority.try(:position).to_i >= 3 %>
-                            <svg class="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style="color:#ef4444;" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                            </svg>
-                          <% end %>
                           <div>
                             <span class="ts-tracker-badge"><%= issue.tracker.name %></span>
                             <%= link_to "##{issue.id}", issue_path(issue), target: '_blank',
@@ -439,7 +434,9 @@
                           </div>
                         </div>
                       </td>
-                      <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap"><%= issue.project.name %></td>
+                      <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                        <span class="ts-project-badge"><%= issue.project.name %></span>
+                      </td>
                       <td class="px-4 py-3">
                         <span class="ts-status-badge"><%= issue.status.name %></span>
                       </td>
@@ -646,11 +643,6 @@
                     data-last-updated="<%= (@issue_last_activity[issue.id] || issue.updated_on).to_i %>">
                 <td class="px-4 py-3">
                   <div class="flex items-start gap-1.5">
-                    <% if issue.priority.try(:position).to_i >= 3 %>
-                      <svg class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: #ef4444;" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                      </svg>
-                    <% end %>
                     <div>
                       <span class="ts-tracker-badge"><%= issue.tracker.name %></span>
                       <%= link_to "##{issue.id}", issue_path(issue), target: '_blank',
@@ -660,7 +652,9 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-3 text-gray-600"><%= issue.project.name %></td>
+                <td class="px-4 py-3 text-gray-600">
+                  <span class="ts-project-badge"><%= issue.project.name %></span>
+                </td>
                 <td class="px-4 py-3 text-gray-600"><%= issue.assigned_to ? h(issue.assigned_to.name) : '-' %></td>
                 <td class="px-4 py-3">
                   <span class="ts-status-badge"><%= issue.status.name %></span>

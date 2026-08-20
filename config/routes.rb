@@ -19,7 +19,7 @@ RedmineApp::Application.routes.draw do
   patch 'time_entry_panel/entry/:id', to: 'time_entry_panel#update_entry', as: :tep_entry_update
   delete 'time_entry_panel/entry/:id', to: 'time_entry_panel#destroy_entry', as: :tep_entry_destroy
   
-  resources :custom_holidays do
+  resources :custom_holidays, only: [:index, :new, :create, :edit, :update, :destroy] do
     collection do
       post :import_csv
     end
@@ -66,9 +66,7 @@ RedmineApp::Application.routes.draw do
       post :reorder
     end
   end
-  resource :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy] do
-    get :index, on: :collection
-  end
+  resources :admin_ta_team_settings, path: 'admin/ta_team_settings', only: [:index, :create, :destroy]
   get 'admin/leave_count', to: 'admin_leave_count#index', as: :admin_leave_count
   post 'admin/leave_count', to: 'admin_leave_count#create'
   post 'admin/leave_count/sync_leave_inbox', to: 'admin_leave_count#sync_leave_inbox', as: :admin_leave_count_sync_leave_inbox
@@ -79,9 +77,4 @@ RedmineApp::Application.routes.draw do
   get 'admin/leave_count/oauth_callback', to: 'admin_leave_count#oauth_callback', as: :admin_leave_count_oauth_callback
   post 'webhooks/leave_email/google_apps_script', to: 'leave_webhooks#google_apps_script', as: :leave_google_apps_script_webhook
   
-  resources :custom_holidays do
-    collection do
-      post :import_csv
-    end
-  end
 end

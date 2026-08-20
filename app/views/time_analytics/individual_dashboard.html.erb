@@ -897,6 +897,7 @@ function toggleHolidays() {
                    hasIssue: issue.present?,
                    id: issue&.id,
                    trackerName: issue&.tracker&.name,
+                   projectName: issue&.project&.name,
                    subject: issue&.subject,
                    url: issue ? issue_path(issue) : nil
                  }
@@ -1852,6 +1853,9 @@ var activityGroupedController = window.TeamActivityGroups.createGroupedActivityC
           // Suppressed in favour of the DOM legend below, which highlights on click rather
           // than hiding the dataset. Without this the canvas draws its own legend too.
           legend: { display: false },
+          tooltips: {
+            callbacks: window.TeamActivityGroups.buildStackedBarTooltipCallbacks(formatHours)
+          },
           scales: { xAxes: [{ stacked: true }], yAxes: [{ stacked: true }] }
         }
       });
@@ -1972,7 +1976,8 @@ function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
   if (item.hasIssue) {
     titleHtml = '<span class="ts-tracker-badge">' + taEscapeHtml(item.trackerName) + '</span> ' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
-      '<a href="' + item.url + '" target="_blank" class="text-sm !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>';
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + taEscapeHtml(item.subject) + '</a>' +
+      (item.projectName ? ' <span class="ts-project-badge">' + taEscapeHtml(item.projectName) + '</span>' : '');
   } else {
     titleHtml = taEscapeHtml(item.name);
   }
@@ -2030,7 +2035,10 @@ function initSummaryTable(viewId, renderFn) {
     perPage: <%= @limit %>,
     sortField: 'hours',
     sortDir: 'desc',
-    onRender: function () { taUpdateSummarySortButtonsUI(viewId); }
+    onRender: function () {
+      taUpdateSummarySortButtonsUI(viewId);
+      if (window.StatusColors) { window.StatusColors.apply(); }
+    }
   });
   taSummaryTable.render();
 }

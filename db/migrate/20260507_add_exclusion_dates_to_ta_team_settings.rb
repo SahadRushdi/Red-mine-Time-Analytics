@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 class AddExclusionDatesToTaTeamSettings < ActiveRecord::Migration[6.1]
+  class MigrationTaTeamSetting < ActiveRecord::Base
+    self.table_name = 'ta_team_settings'
+  end
+
   def up
     add_column :ta_team_settings, :start_date, :date unless column_exists?(:ta_team_settings, :start_date)
     add_column :ta_team_settings, :end_date, :date unless column_exists?(:ta_team_settings, :end_date)
 
     if column_exists?(:ta_team_settings, :start_date)
-      TaTeamSetting.reset_column_information
-      TaTeamSetting.where(setting_type: 'exclusion').find_each do |setting|
+      MigrationTaTeamSetting.reset_column_information
+      MigrationTaTeamSetting.where(setting_type: 'exclusion').find_each do |setting|
         next if setting.start_date.present?
 
         setting.update_columns(start_date: setting.created_at&.to_date || Date.current)
