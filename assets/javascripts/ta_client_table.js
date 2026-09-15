@@ -49,6 +49,56 @@
     return escapeEl.innerHTML;
   }
 
+  // Chevron icon shared by every expandable row (Team Dashboard's Project/Activity row
+  // drill-down). Deliberately a plain <svg>, never a <button> — Redmine's base theme paints
+  // every real <button> blue on hover/focus (button:hover, button:focus { background-color:
+  // #004dc2 } in the core theme), which is exactly what a <button>-based toggle picked up.
+  // My Work Log's row-expand chevron (time_entry_panel/index.html.erb) uses this same
+  // plain-svg-inside-a-clickable-row approach for the same reason. Rotates via the
+  // .ts-row-chevron-open class (time_analytics.css) instead of a default-rotated state, so it
+  // points right when collapsed and down when expanded — matching My Work Log exactly.
+  function chevronIconHtml() {
+    return '<svg class="ts-row-chevron w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+      '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>' +
+    '</svg>';
+  }
+
+  // Reusable issue-row renderer for the Team Dashboard's Project/Activity drill-down (Phase 1).
+  // Modeled on the Individual Dashboard's taIssueSummaryCardHtml (individual_dashboard.html.erb)
+  // — same tracker badge + clickable "#id: subject" opening in a new tab, same hours/share
+  // badge/distribution bar — but the only pill shown is Assignee (the Issue's own "Assigned to"
+  // field), never Project/Activity/Status: a project or activity is already implied by the
+  // row's place in the drill-down, and one issue can log time under several activities so an
+  // Activity pill here would be misleading.
+  // item: { id, subject, trackerName, url, hours, assigneeName }
+  function issueRowHtml(item, percentage, color) {
+    var titleHtml = '<span class="ts-tracker-badge">' + escapeHtml(item.trackerName) + '</span> ' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
+      '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + escapeHtml(item.subject) + '</a>' +
+      (item.assigneeName ? ' <span class="ts-assignee-badge">' + escapeHtml(item.assigneeName) + '</span>' : '');
+    return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '">' +
+      '<div class="flex items-center justify-between mb-1 gap-3">' +
+        '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
+        '<span class="text-base font-semibold text-gray-900 flex-shrink-0">' + formatHours(item.hours) + '</span>' +
+      '</div>' +
+      '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+        '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Renders a list of issue items (from issue_breakdown's JSON response) as a single HTML
+  // string, computing each row's share of the list's own total (not the page grand total —
+  // the drill-down only ever shows the issues within the expanded project/activity).
+  function issueListHtml(items, colors) {
+    var total = items.reduce(function (sum, item) { return sum + (item.hours || 0); }, 0);
+    return items.map(function (item, index) {
+      var percentage = total > 0 ? (item.hours / total * 100) : 0;
+      var color = colors[index % colors.length];
+      return issueRowHtml(item, percentage, color);
+    }).join('');
+  }
+
   // options:
   //   getItems()          -> full array of plain data objects (already includes everything
   //                          renderRow needs, e.g. pre-rendered HTML fragments for links/badges)
@@ -272,4 +322,7 @@
   global.taSortableThHtml = sortableThHtml;
   global.taFormatHours = formatHours;
   global.taEscapeHtml = escapeHtml;
+  global.taChevronIconHtml = chevronIconHtml;
+  global.taIssueRowHtml = issueRowHtml;
+  global.taIssueListHtml = issueListHtml;
 })(window);

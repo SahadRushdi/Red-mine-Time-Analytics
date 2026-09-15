@@ -910,8 +910,10 @@
       </div>
 
       <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
-      <div id="team-activity-summary-view" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>" class="px-4 py-4">
-        <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
+      <div id="team-activity-summary-view"
+           style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>" class="px-4 py-4"
+           data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+        <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f, activityId: @activity_pivot_data[:activity_ids][name] } } }.to_json %>
         <div id="team-activity-summary-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
         <div id="team-activity-summary-cards" class="space-y-2 px-2"></div>
         <div class="pagination-wrapper">
@@ -1032,8 +1034,9 @@
       </div>
 
       <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
-      <div id="team-project-summary-view" style="display: none;" class="px-4 py-4">
-        <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f } } }.to_json %>
+      <div id="team-project-summary-view" style="display: none;" class="px-4 py-4"
+           data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+        <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f, projectIds: @project_ids_by_name[name] || [] } } }.to_json %>
         <div id="team-project-summary-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
         <div id="team-project-summary-cards" class="space-y-2 px-2"></div>
         <div class="pagination-wrapper">
@@ -1382,9 +1385,11 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     <% if @view_mode == 'activity' %>
-      initTeamSummaryTable('team-activity-summary', taTeamSummaryCardHtml);
+      initTeamSummaryTable('team-activity-summary', taActivitySummaryCardHtml);
+      initExpandableSummaryRows('team-activity-summary-cards', 'team-activity-summary-view');
     <% elsif @view_mode == 'project' %>
-      initTeamSummaryTable('team-project-summary', taTeamSummaryCardHtml);
+      initTeamSummaryTable('team-project-summary', taProjectSummaryCardHtml);
+      initExpandableSummaryRows('team-project-summary-cards', 'team-project-summary-view');
     <% elsif @view_mode == 'members' %>
       initTeamSummaryTable('team-member-summary', taTeamMemberSummaryCardHtml, taMemberDedupeKey);
       initTeamMonthlyAvgTable();
@@ -1787,24 +1792,6 @@
   // reads the same full dataset, not the DOM) is never limited to whatever page is on screen.
   var TA_TEAM_SUMMARY_COLORS = ['#4E79A7', '#F28E2B', '#E15759', '#76B7B2', '#59A14F', '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'];
 
-  function taTeamSummaryCardHtml(item, index, grandTotal, colors) {
-    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
-    var color = colors[index % colors.length];
-    var name = taEscapeHtml(item.name);
-    return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
-      '<div class="flex items-center justify-between mb-1 gap-3">' +
-        '<h3 class="text-base font-medium text-gray-900">' + name + '</h3>' +
-        '<div class="flex items-center gap-3">' +
-          '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
-          '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
-        '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
-      '</div>' +
-    '</div>';
-  }
-
   function taTeamMemberSummaryCardHtml(item, index, grandTotal, colors) {
     var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
     var color = colors[index % colors.length];
@@ -1831,6 +1818,169 @@
         '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
       '</div>' +
     '</div>';
+  }
+
+  // ── Project/Activity row drill-down (Phase 1) ────────────────────────────────────────────
+  // Project tab: each row expands directly into the issues logged against that project.
+  // Activity tab: each row expands into the projects that received time under it (plain
+  // name+hours, no bar), and each of those expands into its issues — same issue-row style as
+  // the Project tab. Both levels share one delegated click handler per container (see
+  // initExpandableSummaryRows) since TaClientTable fully re-renders the card list on every
+  // sort/page change, so listeners must live on the container, not the rows.
+  function taProjectSummaryCardHtml(item, index, grandTotal, colors) {
+    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+    var color = colors[index % colors.length];
+    var name = taEscapeHtml(item.name);
+    var idsAttr = taEscapeHtml(JSON.stringify(item.projectIds || []));
+    return '<div class="ts-expandable-row" data-project-ids=\'' + idsAttr + '\'>' +
+      '<div class="ts-row-header bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200 cursor-pointer" data-hours="' + item.hours + '" data-name="' + name + '">' +
+        '<div class="flex items-center justify-between mb-1 gap-3">' +
+          '<h3 class="text-base font-medium text-gray-900 flex items-center gap-2">' + taChevronIconHtml() + '<span>' + name + '</span></h3>' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+            '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+          '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ts-row-details hidden"></div>' +
+    '</div>';
+  }
+
+  function taActivitySummaryCardHtml(item, index, grandTotal, colors) {
+    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+    var color = colors[index % colors.length];
+    var name = taEscapeHtml(item.name);
+    var activityIdAttr = (item.activityId === null || item.activityId === undefined) ? '' : item.activityId;
+    return '<div class="ts-expandable-row" data-activity-id="' + activityIdAttr + '">' +
+      '<div class="ts-row-header bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200 cursor-pointer" data-hours="' + item.hours + '" data-name="' + name + '">' +
+        '<div class="flex items-center justify-between mb-1 gap-3">' +
+          '<h3 class="text-base font-medium text-gray-900 flex items-center gap-2">' + taChevronIconHtml() + '<span>' + name + '</span></h3>' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+            '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+          '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ts-row-details hidden"></div>' +
+    '</div>';
+  }
+
+  // Mid-tier row (Activity tab only): plain name + hours, no bar/badge, matching the Figma.
+  function taActivityProjectRowHtml(item) {
+    var name = taEscapeHtml(item.name);
+    var idsAttr = taEscapeHtml(JSON.stringify(item.ids || []));
+    return '<div class="ts-expandable-row" data-project-ids=\'' + idsAttr + '\'>' +
+      '<div class="ts-row-header flex items-center justify-between py-1 px-1 hover:bg-gray-50 rounded-lg cursor-pointer">' +
+        '<span class="flex items-center gap-2 text-sm text-gray-700">' + taChevronIconHtml() + '<span>' + name + '</span></span>' +
+        '<span class="text-sm font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
+      '</div>' +
+      '<div class="ts-row-details hidden"></div>' +
+    '</div>';
+  }
+
+  // Figures out which endpoint/params a row's chevron should fetch, purely from the row's own
+  // data attributes plus (for a nested project row under an Activity) its closest ancestor
+  // activity id — so one handler serves both the Project tab (one level) and the Activity tab
+  // (two levels) without threading extra state through the render functions above.
+  function taRowFetchSpec(rowEl) {
+    var params = new URLSearchParams();
+    getTempExcludedIds().forEach(function(id) { params.append('temp_excluded_ids[]', id); });
+
+    if (rowEl.hasAttribute('data-project-ids')) {
+      var ids = JSON.parse(rowEl.getAttribute('data-project-ids') || '[]');
+      if (ids.length) {
+        ids.forEach(function(id) { params.append('project_ids[]', id); });
+      } else {
+        params.append('no_project', '1');
+      }
+      var activityAncestor = rowEl.closest('[data-activity-id]');
+      if (activityAncestor) {
+        var activityId = activityAncestor.getAttribute('data-activity-id');
+        if (activityId) { params.append('activity_ids[]', activityId); } else { params.append('no_activity', '1'); }
+      }
+      return { endpoint: '<%= team_analytics_issue_breakdown_path %>', params: params, kind: 'issues' };
+    }
+
+    if (rowEl.hasAttribute('data-activity-id')) {
+      var activityId2 = rowEl.getAttribute('data-activity-id');
+      if (activityId2) { params.append('activity_ids[]', activityId2); } else { params.append('no_activity', '1'); }
+      return { endpoint: '<%= team_analytics_activity_projects_path %>', params: params, kind: 'projects' };
+    }
+
+    return null;
+  }
+
+  function taRowRequestParams(containerEl, params) {
+    ['team-id', 'filter', 'from', 'to'].forEach(function(attr) {
+      var val = containerEl.getAttribute('data-' + attr);
+      if (val) params.append(attr.replace('team-id', 'team_id'), val);
+    });
+    return params;
+  }
+
+  // Delegated click handler for one Summary card container (#team-project-summary-cards or
+  // #team-activity-summary-cards). Rebinding is unnecessary across TaClientTable re-renders
+  // since the listener lives on the container itself, not on the rows it replaces.
+  function initExpandableSummaryRows(containerId, viewId) {
+    var container = document.getElementById(containerId);
+    var viewEl = document.getElementById(viewId);
+    if (!container || !viewEl) return;
+
+    container.addEventListener('click', function(event) {
+      // The whole row header is clickable (matching My Work Log's row-expand behavior) — not
+      // just the chevron icon.
+      var header = event.target.closest('.ts-row-header');
+      if (!header) return;
+
+      var rowEl = header.closest('.ts-expandable-row');
+      var details = rowEl.querySelector(':scope > .ts-row-details');
+      var chevron = header.querySelector('.ts-row-chevron');
+      if (!details) return;
+
+      var nowHidden = details.classList.toggle('hidden');
+      var expanded = !nowHidden;
+      if (chevron) chevron.classList.toggle('ts-row-chevron-open', expanded);
+
+      if (expanded && details.getAttribute('data-loaded') !== '1') {
+        taLoadRowDetails(rowEl, details, viewEl);
+      }
+    });
+  }
+
+  function taLoadRowDetails(rowEl, details, viewEl) {
+    var spec = taRowFetchSpec(rowEl);
+    if (!spec) return;
+
+    details.innerHTML = '<div class="px-2 py-2 text-sm text-gray-500">' + taEscapeHtml(TA_ROW_BREAKDOWN_LOADING) + '</div>';
+    var params = taRowRequestParams(viewEl, spec.params);
+
+    fetch(spec.endpoint + '?' + params.toString(), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        var items = data.items || [];
+        if (!items.length) {
+          var emptyLabel = spec.kind === 'projects' ? TA_ROW_BREAKDOWN_EMPTY_PROJECTS : TA_ROW_BREAKDOWN_EMPTY_ISSUES;
+          details.innerHTML = '<div class="px-2 py-2 text-sm text-gray-500">' + taEscapeHtml(emptyLabel) + '</div>';
+        } else if (spec.kind === 'projects') {
+          details.innerHTML = items.map(taActivityProjectRowHtml).join('');
+        } else {
+          details.innerHTML = taIssueListHtml(items, TA_TEAM_SUMMARY_COLORS);
+        }
+        details.setAttribute('data-loaded', '1');
+        if (window.StatusColors) { window.StatusColors.apply(); }
+      })
+      .catch(function() {
+        details.innerHTML = '<div class="px-2 py-2 text-sm text-red-500">' + taEscapeHtml(TA_ROW_BREAKDOWN_ERROR) + '</div>';
+      });
   }
 
   function initTeamSummaryTable(prefix, renderFn, dedupeKeyFn) {
@@ -2472,6 +2622,12 @@
   var BREAKDOWN_EXPAND_TITLE = '<%= j l(:label_member_breakdown_expand) %>';
   var BREAKDOWN_SCROLL_UP = '<%= j l(:label_member_breakdown_scroll_up) %>';
   var BREAKDOWN_SCROLL_DOWN = '<%= j l(:label_member_breakdown_scroll_down) %>';
+
+  // Row-level issue drill-down (Project/Activity Summary row expand)
+  var TA_ROW_BREAKDOWN_LOADING = '<%= j l(:label_ta_row_breakdown_loading) %>';
+  var TA_ROW_BREAKDOWN_ERROR = '<%= j l(:label_ta_row_breakdown_error) %>';
+  var TA_ROW_BREAKDOWN_EMPTY_ISSUES = '<%= j l(:label_ta_row_breakdown_empty_issues) %>';
+  var TA_ROW_BREAKDOWN_EMPTY_PROJECTS = '<%= j l(:label_ta_row_breakdown_empty_projects) %>';
 
   function bdEscape(value) {
     var div = document.createElement('div');
