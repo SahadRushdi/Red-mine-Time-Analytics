@@ -258,6 +258,22 @@
     });
   }
 
+  // Collapses every expanded row in a Summary card container, at any nesting depth — a nested
+  // row (e.g. a Project sub-row under an Activity) is itself just another .ts-expandable-row,
+  // so one flat querySelectorAll covers every level with no recursion needed. Already-fetched
+  // .ts-row-details content is left in place (just hidden), matching the behavior of collapsing
+  // a single row — re-expanding won't re-fetch.
+  function collapseAllRows(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.ts-expandable-row').forEach(function(rowEl) {
+      var details = rowEl.querySelector(':scope > .ts-row-details');
+      var chevron = rowEl.querySelector(':scope > .ts-row-header .ts-row-chevron');
+      if (details) details.classList.add('hidden');
+      if (chevron) chevron.classList.remove('ts-row-chevron-open');
+    });
+  }
+
   // options:
   //   getItems()          -> full array of plain data objects (already includes everything
   //                          renderRow needs, e.g. pre-rendered HTML fragments for links/badges)
@@ -487,4 +503,5 @@
   global.taExpandableSummaryCardHtml = expandableSummaryCardHtml;
   global.taSubRowHtml = subRowHtml;
   global.taInitExpandableSummaryRows = initExpandableSummaryRows;
+  global.taCollapseAllRows = collapseAllRows;
 })(window);

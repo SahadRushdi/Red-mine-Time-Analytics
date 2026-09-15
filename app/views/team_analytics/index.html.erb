@@ -874,6 +874,13 @@
                 <%= l(:label_customize_groups) %>
               </button>
             </div>
+            <div id="team-activity-collapse-all-wrapper" style="display: none;">
+              <button type="button" id="team-activity-collapse-all-btn" onclick="collapseAllTeamRows('team-activity');"
+                      title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+                      class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+                <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">unfold_less</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -915,7 +922,7 @@
            data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
         <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f, activityId: @activity_pivot_data[:activity_ids][name] } } }.to_json %>
         <div id="team-activity-summary-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
-        <div id="team-activity-summary-cards" class="space-y-2 px-2"></div>
+        <div id="team-activity-summary-cards" class="space-y-2 px-2 ta-summary-cards-scroll"></div>
         <div class="pagination-wrapper">
           <span id="team-activity-summary-pagination-links"></span>
           <div class="pagination-info" id="team-activity-summary-pagination-info"></div>
@@ -969,7 +976,7 @@
               <span class="text-xs text-gray-500">Total Hours</span>
             </div>
           </div>
-          <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
+          <div id="team-donut-legend" class="mt-4 space-y-1.5 text-sm ta-summary-cards-scroll"></div>
         </div>
         <%# Grouped tab, no custom groups configured yet — see rebuildTeamChartsForGroups() %>
         <div id="team-donut-no-groups-message" class="h-80 flex items-center justify-center" style="display:none;">
@@ -1017,6 +1024,13 @@
                 </button>
               </div>
             </div>
+            <div id="team-project-collapse-all-wrapper" style="display: none;">
+              <button type="button" id="team-project-collapse-all-btn" onclick="collapseAllTeamRows('team-project');"
+                      title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+                      class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+                <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">unfold_less</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1038,7 +1052,7 @@
            data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
         <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f, projectIds: @project_ids_by_name[name] || [] } } }.to_json %>
         <div id="team-project-summary-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
-        <div id="team-project-summary-cards" class="space-y-2 px-2"></div>
+        <div id="team-project-summary-cards" class="space-y-2 px-2 ta-summary-cards-scroll"></div>
         <div class="pagination-wrapper">
           <span id="team-project-summary-pagination-links"></span>
           <div class="pagination-info" id="team-project-summary-pagination-info"></div>
@@ -1067,7 +1081,7 @@
             <span class="text-xs text-gray-500">Total Hours</span>
           </div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 text-sm ta-summary-cards-scroll"></div>
       </div>
     </div>
   <% else %>
@@ -1182,7 +1196,7 @@
              end
            }.to_json %>
         <div id="team-member-summary-payload" data-payload='<%= member_summary_payload %>' style="display:none;"></div>
-        <div class="space-y-2 px-2">
+        <div class="space-y-2 px-2 ta-summary-cards-scroll">
           <div id="team-member-summary-cards"></div>
         </div>
         <div class="pagination-wrapper">
@@ -1273,7 +1287,7 @@
             <span class="text-xs text-gray-500">Total Hours</span>
           </div>
         </div>
-        <div id="team-donut-legend" class="mt-4 space-y-1.5 max-h-[28rem] overflow-y-auto text-sm"></div>
+        <div id="team-donut-legend" class="mt-4 space-y-1.5 text-sm ta-summary-cards-scroll"></div>
       </div>
     </div>
   <% else %>
@@ -1389,11 +1403,15 @@
       taInitExpandableSummaryRows('team-activity-summary-cards', 'team-activity-summary-view',
         { issue: '<%= team_analytics_issue_breakdown_path %>', projects: '<%= team_analytics_activity_projects_path %>' },
         { loading: '<%= j l(:label_ta_row_breakdown_loading) %>', error: '<%= j l(:label_ta_row_breakdown_error) %>', emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>', emptyProjects: '<%= j l(:label_ta_row_breakdown_empty_projects) %>' });
+      var teamActivitySummaryCards = document.getElementById('team-activity-summary-cards');
+      if (teamActivitySummaryCards) { teamActivitySummaryCards.addEventListener('click', function() { updateCollapseAllVisibility('team-activity'); }); }
     <% elsif @view_mode == 'project' %>
       initTeamSummaryTable('team-project-summary', taExpandableSummaryCardHtml);
       taInitExpandableSummaryRows('team-project-summary-cards', 'team-project-summary-view',
         { issue: '<%= team_analytics_issue_breakdown_path %>', projects: '<%= team_analytics_activity_projects_path %>' },
         { loading: '<%= j l(:label_ta_row_breakdown_loading) %>', error: '<%= j l(:label_ta_row_breakdown_error) %>', emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>', emptyProjects: '<%= j l(:label_ta_row_breakdown_empty_projects) %>' });
+      var teamProjectSummaryCards = document.getElementById('team-project-summary-cards');
+      if (teamProjectSummaryCards) { teamProjectSummaryCards.addEventListener('click', function() { updateCollapseAllVisibility('team-project'); }); }
     <% elsif @view_mode == 'members' %>
       initTeamSummaryTable('team-member-summary', taTeamMemberSummaryCardHtml, taMemberDedupeKey);
       initTeamMonthlyAvgTable();
@@ -1921,6 +1939,10 @@
     updateTeamPaginationInfo(viewType, 'detailed');
     if (viewType === 'member') hideMemberMonthlyAvgView();
     if (viewType === 'activity') { hideGroupedView(); restoreTeamChartsToActivities(); }
+    if (viewType === 'activity' || viewType === 'project') {
+      var collapseAllWrapper = document.getElementById(config.prefix + '-collapse-all-wrapper');
+      if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+    }
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'detailed';
@@ -1948,6 +1970,7 @@
     updateTeamPaginationInfo(viewType, 'summary');
     if (viewType === 'member') hideMemberMonthlyAvgView();
     if (viewType === 'activity') { hideGroupedView(); restoreTeamChartsToActivities(); }
+    if (viewType === 'activity' || viewType === 'project') { updateCollapseAllVisibility(config.prefix); }
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'summary';
@@ -2145,8 +2168,31 @@
   }
 
   function hideGroupedView() { teamGroupedActivity.hide(); }
-  function showGroupedView(options) { teamGroupedActivity.show(options); }
+  function showGroupedView(options) {
+    teamGroupedActivity.show(options);
+    var collapseAllWrapper = document.getElementById('team-activity-collapse-all-wrapper');
+    if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+  }
   function openCustomizeGroupsModal() { teamGroupedActivity.openCustomizeModal(); }
+
+  // Shows a tab's "Collapse all" icon (Activity or Project — the only two tabs with
+  // expandable Summary rows) only once at least one row is expanded (any nesting level counts
+  // as one flat .ts-expandable-row), hides it again once everything is collapsed. Re-run after
+  // every row click and whenever the Summary view becomes active again, since expand state
+  // persists in the DOM across view switches. `prefix` is the TEAM_VIEW_CONFIG prefix
+  // ('team-activity' / 'team-project').
+  function updateCollapseAllVisibility(prefix) {
+    var wrapper = document.getElementById(prefix + '-collapse-all-wrapper');
+    var container = document.getElementById(prefix + '-summary-cards');
+    if (!wrapper || !container) return;
+    var hasExpanded = !!container.querySelector('.ts-row-details:not(.hidden)');
+    wrapper.style.display = hasExpanded ? '' : 'none';
+  }
+
+  function collapseAllTeamRows(prefix) {
+    taCollapseAllRows(prefix + '-summary-cards');
+    updateCollapseAllVisibility(prefix);
+  }
 
   function csvEscape(value) {
     return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;

@@ -107,6 +107,7 @@ en:
   button_clear: "Clear"
   button_show_chart: "Show Chart"
   button_hide_chart: "Hide Chart"
+  button_collapse_all: "Collapse all"
   
   # Pagination
   label_per_page: "Per page:"

@@ -496,6 +496,12 @@ table.ta-support-cols-visible .ta-support-col {
   white-space: nowrap;
 }
 
+/* Caps the Summary tab's card list height so it scrolls internally instead of growing the page */
+.ta-summary-cards-scroll {
+  max-height: 28rem;
+  overflow-y: auto;
+}
+
 .ts-per-page-select {
   min-width: 5.25rem;
   height: 2.5rem;
