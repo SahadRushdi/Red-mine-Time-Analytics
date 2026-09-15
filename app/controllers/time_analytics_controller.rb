@@ -21,26 +21,14 @@ class TimeAnalyticsController < ApplicationController
 
   def individual_dashboard
     # Allow team leads to view their team members' dashboards
-    if params[:user_id].present?
-      @user = User.find_by(id: params[:user_id])
-      
-      # Verify access: user must be a team lead of the viewed user or an admin
-      unless user_can_view_member_dashboard?(@user)
-        render_403
-        return
-      end
-    else
-      @user = User.current
-    end
-    
+    @user = resolve_dashboard_user
+    return render_403 unless @user
+
     # Default to issue view
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
-    
+
     # Get time entries for the user with project visibility check
-    @time_entries = TimeEntry.joins(:project)
-                             .where(user: @user)
-                             .where(spent_on: @from..@to)
-                             .where(projects: { status: Project::STATUS_ACTIVE })
+    @time_entries = individual_time_entries_scope(@user)
                              .includes(:project, :issue, :activity)
                              .order('time_entries.spent_on DESC, time_entries.created_on DESC')
 
@@ -127,8 +115,9 @@ class TimeAnalyticsController < ApplicationController
       @matrix_data = @project_pivot_data[:matrix]
       @period_totals = @project_pivot_data[:period_totals]
       @project_totals = @project_pivot_data[:project_totals]
+      @project_ids_by_name = @project_pivot_data[:project_ids_by_name]
       @grand_total = @project_pivot_data[:grand_total]
-      
+
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
@@ -221,6 +210,83 @@ class TimeAnalyticsController < ApplicationController
   def custom_dashboard
     # Placeholder for future implementation
     render plain: "Custom Dashboard - Coming Soon"
+  end
+
+  # Lazy-loaded issue-level breakdown used by the Project tab's row expand and the Activity
+  # tab's Project sub-row expand (mirrors TeamAnalyticsController#issue_breakdown). One row per
+  # issue — no Assignee pill here, since every entry already belongs to the one dashboard user.
+  def issue_breakdown
+    target_user = resolve_dashboard_user
+    return render json: { error: 'Unauthorized' }, status: 403 unless target_user
+
+    scope = individual_time_entries_scope(target_user)
+    permitted = params.permit(:no_project, :no_activity, project_ids: [], activity_ids: [])
+
+    if permitted[:no_project].to_s == '1'
+      scope = scope.where(project_id: nil)
+    else
+      project_ids = Array(permitted[:project_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(project_id: project_ids) if project_ids.any?
+    end
+
+    if permitted[:no_activity].to_s == '1'
+      scope = scope.where(activity_id: nil)
+    else
+      activity_ids = Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(activity_id: activity_ids) if activity_ids.any?
+    end
+
+    issue_totals = scope.reorder(nil).group(:issue_id).sum(:hours).reject { |issue_id, _| issue_id.nil? }
+    issues = Issue.where(id: issue_totals.keys).includes(:tracker).index_by(&:id)
+    grand_total = issue_totals.values.sum
+
+    items = issue_totals.filter_map do |issue_id, hours|
+      issue = issues[issue_id]
+      next unless issue
+
+      {
+        id: issue.id,
+        subject: issue.subject,
+        trackerName: issue.tracker&.name,
+        url: issue_path(issue),
+        hours: hours.to_f
+      }
+    end.sort_by { |item| -item[:hours] }
+
+    render json: { grandTotal: grand_total.to_f, items: items }
+  end
+
+  # Lazy-loaded Project-level breakdown for the Activity tab's row expand (mirrors
+  # TeamAnalyticsController#activity_projects, minus "Personal Projects" collapsing — there's no
+  # such concept for an individual dashboard).
+  def activity_projects
+    target_user = resolve_dashboard_user
+    return render json: { error: 'Unauthorized' }, status: 403 unless target_user
+
+    scope = individual_time_entries_scope(target_user)
+    permitted = params.permit(:no_activity, activity_ids: [])
+    if permitted[:no_activity].to_s == '1'
+      scope = scope.where(activity_id: nil)
+    else
+      activity_ids = Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(activity_id: activity_ids) if activity_ids.any?
+    end
+
+    sql_project_totals = scope.reorder(nil).group(:project_id).sum(:hours)
+    project_names_by_id = Project.where(id: sql_project_totals.keys.compact).pluck(:id, :name).to_h
+    name_for = ->(id) { id.nil? ? 'No Project' : (project_names_by_id[id] || 'No Project') }
+
+    grouped = Hash.new { |h, k| h[k] = { name: k, hours: 0.0, ids: [] } }
+    sql_project_totals.each do |project_id, hours|
+      name = name_for.call(project_id)
+      grouped[name][:hours] += hours.to_f
+      grouped[name][:ids] << project_id if project_id
+    end
+
+    items = grouped.values.sort_by { |item| -item[:hours] }
+    grand_total = items.sum { |item| item[:hours] }
+
+    render json: { grandTotal: grand_total, items: items }
   end
 
   def export_csv
@@ -1765,11 +1831,16 @@ class TimeAnalyticsController < ApplicationController
       end
     end
 
-    # Project totals + grand total via a single SQL SUM query each.
+    # Project totals + grand total via a single SQL SUM query each. project_ids_by_name records
+    # each display name's underlying project id (nil for "No Project") — used by the Project
+    # tab's row expand to ask issue_breakdown for exactly the right project.
     sql_project_totals = time_entries.reorder(nil).group(:project_id).sum(:hours)
     project_totals = Hash.new(0.0)
+    project_ids_by_name = {}
     sql_project_totals.each do |project_id, hours|
-      project_totals[name_for.call(project_id)] += hours
+      name = name_for.call(project_id)
+      project_totals[name] += hours
+      project_ids_by_name[name] = project_id
     end
     grand_total = time_entries.reorder(nil).sum(:hours)
 
@@ -1782,6 +1853,7 @@ class TimeAnalyticsController < ApplicationController
       matrix: matrix_data,
       period_totals: period_totals,
       project_totals: project_totals,
+      project_ids_by_name: project_ids_by_name,
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }
@@ -2116,5 +2188,26 @@ class TimeAnalyticsController < ApplicationController
 
     accessible_team_ids = led_teams.flat_map { |team| [team.id] + team.all_descendants.map(&:id) }.uniq
     TaTeamMembership.where(team_id: accessible_team_ids, user_id: target_user.id).exists?
+  end
+
+  # Resolves which user's dashboard is being viewed — self by default, or (with
+  # user_can_view_member_dashboard? authorization) another user via params[:user_id]. Returns
+  # nil when a user_id was given but denied/not found, so callers can 403 either as a page
+  # (individual_dashboard) or as JSON (issue_breakdown/activity_projects).
+  def resolve_dashboard_user
+    return User.current if params[:user_id].blank?
+
+    target_user = User.find_by(id: params[:user_id])
+    user_can_view_member_dashboard?(target_user) ? target_user : nil
+  end
+
+  # The same project-visibility-scoped time-entry query individual_dashboard already builds,
+  # minus the .includes/.order only its own table needs — shared with issue_breakdown/
+  # activity_projects so their drill-down numbers always match the dashboard above them.
+  def individual_time_entries_scope(user)
+    TimeEntry.joins(:project)
+             .where(user: user)
+             .where(spent_on: @from..@to)
+             .where(projects: { status: Project::STATUS_ACTIVE })
   end
 end

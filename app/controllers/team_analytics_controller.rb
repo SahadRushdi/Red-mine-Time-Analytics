@@ -474,11 +474,12 @@ class TeamAnalyticsController < ApplicationController
     temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
     scope = team_scope_with_temp_exclusions(team, temp_excluded_ids)
 
-    scope = if permitted[:no_activity].to_s == '1'
-              scope.where(activity_id: nil)
-            else
-              scope.where(activity_id: Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?))
-            end
+    if permitted[:no_activity].to_s == '1'
+      scope = scope.where(activity_id: nil)
+    else
+      activity_ids = Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(activity_id: activity_ids) if activity_ids.any?
+    end
 
     personal_project_ids = team.personal_project_ids
     sql_project_totals = scope.reorder(nil).group(:project_id).sum(:hours)

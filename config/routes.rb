@@ -2,6 +2,8 @@ RedmineApp::Application.routes.draw do
   get 'time_analytics', to: 'time_analytics#index'
   get 'time_analytics/visualize', to: 'time_analytics#visualize', as: :time_entries_visualize
   get 'my/time', to: 'time_analytics#individual_dashboard', as: :my_time
+  get 'my/time/issue_breakdown', to: 'time_analytics#issue_breakdown', as: :my_time_issue_breakdown
+  get 'my/time/activity_projects', to: 'time_analytics#activity_projects', as: :my_time_activity_projects
   get 'time_analytics/custom_dashboard', to: 'time_analytics#custom_dashboard'
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
   get 'leaves', to: 'leaves#index', as: :leaves

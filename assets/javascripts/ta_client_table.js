@@ -63,40 +63,199 @@
     '</svg>';
   }
 
-  // Reusable issue-row renderer for the Team Dashboard's Project/Activity drill-down (Phase 1).
-  // Modeled on the Individual Dashboard's taIssueSummaryCardHtml (individual_dashboard.html.erb)
-  // — same tracker badge + clickable "#id: subject" opening in a new tab, same hours/share
-  // badge/distribution bar — but the only pill shown is Assignee (the Issue's own "Assigned to"
-  // field), never Project/Activity/Status: a project or activity is already implied by the
-  // row's place in the drill-down, and one issue can log time under several activities so an
-  // Activity pill here would be misleading.
+  // Reusable issue-row renderer for the Team/Individual dashboards' Project/Activity drill-down.
+  // Tracker badge + clickable "#id: subject" opening in a new tab (same link style as the
+  // Individual Dashboard's Issue tab) + hours. No distribution bar, no percentage pill, and the
+  // only pill shown is Assignee (the Issue's own "Assigned to" field) — never Project/Activity/
+  // Status: a project or activity is already implied by the row's place in the drill-down, one
+  // issue can log time under several activities so an Activity pill would be misleading, and a
+  // bare list of issues has no shared total for a bar/percentage to represent a share of.
   // item: { id, subject, trackerName, url, hours, assigneeName }
-  function issueRowHtml(item, percentage, color) {
+  function issueRowHtml(item) {
     var titleHtml = '<span class="ts-tracker-badge">' + escapeHtml(item.trackerName) + '</span> ' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + escapeHtml(item.subject) + '</a>' +
       (item.assigneeName ? ' <span class="ts-assignee-badge">' + escapeHtml(item.assigneeName) + '</span>' : '');
     return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '">' +
-      '<div class="flex items-center justify-between mb-1 gap-3">' +
+      '<div class="flex items-center justify-between gap-3">' +
         '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
         '<span class="text-base font-semibold text-gray-900 flex-shrink-0">' + formatHours(item.hours) + '</span>' +
-      '</div>' +
-      '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
-        '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
       '</div>' +
     '</div>';
   }
 
   // Renders a list of issue items (from issue_breakdown's JSON response) as a single HTML
-  // string, computing each row's share of the list's own total (not the page grand total —
-  // the drill-down only ever shows the issues within the expanded project/activity).
-  function issueListHtml(items, colors) {
-    var total = items.reduce(function (sum, item) { return sum + (item.hours || 0); }, 0);
-    return items.map(function (item, index) {
-      var percentage = total > 0 ? (item.hours / total * 100) : 0;
-      var color = colors[index % colors.length];
-      return issueRowHtml(item, percentage, color);
-    }).join('');
+  // string. No distribution bar/percentage here — those only apply one level up, where a row
+  // represents a share of the project/activity total; a bare list of issues has no such total.
+  function issueListHtml(items) {
+    return items.map(issueRowHtml).join('');
+  }
+
+  // ── Project/Activity row drill-down engine (Team + Individual dashboards) ────────────────
+  // Shared by both dashboards' Project/Activity Summary tables: a row expands (chevron, or a
+  // click anywhere in its header — matching My Work Log's row-expand behavior) to lazy-load
+  // either the issues under it (Project tab, or an Activity tab's project sub-row) or the
+  // projects under it (Activity tab's top-level row). Nothing here is dashboard-specific — the
+  // two endpoint URLs and the four label strings are supplied by the calling view, since this
+  // file is a plain static asset and can't call Rails route helpers or l().
+  function urlArrayParam(name) {
+    try { return new URLSearchParams(window.location.search).getAll(name); } catch (e) { return []; }
+  }
+
+  // Unified Project/Activity Summary card: chevron + name + hours + share badge + distribution
+  // bar, plus a hidden .ts-row-details container the row's own drill-down content lazy-loads
+  // into. Branches only on which identifying field is present: item.projectIds (array — Project
+  // tab rows, and an Activity tab's project sub-rows) or item.activityId (scalar or null —
+  // Activity tab's top-level rows).
+  function expandableSummaryCardHtml(item, index, grandTotal, colors) {
+    var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
+    var color = colors[index % colors.length];
+    var name = escapeHtml(item.name);
+    var idAttr;
+    if (item.projectIds !== undefined) {
+      idAttr = " data-project-ids='" + escapeHtml(JSON.stringify(item.projectIds || [])) + "'";
+    } else {
+      var activityIdAttr = (item.activityId === null || item.activityId === undefined) ? '' : item.activityId;
+      idAttr = ' data-activity-id="' + activityIdAttr + '"';
+    }
+    return '<div class="ts-expandable-row"' + idAttr + '>' +
+      '<div class="ts-row-header bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200 cursor-pointer" data-hours="' + item.hours + '" data-name="' + name + '">' +
+        '<div class="flex items-center justify-between mb-1 gap-3">' +
+          '<h3 class="text-base font-medium text-gray-900 flex items-center gap-2">' + chevronIconHtml() + '<span>' + name + '</span></h3>' +
+          '<div class="flex items-center gap-3">' +
+            '<span class="text-base font-semibold text-gray-900">' + formatHours(item.hours) + '</span>' +
+            '<span class="min-w-[45px] text-right">' + shareBadgeHtml(color, percentage) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
+          '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ts-row-details hidden"></div>' +
+    '</div>';
+  }
+
+  // Mid-tier row (Activity tab only): plain name + hours, no bar/badge, matching the Figma.
+  function subRowHtml(item) {
+    var name = escapeHtml(item.name);
+    var idsAttr = escapeHtml(JSON.stringify(item.ids || []));
+    return '<div class="ts-expandable-row" data-project-ids=\'' + idsAttr + '\'>' +
+      '<div class="ts-row-header flex items-center justify-between py-1 px-2 hover:bg-gray-50 rounded-lg cursor-pointer">' +
+        '<span class="flex items-center gap-2 text-base font-medium text-gray-900">' + chevronIconHtml() + '<span>' + name + '</span></span>' +
+        '<span class="text-base font-semibold text-gray-900">' + formatHours(item.hours) + '</span>' +
+      '</div>' +
+      '<div class="ts-row-details hidden"></div>' +
+    '</div>';
+  }
+
+  // Figures out which endpoint/params a row's chevron should fetch, purely from the row's own
+  // data attributes plus (for a nested project row under an Activity) its closest ancestor
+  // activity id — so one handler serves both single-level (Project tab) and two-level (Activity
+  // tab) drill-downs. `endpoints` is { issue, projects } — the two route paths.
+  function rowFetchSpec(rowEl, endpoints) {
+    var params = new URLSearchParams();
+    urlArrayParam('temp_excluded_ids[]').forEach(function(id) { params.append('temp_excluded_ids[]', id); });
+
+    if (rowEl.hasAttribute('data-project-ids')) {
+      var ids = JSON.parse(rowEl.getAttribute('data-project-ids') || '[]');
+      if (ids.length) {
+        ids.forEach(function(id) { params.append('project_ids[]', id); });
+      } else {
+        params.append('no_project', '1');
+      }
+      var activityAncestor = rowEl.closest('[data-activity-id]');
+      if (activityAncestor) {
+        var activityId = activityAncestor.getAttribute('data-activity-id');
+        if (activityId) { params.append('activity_ids[]', activityId); } else { params.append('no_activity', '1'); }
+      }
+      return { endpoint: endpoints.issue, params: params, kind: 'issues' };
+    }
+
+    if (rowEl.hasAttribute('data-activity-id')) {
+      var activityId2 = rowEl.getAttribute('data-activity-id');
+      if (activityId2) { params.append('activity_ids[]', activityId2); } else { params.append('no_activity', '1'); }
+      return { endpoint: endpoints.projects, params: params, kind: 'projects' };
+    }
+
+    return null;
+  }
+
+  // Forwards a container's own data-* attributes as query params, camelCase -> snake_case
+  // (data-team-id -> team_id, data-user-id -> user_id, data-filter -> filter, ...) so the same
+  // function serves every dashboard's own filter-state attributes without hardcoding names.
+  function rowRequestParams(containerEl, params) {
+    var dataset = containerEl.dataset || {};
+    Object.keys(dataset).forEach(function(key) {
+      var val = dataset[key];
+      if (!val) return;
+      var paramName = key.replace(/[A-Z]/g, function(m) { return '_' + m.toLowerCase(); });
+      params.append(paramName, val);
+    });
+    return params;
+  }
+
+  function loadRowDetails(rowEl, details, viewEl, endpoints, labels) {
+    var spec = rowFetchSpec(rowEl, endpoints);
+    if (!spec) return;
+
+    details.innerHTML = '<div class="px-2 py-2 text-sm text-gray-500">' + escapeHtml(labels.loading) + '</div>';
+    var params = rowRequestParams(viewEl, spec.params);
+
+    fetch(spec.endpoint + '?' + params.toString(), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function(response) {
+        if (!response.ok) { throw new Error('HTTP ' + response.status); }
+        return response.json();
+      })
+      .then(function(data) {
+        var items = data.items || [];
+        if (!items.length) {
+          var emptyLabel = spec.kind === 'projects' ? labels.emptyProjects : labels.emptyIssues;
+          details.innerHTML = '<div class="px-2 py-2 text-sm text-gray-500">' + escapeHtml(emptyLabel) + '</div>';
+        } else if (spec.kind === 'projects') {
+          details.innerHTML = items.map(subRowHtml).join('');
+        } else {
+          details.innerHTML = issueListHtml(items);
+        }
+        details.setAttribute('data-loaded', '1');
+        if (window.StatusColors) { window.StatusColors.apply(); }
+      })
+      .catch(function() {
+        details.innerHTML = '<div class="px-2 py-2 text-sm text-red-500">' + escapeHtml(labels.error) + '</div>';
+      });
+  }
+
+  // Delegated click handler for one Summary card container (e.g. #team-project-summary-cards
+  // or #project-summary-view-cards). Rebinding is unnecessary across TaClientTable re-renders
+  // since the listener lives on the container itself, not on the rows it replaces.
+  // endpoints: { issue, projects } route paths. labels: { loading, error, emptyIssues,
+  // emptyProjects } locale-backed strings — both supplied by the calling view.
+  function initExpandableSummaryRows(containerId, viewId, endpoints, labels) {
+    var container = document.getElementById(containerId);
+    var viewEl = document.getElementById(viewId);
+    if (!container || !viewEl) return;
+
+    container.addEventListener('click', function(event) {
+      // The whole row header is clickable (matching My Work Log's row-expand behavior) — not
+      // just the chevron icon.
+      var header = event.target.closest('.ts-row-header');
+      if (!header) return;
+
+      var rowEl = header.closest('.ts-expandable-row');
+      var details = rowEl.querySelector(':scope > .ts-row-details');
+      var chevron = header.querySelector('.ts-row-chevron');
+      if (!details) return;
+
+      var nowHidden = details.classList.toggle('hidden');
+      var expanded = !nowHidden;
+      if (chevron) chevron.classList.toggle('ts-row-chevron-open', expanded);
+
+      if (expanded && details.getAttribute('data-loaded') !== '1') {
+        loadRowDetails(rowEl, details, viewEl, endpoints, labels);
+      }
+    });
   }
 
   // options:
@@ -325,4 +484,7 @@
   global.taChevronIconHtml = chevronIconHtml;
   global.taIssueRowHtml = issueRowHtml;
   global.taIssueListHtml = issueListHtml;
+  global.taExpandableSummaryCardHtml = expandableSummaryCardHtml;
+  global.taSubRowHtml = subRowHtml;
+  global.taInitExpandableSummaryRows = initExpandableSummaryRows;
 })(window);

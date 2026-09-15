@@ -773,8 +773,10 @@ function toggleHolidays() {
         </div>
 
         <%# Summary View: Simple Activity Table (Hidden by default) — cards render client-side from the embedded payload %>
-        <div id="daily-summary-view" style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>">
-          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f } } }.to_json %>
+        <div id="daily-summary-view"
+             style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>"
+             data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+          <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f, activityId: @activity_pivot_data[:activity_ids][a] } } }.to_json %>
           <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
           <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
           <div class="pagination-wrapper">
@@ -818,8 +820,9 @@ function toggleHolidays() {
         </div>
 
         <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
-        <div id="project-summary-view" style="display: none;">
-          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f } } }.to_json %>
+        <div id="project-summary-view" style="display: none;"
+             data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+          <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f, projectIds: (id = @project_ids_by_name[p]) ? [id] : [] } } }.to_json %>
           <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
           <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4"></div>
           <div class="pagination-wrapper">
@@ -1885,7 +1888,10 @@ document.addEventListener('DOMContentLoaded', function() {
   <% if @view_mode == 'issue' %>
     initSummaryTable('<%= summary_view_id %>', taIssueSummaryCardHtml);
   <% elsif @view_mode == 'activity' || @view_mode == 'project' %>
-    initSummaryTable('<%= summary_view_id %>', taSummaryCardHtml);
+    initSummaryTable('<%= summary_view_id %>', taExpandableSummaryCardHtml);
+    taInitExpandableSummaryRows('<%= summary_view_id %>-cards', '<%= summary_view_id %>',
+      { issue: '<%= my_time_issue_breakdown_path %>', projects: '<%= my_time_activity_projects_path %>' },
+      { loading: '<%= j l(:label_ta_row_breakdown_loading) %>', error: '<%= j l(:label_ta_row_breakdown_error) %>', emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>', emptyProjects: '<%= j l(:label_ta_row_breakdown_empty_projects) %>' });
   <% end %>
   restoreActivityViewState();
   restoreProjectViewState();
@@ -1950,24 +1956,6 @@ if (document.readyState === 'complete') {
 // embedded payload, so a page never truncates the data (donut/legend code that reads the
 // same full dataset is unaffected by whichever page the user happens to be viewing).
 var taSummaryTable = null;
-
-function taSummaryCardHtml(item, index, grandTotal, colors) {
-  var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
-  var color = colors[index % colors.length];
-  var name = taEscapeHtml(item.name);
-  return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '" data-name="' + name + '">' +
-    '<div class="flex items-center justify-between mb-1 gap-3">' +
-      '<h3 class="text-base font-medium text-gray-900">' + name + '</h3>' +
-      '<div class="flex items-center gap-3">' +
-        '<span class="text-base font-semibold text-gray-900">' + taFormatHours(item.hours) + '</span>' +
-        '<span class="min-w-[45px] text-right">' + taShareBadgeHtml(color, percentage) + '</span>' +
-      '</div>' +
-    '</div>' +
-    '<div class="h-2 bg-gray-200 rounded-full overflow-hidden">' +
-      '<div class="h-full rounded-full transition-all duration-300" style="width: ' + percentage + '%; background-color: ' + color + ';"></div>' +
-    '</div>' +
-  '</div>';
-}
 
 function taIssueSummaryCardHtml(item, index, grandTotal, colors) {
   var percentage = grandTotal > 0 ? (item.hours / grandTotal * 100) : 0;
