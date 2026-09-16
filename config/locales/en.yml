@@ -37,6 +37,12 @@ en:
   label_ta_no_activity: "No Activity"
   label_ta_no_project: "No Project"
 
+  # Row-level issue drill-down (Team dashboard Project/Activity tabs — expand a row to see issues)
+  label_ta_row_breakdown_loading: "Loading…"
+  label_ta_row_breakdown_error: "Failed to load. Please try again."
+  label_ta_row_breakdown_empty_issues: "No issues found."
+  label_ta_row_breakdown_empty_projects: "No projects found."
+
   # Filter options
   label_last_7_days: "Last 7 days"
   label_last_14_days: "Last 14 days"
@@ -101,6 +107,7 @@ en:
   button_clear: "Clear"
   button_show_chart: "Show Chart"
   button_hide_chart: "Hide Chart"
+  button_collapse_all: "Collapse all"
   
   # Pagination
   label_per_page: "Per page:"

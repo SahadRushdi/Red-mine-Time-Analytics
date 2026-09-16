@@ -170,6 +170,7 @@ class TeamAnalyticsController < ApplicationController
       @matrix_data = @project_pivot_data[:matrix]
       @period_totals = @project_pivot_data[:period_totals]
       @project_totals = @project_pivot_data[:project_totals]
+      @project_ids_by_name = @project_pivot_data[:project_ids_by_name]
       @grand_total = @project_pivot_data[:grand_total]
 
       # For pagination in detailed view, count actual periods with data
@@ -351,18 +352,12 @@ class TeamAnalyticsController < ApplicationController
   # cards stay consistent with the summary table above. All three groupings are returned at once
   # so the client can switch between them without re-fetching.
   def member_breakdown
-    teams = User.current.accessible_team_dashboard_teams.to_a
-    return render json: { error: 'Unauthorized' }, status: 403 unless teams.any?
+    team = resolve_accessible_team
+    return render json: { error: 'Unauthorized' }, status: 403 unless team
 
-    team = select_accessible_team(teams)
-    return render json: { members: [] } unless team
-
-    team_members = team.hierarchical_members(@from, @to).to_a
     permitted = params.permit(temp_excluded_ids: [])
     temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
-
-    scope = team_time_entries_scope(team_members, @from, @to)
-    scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
+    scope = team_scope_with_temp_exclusions(team, temp_excluded_ids)
 
     # One grouped SUM per dimension — no per-member queries.
     issue_sums    = scope.group(:user_id, :issue_id).sum(:hours)
@@ -417,6 +412,90 @@ class TeamAnalyticsController < ApplicationController
     end
 
     render json: { members: members }
+  end
+
+  # Lazy-loaded issue-level breakdown used by the Project tab's row expand and the Activity
+  # tab's Project sub-row expand. Scoped by project_ids/no_project and/or activity_ids/
+  # no_activity — whichever the caller supplies — reusing the same team/date/exclusion scope as
+  # `index`. One row per issue; the Assignee pill comes straight from the Issue's own
+  # "Assigned to" field, not from whoever logged the time.
+  def issue_breakdown
+    team = resolve_accessible_team
+    return render json: { error: 'Unauthorized' }, status: 403 unless team
+
+    permitted = params.permit(:no_project, :no_activity, project_ids: [], activity_ids: [], temp_excluded_ids: [])
+    temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+    scope = team_scope_with_temp_exclusions(team, temp_excluded_ids)
+
+    if permitted[:no_project].to_s == '1'
+      scope = scope.where(project_id: nil)
+    else
+      project_ids = Array(permitted[:project_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(project_id: project_ids) if project_ids.any?
+    end
+
+    if permitted[:no_activity].to_s == '1'
+      scope = scope.where(activity_id: nil)
+    else
+      activity_ids = Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(activity_id: activity_ids) if activity_ids.any?
+    end
+
+    issue_totals = scope.reorder(nil).group(:issue_id).sum(:hours).reject { |issue_id, _| issue_id.nil? }
+    issues = Issue.where(id: issue_totals.keys).includes(:tracker, :assigned_to).index_by(&:id)
+    grand_total = issue_totals.values.sum
+
+    items = issue_totals.filter_map do |issue_id, hours|
+      issue = issues[issue_id]
+      next unless issue
+
+      {
+        id: issue.id,
+        subject: issue.subject,
+        trackerName: issue.tracker&.name,
+        url: issue_path(issue),
+        hours: hours.to_f,
+        assigneeName: issue.assigned_to&.name
+      }
+    end.sort_by { |item| -item[:hours] }
+
+    render json: { grandTotal: grand_total.to_f, items: items }
+  end
+
+  # Lazy-loaded Project-level breakdown for the Activity tab's row expand: given one or more
+  # activities, lists the projects that received time under them (collapsing personal
+  # sub-projects into "Personal Projects" the same way generate_project_pivot_table does), so
+  # the client can further expand each project into its issues via issue_breakdown.
+  def activity_projects
+    team = resolve_accessible_team
+    return render json: { error: 'Unauthorized' }, status: 403 unless team
+
+    permitted = params.permit(:no_activity, activity_ids: [], temp_excluded_ids: [])
+    temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+    scope = team_scope_with_temp_exclusions(team, temp_excluded_ids)
+
+    if permitted[:no_activity].to_s == '1'
+      scope = scope.where(activity_id: nil)
+    else
+      activity_ids = Array(permitted[:activity_ids]).map(&:to_i).reject(&:zero?)
+      scope = scope.where(activity_id: activity_ids) if activity_ids.any?
+    end
+
+    personal_project_ids = team.personal_project_ids
+    sql_project_totals = scope.reorder(nil).group(:project_id).sum(:hours)
+    project_names_by_id = Project.where(id: sql_project_totals.keys.compact).pluck(:id, :name).to_h
+
+    grouped = Hash.new { |h, k| h[k] = { name: k, hours: 0.0, ids: [] } }
+    sql_project_totals.each do |project_id, hours|
+      name = project_display_name_for(project_id, personal_project_ids, project_names_by_id)
+      grouped[name][:hours] += hours.to_f
+      grouped[name][:ids] << project_id if project_id
+    end
+
+    items = grouped.values.sort_by { |item| -item[:hours] }
+    grand_total = items.sum { |item| item[:hours] }
+
+    render json: { grandTotal: grand_total, items: items }
   end
 
   # Recursively build team node with sub-teams and members.
@@ -524,6 +603,37 @@ class TeamAnalyticsController < ApplicationController
 
     requested_team = TaTeam.find_by(id: params[:team_id])
     teams.include?(requested_team) ? requested_team : default_team
+  end
+
+  # Resolves the current user's accessible team the same way `select_accessible_team` does,
+  # returning nil when they have no accessible team at all. Shared by every lazy-loaded
+  # breakdown endpoint (member_breakdown, issue_breakdown, activity_projects) so they all reject
+  # unauthorized requests identically.
+  def resolve_accessible_team
+    teams = User.current.accessible_team_dashboard_teams.to_a
+    return nil unless teams.any?
+
+    select_accessible_team(teams)
+  end
+
+  # Builds the exclusion-applied team time-entries scope for a resolved team, matching `index`'s
+  # own scope construction. Shared by every lazy-loaded breakdown endpoint so the drill-down
+  # numbers always stay consistent with the summary table above them.
+  def team_scope_with_temp_exclusions(team, temp_excluded_ids)
+    team_members = team.hierarchical_members(@from, @to).to_a
+    scope = team_time_entries_scope(team_members, @from, @to)
+    scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
+    scope
+  end
+
+  # Collapses a project id into its display bucket: nil -> "No Project", a personal sub-project
+  # -> "Personal Projects", otherwise the project's own name. Shared by
+  # generate_project_pivot_table and the activity_projects breakdown endpoint.
+  def project_display_name_for(project_id, personal_project_ids, project_names_by_id)
+    return 'No Project' if project_id.nil?
+    return 'Personal Projects' if personal_project_ids.include?(project_id)
+
+    project_names_by_id[project_id] || 'No Project'
   end
 
   def default_accessible_team(teams)
@@ -1280,11 +1390,7 @@ class TeamAnalyticsController < ApplicationController
     periods = period_totals.keys.sort
     project_ids_with_entries = hours_by_period.values.flat_map(&:keys).uniq.compact
     project_names_by_id = Project.where(id: project_ids_with_entries).pluck(:id, :name).to_h
-    name_for = lambda do |id|
-      return 'No Project' if id.nil?
-      return 'Personal Projects' if personal_project_ids.include?(id)
-      project_names_by_id[id] || 'No Project'
-    end
+    name_for = ->(id) { project_display_name_for(id, personal_project_ids, project_names_by_id) }
 
     # Matrix keyed by project name for lookup (matches existing view code). Multiple personal
     # sub-projects collapse into a single "Personal Projects" cell, so this += combines at most a
@@ -1299,11 +1405,17 @@ class TeamAnalyticsController < ApplicationController
       end
     end
 
-    # Project totals + grand total via a single SQL SUM query each.
+    # Project totals + grand total via a single SQL SUM query each. project_ids_by_name records
+    # which underlying project id(s) each display bucket collapses (multiple for "Personal
+    # Projects", empty for "No Project") — used by the Project tab's row expand to ask
+    # issue_breakdown for exactly the right projects.
     sql_project_totals = time_entries.reorder(nil).group(:project_id).sum(:hours)
     project_totals = Hash.new(0.0)
+    project_ids_by_name = Hash.new { |h, k| h[k] = [] }
     sql_project_totals.each do |project_id, hours|
-      project_totals[name_for.call(project_id)] += hours
+      name = name_for.call(project_id)
+      project_totals[name] += hours
+      project_ids_by_name[name] << project_id if project_id
     end
     grand_total = time_entries.reorder(nil).sum(:hours)
 
@@ -1316,6 +1428,7 @@ class TeamAnalyticsController < ApplicationController
       matrix: matrix_data,
       period_totals: period_totals,
       project_totals: project_totals,
+      project_ids_by_name: project_ids_by_name,
       grand_total: grand_total,
       raw_periods: periods # Keep original keys for matrix lookup
     }

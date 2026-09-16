@@ -496,6 +496,12 @@ table.ta-support-cols-visible .ta-support-col {
   white-space: nowrap;
 }
 
+/* Caps the Summary tab's card list height so it scrolls internally instead of growing the page */
+.ta-summary-cards-scroll {
+  max-height: 28rem;
+  overflow-y: auto;
+}
+
 .ts-per-page-select {
   min-width: 5.25rem;
   height: 2.5rem;
@@ -1284,8 +1290,55 @@ tbody tr:last-child {
   min-width: max-content;
 }
 
+/* The table always keeps its own natural height (never stretched to match a taller donut) —
+   ta_client_table.js's initDonutHeightSync() instead measures that height with JS and applies
+   it to .ta-analysis-donut, so the donut is what conforms to the table, not the other way
+   round, leaving no unused space in the table when the donut+legend would otherwise be taller. */
+.ta-analysis-layout {
+  align-items: flex-start;
+}
+
+/* Same floor as .ta-analysis-donut below, so a short table (few rows) still ends at the same
+   line as the donut instead of leaving the donut hanging past the table's shorter bottom edge. */
+.ta-analysis-table {
+  min-height: 34rem;
+}
+
+/* Flex column so JS-applied height (see above) distributes correctly: the chart circle stays
+   its fixed size and the legend (flex: 1 below) fills + scrolls whatever space is left.
+   min-height is a floor, not a fixed size — 20rem chart + padding + room for ~6 legend rows —
+   so a short table (few rows) can't squeeze the donut down until its own legend has to scroll
+   after only a couple of entries; a taller table still stretches the donut past this via JS. */
 .ta-analysis-donut {
   width: 20rem;
+  min-height: 34rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Team dashboard nests the chart canvas + legend one level deeper than Individual's flat
+   structure — this wrapper needs to flex the same way .ta-analysis-donut itself does so the
+   legend inside it still gets the correct leftover height. */
+#team-donut-chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The chart circle (and its "no groups configured" placeholder) must never be squeezed by
+   flexbox's default shrink-to-fit if the donut's JS-applied height is ever shorter than 20rem. */
+.ta-analysis-donut .h-80 {
+  flex-shrink: 0;
+}
+
+/* Overrides ta-summary-cards-scroll's fixed max-height: 28rem specifically for the donut
+   legend — it fills whatever space the chart leaves within the JS-synced donut height. */
+.ta-analysis-donut .ta-summary-cards-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
 }
 
 @media (max-width: 1123px) {
@@ -1302,6 +1355,12 @@ tbody tr:last-child {
   .ta-analysis-donut {
     order: 2;
     flex-shrink: 1;
+  }
+
+  /* Stacked layout: initDonutHeightSync() skips applying an explicit height here (table and
+     donut are no longer side-by-side), so restore the legend's own fixed cap. */
+  .ta-analysis-donut .ta-summary-cards-scroll {
+    max-height: 28rem;
   }
 }
 
@@ -2054,6 +2113,35 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   white-space: nowrap !important;
   background-color: #f3f4f6 !important;
   color: #4b5563 !important;
+}
+
+/* === Assignee Badge (Team Dashboard issue drill-down) — same gray pill as .ts-project-badge,
+   kept as a separate class for semantic clarity === */
+.ts-assignee-badge {
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  background-color: #f3f4f6 !important;
+  color: #4b5563 !important;
+}
+
+/* === Expandable drill-down rows (Team Dashboard Project/Activity tabs) === */
+.ts-row-details {
+  margin: 4px 0 4px 8px;
+  padding: 8px 8px 8px 16px;
+  border-left: 2px solid #bfdbfe; /* blue-200 */
+  background-color: #f9fafb; /* gray-50 */
+  border-radius: 6px;
+}
+
+/* Points right when collapsed, down when expanded — matches My Work Log's row chevron
+   (.tep-chevron-open in this same file). The chevron is a plain <svg>, never a <button>, so it
+   never picks up the base theme's button:hover/button:focus blue background. */
+.ts-row-chevron-open {
+  transform: rotate(90deg);
 }
 
 /* === Flowbite delete confirmation modal (My Work Log) === */

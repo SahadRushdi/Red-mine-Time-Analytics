@@ -1,0 +1,41 @@
+<%
+  # Sorting/pagination controls are shared across the three view modes but target a
+  # view-specific summary container + view-state field, so resolve the active one here.
+  # Rendered inside each "Time by X" header row (Members/Activity/Project), to the right of
+  # the Summary/Detailed/Grouped toggle buttons — matching the Individual Dashboard's layout.
+  sort_targets = {
+    'members'  => { container: 'team-member-summary-view',  state: @member_view_state,   state_param: :member_view_state,   field_id: 'member_view_state_field' },
+    'activity' => { container: 'team-activity-summary-view', state: @activity_view_state, state_param: :activity_view_state, field_id: 'activity_view_state_field' },
+    'project'  => { container: 'team-project-summary-view',  state: @project_view_state,  state_param: :project_view_state,  field_id: 'project_view_state_field' }
+  }
+  current_sort = sort_targets[@view_mode]
+%>
+<% if current_sort %>
+  <div id="summary-sort-buttons" class="flex items-center gap-2" style="<%= current_sort[:state] == 'summary' ? '' : 'display: none;' %>">
+    <button type="button" id="sort-name-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
+    <button type="button" id="sort-hours-<%= current_sort[:container] %>" onclick="sortSummaryCards('<%= current_sort[:container] %>', 'hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
+  </div>
+  <%= form_tag team_analytics_path, method: :get, local: true, class: 'flex items-center gap-2' do %>
+    <%= hidden_field_tag :filter, params[:filter] %>
+    <%= hidden_field_tag :from, params[:from] %>
+    <%= hidden_field_tag :to, params[:to] %>
+    <%= hidden_field_tag :grouping, params[:grouping] %>
+    <%= hidden_field_tag :chart_type, params[:chart_type] %>
+    <%= hidden_field_tag :view_mode, @view_mode %>
+    <%= hidden_field_tag :team_id, params[:team_id] %>
+    <%= hidden_field_tag current_sort[:state_param], current_sort[:state], id: current_sort[:field_id] %>
+    <%= render 'per_page_dropdown' %>
+  <% end %>
+  <%# Collapse all: only Activity/Project have expandable drill-down rows to collapse %>
+  <% if @view_mode == 'activity' || @view_mode == 'project' %>
+    <% collapse_all_prefix = current_sort[:container].sub('-summary-view', '') %>
+    <div id="<%= collapse_all_prefix %>-collapse-all-wrapper" style="display: none;">
+      <button type="button" id="<%= collapse_all_prefix %>-collapse-all-btn"
+              onclick="collapseAllTeamRows('<%= collapse_all_prefix %>');"
+              title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+              class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+        <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
+      </button>
+    </div>
+  <% end %>
+<% end %>
