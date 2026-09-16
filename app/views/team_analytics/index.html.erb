@@ -916,13 +916,6 @@
       <div id="team-activity-summary-view"
            style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>" class="px-4 py-4"
            data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
-        <div id="team-activity-collapse-all-wrapper" class="flex justify-end px-2 py-2" style="display: none;">
-          <button type="button" id="team-activity-collapse-all-btn" onclick="collapseAllTeamRows('team-activity');"
-                  title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
-                  class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
-            <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
-          </button>
-        </div>
         <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activity_totals.map { |name, hours| { name: name, hours: hours.to_f, activityId: @activity_pivot_data[:activity_ids][name] } } }.to_json %>
         <div id="team-activity-summary-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
         <div id="team-activity-summary-cards" class="space-y-2 px-2 ta-summary-cards-scroll"></div>
@@ -1049,13 +1042,6 @@
       <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
       <div id="team-project-summary-view" style="display: none;" class="px-4 py-4"
            data-team-id="<%= @selected_team&.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
-        <div id="team-project-collapse-all-wrapper" class="flex justify-end px-2 py-2" style="display: none;">
-          <button type="button" id="team-project-collapse-all-btn" onclick="collapseAllTeamRows('team-project');"
-                  title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
-                  class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
-            <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
-          </button>
-        </div>
         <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @project_totals.map { |name, hours| { name: name, hours: hours.to_f, projectIds: @project_ids_by_name[name] || [] } } }.to_json %>
         <div id="team-project-summary-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
         <div id="team-project-summary-cards" class="space-y-2 px-2 ta-summary-cards-scroll"></div>

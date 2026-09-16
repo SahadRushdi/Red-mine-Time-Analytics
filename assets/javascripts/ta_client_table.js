@@ -489,6 +489,51 @@
     document.querySelectorAll('.ta-sortable-table').forEach(function (table) { TaSortableTable(table); });
   });
 
+  // Keeps each .ta-analysis-donut aside's height matched to its sibling .ta-analysis-table, so
+  // a taller donut (chart + legend) never stretches the table box and leaves unused blank space
+  // beneath the table's own (often shorter) content — the table drives the shared height, never
+  // the donut (see .ta-analysis-layout { align-items: flex-start } in time_analytics.css).
+  // Self-contained: found generically via class name, so neither dashboard's own script needs
+  // to call this. ResizeObserver re-syncs automatically after anything that changes the table's
+  // height (pagination, sort, expand/collapse, a per-page reload) with no per-call-site hook.
+  function initDonutHeightSync() {
+    var layouts = Array.prototype.slice.call(document.querySelectorAll('.ta-analysis-layout'));
+    if (!layouts.length) return;
+
+    var narrowQuery = window.matchMedia('(max-width: 1123px)');
+
+    function sync(layoutEl) {
+      var table = layoutEl.querySelector(':scope > .ta-analysis-table');
+      var donut = layoutEl.querySelector(':scope > .ta-analysis-donut');
+      if (!table || !donut) return;
+      // Below the stacked-layout breakpoint, table and donut are separate rows, not
+      // side-by-side, so let the donut use its own natural height instead.
+      donut.style.height = narrowQuery.matches ? '' : table.offsetHeight + 'px';
+    }
+
+    function syncAll() { layouts.forEach(sync); }
+
+    syncAll();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      var observer = new ResizeObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var layoutEl = entry.target.closest('.ta-analysis-layout');
+          if (layoutEl) sync(layoutEl);
+        });
+      });
+      layouts.forEach(function (layoutEl) {
+        var table = layoutEl.querySelector(':scope > .ta-analysis-table');
+        if (table) observer.observe(table);
+      });
+    }
+
+    if (narrowQuery.addEventListener) { narrowQuery.addEventListener('change', syncAll); }
+    else if (narrowQuery.addListener) { narrowQuery.addListener(syncAll); }
+  }
+
+  document.addEventListener('DOMContentLoaded', initDonutHeightSync);
+
   global.TaClientTable = TaClientTable;
   global.TaSortableTable = TaSortableTable;
   global.taHexToRgba = hexToRgba;
