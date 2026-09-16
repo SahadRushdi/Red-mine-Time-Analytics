@@ -776,7 +776,7 @@ function toggleHolidays() {
         <div id="daily-summary-view"
              style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>"
              data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
-          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end mb-2" style="display: none;">
+          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end px-6 py-2" style="display: none;">
             <button type="button" id="<%= summary_view_id %>-collapse-all-btn" onclick="collapseAllSummaryRows('<%= summary_view_id %>');"
                     title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
                     class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
@@ -829,7 +829,7 @@ function toggleHolidays() {
         <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;"
              data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
-          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end mb-2" style="display: none;">
+          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end px-6 py-2" style="display: none;">
             <button type="button" id="<%= summary_view_id %>-collapse-all-btn" onclick="collapseAllSummaryRows('<%= summary_view_id %>');"
                     title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
                     class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
