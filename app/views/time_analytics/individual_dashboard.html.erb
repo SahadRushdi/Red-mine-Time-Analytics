@@ -699,15 +699,6 @@ function toggleHolidays() {
               <button type="button" id="sort-name-<%= summary_view_id %>" onclick="taSummarySortClick('name')" style="background:#fff;color:#6b7280;border-color:#d1d5db;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">A–Z ↑</button>
               <button type="button" id="sort-hours-<%= summary_view_id %>" onclick="taSummarySortClick('hours')" style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;" class="text-xs px-2.5 py-1 font-medium rounded-lg border transition-colors">Hours ↓</button>
             </div>
-            <% if @view_mode == 'activity' || @view_mode == 'project' %>
-              <div id="<%= summary_view_id %>-collapse-all-wrapper" style="display: none;">
-                <button type="button" id="<%= summary_view_id %>-collapse-all-btn" onclick="collapseAllSummaryRows('<%= summary_view_id %>');"
-                        title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
-                        class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
-                  <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">unfold_less</span>
-                </button>
-              </div>
-            <% end %>
             <%= form_tag my_time_path, method: :get, local: true,
                 class: 'flex items-center gap-2' do %>
               <%= hidden_field_tag :user_id, params[:user_id] if params[:user_id].present? %>
@@ -785,6 +776,13 @@ function toggleHolidays() {
         <div id="daily-summary-view"
              style="<%= @activity_view_state == 'summary' ? '' : 'display: none;' %>"
              data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end mb-2" style="display: none;">
+            <button type="button" id="<%= summary_view_id %>-collapse-all-btn" onclick="collapseAllSummaryRows('<%= summary_view_id %>');"
+                    title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+                    class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+              <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
+            </button>
+          </div>
           <% activity_summary_payload = { grandTotal: @grand_total.to_f, items: @activities.map { |a| { name: a, hours: (@activity_totals[a] || 0).to_f, activityId: @activity_pivot_data[:activity_ids][a] } } }.to_json %>
           <div id="<%= summary_view_id %>-payload" data-payload='<%= activity_summary_payload %>' style="display:none;"></div>
           <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4 ta-summary-cards-scroll"></div>
@@ -831,6 +829,13 @@ function toggleHolidays() {
         <%# Summary View: Simple Project Table (Hidden by default) — cards render client-side from the embedded payload %>
         <div id="project-summary-view" style="display: none;"
              data-user-id="<%= @user.id %>" data-filter="<%= @filter %>" data-from="<%= @from %>" data-to="<%= @to %>">
+          <div id="<%= summary_view_id %>-collapse-all-wrapper" class="flex justify-end mb-2" style="display: none;">
+            <button type="button" id="<%= summary_view_id %>-collapse-all-btn" onclick="collapseAllSummaryRows('<%= summary_view_id %>');"
+                    title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+                    class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
+              <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
+            </button>
+          </div>
           <% project_summary_payload = { grandTotal: @grand_total.to_f, items: @projects.map { |p| { name: p, hours: (@project_totals[p] || 0).to_f, projectIds: (id = @project_ids_by_name[p]) ? [id] : [] } } }.to_json %>
           <div id="<%= summary_view_id %>-payload" data-payload='<%= project_summary_payload %>' style="display:none;"></div>
           <div id="<%= summary_view_id %>-cards" class="space-y-2 px-2 pt-4 ta-summary-cards-scroll"></div>
@@ -1470,10 +1475,6 @@ function showDetailedView(viewType, options) {
   }
 
   if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
-  if (viewType === 'activity' || viewType === 'project') {
-    var collapseAllWrapper = document.getElementById(summaryView.id + '-collapse-all-wrapper');
-    if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
-  }
 
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
@@ -1911,11 +1912,7 @@ var activityGroupedController = window.TeamActivityGroups.createGroupedActivityC
 });
 
 function hideGroupedView() { activityGroupedController.hide(); }
-function showGroupedView(options) {
-  activityGroupedController.show(options);
-  var collapseAllWrapper = document.getElementById('daily-summary-view-collapse-all-wrapper');
-  if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
-}
+function showGroupedView(options) { activityGroupedController.show(options); }
 function openCustomizeGroupsModal() { activityGroupedController.openCustomizeModal(); }
 <% end %>
 
