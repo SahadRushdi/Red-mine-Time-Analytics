@@ -1934,6 +1934,10 @@
     updateTeamPaginationInfo(viewType, 'detailed');
     if (viewType === 'member') hideMemberMonthlyAvgView();
     if (viewType === 'activity') { hideGroupedView(); restoreTeamChartsToActivities(); }
+    if (viewType === 'activity' || viewType === 'project') {
+      var collapseAllWrapper = document.getElementById(config.prefix + '-collapse-all-wrapper');
+      if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+    }
 
     var hiddenField = document.getElementById(config.hiddenFieldId);
     if (hiddenField) hiddenField.value = 'detailed';
@@ -2159,7 +2163,11 @@
   }
 
   function hideGroupedView() { teamGroupedActivity.hide(); }
-  function showGroupedView(options) { teamGroupedActivity.show(options); }
+  function showGroupedView(options) {
+    teamGroupedActivity.show(options);
+    var collapseAllWrapper = document.getElementById('team-activity-collapse-all-wrapper');
+    if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+  }
   function openCustomizeGroupsModal() { teamGroupedActivity.openCustomizeModal(); }
 
   // Shows a tab's "Collapse all" icon (Activity or Project — the only two tabs with

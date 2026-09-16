@@ -1471,6 +1471,10 @@ function showDetailedView(viewType, options) {
   }
 
   if (viewType === 'activity') { hideGroupedView(); initChart(); initDonutChart(); }
+  if (viewType === 'activity' || viewType === 'project') {
+    var collapseAllWrapper = document.getElementById(summaryView.id + '-collapse-all-wrapper');
+    if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+  }
 
   // Update hidden field
   var hiddenField = document.getElementById(viewType + '_view_state_field');
@@ -1908,7 +1912,11 @@ var activityGroupedController = window.TeamActivityGroups.createGroupedActivityC
 });
 
 function hideGroupedView() { activityGroupedController.hide(); }
-function showGroupedView(options) { activityGroupedController.show(options); }
+function showGroupedView(options) {
+  activityGroupedController.show(options);
+  var collapseAllWrapper = document.getElementById('daily-summary-view-collapse-all-wrapper');
+  if (collapseAllWrapper) collapseAllWrapper.style.display = 'none';
+}
 function openCustomizeGroupsModal() { activityGroupedController.openCustomizeModal(); }
 <% end %>
 
