@@ -176,6 +176,70 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
     assert_in_delta baseline, total, 0.01, 'per-group drill-down scopes must partition the total'
   end
 
+  # --- Administrator-pinned permanent grouping tabs -------------------------------------------
+
+  test 'pinning a custom field makes it a permanent grouping' do
+    cf = IssueCustomField.create!(name: 'TA Customer Pinned', field_format: 'list',
+                                  possible_values: %w[acme globex], is_filter: true, is_for_all: true)
+
+    assert_empty Registry.pinned(User.current)
+
+    TaPinnedGrouping.set_pinned(cf, true)
+    assert_equal ["cf_issue_#{cf.id}"], Registry.pinned(User.current).map(&:key)
+    assert Registry.find("cf_issue_#{cf.id}", User.current).pinned?
+
+    TaPinnedGrouping.set_pinned(cf, false)
+    assert_empty Registry.pinned(User.current)
+  end
+
+  test 'pinning is idempotent and keeps one row per field' do
+    cf = IssueCustomField.create!(name: 'TA Twice', field_format: 'list', possible_values: %w[a],
+                                  is_filter: true, is_for_all: true)
+
+    3.times { TaPinnedGrouping.set_pinned(cf, true) }
+    assert_equal 1, TaPinnedGrouping.where(custom_field_id: cf.id).count
+  end
+
+  # A pin records intent only. If the field stops being groupable the tab must disappear rather
+  # than render something broken.
+  test 'a pinned field that stops being groupable drops out' do
+    cf = IssueCustomField.create!(name: 'TA Unpinnable', field_format: 'list',
+                                  possible_values: %w[a b], is_filter: true, is_for_all: true)
+    TaPinnedGrouping.set_pinned(cf, true)
+    assert_equal 1, Registry.pinned(User.current).size
+
+    cf.update!(is_filter: false)
+    assert_empty Registry.pinned(User.current), 'un-ticking "Used as a filter" must drop the tab'
+
+    cf.update!(is_filter: true, multiple: true)
+    assert_empty Registry.pinned(User.current), 'making it multi-value must drop the tab'
+  end
+
+  test 'pins for deleted custom fields are purged' do
+    cf = IssueCustomField.create!(name: 'TA Doomed', field_format: 'list', possible_values: %w[a],
+                                  is_filter: true, is_for_all: true)
+    TaPinnedGrouping.set_pinned(cf, true)
+    cf.destroy
+
+    assert_equal 1, TaPinnedGrouping.count, 'precondition: the pin outlives the field'
+    assert_empty Registry.pinned(User.current), 'a pin without a field must not render a tab'
+
+    TaPinnedGrouping.purge_orphans!
+    assert_equal 0, TaPinnedGrouping.count
+  end
+
+  test 'picker payload marks pinned fields so they are not offered twice' do
+    cf = IssueCustomField.create!(name: 'TA Payload Pin', field_format: 'list',
+                                  possible_values: %w[a], is_filter: true, is_for_all: true)
+    TaPinnedGrouping.set_pinned(cf, true)
+
+    entries = Registry.picker_payload(User.current).flat_map { |section| section[:fields] }
+    pinned_entry = entries.detect { |f| f[:key] == "cf_issue_#{cf.id}" }
+
+    assert pinned_entry[:pinned]
+    assert_not entries.detect { |f| f[:key] == 'issue_tracker' }[:pinned]
+  end
+
   test 'picker payload groups fields into sections' do
     payload = Registry.picker_payload(User.current)
 

@@ -127,75 +127,173 @@
     });
   }
 
-  // ── Picker ───────────────────────────────────────────────────────────────────────────────
-  function openPicker() {
-    var modal = document.getElementById('ta-dimension-picker');
-    var body = document.getElementById('ta-dimension-picker-body');
-    if (!modal || !body) { return; }
+  // ── Searchable dropdown ──────────────────────────────────────────────────────────────────
+  // An anchored popover rather than a modal: the list is long, it is filtered as you type, and it
+  // belongs visually to the "+" button it drops out of.
+  var menuOpen = false;
+  var menuSections = null;   // cached payload
+  var filterText = '';
+  var activeIndex = -1;      // keyboard highlight, index into the currently visible options
 
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    body.innerHTML = '<p class="text-gray-500">' + escapeHtml(config.labels.pickerTitle) + '…</p>';
+  function menuEl() { return document.getElementById('ta-dimension-menu'); }
+  function bodyEl() { return document.getElementById('ta-dimension-menu-body'); }
+  function searchEl() { return document.getElementById('ta-dimension-search'); }
+
+  function visibleOptions() {
+    var body = bodyEl();
+    return body ? Array.prototype.slice.call(body.querySelectorAll('.ta-dim-option:not([disabled])')) : [];
+  }
+
+  function matches(label) {
+    return !filterText || label.toLowerCase().indexOf(filterText) !== -1;
+  }
+
+  function renderMenu() {
+    var body = bodyEl();
+    if (!body) { return; }
+
+    if (!menuSections) {
+      body.innerHTML = '<p class="px-4 py-3 text-sm text-gray-500">…</p>';
+      return;
+    }
+
+    var chosen = readTabs().map(function (t) { return t.key; });
+    var html = '';
+
+    menuSections.forEach(function (section) {
+      var fields = section.fields.filter(function (f) { return matches(f.label); });
+      if (!fields.length) { return; }
+
+      html += '<p class="ta-dim-section px-4 pt-2 pb-1">' + escapeHtml(section.label) + '</p>';
+      fields.forEach(function (field) {
+        // A pinned field is already a permanent tab for everyone, so it can't be added again.
+        var used = field.pinned || chosen.indexOf(field.key) !== -1;
+        html += '<button type="button" role="option" aria-selected="false" class="ta-dim-option"' +
+          (used ? ' disabled' : '') +
+          ' data-ta-dim-pick="' + escapeHtml(field.key) + '"' +
+          ' data-ta-dim-label="' + escapeHtml(field.label) + '">' +
+            '<span>' + escapeHtml(field.label) + '</span>' +
+            (used ? '<span class="ta-dim-used">' + escapeHtml(config.labels.alreadyUsed) + '</span>' : '') +
+          '</button>';
+      });
+    });
+
+    body.innerHTML = html || '<p class="px-4 py-3 text-sm text-gray-500">' +
+      escapeHtml(filterText ? config.labels.noMatches : config.labels.empty) + '</p>';
+
+    activeIndex = -1;
+  }
+
+  function highlight(delta) {
+    var options = visibleOptions();
+    if (!options.length) { return; }
+
+    if (activeIndex >= 0 && options[activeIndex]) {
+      options[activeIndex].classList.remove('ta-dim-active');
+    }
+    activeIndex += delta;
+    if (activeIndex < 0) { activeIndex = options.length - 1; }
+    if (activeIndex >= options.length) { activeIndex = 0; }
+
+    var el = options[activeIndex];
+    el.classList.add('ta-dim-active');
+    el.scrollIntoView({ block: 'nearest' });
+  }
+
+  function choose(key, label) {
+    addTab(key, label);
+    closeMenu();
+    navigateTo(key);
+  }
+
+  function openMenu() {
+    var menu = menuEl();
+    var btn = document.getElementById('ta-add-dimension-btn');
+    if (!menu) { return; }
+
+    menu.classList.remove('hidden');
+    if (btn) { btn.setAttribute('aria-expanded', 'true'); }
+    menuOpen = true;
+
+    filterText = '';
+    var search = searchEl();
+    if (search) { search.value = ''; }
+    renderMenu();
 
     fetchFields().then(function (sections) {
-      var chosen = readTabs().map(function (t) { return t.key; });
-      var html = sections.map(function (section) {
-        var rows = section.fields.map(function (field) {
-          var already = chosen.indexOf(field.key) !== -1;
-          return '<button type="button" class="w-full text-left px-3 py-2 rounded-md hover:bg-gray-50 ' +
-            (already ? 'text-gray-400' : 'text-gray-800') + '" ' +
-            'data-ta-dim-pick="' + escapeHtml(field.key) + '" ' +
-            'data-ta-dim-label="' + escapeHtml(field.label) + '">' +
-            escapeHtml(field.label) + (already ? ' <span class="text-xs">✓</span>' : '') +
-          '</button>';
-        }).join('');
-        return '<div class="mb-3">' +
-          '<p class="px-3 pb-1 text-xs font-semibold text-gray-500">' + escapeHtml(section.label) + '</p>' +
-          rows +
-        '</div>';
-      }).join('');
-
-      body.innerHTML = html || '<p class="text-gray-500">' + escapeHtml(config.labels.empty) + '</p>';
+      menuSections = sections;
+      if (menuOpen) { renderMenu(); }
     }).catch(function () {
-      body.innerHTML = '<p class="text-red-500">' + escapeHtml(config.labels.empty) + '</p>';
+      var body = bodyEl();
+      if (body) {
+        body.innerHTML = '<p class="px-4 py-3 text-sm text-red-500">' + escapeHtml(config.labels.empty) + '</p>';
+      }
     });
+
+    if (search) { search.focus(); }
   }
 
-  function closePicker() {
-    var modal = document.getElementById('ta-dimension-picker');
-    if (!modal) { return; }
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
+  function closeMenu() {
+    var menu = menuEl();
+    var btn = document.getElementById('ta-add-dimension-btn');
+    if (!menu) { return; }
+    menu.classList.add('hidden');
+    if (btn) { btn.setAttribute('aria-expanded', 'false'); }
+    menuOpen = false;
+    activeIndex = -1;
   }
 
-  function bindPickerEvents() {
-    var addBtn = document.getElementById('ta-add-dimension-btn');
-    if (addBtn) { addBtn.addEventListener('click', openPicker); }
-
-    var closeBtn = document.getElementById('ta-dimension-picker-close');
-    if (closeBtn) { closeBtn.addEventListener('click', closePicker); }
-
-    var modal = document.getElementById('ta-dimension-picker');
-    if (modal) {
-      modal.addEventListener('click', function (event) {
-        if (event.target === modal) { closePicker(); }
+  function bindMenuEvents() {
+    var btn = document.getElementById('ta-add-dimension-btn');
+    if (btn) {
+      btn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (menuOpen) { closeMenu(); } else { openMenu(); }
       });
     }
 
-    var body = document.getElementById('ta-dimension-picker-body');
+    var search = searchEl();
+    if (search) {
+      search.addEventListener('input', function () {
+        filterText = search.value.trim().toLowerCase();
+        renderMenu();
+      });
+      search.addEventListener('keydown', function (event) {
+        if (event.key === 'ArrowDown') { event.preventDefault(); highlight(1); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); highlight(-1); }
+        else if (event.key === 'Enter') {
+          event.preventDefault();
+          var options = visibleOptions();
+          // Enter with nothing highlighted takes the first match, which is what a search box implies.
+          var el = activeIndex >= 0 ? options[activeIndex] : options[0];
+          if (el) { choose(el.getAttribute('data-ta-dim-pick'), el.getAttribute('data-ta-dim-label')); }
+        }
+      });
+    }
+
+    var body = bodyEl();
     if (body) {
       body.addEventListener('click', function (event) {
         var pick = event.target.closest('[data-ta-dim-pick]');
-        if (!pick) { return; }
-        var key = pick.getAttribute('data-ta-dim-pick');
-        addTab(key, pick.getAttribute('data-ta-dim-label'));
-        closePicker();
-        navigateTo(key);
+        if (!pick || pick.hasAttribute('disabled')) { return; }
+        choose(pick.getAttribute('data-ta-dim-pick'), pick.getAttribute('data-ta-dim-label'));
       });
     }
 
+    // Click-outside and Escape both dismiss, as expected of a dropdown.
+    document.addEventListener('click', function (event) {
+      if (!menuOpen) { return; }
+      var menu = menuEl();
+      if (menu && !menu.contains(event.target) && event.target.id !== 'ta-add-dimension-btn') {
+        closeMenu();
+      }
+    });
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') { closePicker(); }
+      if (event.key === 'Escape' && menuOpen) {
+        closeMenu();
+        var b = document.getElementById('ta-add-dimension-btn');
+        if (b) { b.focus(); }
+      }
     });
   }
 
@@ -209,11 +307,18 @@
 
     fetchFields().then(function (sections) {
       var known = {};
+      var pinnedKeys = {};
       sections.forEach(function (section) {
-        section.fields.forEach(function (field) { known[field.key] = field.label; });
+        section.fields.forEach(function (field) {
+          known[field.key] = field.label;
+          if (field.pinned) { pinnedKeys[field.key] = true; }
+        });
       });
 
-      var next = tabs.filter(function (t) { return known[t.key]; })
+      // Drop anything the server no longer offers, and anything an administrator has since
+      // pinned — a pinned field is rendered as a permanent tab, so keeping the chip would show
+      // it twice.
+      var next = tabs.filter(function (t) { return known[t.key] && !pinnedKeys[t.key]; })
                      .map(function (t) { return { key: t.key, label: known[t.key] }; });
 
       if (JSON.stringify(next) !== JSON.stringify(tabs)) {
@@ -228,7 +333,7 @@
   // A shared link lands on a tab this browser tab has never seen — materialise it rather than
   // showing an active tab with no chip.
   function adoptActiveKey() {
-    if (!config.activeKey) { return; }
+    if (!config.activeKey || config.activeIsPinned) { return; }
     var known = readTabs().some(function (t) { return t.key === config.activeKey; });
     if (known) { return; }
     addTab(config.activeKey, config.activeLabel || config.activeKey);
@@ -377,7 +482,7 @@
     adoptActiveKey();
     renderChips();
     bindChipEvents();
-    bindPickerEvents();
+    bindMenuEvents();
     reconcile();
     initTabBody();
 

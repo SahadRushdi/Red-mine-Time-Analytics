@@ -45,7 +45,13 @@ module RedmineTimeAnalytics
     # custom_field     — the CustomField, or nil for static fields
     # resolver         — ->(raw_values) { {raw_value => display_label} }, batched
     Field = Struct.new(:key, :label, :section, :group_sql, :needs_issue_join,
-                       :join_sql, :custom_field, :resolver, keyword_init: true)
+                       :join_sql, :custom_field, :resolver, keyword_init: true) do
+      # True when an administrator pinned this field as a permanent grouping tab
+      # (see TaPinnedGrouping).
+      def pinned?
+        custom_field.present? && TaPinnedGrouping.pinned?(custom_field)
+      end
+    end
 
     # Issue attributes reachable through time_entries.issue_id -> issues.id.
     STATIC_FIELDS = [
@@ -74,6 +80,20 @@ module RedmineTimeAnalytics
         all(user).detect { |field| field.key == key }
       end
 
+      # The fields an administrator pinned as permanent grouping tabs, in the order they were
+      # pinned. A pin is only intent — a field that has since been un-ticked as a filter, hidden
+      # from this user's roles, or changed to an ungroupable format simply drops out here, so a
+      # stale pin can never render a broken tab.
+      def pinned(user = User.current)
+        pinned_ids = TaPinnedGrouping.pinned_custom_field_ids
+        return [] if pinned_ids.empty?
+
+        by_cf_id = all(user).each_with_object({}) do |field, acc|
+          acc[field.custom_field.id] = field if field.custom_field
+        end
+        pinned_ids.filter_map { |id| by_cf_id[id] }
+      end
+
       # Cheap guard so the controllers can tell "this view_mode might be a dimension" from
       # "this view_mode belongs to a pinned tab" without building the whole registry.
       def dimension?(key)
@@ -97,7 +117,7 @@ module RedmineTimeAnalytics
           {
             section: section.to_s,
             label: ::I18n.t(label_key),
-            fields: entries.map { |field| { key: field.key, label: field.label } }
+            fields: entries.map { |field| { key: field.key, label: field.label, pinned: field.pinned? } }
           }
         end
       end

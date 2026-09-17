@@ -600,6 +600,7 @@ function toggleHolidays() {
                base_path: my_time_path,
                fields_path: my_time_groupable_fields_path,
                storage_scope: 'individual',
+               pinned_fields: RedmineTimeAnalytics::GroupableFieldRegistry.pinned(User.current),
                default_view_mode: 'issue',
                carry_params: params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :user_id, :hide_holidays).to_h %>
   </ul>
