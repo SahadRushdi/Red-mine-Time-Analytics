@@ -1301,6 +1301,19 @@
   <% end %>
 <% end %>
 
+<% if @ta_dimension %>
+  <%= render 'time_analytics/dimension_tab_body',
+             base_path: team_analytics_path,
+             breakdown_path: team_analytics_group_breakdown_path,
+             view_id: 'team-ta-dim',
+             donut_canvas_id: 'team-donut-chart',
+             donut_center_id: 'team-donut-center-text',
+             donut_total_id: 'team-total-hours-display',
+             donut_legend_id: 'team-donut-legend',
+             hidden_params: params.permit(:filter, :from, :to, :grouping, :chart_type, :team_id, :hide_holidays).to_h,
+             row_context: { team_id: @selected_team&.id, filter: @filter, from: @from, to: @to } %>
+<% end %>
+
 <%# ===== Member Breakdown: per-member second-level grouping (Issue/Activity/Project), lazy-loaded ===== %>
 <%# Visible in all view modes so users can inspect member commitment regardless of which tab is active. %>
 <% if @selected_team %>
@@ -1501,6 +1514,12 @@
         return a.name.localeCompare(b.name);
       });
       memberData.forEach(function(m) { labels.push(m.name); values.push(m.hours); });
+    <% elsif @ta_dimension_pivot %>
+      <%# A "group by" tab: categories already come sorted by hours desc from DimensionPivot. %>
+      <% @ta_dimension_pivot[:categories].each do |category| %>
+        labels.push('<%= j category %>');
+        values.push(<%= (@ta_dimension_pivot[:category_totals][category] || 0).to_f %>);
+      <% end %>
     <% end %>
 
     var colors = labels.map(function(_, index) { return TEAM_TABLEAU10[index % TEAM_TABLEAU10.length]; });

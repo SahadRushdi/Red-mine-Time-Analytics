@@ -1,4 +1,6 @@
 class TimeAnalyticsController < ApplicationController
+  include RedmineTimeAnalytics::DimensionTabsConcern
+
   before_action :require_login
   before_action :set_date_range
   before_action :set_grouping
@@ -26,6 +28,16 @@ class TimeAnalyticsController < ApplicationController
 
     # Default to issue view
     @view_mode = params[:view_mode].present? ? params[:view_mode] : 'issue'
+
+    # A "group by" tab whose field has since been deleted, un-ticked as a filter, or hidden from
+    # this user's roles must not 404 — bounce back to the default tab and tell the client to drop
+    # it from sessionStorage.
+    if ta_invalid_dimension?
+      return redirect_to my_time_path(
+        params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :user_id, :hide_holidays)
+              .merge(view_mode: 'issue', ta_dim_invalid: @view_mode)
+      )
+    end
 
     # Get time entries for the user with project visibility check
     @time_entries = individual_time_entries_scope(@user)
@@ -134,6 +146,10 @@ class TimeAnalyticsController < ApplicationController
       # For pagination in detailed view, count actual periods with data
       @entry_count = @time_periods.count
       @paginated_periods = @time_periods.slice(@offset, @limit) || []
+    elsif ta_resolve_dimension!
+      # A "group by" tab added via the "+" control. Everything it needs is built by the shared
+      # DimensionTabsConcern, so no pinned tab's code path is involved.
+      ta_build_dimension_view!
     elsif ['weekly', 'monthly'].include?(@grouping)
       grouped_data = group_time_entries(@time_entries, @grouping)
       
@@ -313,7 +329,11 @@ class TimeAnalyticsController < ApplicationController
                              .includes(:project, :issue, :activity)
                              .order('time_entries.spent_on DESC')
 
-    if @view_mode == 'activity'
+    if ta_resolve_dimension!
+      ta_build_dimension_view!
+      csv_data = ta_dimension_csv
+      filename = "time_analytics_#{@ta_dimension.key}_#{@user.login}_#{@from}_#{@to}.csv"
+    elsif @view_mode == 'activity'
       csv_data = export_activity_analysis_to_csv(@time_entries)
       filename = "time_analytics_activity_#{@user.login}_#{@from}_#{@to}.csv"
     elsif @view_mode == 'project'
@@ -2204,6 +2224,29 @@ class TimeAnalyticsController < ApplicationController
   # The same project-visibility-scoped time-entry query individual_dashboard already builds,
   # minus the .includes/.order only its own table needs — shared with issue_breakdown/
   # activity_projects so their drill-down numbers always match the dashboard above them.
+  # --- Hooks for RedmineTimeAnalytics::DimensionTabsConcern -----------------------------------
+  # Date-keyed period bucketers, so a dynamic tab buckets hours exactly like the pinned tabs do.
+  def ta_dim_period_totals(scope, grouping)
+    sql_bucket_hours_totals(scope, grouping)
+  end
+
+  def ta_dim_category_totals(scope, grouping, group_column)
+    sql_bucket_category_hours_totals(scope, grouping, group_column)
+  end
+
+  # Base scope for the row drill-down, re-derived here rather than taken from params so it can
+  # never widen beyond what this viewer may see.
+  def ta_dimension_scope
+    target_user = resolve_dashboard_user
+    return nil unless target_user
+
+    individual_time_entries_scope(target_user)
+  end
+
+  def ta_dimension_default_view_mode
+    'issue'
+  end
+
   def individual_time_entries_scope(user)
     TimeEntry.joins(:project)
              .where(user: user)

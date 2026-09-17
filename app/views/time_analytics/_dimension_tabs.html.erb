@@ -1,0 +1,57 @@
+<%#
+  The "+" control and the host element for user-added "group by" tabs. Rendered inside the tab
+  <ul> of BOTH dashboards, immediately after the pinned tabs, so it only ever appends <li>s and
+  never touches the pinned markup.
+
+  The chips themselves are rendered client-side by ta_dimension_tabs.js from sessionStorage, so an
+  added tab lives only in the browser tab that added it.
+
+  Locals:
+    base_path         - dashboard path to navigate to when switching tabs
+    fields_path       - JSON endpoint backing the picker
+    storage_scope     - 'individual' | 'team'; keeps the two dashboards' tab lists independent
+    default_view_mode - pinned tab to fall back to when the active added tab is removed
+    carry_params      - query params to preserve across tab navigation
+%>
+<li id="ta-dimension-chips" class="contents"></li>
+<li class="me-2">
+  <button type="button" id="ta-add-dimension-btn"
+          title="<%= l(:label_add_grouping) %>" aria-label="<%= l(:label_add_grouping) %>"
+          class="ta-view-tab inline-block p-4 rounded-t-lg text-gray-500 hover:text-gray-600 hover:bg-gray-50">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">add</span>
+    </div>
+  </button>
+</li>
+
+<script type="application/json" id="ta-dimension-config"><%= {
+  basePath: base_path,
+  fieldsPath: fields_path,
+  storageScope: storage_scope,
+  defaultViewMode: default_view_mode,
+  activeKey: @ta_dimension&.key,
+  activeLabel: @ta_dimension&.label,
+  carryParams: carry_params,
+  labels: {
+    pickerTitle: l(:label_group_by_field),
+    remove: l(:label_remove_grouping),
+    empty: l(:label_no_groupable_fields),
+    close: l(:button_close)
+  }
+}.to_json.html_safe %></script>
+
+<%# Picker modal. Plain Tailwind + a hidden class rather than Flowbite's data-modal wiring, so it
+    stays independent of the Flowbite instances the rest of the page already registers. %>
+<div id="ta-dimension-picker" class="hidden fixed inset-0 z-50 items-center justify-center bg-gray-900/40 p-4">
+  <div class="w-full max-w-md rounded-lg bg-white shadow-xl border border-gray-200">
+    <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+      <h3 class="text-base font-semibold text-gray-900"><%= l(:label_group_by_field) %></h3>
+      <button type="button" id="ta-dimension-picker-close"
+              class="!bg-transparent !text-gray-400 hover:!text-gray-600 !border-0 !shadow-none !ring-0"
+              aria-label="<%= l(:button_close) %>">
+        <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 20px;">close</span>
+      </button>
+    </div>
+    <div id="ta-dimension-picker-body" class="max-h-96 overflow-y-auto px-5 py-4 text-sm text-gray-700"></div>
+  </div>
+</div>

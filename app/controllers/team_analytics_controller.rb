@@ -1,4 +1,5 @@
 class TeamAnalyticsController < ApplicationController
+  include RedmineTimeAnalytics::DimensionTabsConcern
 
   before_action :require_login
   before_action :set_date_range, except: [:get_tree_data]
@@ -22,6 +23,16 @@ class TeamAnalyticsController < ApplicationController
     Rails.logger.info "Team Analytics: Selected team: #{@selected_team&.name}, Date range: #{@from} to #{@to}"
     
     @view_mode = params[:view_mode] || 'members'
+
+    # A "group by" tab whose field has since been deleted, un-ticked as a filter, or hidden from
+    # this user's roles must not 404 — bounce back to the default tab and tell the client to drop
+    # it from sessionStorage.
+    if ta_invalid_dimension?
+      return redirect_to team_analytics_path(
+        params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :team_id, :hide_holidays)
+              .merge(view_mode: 'members', ta_dim_invalid: @view_mode)
+      )
+    end
     @member_dashboard_params = build_member_dashboard_params
     @member_dashboard_query = @member_dashboard_params.to_query
     
@@ -226,7 +237,15 @@ class TeamAnalyticsController < ApplicationController
       @chart_data = generate_member_pivot_chart_data(@member_pivot_data, chart_type, @member_view_state)
       
       Rails.logger.info "Team Analytics: Member pivot data generated, members: #{@members.count}, periods: #{@time_periods.count}"
-      
+
+    elsif ta_resolve_dimension!
+      # A "group by" tab added via the "+" control. The pivot itself is built by the shared
+      # DimensionTabsConcern; only the chart is dashboard-specific, and this branch chain assigns
+      # @chart_data per branch, so it must be set here too or the format.json branch below blows up
+      # on JSON.parse(nil).
+      ta_build_dimension_view!
+      chart_type = normalize_team_chart_type(params[:chart_type], 'line')
+      @chart_data = generate_team_chart_data(@time_entries, @grouping, chart_type)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -269,8 +288,14 @@ class TeamAnalyticsController < ApplicationController
     @time_entries ||= TimeEntry.none
 
     # Generate CSV based on view mode
-    csv_data = export_team_time_entries_to_csv(@time_entries, @selected_team)
-    filename = "team_analytics_#{@selected_team.name.parameterize}_#{@from}_#{@to}.csv"
+    if ta_resolve_dimension!
+      ta_build_dimension_view!
+      csv_data = ta_dimension_csv
+      filename = "team_analytics_#{@selected_team.name.parameterize}_#{@ta_dimension.key}_#{@from}_#{@to}.csv"
+    else
+      csv_data = export_team_time_entries_to_csv(@time_entries, @selected_team)
+      filename = "team_analytics_#{@selected_team.name.parameterize}_#{@from}_#{@to}.csv"
+    end
     
     send_data csv_data, 
               filename: filename,
@@ -624,6 +649,33 @@ class TeamAnalyticsController < ApplicationController
     scope = team_time_entries_scope(team_members, @from, @to)
     scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
     scope
+  end
+
+  # --- Hooks for RedmineTimeAnalytics::DimensionTabsConcern -----------------------------------
+  # The Date-keyed pivot bucketers — deliberately NOT this controller's own
+  # sql_bucket_hours_totals, which keys monthly buckets as [year, month] for the Time Overview
+  # table and the Max/Min Month cards.
+  def ta_dim_period_totals(scope, grouping)
+    pivot_bucket_hours_totals(scope, grouping)
+  end
+
+  def ta_dim_category_totals(scope, grouping, group_column)
+    pivot_bucket_category_totals(scope, grouping, group_column)
+  end
+
+  # Base scope for the row drill-down. Rebuilt exactly like index's, so a dynamic tab's expanded
+  # rows honour team access and the temporary member exclusions just as the pinned tabs do.
+  def ta_dimension_scope
+    team = resolve_accessible_team
+    return nil unless team
+
+    permitted = params.permit(temp_excluded_ids: [])
+    temp_excluded_ids = Array(permitted[:temp_excluded_ids]).map(&:to_i).reject(&:zero?).uniq
+    team_scope_with_temp_exclusions(team, temp_excluded_ids)
+  end
+
+  def ta_dimension_default_view_mode
+    'members'
   end
 
   # Collapses a project id into its display bucket: nil -> "No Project", a personal sub-project

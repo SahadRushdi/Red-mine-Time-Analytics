@@ -20,6 +20,9 @@ require File.expand_path('lib/redmine_time_analytics/missing_time_scheduler', __
 require File.expand_path('lib/redmine_time_analytics/external_time_cache_scheduler', __dir__)
 require File.expand_path('app/mailers/missing_time_mailer', __dir__)
 require File.expand_path('lib/redmine_time_analytics/activity_groups_hook', __dir__)
+require File.expand_path('lib/redmine_time_analytics/groupable_field_registry', __dir__)
+require File.expand_path('lib/redmine_time_analytics/dimension_pivot', __dir__)
+require File.expand_path('lib/redmine_time_analytics/dimension_tabs_concern', __dir__)
 
 # User Title query/report patches (module definitions; applied after the register block below)
 require File.expand_path('lib/redmine_time_analytics/user_patch', __dir__)

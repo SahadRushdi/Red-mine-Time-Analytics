@@ -596,6 +596,12 @@ function toggleHolidays() {
         </div>
       </button>
     </li>
+    <%= render 'time_analytics/dimension_tabs',
+               base_path: my_time_path,
+               fields_path: my_time_groupable_fields_path,
+               storage_scope: 'individual',
+               default_view_mode: 'issue',
+               carry_params: params.permit(:filter, :from, :to, :grouping, :chart_type, :per_page, :user_id, :hide_holidays).to_h %>
   </ul>
 </div>
 
@@ -975,6 +981,19 @@ function toggleHolidays() {
       </div>
     </div>
   </div>
+<% end %>
+
+<% if @ta_dimension %>
+  <%= render 'time_analytics/dimension_tab_body',
+             base_path: my_time_path,
+             breakdown_path: my_time_group_breakdown_path,
+             view_id: 'ta-dim',
+             donut_canvas_id: 'donut-chart',
+             donut_center_id: 'donut-center-text',
+             donut_total_id: 'total-hours-display',
+             donut_legend_id: 'donut-legend',
+             hidden_params: params.permit(:filter, :from, :to, :grouping, :chart_type, :user_id, :hide_holidays).to_h,
+             row_context: { user_id: @user.id, filter: @filter, from: @from, to: @to } %>
 <% end %>
 
 <!-- Chart.js loaded via includes partial -->
@@ -1734,6 +1753,12 @@ function initDonutChart() {
       <% label = issue_info && issue_info[:issue] ? "##{issue_info[:issue].id}" : (issue_info ? issue_info[:display] : 'Unknown') %>
       chartLabels.push('<%= j label %>');
       chartValues.push(<%= hours.to_f %>);
+    <% end %>
+  <% elsif @ta_dimension_pivot %>
+    <%# A "group by" tab: categories already come sorted by hours desc from DimensionPivot. %>
+    <% @ta_dimension_pivot[:categories].each do |category| %>
+      chartLabels.push('<%= j category %>');
+      chartValues.push(<%= (@ta_dimension_pivot[:category_totals][category] || 0).to_f %>);
     <% end %>
   <% end %>
 

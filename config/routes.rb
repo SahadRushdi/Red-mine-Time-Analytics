@@ -4,6 +4,8 @@ RedmineApp::Application.routes.draw do
   get 'my/time', to: 'time_analytics#individual_dashboard', as: :my_time
   get 'my/time/issue_breakdown', to: 'time_analytics#issue_breakdown', as: :my_time_issue_breakdown
   get 'my/time/activity_projects', to: 'time_analytics#activity_projects', as: :my_time_activity_projects
+  get 'my/time/groupable_fields', to: 'time_analytics#groupable_fields', as: :my_time_groupable_fields
+  get 'my/time/group_breakdown', to: 'time_analytics#group_breakdown', as: :my_time_group_breakdown
   get 'time_analytics/custom_dashboard', to: 'time_analytics#custom_dashboard'
   post 'time_analytics/export_csv', to: 'time_analytics#export_csv'
   get 'leaves', to: 'leaves#index', as: :leaves
@@ -34,6 +36,8 @@ RedmineApp::Application.routes.draw do
   get 'team/analytics/member_breakdown', to: 'team_analytics#member_breakdown', as: :team_analytics_member_breakdown
   get 'team/analytics/issue_breakdown', to: 'team_analytics#issue_breakdown', as: :team_analytics_issue_breakdown
   get 'team/analytics/activity_projects', to: 'team_analytics#activity_projects', as: :team_analytics_activity_projects
+  get 'team/analytics/groupable_fields', to: 'team_analytics#groupable_fields', as: :team_analytics_groupable_fields
+  get 'team/analytics/group_breakdown', to: 'team_analytics#group_breakdown', as: :team_analytics_group_breakdown
 
   # Admin routes for Team Analytics Configuration
   resources :admin_ta_teams, path: 'admin/ta_teams' do

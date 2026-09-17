@@ -112,7 +112,12 @@
     var color = colors[index % colors.length];
     var name = escapeHtml(item.name);
     var idAttr;
-    if (item.projectIds !== undefined) {
+    if (item.noValue !== undefined) {
+      // "Group by" tab row (see ta_dimension_tabs.js). data-no-value marks the single
+      // "no value" bucket, whose group value is NULL/'' rather than a real value.
+      idAttr = ' data-no-value="' + (item.noValue ? '1' : '0') + '"' +
+        (item.noValue ? '' : ' data-group-value="' + escapeHtml(String(item.groupValue)) + '"');
+    } else if (item.projectIds !== undefined) {
       idAttr = " data-project-ids='" + escapeHtml(JSON.stringify(item.projectIds || [])) + "'";
     } else {
       var activityIdAttr = (item.activityId === null || item.activityId === undefined) ? '' : item.activityId;
@@ -155,6 +160,15 @@
   function rowFetchSpec(rowEl, endpoints) {
     var params = new URLSearchParams();
     urlArrayParam('temp_excluded_ids[]').forEach(function(id) { params.append('temp_excluded_ids[]', id); });
+
+    if (rowEl.hasAttribute('data-no-value')) {
+      if (rowEl.getAttribute('data-no-value') === '1') {
+        params.append('no_value', '1');
+      } else {
+        params.append('group_value', rowEl.getAttribute('data-group-value') || '');
+      }
+      return { endpoint: endpoints.group, params: params, kind: 'issues' };
+    }
 
     if (rowEl.hasAttribute('data-project-ids')) {
       var ids = JSON.parse(rowEl.getAttribute('data-project-ids') || '[]');

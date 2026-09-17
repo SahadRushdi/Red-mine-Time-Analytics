@@ -3,6 +3,9 @@ module RedmineTimeAnalytics
 end
 
 require_relative 'redmine_time_analytics/working_days_calculator'
+require_relative 'redmine_time_analytics/groupable_field_registry'
+require_relative 'redmine_time_analytics/dimension_pivot'
+require_relative 'redmine_time_analytics/dimension_tabs_concern'
 require_relative 'redmine_time_analytics/leave_email_parser'
 require_relative 'redmine_time_analytics/simple_leave_email_parser'
 require_relative 'redmine_time_analytics/ai_leave_extractor'

@@ -39,5 +39,11 @@
         </div>
       <% end %>
     </li>
+    <%= render 'time_analytics/dimension_tabs',
+               base_path: team_analytics_path,
+               fields_path: team_analytics_groupable_fields_path,
+               storage_scope: 'team',
+               default_view_mode: 'members',
+               carry_params: params.permit(:filter, :from, :to, :grouping, :per_page, :team_id, :chart_type, :hide_holidays).to_h %>
   </ul>
 </div>
