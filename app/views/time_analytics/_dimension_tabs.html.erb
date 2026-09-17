@@ -44,9 +44,9 @@
   <div id="ta-dimension-menu" role="dialog" aria-label="<%= l(:label_group_by_field) %>"
        class="ta-dim-menu hidden absolute left-0 z-40 mt-1 rounded-lg border border-gray-200 bg-white shadow-xl">
     <div class="p-3 border-b border-gray-100">
-      <div class="relative">
-        <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              aria-hidden="true" style="font-size: 18px;">search</span>
+      <div class="relative flex items-center">
+        <span class="material-symbols-outlined absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none"
+              aria-hidden="true" style="font-size: 20px;">search</span>
         <input type="text" id="ta-dimension-search" autocomplete="off"
                placeholder="<%= l(:label_search_fields) %>" aria-label="<%= l(:label_search_fields) %>"
                class="ta-dim-search">
@@ -55,6 +55,26 @@
     <div id="ta-dimension-menu-body" class="ta-dim-scroll py-2" role="listbox"></div>
   </div>
 </li>
+
+<%# Confirmation for removing an added grouping tab. Rendered once per page, alongside the
+    dropdown, and scoped with ta-fb so the theme can't repaint its buttons. %>
+<div id="ta-dimension-confirm" role="dialog" aria-modal="true" aria-labelledby="ta-dimension-confirm-title"
+     class="ta-fb hidden fixed inset-0 z-50 items-center justify-center bg-gray-900/50 p-4">
+  <div class="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+    <h3 id="ta-dimension-confirm-title" class="mb-2 text-base font-semibold text-gray-900">
+      <%= l(:label_ta_remove_grouping_title) %>
+    </h3>
+    <p id="ta-dimension-confirm-text" class="mb-6 text-sm text-gray-600"></p>
+    <div class="flex items-center justify-center gap-3">
+      <button type="button" id="ta-dimension-confirm-cancel" class="ta-btn">
+        <%= l(:button_cancel) %>
+      </button>
+      <button type="button" id="ta-dimension-confirm-accept" class="ta-btn ta-btn-danger">
+        <%= l(:button_remove) %>
+      </button>
+    </div>
+  </div>
+</div>
 
 <script type="application/json" id="ta-dimension-config"><%= {
   basePath: base_path,
@@ -69,6 +89,7 @@
     remove: l(:label_remove_grouping),
     empty: l(:label_no_groupable_fields),
     noMatches: l(:label_ta_no_matching_fields),
-    alreadyUsed: l(:label_ta_already_used)
+    alreadyUsed: l(:label_ta_already_used),
+    confirmRemoveBody: l(:text_ta_remove_grouping_confirm, field: '%{field}')
   }
 }.to_json.html_safe %></script>

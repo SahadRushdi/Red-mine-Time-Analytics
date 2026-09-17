@@ -60,6 +60,9 @@ en:
   label_search_fields: "Search fields..."
   label_ta_already_used: "already used"
   label_ta_no_matching_fields: "No matching fields"
+  label_ta_remove_grouping_title: "Remove grouping"
+  button_remove: "Remove"
+  text_ta_remove_grouping_confirm: "Remove the %{field} tab from this dashboard?"
 
   # Filter options
   label_last_7_days: "Last 7 days"

@@ -85,14 +85,14 @@
       var classes = 'ta-view-tab inline-block p-4 rounded-t-lg ' +
         (active ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50');
       return '<li class="me-2">' +
-        '<span class="' + classes + '" data-ta-dim-key="' + escapeHtml(tab.key) + '">' +
+        '<a href="javascript:void(0)" class="' + classes + '" data-ta-dim-key="' + escapeHtml(tab.key) + '">' +
           '<span class="flex items-center gap-2">' +
-            '<span class="cursor-pointer" data-ta-dim-open="1">' + escapeHtml(tab.label) + '</span>' +
-            '<span class="material-symbols-outlined cursor-pointer opacity-60 hover:opacity-100" ' +
+            '<span>' + escapeHtml(tab.label) + '</span>' +
+            '<span class="material-symbols-outlined opacity-60 hover:opacity-100" ' +
               'style="font-size: 16px;" data-ta-dim-remove="1" role="button" tabindex="0" ' +
               'title="' + escapeHtml(config.labels.remove) + '" aria-label="' + escapeHtml(config.labels.remove) + '">close</span>' +
           '</span>' +
-        '</span>' +
+        '</a>' +
       '</li>';
     }).join('');
   }
@@ -109,6 +109,57 @@
     if (key === config.activeKey) { navigateTo(config.defaultViewMode); }
   }
 
+  // ── Remove confirmation ──────────────────────────────────────────────────────────────────
+  var pendingRemoveKey = null;
+
+  function confirmRemove(key, label) {
+    var modal = document.getElementById('ta-dimension-confirm');
+    if (!modal) { removeTab(key); return; }
+
+    pendingRemoveKey = key;
+    var body = document.getElementById('ta-dimension-confirm-text');
+    // Function form: a literal replacement string would interpret `$&`/`$1` patterns, which a
+    // custom field name is free to contain.
+    if (body) { body.textContent = config.labels.confirmRemoveBody.replace('%{field}', function () { return label; }); }
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    var cancel = document.getElementById('ta-dimension-confirm-cancel');
+    if (cancel) { cancel.focus(); }
+  }
+
+  function closeConfirm() {
+    var modal = document.getElementById('ta-dimension-confirm');
+    if (!modal) { return; }
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    pendingRemoveKey = null;
+  }
+
+  function bindConfirmEvents() {
+    var modal = document.getElementById('ta-dimension-confirm');
+    if (!modal) { return; }
+
+    var cancel = document.getElementById('ta-dimension-confirm-cancel');
+    if (cancel) { cancel.addEventListener('click', closeConfirm); }
+
+    var accept = document.getElementById('ta-dimension-confirm-accept');
+    if (accept) {
+      accept.addEventListener('click', function () {
+        var key = pendingRemoveKey;
+        closeConfirm();
+        if (key) { removeTab(key); }
+      });
+    }
+
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) { closeConfirm(); }
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && pendingRemoveKey) { closeConfirm(); }
+    });
+  }
+
   function bindChipEvents() {
     var host = document.getElementById('ta-dimension-chips');
     if (!host) { return; }
@@ -120,7 +171,9 @@
 
       if (event.target.closest('[data-ta-dim-remove]')) {
         event.preventDefault();
-        removeTab(key);
+        event.stopPropagation();
+        var tab = readTabs().filter(function (t) { return t.key === key; })[0];
+        confirmRemove(key, tab ? tab.label : key);
         return;
       }
       if (key !== config.activeKey) { navigateTo(key); }
@@ -416,11 +469,13 @@
     if (paginationBar) { paginationBar.style.display = summary ? 'none' : 'flex'; }
     if (sortButtons) { sortButtons.style.display = summary ? 'flex' : 'none'; }
 
-    var activeStyle = 'background-color: #3b82f6 !important; color: white !important;';
+    // One class carries the whole active look, so exactly one thing is toggled here. The earlier
+    // version set an inline style while the active colours also came from `!`-modified utility
+    // classes, which it never removed — that is why Summary stayed blue in Detailed view.
     var summaryBtn = document.getElementById('show-summary-btn-' + viewId);
     var detailedBtn = document.getElementById('show-detailed-btn-' + viewId);
-    if (summaryBtn) { summaryBtn.setAttribute('style', summary ? activeStyle : ''); }
-    if (detailedBtn) { detailedBtn.setAttribute('style', summary ? '' : activeStyle); }
+    if (summaryBtn) { summaryBtn.classList.toggle('ta-seg-btn-active', summary); }
+    if (detailedBtn) { detailedBtn.classList.toggle('ta-seg-btn-active', !summary); }
 
     window.taDimensionUpdateCollapseAll();
 
@@ -470,8 +525,13 @@
     if (!body) { return; }
     var wrapper = document.getElementById(body.viewId + '-collapse-all-wrapper');
     var cards = document.getElementById(body.viewId + '-cards');
+    var summaryEl = document.getElementById(body.viewId + '-summary-view');
     if (!wrapper || !cards) { return; }
-    wrapper.style.display = cards.querySelector('.ts-row-details:not(.hidden)') ? '' : 'none';
+
+    // Only the Summary rows expand, so the control has nothing to act on in Detailed view.
+    var inSummary = summaryEl && summaryEl.style.display !== 'none';
+    var anyExpanded = cards.querySelector('.ts-row-details:not(.hidden)');
+    wrapper.style.display = (inSummary && anyExpanded) ? '' : 'none';
   };
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -483,6 +543,7 @@
     renderChips();
     bindChipEvents();
     bindMenuEvents();
+    bindConfirmEvents();
     reconcile();
     initTabBody();
 

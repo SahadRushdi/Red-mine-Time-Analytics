@@ -2401,7 +2401,14 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 }
 
 /* The theme repaints buttons white-on-blue on hover/focus/active. Neutralise all three states;
-   any Tailwind hover:/focus: utility still outranks these. */
+   any Tailwind hover:/focus: utility still outranks these.
+ *
+ * CONTRACT: `color: inherit` here weighs (0,1,1) and therefore also outranks a *static*
+ * `.text-gray-700` (0,1,0) while hovering. That is deliberate — falling back to the inherited
+ * text colour is always readable, whereas letting the theme's `#fff` through is what produced
+ * invisible hover text. The consequence is that a control inside this scope which needs a
+ * specific colour on hover must say so, via a `hover:text-*` utility (0,2,0) or a component class
+ * such as `.ta-seg-btn:hover`. */
 :where(.ta-fb) button:hover,
 :where(.ta-fb) button:focus,
 :where(.ta-fb) button:active,
@@ -2449,13 +2456,16 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 .ta-fb .ta-dim-search {
   width: 100%;
   height: auto;
-  padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+  padding: 0.625rem 0.75rem 0.625rem 2.5rem;
   border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   background-color: #fff;
   color: #111827;
   font-size: 0.875rem;
-  line-height: 1.25rem;
+  line-height: 1.5rem;
+  /* The tab <ul> this dropdown lives in is `text-center`, and the scope's reset makes inputs
+     inherit alignment — without this the placeholder and the typed query sit centred. */
+  text-align: left;
 }
 
 .ta-fb .ta-dim-search::placeholder {
@@ -2487,6 +2497,72 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Segmented Summary/Detailed toggle on a group-by tab. */
+.ta-fb .ta-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #fff;
+  transition: background-color 120ms linear, color 120ms linear;
+}
+
+.ta-fb .ta-seg-btn:hover {
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+.ta-fb .ta-seg-btn-active,
+.ta-fb .ta-seg-btn-active:hover {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.ta-fb .ta-seg-btn-active:hover {
+  background-color: #2563eb;
+}
+
+/* Dialog buttons (the "remove this grouping?" confirmation).
+ *
+ * Both rest AND hover declare `color` on purpose. The scope's hover reset falls back to
+ * `inherit` at (0,1,1), which outranks a static `.text-white`/`.text-gray-700` (0,1,0) — so a
+ * button that relies on a utility alone has its label change colour the moment it is hovered.
+ * Declaring the same colour for both states here keeps the label stable and removes the need to
+ * remember a matching `hover:text-*` on every button. */
+.ta-fb .ta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 120ms linear;
+}
+
+.ta-fb .ta-btn:hover {
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.ta-fb .ta-btn-danger {
+  border-color: transparent;
+  background-color: #dc2626;
+  color: #fff;
+}
+
+.ta-fb .ta-btn-danger:hover {
+  background-color: #b91c1c;
+  color: #fff;
 }
 
 /* ── Group-by dropdown ────────────────────────────────────────────────────────────────────── */

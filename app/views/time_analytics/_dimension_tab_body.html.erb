@@ -16,7 +16,7 @@
 <% pivot = @ta_dimension_pivot %>
 <% summary_active = @ta_dimension_view_state == 'summary' %>
 
-<div class="ta-analysis-layout flex gap-6 mb-6">
+<div class="ta-analysis-layout ta-fb flex gap-6 mb-6">
   <div class="ta-analysis-table flex-1 bg-white rounded-lg shadow-md border border-gray-200" id="view-mode-table">
     <div class="px-6 py-4 border-b border-gray-200">
       <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
@@ -28,26 +28,15 @@
           <div class="inline-flex rounded-md shadow-sm" role="group">
             <button type="button" id="show-summary-btn-<%= view_id %>"
                     onclick="taDimensionShowView('summary');"
-                    style="<%= summary_active ? 'background-color: #3b82f6 !important; color: white !important;' : '' %>"
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-l-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= summary_active ? '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' : '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' %>">
+                    class="ta-seg-btn rounded-l-lg <%= 'ta-seg-btn-active' if summary_active %>">
               <span class="material-symbols-outlined mr-2" aria-hidden="true" style="font-size: 18px;">summarize</span>
               Summary
             </button>
             <button type="button" id="show-detailed-btn-<%= view_id %>"
                     onclick="taDimensionShowView('detailed');"
-                    style="<%= summary_active ? '' : 'background-color: #3b82f6 !important; color: white !important;' %>"
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium transition-colors border border-gray-300 rounded-r-lg focus:outline-none focus:ring-4 focus:ring-blue-300 <%= summary_active ? '!text-gray-700 !bg-white hover:!bg-gray-50 hover:!text-gray-900' : '!text-white !bg-[#3b82f6] hover:!bg-[#2563eb]' %>">
+                    class="ta-seg-btn rounded-r-lg <%= 'ta-seg-btn-active' unless summary_active %>">
               <span class="material-symbols-outlined mr-2" aria-hidden="true" style="font-size: 18px;">data_table</span>
               Detailed
-            </button>
-          </div>
-
-          <div id="<%= view_id %>-collapse-all-wrapper" style="display: none;">
-            <button type="button" id="<%= view_id %>-collapse-all-btn"
-                    onclick="taDimensionCollapseAll();"
-                    title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
-                    class="inline-flex items-center justify-center p-2 text-sm font-medium !text-gray-700 !bg-white !border !border-gray-300 rounded-lg hover:!bg-gray-50 !outline-none !shadow-none !ring-0 focus:!outline-none focus:!ring-0">
-              <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
             </button>
           </div>
         </div>
@@ -70,6 +59,15 @@
             <%= hidden_field_tag :dim_view_state, @ta_dimension_view_state %>
             <%= render 'team_analytics/per_page_dropdown' %>
           <% end %>
+
+          <div id="<%= view_id %>-collapse-all-wrapper" style="display: none;">
+            <button type="button" id="<%= view_id %>-collapse-all-btn"
+                    onclick="taDimensionCollapseAll();"
+                    title="<%= l(:button_collapse_all) %>" aria-label="<%= l(:button_collapse_all) %>"
+                    class="inline-flex items-center justify-center p-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              <span class="material-symbols-outlined" aria-hidden='true' style="font-size: 18px;">keyboard_double_arrow_up</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
