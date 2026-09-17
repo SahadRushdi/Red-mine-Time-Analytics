@@ -55,8 +55,8 @@ en:
   label_time_by_field: "Time by %{field}"
 
   # Administration -> Custom fields: pin a field as a permanent grouping tab
-  label_ta_pinned_grouping: "Show as a grouping tab in Time Analytics"
-  text_ta_pinned_grouping_requires_filter: "Also tick \"Used as a filter\" — only single-value filterable fields can be grouped."
+  label_ta_pinned_grouping: "Available for grouping"
+  text_ta_pinned_grouping_requires_filter: "Requires \"Used as a filter\" — single-value fields only."
   label_search_fields: "Search fields..."
   label_ta_already_used: "already used"
   label_ta_no_matching_fields: "No matching fields"
