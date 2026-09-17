@@ -2334,3 +2334,314 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
 .ta-col-sort-ind {
   color: #6b7280;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   .ta-fb — Flowbite / Tailwind isolation scope
+   ═══════════════════════════════════════════════════════════════════════════════════════════
+
+   ROOT CAUSE
+   Redmine's base theme and PurpleMine2 both style BARE ELEMENTS, which predates Tailwind and
+   collides with every utility class we put on a <button> or <input>:
+
+     public/stylesheets/application.css:483
+       input, select, button        { height:24px; padding:0 7px; margin:1px 0 }
+     public/stylesheets/application.css:484
+       input, select, textarea, button { color:#333; background-color:#fff;
+                                         border:1px solid #ccc; border-radius:3px }
+     themes/PurpleMine2-master
+       button                       { padding:3px 12px; border-radius:3px; ... }
+       button:hover, button:focus   { background-color:#004dc2; color:#fff;
+                                      border-color:#004dc2 ...; box-shadow:0 1px 0 #003585 }
+
+   That last rule is why list rows rendered with a stray border and why their text went
+   invisible on hover: white-on-blue painted over our own colours. It is ONE cause, not a set of
+   per-colour glitches, so it is fixed once here rather than patched per component.
+
+   HOW THE SPECIFICITY WORKS
+   `:where()` always contributes ZERO specificity, so `:where(.ta-fb) button` weighs exactly
+   (0,0,1) — identical to the theme's own `button`. Plugin CSS is emitted from
+   `yield :header_tags` (layouts/base.html.erb:19), i.e. AFTER `heads_for_theme` (:15), so on an
+   equal-specificity tie these resets win on source order.
+
+   The important half is what this deliberately does NOT outrank:
+
+     theme        button                      (0,0,1)   <- neutralised
+     this reset   :where(.ta-fb) button       (0,0,1)   <- wins, later in source
+     Tailwind     .bg-white                   (0,1,0)   <- still wins over the reset
+     theme        button:hover                (0,1,1)   <- neutralised
+     this reset   :where(.ta-fb) button:hover (0,1,1)   <- wins, later in source
+     Tailwind     .hover\:bg-gray-50:hover    (0,2,0)   <- still wins over the reset
+
+   So the theme is cancelled while our own utilities keep full control. Writing this as
+   `.ta-fb button` instead would weigh (0,1,1) and silently beat `.bg-white`, which is the trap
+   this construction exists to avoid. No `!important` is needed anywhere.
+
+   USAGE: put `ta-fb` on the root of a component tree. It is inherited by descendants, so one
+   class per component is enough.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+
+:where(.ta-fb) button,
+:where(.ta-fb) input,
+:where(.ta-fb) select,
+:where(.ta-fb) textarea {
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0 solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  background-image: none;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  vertical-align: baseline;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+/* The theme repaints buttons white-on-blue on hover/focus/active. Neutralise all three states;
+   any Tailwind hover:/focus: utility still outranks these.
+ *
+ * CONTRACT: `color: inherit` here weighs (0,1,1) and therefore also outranks a *static*
+ * `.text-gray-700` (0,1,0) while hovering. That is deliberate — falling back to the inherited
+ * text colour is always readable, whereas letting the theme's `#fff` through is what produced
+ * invisible hover text. The consequence is that a control inside this scope which needs a
+ * specific colour on hover must say so, via a `hover:text-*` utility (0,2,0) or a component class
+ * such as `.ta-seg-btn:hover`. */
+:where(.ta-fb) button:hover,
+:where(.ta-fb) button:focus,
+:where(.ta-fb) button:active,
+:where(.ta-fb) input:hover,
+:where(.ta-fb) input:focus,
+:where(.ta-fb) input:active,
+:where(.ta-fb) select:focus,
+:where(.ta-fb) textarea:focus {
+  background-color: transparent;
+  background-image: none;
+  color: inherit;
+  border-color: inherit;
+  box-shadow: none;
+  transform: none;
+  text-decoration: none;
+  outline: none;
+}
+
+/* The theme also styles form controls through a long ATTRIBUTE-selector list:
+     select, textarea, input[type=text], input[type=email], input[type=number], ...
+       { height:28px; padding:3px 8px; border:1px solid #d1d3e0; border-radius:2px;
+         background-color:#fff; box-shadow:inset 0 1px 1px rgba(0,0,0,.075) }
+   `input[type=text]` weighs (0,1,1), which outranks EVERY single-class Tailwind utility (0,1,0).
+   That is why the search box came out 28px tall with 3px padding no matter which utilities it
+   carried. Cancel those at matching weight (`:where()` keeps the scope free, so this is exactly
+   (0,1,1) and wins on source order)... */
+:where(.ta-fb) input[type='text'],
+:where(.ta-fb) input[type='search'],
+:where(.ta-fb) input[type='email'],
+:where(.ta-fb) input[type='number'],
+:where(.ta-fb) input[type='password'],
+:where(.ta-fb) select,
+:where(.ta-fb) textarea {
+  height: auto;
+  padding: 0;
+  border: 0 solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* ...and because nothing at (0,1,0) can outrank a (0,1,1) theme rule, form controls in this scope
+   take their appearance from a component class (0,2,0) rather than from utilities. This is the one
+   place where utility classes genuinely cannot do the job. */
+.ta-fb .ta-dim-search {
+  width: 100%;
+  height: auto;
+  padding: 0.625rem 0.75rem 0.625rem 2.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  color: #111827;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  /* The tab <ul> this dropdown lives in is `text-center`, and the scope's reset makes inputs
+     inherit alignment — without this the placeholder and the typed query sit centred. */
+  text-align: left;
+}
+
+.ta-fb .ta-dim-search::placeholder {
+  color: #9ca3af;
+}
+
+.ta-fb .ta-dim-search:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+  outline: none;
+}
+
+/* Links inside the scope: the theme sets a:hover to #0065ff + underline. */
+:where(.ta-fb) a,
+:where(.ta-fb) a:hover,
+:where(.ta-fb) a:focus {
+  color: inherit;
+  text-decoration: none;
+  background-color: transparent;
+}
+
+/* Neutralising the theme's focus chrome must not cost keyboard accessibility, so put a real
+   focus ring back for keyboard users only. Uses the plugin's primary blue (#3b82f6). */
+:where(.ta-fb) button:focus-visible,
+:where(.ta-fb) input:focus-visible,
+:where(.ta-fb) select:focus-visible,
+:where(.ta-fb) textarea:focus-visible,
+:where(.ta-fb) a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Segmented Summary/Detailed toggle on a group-by tab. */
+.ta-fb .ta-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  background-color: #fff;
+  transition: background-color 120ms linear, color 120ms linear;
+}
+
+.ta-fb .ta-seg-btn:hover {
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+.ta-fb .ta-seg-btn-active,
+.ta-fb .ta-seg-btn-active:hover {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.ta-fb .ta-seg-btn-active:hover {
+  background-color: #2563eb;
+}
+
+/* Dialog buttons (the "remove this grouping?" confirmation).
+ *
+ * Both rest AND hover declare `color` on purpose. The scope's hover reset falls back to
+ * `inherit` at (0,1,1), which outranks a static `.text-white`/`.text-gray-700` (0,1,0) — so a
+ * button that relies on a utility alone has its label change colour the moment it is hovered.
+ * Declaring the same colour for both states here keeps the label stable and removes the need to
+ * remember a matching `hover:text-*` on every button. */
+.ta-fb .ta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: #fff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 120ms linear;
+}
+
+.ta-fb .ta-btn:hover {
+  background-color: #f9fafb;
+  color: #374151;
+}
+
+.ta-fb .ta-btn-danger {
+  border-color: transparent;
+  background-color: #dc2626;
+  color: #fff;
+}
+
+.ta-fb .ta-btn-danger:hover {
+  background-color: #b91c1c;
+  color: #fff;
+}
+
+/* ── Group-by dropdown ────────────────────────────────────────────────────────────────────── */
+
+.ta-dim-menu {
+  min-width: 20rem;
+  max-width: 24rem;
+}
+
+/* A visible, always-present scrollbar, matching the design: the list is scrollable and should
+   look it rather than only revealing a bar on hover. */
+.ta-dim-scroll {
+  max-height: 17rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af transparent;
+}
+
+.ta-dim-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ta-dim-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ta-dim-scroll::-webkit-scrollbar-thumb {
+  background-color: #9ca3af;
+  border-radius: 9999px;
+}
+
+.ta-dim-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
+}
+
+/* Section label above each group of fields ("Issue fields", "Issue custom fields"). These are
+   dropdown group labels, not table column headers, so the small-caps treatment from the design
+   applies here and does not conflict with the table-header casing rule. */
+.ta-dim-section {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.ta-dim-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.ta-dim-option:hover,
+.ta-dim-option.ta-dim-active {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.ta-dim-option[disabled] {
+  color: #9ca3af;
+  cursor: default;
+}
+
+.ta-dim-option[disabled]:hover {
+  background-color: transparent;
+  color: #9ca3af;
+}
+
+.ta-dim-used {
+  flex: none;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  font-size: 0.6875rem;
+}

@@ -1,0 +1,95 @@
+<%#
+  The "+" control, the host for user-added "group by" tabs, and the searchable field dropdown.
+  Rendered inside the tab <ul> of BOTH dashboards, immediately after the pinned tabs, so it only
+  ever appends <li>s and never touches the pinned markup.
+
+  Tabs an administrator pinned (Administration -> Custom fields) are rendered here server-side and
+  are permanent. Tabs the user adds with "+" are rendered client-side by ta_dimension_tabs.js from
+  sessionStorage, so they live only in the browser tab that added them.
+
+  `ta-fb` scopes the Flowbite/Tailwind reset (assets/stylesheets/time_analytics.css) so Redmine's
+  base theme can't repaint these controls.
+
+  Locals:
+    base_path         - dashboard path to navigate to when switching tabs
+    fields_path       - JSON endpoint backing the picker
+    storage_scope     - 'individual' | 'team'; keeps the two dashboards' tab lists independent
+    default_view_mode - pinned tab to fall back to when the active added tab is removed
+    carry_params      - query params to preserve across tab navigation
+    pinned_fields     - fields pinned by an administrator, rendered as permanent tabs
+%>
+<% pinned_fields.each do |field| %>
+  <li class="me-2">
+    <%= link_to "#{base_path}?#{carry_params.merge(view_mode: field.key).to_query}",
+                class: "ta-view-tab inline-block p-4 rounded-t-lg #{@ta_dimension&.key == field.key ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
+      <span class="flex items-center gap-2">
+        <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">label</span>
+        <%= h field.label %>
+      </span>
+    <% end %>
+  </li>
+<% end %>
+
+<li id="ta-dimension-chips" class="contents ta-fb"></li>
+
+<li class="me-2 ta-fb relative">
+  <button type="button" id="ta-add-dimension-btn"
+          aria-haspopup="listbox" aria-expanded="false" aria-controls="ta-dimension-menu"
+          title="<%= l(:label_add_grouping) %>" aria-label="<%= l(:label_add_grouping) %>"
+          class="inline-flex items-center justify-center my-3 p-1.5 rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700">
+    <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">add</span>
+  </button>
+
+  <%# Anchored dropdown. Hidden via .hidden so it costs nothing until opened. %>
+  <div id="ta-dimension-menu" role="dialog" aria-label="<%= l(:label_group_by_field) %>"
+       class="ta-dim-menu hidden absolute left-0 z-40 mt-1 rounded-lg border border-gray-200 bg-white shadow-xl">
+    <div class="p-3 border-b border-gray-100">
+      <div class="relative flex items-center">
+        <span class="material-symbols-outlined absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 pointer-events-none"
+              aria-hidden="true" style="font-size: 20px;">search</span>
+        <input type="text" id="ta-dimension-search" autocomplete="off"
+               placeholder="<%= l(:label_search_fields) %>" aria-label="<%= l(:label_search_fields) %>"
+               class="ta-dim-search">
+      </div>
+    </div>
+    <div id="ta-dimension-menu-body" class="ta-dim-scroll py-2" role="listbox"></div>
+  </div>
+</li>
+
+<%# Confirmation for removing an added grouping tab. Rendered once per page, alongside the
+    dropdown, and scoped with ta-fb so the theme can't repaint its buttons. %>
+<div id="ta-dimension-confirm" role="dialog" aria-modal="true" aria-labelledby="ta-dimension-confirm-title"
+     class="ta-fb hidden fixed inset-0 z-50 items-center justify-center bg-gray-900/50 p-4">
+  <div class="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+    <h3 id="ta-dimension-confirm-title" class="mb-2 text-base font-semibold text-gray-900">
+      <%= l(:label_ta_remove_grouping_title) %>
+    </h3>
+    <p id="ta-dimension-confirm-text" class="mb-6 text-sm text-gray-600"></p>
+    <div class="flex items-center justify-center gap-3">
+      <button type="button" id="ta-dimension-confirm-cancel" class="ta-btn">
+        <%= l(:button_cancel) %>
+      </button>
+      <button type="button" id="ta-dimension-confirm-accept" class="ta-btn ta-btn-danger">
+        <%= l(:button_remove) %>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="ta-dimension-config"><%= {
+  basePath: base_path,
+  fieldsPath: fields_path,
+  storageScope: storage_scope,
+  defaultViewMode: default_view_mode,
+  activeKey: @ta_dimension&.key,
+  activeLabel: @ta_dimension&.label,
+  activeIsPinned: @ta_dimension&.pinned? || false,
+  carryParams: carry_params,
+  labels: {
+    remove: l(:label_remove_grouping),
+    empty: l(:label_no_groupable_fields),
+    noMatches: l(:label_ta_no_matching_fields),
+    alreadyUsed: l(:label_ta_already_used),
+    confirmRemoveBody: l(:text_ta_remove_grouping_confirm, field: '%{field}')
+  }
+}.to_json.html_safe %></script>
