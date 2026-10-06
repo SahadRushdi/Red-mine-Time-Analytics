@@ -808,7 +808,10 @@
       </div>
     </h3>
     
-    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @chart_data.present? && @entry_count > 0 %>
+    <%# @ta_dimension covers the "group by" tabs, whose view_mode is a field key rather than one of
+        the pinned names — without it the whole Trend/Stacked card fell through to the "no data"
+        message even though the tab had hours. %>
+    <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' || @ta_dimension.present?) && @chart_data.present? && @entry_count > 0 %>
       <div id="chart-container" class="<%= chart_type == 'bar' ? 'has-chart-legend' : '' %>" style="display: block;">
         <div class="chart-wrapper">
           <canvas id="time-chart" class="chart"

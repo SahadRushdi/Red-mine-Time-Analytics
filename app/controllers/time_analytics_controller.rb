@@ -203,6 +203,12 @@ class TimeAnalyticsController < ApplicationController
       @chart_data = generate_activity_pivot_chart_data(@activity_pivot_data, chart_type, @activity_view_state)
     elsif @view_mode == 'project' && ['weekly', 'monthly'].include?(@grouping) && defined?(@project_pivot_data)
       @chart_data = generate_project_pivot_chart_data(@project_pivot_data, chart_type, @project_view_state)
+    elsif @ta_dimension_pivot
+      # Without this the Stacked chart fell through to generate_chart_data, which always breaks
+      # time down by ACTIVITY — so a "group by" tab showed activity bars under a status/customer
+      # donut. The pivot already holds period x category, which is exactly what the stacked
+      # builder wants.
+      @chart_data = ta_dim_chart_data(@ta_dimension_pivot, chart_type)
     else
       @chart_data = generate_chart_data(@time_entries, @grouping, chart_type, @view_mode, @activity_view_state, @project_view_state, @issue_view_state)
     end
@@ -2224,6 +2230,19 @@ class TimeAnalyticsController < ApplicationController
   # The same project-visibility-scoped time-entry query individual_dashboard already builds,
   # minus the .includes/.order only its own table needs — shared with issue_breakdown/
   # activity_projects so their drill-down numbers always match the dashboard above them.
+  # Trend/Stacked chart for a "group by" tab, built from the dimension pivot with the same
+  # builders the pinned Activity/Project tabs use, so axis formatting, tooltips and the
+  # month/year separators all stay identical.
+  def ta_dim_chart_data(pivot, chart_type)
+    if chart_type == 'line'
+      generate_line_chart_data(
+        fill_missing_periods_for_grouping(pivot[:period_totals].dup, @grouping)
+      )
+    else
+      generate_stacked_bar_chart_data(pivot[:raw_periods], pivot[:categories], pivot[:matrix])
+    end
+  end
+
   # --- Hooks for RedmineTimeAnalytics::DimensionTabsConcern -----------------------------------
   # Date-keyed period bucketers, so a dynamic tab buckets hours exactly like the pinned tabs do.
   def ta_dim_period_totals(scope, grouping)
