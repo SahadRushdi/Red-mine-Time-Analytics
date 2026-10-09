@@ -5,18 +5,9 @@ require 'fugit'
 
 module RedmineTimeAnalytics
   class MissingTimeScheduler
-    # Hard-coded end-of-month reminder: fires every Friday 18:00 and only acts when that Friday is
-    # the last Friday of the month (gated inside the service). Deliberately not admin-configurable.
-    #
-    # No timezone here on purpose - it is appended dynamically in `monthly_cron` below. Rufus::
-    # Scheduler's `timezone:` constructor option is NOT inherited by individual #cron jobs:
-    # Rufus::Scheduler::CronJob#initialize parses the cron line with `Fugit::Cron.do_parse(cronline)`
-    # and never passes the scheduler's own opts/timezone into it (see rufus-scheduler's
-    # lib/rufus/scheduler/jobs_repeat.rb). A cron string with no embedded zone is therefore parsed
-    # with @zone/@timezone == nil, and Fugit falls back to UTC - so this job silently fired at
-    # 23:30 IST instead of 18:00 IST. Every other (working) cron in this plugin already embeds its
-    # own zone (e.g. "50 15 * * 5 Asia/Kolkata"); this one must too.
-    MONTHLY_REMINDER_TIME = '0 18 * * 5'
+    # Previous-month compliance reminder, on the first at 18:00. Each cron must embed its
+    # timezone because Rufus does not inherit the scheduler's timezone for individual jobs.
+    MONTHLY_REMINDER_TIME = '0 18 1 * *'
 
     @mutex = Mutex.new
     @scheduler = nil
@@ -46,7 +37,7 @@ module RedmineTimeAnalytics
       def next_run_at(settings: TaTeamSetting.missing_time_settings, from_time: Time.zone.now)
         return nil unless settings[:enabled]
 
-        cron_exprs = settings[:crons] + [monthly_cron(settings[:timezone])]
+        cron_exprs = active_schedules(settings).map { |schedule| schedule[:cron] } + [monthly_cron(settings[:timezone])]
         times = cron_exprs.filter_map do |cron|
           line = cron_line_for(cron)
           next_t = line&.next_time(from_time)
@@ -73,6 +64,11 @@ module RedmineTimeAnalytics
 
       private
 
+      def active_schedules(settings)
+        schedules = settings[:schedules] || Array(settings[:crons]).map { |cron| { cron: cron, weekly: true, daily: false } }
+        schedules.select { |schedule| schedule[:cron].present? && (schedule[:weekly] || schedule[:daily]) }
+      end
+
       def schedule_current!
         @jobs.each do |job|
           if job.respond_to?(:unschedule)
@@ -86,11 +82,10 @@ module RedmineTimeAnalytics
         settings = TaTeamSetting.missing_time_settings
         return unless settings[:enabled]
 
-        settings[:crons].each do |cron|
-          next if cron.blank?
-
-          job = @scheduler.cron cron do
-            run_notification!
+        active_schedules(settings).each do |schedule|
+          job = @scheduler.cron schedule[:cron] do
+            run_notification!(period: :weekly) if schedule[:weekly]
+            run_notification!(period: :daily) if schedule[:daily]
           end
           @jobs << job
         end

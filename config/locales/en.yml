@@ -1,4 +1,15 @@
 en:
+  label_missing_time_notifications: "Missing Time Notifications"
+  label_missing_time_enabled: "Enable missing time notifications"
+  label_missing_time_recipients: "Notification Recipients"
+  label_missing_time_schedules: "Notification Schedules"
+  label_missing_time_check_week: "Check week"
+  label_missing_time_check_day: "Check current day"
+  label_missing_time_add_schedule: "Add schedule"
+  text_missing_time_recipients: "Comma-separated list of email addresses that receive missing time alerts."
+  text_missing_time_cron_help: "One cron expression per row: minute hour day month weekday. For example, 0 18 * * * runs daily at 6 PM; 0 8 * * 1 runs Mondays at 8 AM. Changes take effect automatically without a restart."
+  text_missing_time_coverage_help: "Check week: Monday checks the previous Monday–Sunday; other days check this Monday through today. Check current day: today only. Select both for separate weekly and daily emails, or neither to disable the row. Nonworking days are excluded."
+  text_missing_time_monthly_help: "An automatic check runs on the 1st of each month at 6 PM in the configured notification timezone for the entire previous month; no cron row is needed."
   # Plugin labels
   label_time_analytics: "My Time"
   label_individual_dashboard: "My Time"

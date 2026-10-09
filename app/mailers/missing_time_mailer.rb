@@ -21,7 +21,9 @@ class MissingTimeMailer < ActionMailer::Base
     mail_options = { to: recipients, subject: subject_text }
     from_address = formatted_from(from_name)
     mail_options[:from] = from_address if from_address.present?
-    mail(mail_options)
+    # Redmine production suppresses delivery exceptions globally. Enable errors on this
+    # message so the notification service can report failed SMTP attempts accurately.
+    mail(mail_options).tap { |message| message.raise_delivery_errors = true }
   end
 
   private

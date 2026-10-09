@@ -255,28 +255,46 @@ class TaTeamSetting < ActiveRecord::Base
     enabled_setting = raw.key?('missing_time_enabled') ? raw['missing_time_enabled'].to_s : '1'
     recipients_raw = raw['missing_time_recipients'].to_s.strip
 
-    # Primary: new array key set by the dynamic UI.
-    crons = Array(raw['missing_time_crons']).map(&:to_s).map(&:strip).reject(&:blank?)
-
-    # Legacy fallback chain so existing installs don't silently lose notifications after upgrade.
-    if crons.empty?
-      legacy_single = raw['missing_time_cron'].to_s.strip
-      fri = raw['missing_time_cron_fri'].to_s.strip.presence || legacy_single
-      sat = raw['missing_time_cron_sat'].to_s.strip
-      mon = raw['missing_time_cron_mon'].to_s.strip
-      crons = [fri, sat, mon].reject(&:blank?)
-    end
+    schedules = missing_time_schedules(raw)
 
     {
       enabled: enabled_setting == '1',
-      crons: crons,
+      schedules: schedules,
+      crons: schedules.map { |schedule| schedule[:cron] },
       recipients: parse_recipient_list(recipients_raw),
       from_name: raw['missing_time_from_name'].to_s.strip.presence || 'Time Analytics System',
       timezone: raw['missing_time_timezone'].to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
     }
   end
 
-  def self.update_missing_time_settings!(enabled:, recipients:, crons: [], from_name: nil, timezone: nil)
+  # Do not register missing_time_schedules in plugin defaults: key presence distinguishes
+  # an explicitly cleared list from an installation that still uses legacy cron settings.
+  def self.missing_time_schedules(raw)
+    return normalize_missing_time_schedules(raw['missing_time_schedules']) if raw.key?('missing_time_schedules')
+
+    crons = Array(raw['missing_time_crons']).map(&:to_s).map(&:strip).reject(&:blank?)
+    if crons.empty?
+      legacy_single = raw['missing_time_cron'].to_s.strip
+      fri = raw['missing_time_cron_fri'].to_s.strip.presence || legacy_single
+      crons = [fri, raw['missing_time_cron_sat'].to_s.strip, raw['missing_time_cron_mon'].to_s.strip].reject(&:blank?)
+    end
+    crons.map { |cron| { cron: cron, weekly: true, daily: false } }
+  end
+
+  def self.normalize_missing_time_schedules(value)
+    rows = value.is_a?(Hash) ? value.values : Array(value)
+    rows.filter_map do |row|
+      next unless row.is_a?(Hash)
+
+      row = row.stringify_keys
+      cron = row['cron'].to_s.strip
+      next if cron.blank?
+
+      { cron: cron, weekly: [true, '1'].include?(row['weekly']), daily: [true, '1'].include?(row['daily']) }
+    end
+  end
+
+  def self.update_missing_time_settings!(enabled:, recipients:, crons: [], schedules: nil, from_name: nil, timezone: nil)
     normalized_recipients = parse_recipient_list(recipients)
     raise ArgumentError, 'Missing time recipients are required' if normalized_recipients.empty?
 
@@ -286,9 +304,13 @@ class TaTeamSetting < ActiveRecord::Base
       raise ArgumentError, "Invalid recipient email: #{email}"
     end
 
-    normalized_crons = Array(crons).map(&:to_s).map(&:strip).reject(&:blank?)
-    normalized_crons.each_with_index do |expr, i|
-      validate_missing_time_cron!(expr, label: "Schedule #{i + 1}")
+    normalized_schedules = if schedules.nil?
+                             missing_time_schedules('missing_time_crons' => crons)
+                           else
+                             normalize_missing_time_schedules(schedules)
+                           end
+    normalized_schedules.each_with_index do |schedule, i|
+      validate_missing_time_cron!(schedule[:cron], label: "Schedule #{i + 1}")
     end
 
     normalized_timezone = timezone.to_s.strip.presence || DEFAULT_MISSING_TIME_TIMEZONE
@@ -296,7 +318,8 @@ class TaTeamSetting < ActiveRecord::Base
 
     plugin_settings = (Setting.plugin_redmine_time_analytics || {}).dup
     plugin_settings['missing_time_enabled'] = enabled.to_s == '1' ? '1' : '0'
-    plugin_settings['missing_time_crons'] = normalized_crons
+    plugin_settings['missing_time_schedules'] = normalized_schedules.map(&:stringify_keys)
+    plugin_settings['missing_time_crons'] = normalized_schedules.map { |schedule| schedule[:cron] }
     plugin_settings['missing_time_recipients'] = normalized_recipients.join(', ')
     plugin_settings['missing_time_from_name'] = from_name.to_s.strip
     plugin_settings['missing_time_timezone'] = normalized_timezone
@@ -524,7 +547,7 @@ class TaTeamSetting < ActiveRecord::Base
     prefix = label ? "#{label} schedule" : 'Missing time cron expression'
     raise ArgumentError, "#{prefix} is required" if cron_expression.blank?
 
-    Fugit::Cron.parse(cron_expression)
+    raise ArgumentError unless Fugit::Cron.parse(cron_expression)
   rescue StandardError
     raise ArgumentError, "#{prefix} is invalid: #{cron_expression}"
   end
