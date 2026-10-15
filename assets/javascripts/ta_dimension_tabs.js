@@ -48,6 +48,10 @@
   // Same URL mutation the pinned tabs' toggleViewMode does, kept separate so that function is
   // untouched. `page` is dropped because row counts differ between dimensions.
   function navigateTo(viewMode) {
+    // Same scroll-to-table behaviour the pinned tabs have: the dashboard reads this flag on the
+    // next load and brings the analysis table into view.
+    try { sessionStorage.setItem(config.scrollFlag, 'true'); } catch (e) { /* storage blocked */ }
+
     var params = new URLSearchParams();
     Object.keys(config.carryParams || {}).forEach(function (name) {
       var value = config.carryParams[name];

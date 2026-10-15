@@ -14,6 +14,8 @@
     base_path         - dashboard path to navigate to when switching tabs
     fields_path       - JSON endpoint backing the picker
     storage_scope     - 'individual' | 'team'; keeps the two dashboards' tab lists independent
+    scroll_flag       - sessionStorage key this dashboard reads to scroll to the table after a
+                        tab switch ('scrollToTable' / 'scrollToTeamTable')
     default_view_mode - pinned tab to fall back to when the active added tab is removed
     carry_params      - query params to preserve across tab navigation
     pinned_fields     - fields pinned by an administrator, rendered as permanent tabs
@@ -21,6 +23,7 @@
 <% pinned_fields.each do |field| %>
   <li class="me-2">
     <%= link_to "#{base_path}?#{carry_params.merge(view_mode: field.key).to_query}",
+                onclick: "sessionStorage.setItem('#{scroll_flag}','true');",
                 class: "ta-view-tab inline-block p-4 rounded-t-lg #{@ta_dimension&.key == field.key ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
       <span class="flex items-center gap-2">
         <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">label</span>
@@ -80,6 +83,7 @@
   basePath: base_path,
   fieldsPath: fields_path,
   storageScope: storage_scope,
+  scrollFlag: scroll_flag,
   defaultViewMode: default_view_mode,
   activeKey: @ta_dimension&.key,
   activeLabel: @ta_dimension&.label,

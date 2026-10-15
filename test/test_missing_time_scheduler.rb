@@ -1,137 +1,327 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Standalone regression test for the missing-time monthly compliance reminder.
-#
-# Bug: the monthly "last Friday of the month" reminder cron ('0 18 * * 5') never actually fired at
-# 18:00 local time. Root cause: Rufus::Scheduler's `timezone:` constructor option is NOT inherited
-# by individual #cron jobs - Rufus::Scheduler::CronJob#initialize parses the cron line with
-# `Fugit::Cron.do_parse(cronline)` and never threads the scheduler's own timezone option into that
-# call (see rufus-scheduler's lib/rufus/scheduler/jobs_repeat.rb). A cron string with no embedded
-# zone is parsed with @zone/@timezone == nil, and Fugit then falls back to UTC. So '0 18 * * 5'
-# was actually scheduled for 18:00 UTC = 23:30 IST, not 18:00 IST - it silently fired 5.5 hours
-# late every time, which nobody was awake to notice. Every other (working) cron in this plugin
-# already embeds its own zone in the string (e.g. "50 15 * * 5 Asia/Kolkata"); the monthly cron is
-# now built the same way via MissingTimeScheduler.monthly_cron(timezone).
-#
-# This script mocks just enough (Setting/Rails-free) to load the two plain-Ruby lib files and
-# exercise the pure date/cron logic without a Rails runtime.
-
-# Force UTC as the "no explicit zone" fallback, matching Redmine's actual deployment default
-# (Rails config.time_zone = UTC) - this is exactly why a cron with no embedded zone is dangerous:
-# it silently resolves against UTC, not the server's local time. Setting this explicitly also keeps
-# the test deterministic regardless of the machine it runs on.
+# Standalone tests: actual setting normalization, cron parsing and service logic;
+# database settings, time-entry lookup and email delivery are replaced in memory.
 ENV['TZ'] = 'UTC'
+ENV['MISSING_TIME_SCHEDULER_DISABLED'] = '1'
 
-require 'date'
-require 'fugit'
+require 'active_record'
+require 'active_support/all'
+require 'active_support/testing/time_helpers'
+require 'minitest/autorun'
+require 'logger'
+require 'net/smtp'
+require 'action_view'
+require 'rack'
+require 'yaml'
+require 'nokogiri'
 
-# Minimal ActiveSupport-style shims used by missing_time_scheduler.rb (blank?/presence).
-class NilClass
-  def blank?
-    true
+class Setting
+  class << self
+    attr_accessor :plugin_redmine_time_analytics
   end
 end
 
-class String
-  def blank?
-    strip.empty?
-  end
-
-  def presence
-    blank? ? nil : self
+module Rails
+  def self.logger
+    @logger ||= Logger.new(File::NULL)
   end
 end
 
-class Array
-  def blank?
-    empty?
-  end
-end
-
-# Stand-in for the real (ActiveRecord-backed) TaTeamSetting - only the constant
-# MissingTimeScheduler#monthly_cron falls back to when no timezone is supplied.
-class TaTeamSetting
-  DEFAULT_MISSING_TIME_TIMEZONE = 'Asia/Kolkata'
-end
-
+require_relative '../app/models/ta_team_setting'
 require_relative '../lib/redmine_time_analytics/missing_time_scheduler'
 require_relative '../lib/redmine_time_analytics/missing_time_notification_service'
+require_relative '../lib/redmine_time_analytics/missing_time_email_template'
 
-failures = []
+class MissingTimeMailer
+  class << self
+    attr_accessor :deliveries, :fail_delivery, :perform_deliveries, :skip_delivery
 
-def check(failures, description, expected, actual)
-  if expected == actual
-    puts "  PASS: #{description}"
-  else
-    puts "  FAIL: #{description} (expected #{expected.inspect}, got #{actual.inspect})"
-    failures << description
+    def reminder(**options)
+      delivery = Object.new
+      message = Struct.new(:perform_deliveries).new(perform_deliveries)
+      delivery.define_singleton_method(:message) { message }
+      delivery.define_singleton_method(:deliver_now) do
+        return nil if MissingTimeMailer.skip_delivery
+        raise 'SMTP unavailable' if MissingTimeMailer.fail_delivery
+
+        MissingTimeMailer.deliveries << options
+        message
+      end
+      delivery
+    end
   end
 end
 
-puts '=' * 60
-puts 'Missing Time Scheduler - Monthly Reminder Regression Test'
-puts '=' * 60
+class MissingTimeSchedulerTest < Minitest::Test
+  include ActiveSupport::Testing::TimeHelpers
 
-scheduler = RedmineTimeAnalytics::MissingTimeScheduler
+  Scheduler = RedmineTimeAnalytics::MissingTimeScheduler
+  Service = RedmineTimeAnalytics::MissingTimeNotificationService
 
-# Test 1: the bug, reproduced directly - a bare cron string (no embedded timezone) is parsed by
-# Fugit with no zone at all, so Rufus has nothing to translate the wall-clock time by.
-puts "\nTest 1: reproducing the bug - a bare cron string has no timezone"
-bare_line = Fugit::Cron.parse(scheduler::MONTHLY_REMINDER_TIME)
-check(failures, "bare '0 18 * * 5' parses with a nil zone (the actual bug)", nil, bare_line.zone)
+  class LookupService < Service
+    attr_accessor :missing
+    attr_reader :queried_range
 
-# Test 2: the fix - MissingTimeScheduler.monthly_cron embeds the timezone in the string itself,
-# exactly like every other (working) cron in this plugin already does.
-puts "\nTest 2: the fix - monthly_cron embeds the configured timezone in the cron string"
-fixed_cron = scheduler.monthly_cron('Asia/Kolkata')
-check(failures, 'monthly_cron appends the timezone to the base time', '0 18 * * 5 Asia/Kolkata', fixed_cron)
-fixed_line = Fugit::Cron.parse(fixed_cron)
-check(failures, 'the fixed cron line now has a real zone', 'Asia/Kolkata', fixed_line.zone)
+    def users_missing_time_for_range(range)
+      @queried_range = range
+      @missing || {}
+    end
+  end
 
-# Test 3: falls back to the plugin default timezone when none is configured.
-puts "\nTest 3: monthly_cron falls back to the default timezone"
-check(failures, 'blank timezone falls back to Asia/Kolkata', '0 18 * * 5 Asia/Kolkata', scheduler.monthly_cron(''))
-check(failures, 'nil timezone falls back to Asia/Kolkata', '0 18 * * 5 Asia/Kolkata', scheduler.monthly_cron(nil))
+  class FakeJob
+    attr_reader :cron
+    attr_accessor :unscheduled
 
-# Test 4: regression - prove the actual scheduled instant moves by 5.5 hours (IST offset) once the
-# timezone is embedded, for the exact same wall-clock date. This is the concrete "23:30 vs 18:00"
-# discrepancy that explained why the reminder looked like it never ran.
-puts "\nTest 4: regression - the fix changes WHEN the job actually fires, not just how it looks"
-from_time = Time.utc(2026, 7, 31, 0, 0, 0) # midnight UTC on the last Friday of July 2026
-buggy_next = bare_line.next_time(from_time)
-fixed_next = fixed_line.next_time(from_time)
-buggy_utc = Time.at(buggy_next.to_i).utc
-fixed_utc = Time.at(fixed_next.to_i).utc
-puts "  Buggy (no zone) next fire, in UTC:   #{buggy_utc}"
-puts "  Fixed (Asia/Kolkata) next fire, in UTC: #{fixed_utc}"
-check(failures, 'the buggy cron fires at 18:00 UTC (i.e. 23:30 IST - not what anyone configured)',
-      Time.utc(2026, 7, 31, 18, 0, 0), buggy_utc)
-check(failures, 'the fixed cron fires at 12:30 UTC (i.e. 18:00 IST - the intended time)',
-      Time.utc(2026, 7, 31, 12, 30, 0), fixed_utc)
-check(failures, 'fixing the timezone moves the fire time 5.5 hours earlier',
-      5.5 * 3600, buggy_next.to_i - fixed_next.to_i)
+    def initialize(cron, callback)
+      @cron, @callback = cron, callback
+    end
 
-# Test 5: last_friday_of_month? gate - the exact scenario from the bug report (July 31, 2026, Friday).
-puts "\nTest 5: last_friday_of_month? gate matches the reported date"
-service = RedmineTimeAnalytics::MissingTimeNotificationService.allocate # skip initialize (needs TaTeamSetting/AR)
-check(failures, 'July 31, 2026 (Friday) is the last Friday of July', true, service.send(:last_friday_of_month?, Date.new(2026, 7, 31)))
-check(failures, 'July 24, 2026 (Friday) is NOT the last Friday of July', false, service.send(:last_friday_of_month?, Date.new(2026, 7, 24)))
-check(failures, 'a Thursday is never treated as the monthly gate', false, service.send(:last_friday_of_month?, Date.new(2026, 7, 30)))
+    def fire
+      @callback.call
+    end
 
-# Test 6: last_friday_of_month? across months with different Friday counts.
-puts "\nTest 6: last_friday_of_month? across months with different Friday counts"
-check(failures, 'Jan 30, 2026 is the last Friday of January (5-Friday month)', true, service.send(:last_friday_of_month?, Date.new(2026, 1, 30)))
-check(failures, 'Feb 27, 2026 is the last Friday of February (4-Friday month)', true, service.send(:last_friday_of_month?, Date.new(2026, 2, 27)))
-check(failures, 'Feb 20, 2026 is NOT the last Friday of February', false, service.send(:last_friday_of_month?, Date.new(2026, 2, 20)))
+    def unschedule
+      @unscheduled = true
+    end
+  end
 
-puts "\n" + '=' * 60
-if failures.empty?
-  puts 'Test Complete! All checks passed.'
-else
-  puts "Test Complete! #{failures.size} check(s) FAILED:"
-  failures.each { |f| puts "  - #{f}" }
+  class FakeScheduler
+    attr_reader :jobs
+
+    def initialize
+      @jobs = []
+    end
+
+    def cron(expression, &callback)
+      FakeJob.new(expression, callback).tap { |job| @jobs << job }
+    end
+  end
+
+  def setup
+    @old_settings = Setting.plugin_redmine_time_analytics
+    @old_scheduler = Scheduler.instance_variable_get(:@scheduler)
+    @old_jobs = Scheduler.instance_variable_get(:@jobs)
+    Setting.plugin_redmine_time_analytics = {}
+    MissingTimeMailer.deliveries = []
+    MissingTimeMailer.fail_delivery = false
+    MissingTimeMailer.perform_deliveries = true
+    MissingTimeMailer.skip_delivery = false
+    Time.zone = 'UTC'
+  end
+
+  def teardown
+    travel_back
+    Setting.plugin_redmine_time_analytics = @old_settings
+    Scheduler.instance_variable_set(:@scheduler, @old_scheduler)
+    Scheduler.instance_variable_set(:@jobs, @old_jobs)
+  end
+
+  def row(cron = '0 18 * * *', weekly: true, daily: false)
+    { cron: cron, weekly: weekly, daily: daily }
+  end
+
+  def settings(schedules = [])
+    { enabled: true, schedules: schedules, timezone: 'Asia/Kolkata',
+      recipients: ['admin@example.com'], from_name: 'Time Analytics' }
+  end
+
+  def test_weekly_and_daily_ranges_for_every_weekday
+    service = Service.new(settings: settings)
+    monday = Date.new(2026, 10, 5)
+    7.times do |offset|
+      today = monday + offset
+      expected = offset.zero? ? (monday - 7..monday - 1) : (monday..today)
+      assert_equal [expected, :weekly], service.send(:resolve_date_range, today, :weekly)
+      assert_equal [today..today, :daily], service.send(:resolve_date_range, today, :daily)
+      assert_equal [expected, :weekly], service.send(:resolve_date_range, today)
+    end
+    # Monday's previous week can cross a year boundary.
+    assert_equal [Date.new(2025, 12, 29)..Date.new(2026, 1, 4), :weekly],
+                 service.send(:resolve_date_range, Date.new(2026, 1, 5), :weekly)
+  end
+
+  def test_monthly_cron_embeds_timezone_and_runs_on_first_at_18
+    assert_equal '0 18 1 * * Asia/Kolkata', Scheduler.monthly_cron('Asia/Kolkata')
+    assert_equal Scheduler.monthly_cron('Asia/Kolkata'), Scheduler.monthly_cron(nil)
+    assert_equal Scheduler.monthly_cron('Asia/Kolkata'), Scheduler.monthly_cron('')
+    cron = Scheduler.cron_line_for(Scheduler.monthly_cron('Asia/Kolkata'))
+    assert_equal 'Asia/Kolkata', cron.zone
+    assert_equal Time.utc(2026, 11, 1, 12, 30), cron.next_time(Time.utc(2026, 10, 9)).to_t.utc
+    assert_equal Time.utc(2026, 12, 1, 12, 30), cron.next_time(Time.utc(2026, 11, 1, 12, 31)).to_t.utc
+    utc_cron = Scheduler.cron_line_for(Scheduler.monthly_cron('UTC'))
+    assert_equal Time.utc(2026, 11, 1, 18), utc_cron.next_time(Time.utc(2026, 10, 9)).to_t.utc
+  end
+
+  def test_monthly_ranges_include_complete_previous_month
+    [[Date.new(2026, 11, 1), Date.new(2026, 10, 1), Date.new(2026, 10, 31)],
+     [Date.new(2026, 1, 1), Date.new(2025, 12, 1), Date.new(2025, 12, 31)],
+     [Date.new(2028, 3, 1), Date.new(2028, 2, 1), Date.new(2028, 2, 29)],
+     [Date.new(2026, 3, 1), Date.new(2026, 2, 1), Date.new(2026, 2, 28)]].each do |today, first, last|
+      travel_to Time.utc(today.year, today.month, today.day, 12)
+      service = LookupService.new(settings: settings)
+      result = service.notify_missing_time!(period: :monthly)
+      assert_empty result.errors
+      assert_equal first..last, result.date_range
+      assert_equal first..last, service.queried_range
+      refute result.sent
+    end
+  end
+
+  def test_monthly_gate_uses_notification_timezone
+    # UTC is still October 31, while the configured timezone is already November 1.
+    travel_to Time.utc(2026, 10, 31, 20)
+    service = LookupService.new(settings: settings)
+    assert_equal Date.new(2026, 10, 1)..Date.new(2026, 10, 31), service.notify_missing_time!(period: :monthly).date_range
+    travel_to Time.utc(2026, 11, 1, 20)
+    service = LookupService.new(settings: settings)
+    assert_nil service.notify_missing_time!(period: :monthly).date_range
+    assert_nil service.queried_range
+  end
+
+  def test_daily_uses_today_in_configured_timezone_and_preserves_overrides
+    travel_to Time.utc(2026, 10, 8, 20)
+    service = LookupService.new(settings: settings)
+    assert_equal Date.new(2026, 10, 9)..Date.new(2026, 10, 9), service.notify_missing_time!(period: :daily).date_range
+    override = Date.new(2026, 9, 1)..Date.new(2026, 9, 3)
+    assert_equal override, service.notify_missing_time!(date_range: override, period: :weekly).date_range
+    travel_to Time.utc(2026, 11, 1, 12)
+    assert_equal override, service.notify_missing_time!(date_range: override, period: :monthly).date_range
+  end
+
+  def test_legacy_settings_become_weekly_only
+    Setting.plugin_redmine_time_analytics = { 'missing_time_crons' => [' 0 18 * * 5 ', '0 8 * * 1', ''] }
+    assert_equal [row('0 18 * * 5'), row('0 8 * * 1')], TaTeamSetting.missing_time_settings[:schedules]
+    Setting.plugin_redmine_time_analytics = { 'missing_time_cron' => '0 18 * * 5', 'missing_time_cron_sat' => '0 10 * * 6', 'missing_time_cron_mon' => '0 8 * * 1' }
+    assert_equal [row('0 18 * * 5'), row('0 10 * * 6'), row('0 8 * * 1')], TaTeamSetting.missing_time_settings[:schedules]
+  end
+
+  def test_empty_new_list_never_restores_legacy_rows
+    [[], {}, { '_empty' => { 'cron' => '' } }].each do |empty|
+      Setting.plugin_redmine_time_analytics = { 'missing_time_schedules' => empty, 'missing_time_crons' => ['0 18 * * 5'], 'missing_time_cron_mon' => '0 8 * * 1' }
+      assert_empty TaTeamSetting.missing_time_settings[:schedules]
+    end
+  end
+
+  def test_settings_writer_round_trip_preserves_all_modes_and_other_settings
+    rows = [row, row(weekly: false, daily: true), row(daily: true), row(weekly: false)]
+    Setting.plugin_redmine_time_analytics = { 'leave_sync_enabled' => '1', 'leave_sync_cron' => '*/10 * * * *' }
+    TaTeamSetting.update_missing_time_settings!(enabled: '1', recipients: 'admin@example.com', schedules: rows)
+    assert_equal rows, TaTeamSetting.missing_time_settings[:schedules]
+    assert_equal '1', Setting.plugin_redmine_time_analytics['leave_sync_enabled']
+    assert_equal '*/10 * * * *', Setting.plugin_redmine_time_analytics['leave_sync_cron']
+    TaTeamSetting.update_missing_time_settings!(enabled: '1', recipients: 'admin@example.com', crons: ['0 8 * * 1'])
+    assert_equal [row('0 8 * * 1')], TaTeamSetting.missing_time_settings[:schedules]
+    assert_raises(ArgumentError) do
+      TaTeamSetting.update_missing_time_settings!(enabled: '1', recipients: 'admin@example.com', schedules: [row('invalid cron')])
+    end
+  end
+
+  def test_indexed_form_payload_keeps_unchecked_values_and_ignores_blank_rows
+    payload = Rack::Utils.parse_nested_query('settings[missing_time_schedules][_empty][cron]=&settings[missing_time_schedules][0][cron]=0+18+*+*+*&settings[missing_time_schedules][0][weekly]=0&settings[missing_time_schedules][0][weekly]=1&settings[missing_time_schedules][0][daily]=0&settings[missing_time_schedules][2][cron]=0+8+*+*+1&settings[missing_time_schedules][2][weekly]=0&settings[missing_time_schedules][2][daily]=0')
+    assert_equal [row, row('0 8 * * 1', weekly: false)], TaTeamSetting.missing_time_schedules(payload['settings'])
+  end
+
+  def test_rendered_settings_form_round_trip_and_row_removal
+    translations = YAML.load_file(File.expand_path('../config/locales/en.yml', __dir__))['en']
+    view = ActionView::Base.with_empty_template_cache.new(ActionView::LookupContext.new([]), {}, nil)
+    view.define_singleton_method(:l) { |key| translations[key.to_s] || key.to_s }
+    rows = [row, row(weekly: false, daily: true), row(daily: true), row(weekly: false)]
+    raw = { 'missing_time_schedules' => rows, 'leave_sync_enabled' => '1',
+            'leave_sync_options' => { 'folder' => 'Inbox' }, 'other_list' => ['first', 'second'] }
+    html = view.render(inline: File.read(File.expand_path('../app/views/settings/_redmine_time_analytics_settings.html.erb', __dir__)), locals: { settings: raw })
+    document = Nokogiri::HTML.fragment(html)
+    assert_equal 4, document.css('.missing-time-cron-row').size
+    assert_equal 8, document.css('input[type="checkbox"][name*="missing_time_schedules"]').size
+    # Serialize successful form controls like a browser, including hidden unchecked values.
+    encode = lambda do
+      controls = document.css('input').filter_map do |input|
+        next if input['type'] == 'checkbox' && !input.key?('checked')
+
+        [input['name'], input['value'] || '']
+      end
+      Rack::Utils.parse_nested_query(URI.encode_www_form(controls))['settings']
+    end
+    submitted = encode.call
+    assert_equal rows, TaTeamSetting.missing_time_schedules(submitted)
+    assert_equal '1', submitted['leave_sync_enabled']
+    assert_equal({ 'folder' => 'Inbox' }, submitted['leave_sync_options'])
+    assert_equal ['first', 'second'], submitted['other_list']
+    document.css('.missing-time-cron-row')[1].remove
+    assert_equal [rows[0], rows[2], rows[3]], TaTeamSetting.missing_time_schedules(encode.call)
+    document.css('.missing-time-cron-row').each(&:remove)
+    assert_empty TaTeamSetting.missing_time_schedules(encode.call)
+  end
+
+  def test_next_run_excludes_inactive_rows_and_includes_monthly
+    from = Time.utc(2026, 10, 9)
+    inactive = settings([row('0 1 * * *', weekly: false)])
+    assert_equal Time.utc(2026, 11, 1, 12, 30), Scheduler.next_run_at(settings: inactive, from_time: from).utc
+    assert_equal Time.utc(2026, 10, 9, 8), Scheduler.next_run_at(settings: settings([row('0 8 * * * UTC', weekly: false, daily: true)]), from_time: from).utc
+    assert_nil Scheduler.next_run_at(settings: inactive.merge(enabled: false), from_time: from)
+  end
+
+  def test_cron_callbacks_dispatch_each_selected_mode_and_refresh_removes_old_jobs
+    rows = [row('0 18 * * 5'), row('0 18 * * *', weekly: false, daily: true), row('0 8 * * 1', daily: true), row('0 9 * * *', weekly: false)]
+    Setting.plugin_redmine_time_analytics = { 'missing_time_schedules' => rows }
+    fake = FakeScheduler.new
+    Scheduler.instance_variable_set(:@scheduler, fake)
+    Scheduler.instance_variable_set(:@jobs, [])
+    calls = []
+    original = Scheduler.method(:run_notification!)
+    Scheduler.define_singleton_method(:run_notification!) { |period: nil| calls << period }
+    Scheduler.send(:schedule_current!)
+    assert_equal 4, fake.jobs.size # Three active rows plus monthly.
+    fake.jobs.each(&:fire)
+    assert_equal [:weekly, :daily, :weekly, :daily, :monthly], calls
+    Setting.plugin_redmine_time_analytics = { 'missing_time_enabled' => '0' }
+    Scheduler.send(:schedule_current!)
+    assert fake.jobs.all?(&:unscheduled)
+    assert_empty Scheduler.instance_variable_get(:@jobs)
+  ensure
+    Scheduler.define_singleton_method(:run_notification!, original) if original
+    Scheduler.singleton_class.send(:private, :run_notification!)
+  end
+
+  def test_weekly_and_daily_send_separate_emails_only_when_missing
+    travel_to Time.utc(2026, 10, 9, 12)
+    service = LookupService.new(settings: settings)
+    service.missing = { 'Engineering' => { 'Member' => [Date.new(2026, 10, 9)] } }
+    [:weekly, :daily].each { |period| assert service.notify_missing_time!(period: period).sent }
+    assert_equal [:weekly, :daily], MissingTimeMailer.deliveries.map { |mail| mail[:period_type] }
+    assert_equal [Date.new(2026, 10, 5)..Date.new(2026, 10, 9), Date.new(2026, 10, 9)..Date.new(2026, 10, 9)], MissingTimeMailer.deliveries.map { |mail| mail[:date_range] }
+    service.missing = {}
+    refute service.notify_missing_time!(period: :daily).sent
+    assert_equal 2, MissingTimeMailer.deliveries.size
+    service.missing = { 'Engineering' => { 'Member' => [Date.new(2026, 10, 9)] } }
+    MissingTimeMailer.fail_delivery = true
+    result = service.notify_missing_time!(period: :weekly)
+    refute result.sent
+    assert_match(/SMTP unavailable/, result.errors.first)
+  end
+
+  def test_email_subjects_describe_selected_periods
+    template = RedmineTimeAnalytics::MissingTimeEmailTemplate
+    assert_equal 'Missing Time Entries for the Month of December 2025', template.subject_for(Date.new(2025, 12, 1)..Date.new(2025, 12, 31), :monthly)
+    assert_equal 'Missing Time Entries for October 9, 2026', template.subject_for(Date.new(2026, 10, 9)..Date.new(2026, 10, 9), :daily)
+    assert_equal 'Missing Time Entries for the Week of October 5–9, 2026', template.subject_for(Date.new(2026, 10, 5)..Date.new(2026, 10, 9), :weekly)
+  end
+
+  def test_disabled_or_skipped_delivery_never_reports_sent
+    travel_to Time.utc(2026, 10, 9, 12)
+    service = LookupService.new(settings: settings)
+    service.missing = { 'Engineering' => { 'Member' => [Date.new(2026, 10, 9)] } }
+    MissingTimeMailer.perform_deliveries = false
+    result = service.notify_missing_time!(period: :weekly)
+    refute result.sent
+    assert_match(/Email delivery is disabled/, result.errors.first)
+    assert_empty MissingTimeMailer.deliveries
+    MissingTimeMailer.perform_deliveries = true
+    MissingTimeMailer.skip_delivery = true
+    result = service.notify_missing_time!(period: :daily)
+    refute result.sent
+    assert_match(/Email delivery was skipped/, result.errors.first)
+    assert_empty MissingTimeMailer.deliveries
+  end
 end
-puts '=' * 60
-
-exit(failures.empty? ? 0 : 1)

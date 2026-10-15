@@ -245,7 +245,7 @@ class TeamAnalyticsController < ApplicationController
       # on JSON.parse(nil).
       ta_build_dimension_view!
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
-      @chart_data = generate_team_chart_data(@time_entries, @grouping, chart_type)
+      @chart_data = ta_dim_chart_data(@ta_dimension_pivot, chart_type)
     end
     
     @total_pages = (@entry_count.to_f / @limit).ceil
@@ -649,6 +649,17 @@ class TeamAnalyticsController < ApplicationController
     scope = team_time_entries_scope(team_members, @from, @to)
     scope = scope.where.not(user_id: temp_excluded_ids) if temp_excluded_ids.any?
     scope
+  end
+
+  # Trend/Stacked chart for a "group by" tab, built from the dimension pivot with the same
+  # builders the pinned Activity/Project tabs use (generate_activity_pivot_chart_data delegates to
+  # exactly these two), so the axis, tooltips and legend match the rest of the dashboard.
+  def ta_dim_chart_data(pivot, chart_type)
+    if chart_type == 'bar'
+      generate_stacked_bar_chart_from_matrix(pivot[:raw_periods], pivot[:categories], pivot[:matrix], @grouping)
+    else
+      generate_pivot_line_chart(pivot[:raw_periods], pivot[:period_totals])
+    end
   end
 
   # --- Hooks for RedmineTimeAnalytics::DimensionTabsConcern -----------------------------------

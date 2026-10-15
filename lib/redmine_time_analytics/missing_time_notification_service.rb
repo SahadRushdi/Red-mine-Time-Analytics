@@ -8,9 +8,8 @@ module RedmineTimeAnalytics
       @settings = settings
     end
 
-    # period: nil      → auto-resolve weekly/daily window from today's weekday (default).
-    # period: :monthly → end-of-month reminder for the full month so far; only acts when today
-    #                    is the last Friday of the month (otherwise it is a no-op).
+    # period: nil defaults to weekly; scheduled rows explicitly select weekly and/or daily.
+    # Monthly reminders cover the complete previous month and only run on the first day.
     def notify_missing_time!(date_range: nil, period: nil)
       result = Result.new(date_range: nil, missing_users: {}, sent: false, errors: [])
 
@@ -18,17 +17,18 @@ module RedmineTimeAnalytics
         today = Time.zone.today
 
         if period == :monthly
-          unless last_friday_of_month?(today)
-            Rails.logger.info("[MissingTimeScheduler] #{today} is not the last Friday of the month; skipping monthly reminder")
+          unless today.day == 1
+            Rails.logger.info("[MissingTimeScheduler] #{today} is not the first day of the month; skipping monthly reminder")
             return result
           end
-          range = date_range || (today.beginning_of_month..today)
+          previous_month_end = today - 1
+          range = date_range || (previous_month_end.beginning_of_month..previous_month_end)
           period_type = :monthly
         elsif date_range
           range = date_range
           period_type = period
         else
-          range, period_type = resolve_date_range(today)
+          range, period_type = resolve_date_range(today, period)
         end
         result.date_range = range
 
@@ -41,13 +41,20 @@ module RedmineTimeAnalytics
         end
 
         begin
-          MissingTimeMailer.reminder(
+          delivery = MissingTimeMailer.reminder(
             missing_by_team: missing_by_team,
             date_range: range,
             period_type: period_type,
             recipients: @settings[:recipients],
             from_name: @settings[:from_name]
-          ).deliver_now
+          )
+          unless delivery.message.perform_deliveries
+            raise 'Email delivery is disabled. Configure Redmine SMTP in config/configuration.yml and restart the server.'
+          end
+          delivered_message = delivery.deliver_now
+          if delivered_message.nil? || !delivered_message.perform_deliveries
+            raise 'Email delivery was skipped; the reminder was not sent.'
+          end
 
           team_count = missing_by_team.size
           user_count = missing_by_team.values.flat_map(&:keys).uniq.size
@@ -75,38 +82,15 @@ module RedmineTimeAnalytics
 
     private
 
-    # Returns [date_range, period_type] for the weekly/daily reminder based on today's weekday.
-    def resolve_date_range(today)
-      case today.wday
-      when 1 # Monday → previous week Mon–Fri
-        monday = today - 7
-        [monday..monday + 4, :weekly]
-      when 5, 6 # Friday or Saturday → current week Mon–Fri
-        monday = today - (today.wday - 1)
-        [monday..monday + 4, :weekly]
+    def resolve_date_range(today, period = nil)
+      return [today..today, :daily] if period == :daily
+
+      if today.wday == 1
+        [today - 7..today - 1, :weekly]
       else
-        prev = previous_working_day(today)
-        Rails.logger.warn(
-          "[MissingTimeScheduler] triggered on #{today.strftime('%A')} (not Mon/Fri/Sat); " \
-          "falling back to single-day check for #{prev}"
-        )
-        [prev..prev, :daily]
+        monday = today - ((today.wday + 6) % 7)
+        [monday..today, :weekly]
       end
-    end
-
-    # A Friday is the last Friday of its month if seven days later lands in the next month.
-    def last_friday_of_month?(date)
-      date.wday == 5 && (date + 7).month != date.month
-    end
-
-    def previous_working_day(reference_date)
-      date = reference_date - 1.day
-      30.times do
-        return date if RedmineTimeAnalytics::WorkingDaysCalculator.working_day?(date)
-
-        date -= 1.day
-      end
-      raise "Unable to find previous working day from #{reference_date}"
     end
 
     # Returns { TaTeam => { User => [Date, ...] } } grouped by the team(s) each user is a direct
