@@ -9,42 +9,36 @@ module RedmineTimeAnalytics
         "Missing Time Entries for #{period_phrase(date_range, period_type)}"
       end
 
-      # Plain-text fallback body. Lists each team and its un-logged members.
+      # Plain-text fallback body, with one row per member across all teams.
       def body_for(missing_by_team:, date_range:, from_name:, period_type: nil)
         lines = []
         lines << 'Hi Team,'
         lines << ''
         lines << "This is a gentle reminder to review your time entries for #{period_phrase(date_range, period_type)} and ensure they are up to date."
-        lines << 'If your name is listed below, please take a moment to check your logged time and update any missing entries if needed.'
         lines << ''
-
-        Array(missing_by_team).each do |team, user_dates|
-          lines << "#{team_name(team)}"
-          Array(user_dates).each do |user, dates|
-            lines << "  #{user_name(user)} -> #{format_missing_dates(dates)}"
-          end
-          lines << ''
+        lines << 'Team Member | Time Log Missed Days'
+        missing_members(missing_by_team).each do |user, dates|
+          lines << "#{user_name(user)} | #{format_missing_dates(dates)}"
         end
-
-        lines << 'If your time entries are already up to date or you were on leave, you can ignore this message. Kindly complete any pending times.'
-        lines << 'Thanks for your support in keeping our records accurate.'
+        lines << ''
+        lines << 'If your time entries are already up to date or you were on leave, you can ignore this message.'
+        lines << ''
         lines << "Best regards,\n#{from_name.presence || 'Time Analytics System'}"
         lines << ''
         lines << '(This is an automated email. Please do not reply.)'
         lines.join("\n")
       end
 
-      # HTML body: one table per team with the team's un-logged members.
+      # HTML body: one table containing all members with missing time.
       def body_html_for(missing_by_team:, date_range:, from_name:, period_type: nil)
-        tables = Array(missing_by_team).map { |team, user_dates| team_table_html(team, user_dates) }.join
+        table = members_table_html(missing_members(missing_by_team))
 
         <<~HTML
           <div style="font-family: Arial, Helvetica, sans-serif; color:#1f2937; font-size:14px; line-height:1.6;">
             <p>Hi Team,</p>
-            <p>This is a gentle reminder to review your time entries for <strong>#{esc(period_phrase(date_range, period_type))}</strong> and ensure they are up to date. If your name is listed below, please take a moment to check your logged time and update any missing entries.</p>
-            #{tables}
-            <p style="margin-top:20px;">If your time entries are already up to date or you were on leave, you can ignore this message. Kindly complete any pending entries.</p>
-            <p>Thanks for your support in keeping our records accurate.</p>
+            <p>This is a gentle reminder to review your time entries for <strong>#{esc(period_phrase(date_range, period_type))}</strong> and ensure they are up to date.</p>
+            #{table}
+            <p style="margin-top:20px;">If your time entries are already up to date or you were on leave, you can ignore this message.</p>
             <p>Best regards,<br>#{esc(from_name.presence || 'Time Analytics System')}</p>
             <p style="color:#6b7280; font-size:12px; margin-top:16px;">(This is an automated email. Please do not reply.)</p>
           </div>
@@ -53,7 +47,17 @@ module RedmineTimeAnalytics
 
       private
 
-      def team_table_html(team, user_dates)
+      def missing_members(missing_by_team)
+        by_user = Hash.new { |users, user| users[user] = [] }
+        Array(missing_by_team).each do |_team, user_dates|
+          Array(user_dates).each do |user, dates|
+            by_user[user].concat(Array(dates))
+          end
+        end
+        by_user.sort_by { |user, _dates| [user_name(user).downcase, user_name(user)] }
+      end
+
+      def members_table_html(user_dates)
         cell = 'border:1px solid #d1d5db; padding:8px 12px;'
         head = "text-align:left; #{cell} background:#f3f4f6; font-weight:bold;"
 
@@ -65,7 +69,6 @@ module RedmineTimeAnalytics
         end.join
 
         <<~HTML
-          <h3 style="margin:20px 0 8px; font-size:16px; color:#111827;">#{esc(team_name(team))}</h3>
           <table style="border-collapse:collapse; width:100%; max-width:640px;">
             <thead>
               <tr>
@@ -116,10 +119,6 @@ module RedmineTimeAnalytics
         date.to_s
       end
 
-      def team_name(team)
-        team.respond_to?(:name) ? team.name.to_s : team.to_s
-      end
-
       def user_name(user)
         user.respond_to?(:name) ? user.name.to_s : user.to_s
       end
@@ -129,23 +128,9 @@ module RedmineTimeAnalytics
       end
 
       def format_missing_dates(dates)
-        sorted = Array(dates).map(&:to_date).sort
-        return '' if sorted.empty?
-
-        groups = sorted.each_with_object([]) do |d, acc|
-          if acc.last&.last == d - 1
-            acc.last << d
-          else
-            acc << [d]
-          end
-        end
-
-        groups.map do |g|
-          if g.length == 1
-            g.first.strftime('%b %d')
-          else
-            "#{g.first.strftime('%b %d')} to #{g.last.strftime('%b %d')}"
-          end
+        sorted = Array(dates).map(&:to_date).uniq.sort
+        sorted.group_by { |date| [date.year, date.month] }.map do |_month, month_dates|
+          "#{month_dates.first.strftime('%b')} #{month_dates.map(&:day).join(', ')}"
         end.join(', ')
       end
     end
