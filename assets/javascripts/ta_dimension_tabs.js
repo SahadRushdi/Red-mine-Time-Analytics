@@ -492,6 +492,7 @@
         loading: body.labels.loading,
         error: body.labels.error,
         emptyIssues: body.labels.emptyIssues,
+        contribution: body.labels.contribution,
         emptyProjects: body.labels.emptyIssues
       });
 

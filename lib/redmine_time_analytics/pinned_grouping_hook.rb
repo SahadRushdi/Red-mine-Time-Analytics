@@ -59,7 +59,8 @@ module RedmineTimeAnalytics
       ]
 
       content_tag(:p, safe_join(parts), id: 'ta-pinned-grouping-control', hidden: !supported,
-                  data: { grouping_formats: GroupableFieldRegistry::GROUPABLE_CF_FORMATS.to_json })
+                  data: { grouping_formats: GroupableFieldRegistry::GROUPABLE_CF_FORMATS.to_json,
+                          multiple_grouping_formats: GroupableFieldRegistry::MULTIPLE_CF_FORMATS.to_json })
     end
 
     def persist(context)

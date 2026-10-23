@@ -71,9 +71,9 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
     end
   end
 
-  test 'only single-value groupable formats are exposed' do
+  test 'only supported groupable formats are exposed' do
     Registry.all(User.current).filter_map(&:custom_field).each do |cf|
-      assert_not cf.multiple?, "#{cf.name} is multi-value and must be excluded"
+      assert Registry.supported?(cf)
       assert_includes Registry::GROUPABLE_CF_FORMATS, cf.field_format
     end
   end
@@ -181,14 +181,14 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
                    'ticking "Used as a filter" should make it groupable with no code change'
   end
 
-  test 'long text and multi-value custom fields are excluded' do
+  test 'long text is excluded while supported multi-value fields are exposed' do
     text = IssueCustomField.create!(name: 'TA Long Text', field_format: 'text',
                                     is_filter: true, is_for_all: true)
     multi = IssueCustomField.create!(name: 'TA Multi', field_format: 'list', multiple: true,
                                      possible_values: %w[a b], is_filter: true, is_for_all: true)
 
     assert_nil Registry.find("cf_issue_#{text.id}", User.current)
-    assert_nil Registry.find("cf_issue_#{multi.id}", User.current)
+    assert_not_nil Registry.find("cf_issue_#{multi.id}", User.current)
   end
 
   # Redmine's CustomField#group_statement returns nil for `string`; the registry falls back to
@@ -304,7 +304,7 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
     assert_empty Registry.pinned(User.current), 'un-ticking "Used as a filter" must drop the tab'
 
     cf.update!(is_filter: true, multiple: true)
-    assert_empty Registry.pinned(User.current), 'making it multi-value must drop the tab'
+    assert_equal 1, Registry.pinned(User.current).size, 'making it multi-value must retain the tab'
   end
 
   test 'pins for deleted custom fields are purged' do

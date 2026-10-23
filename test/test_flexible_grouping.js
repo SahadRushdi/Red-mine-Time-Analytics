@@ -44,15 +44,17 @@ async function scenario(scope) {
       <button id="ta-add-dimension-btn">Add</button><div id="ta-dimension-menu" class="hidden">
       <input id="ta-dimension-search"><div id="ta-dimension-menu-body"></div></div></div>
     <div style="height:1800px">Results</div>
-    <div id="content"><form><select id="custom_field_field_format"><option>string</option><option>text</option></select>
+    <div id="issue-explanation"></div>
+    <div id="content"><form><select id="custom_field_field_format"><option>string</option><option>list</option><option>text</option></select>
       <p id="filter-row"><input name="custom_field[is_filter]" type="hidden" value="0">
         <input id="custom_field_is_filter" name="custom_field[is_filter]" type="checkbox" checked></p>
       <input id="custom_field_multiple" type="checkbox">
-      <p id="ta-pinned-grouping-control" data-grouping-formats='["string"]'>
+      <p id="ta-pinned-grouping-control" data-grouping-formats='["string","list"]' data-multiple-grouping-formats='["list"]'>
         <input id="ta-pinned-grouping-unchecked" type="hidden"><input id="ta_pinned_grouping" type="checkbox" checked><em>Requires filter</em>
       </p></form></div><pre id="result">pending</pre>
     <script>var el=document.createElement('script');el.type='application/json';el.id='ta-dimension-config';el.textContent=JSON.stringify(window.config);document.body.appendChild(el);</script>
     <script>${source('ta_grouping_custom_fields.js')}</script>
+    <script>${source('ta_client_table.js')}</script>
     <script>${source('ta_dimension_tabs.js')}</script>
     <script>
     const tick = () => new Promise(resolve => setTimeout(resolve, 50));
@@ -81,8 +83,12 @@ async function scenario(scope) {
         document.getElementById('custom_field_is_filter').checked = false; change('custom_field_is_filter');
         check(document.getElementById('ta_pinned_grouping').disabled, 'filter prerequisite enforced');
         document.getElementById('custom_field_multiple').checked = true; change('custom_field_multiple');
-        check(document.getElementById('filter-row').hidden && document.getElementById('ta-pinned-grouping-control').hidden, 'multiple values hide both controls');
+        check(document.getElementById('filter-row').hidden && document.getElementById('ta-pinned-grouping-control').hidden, 'unsupported multiple format hides controls');
         check(document.getElementById('custom_field_is_filter').disabled, 'hidden filter not submitted');
+        document.getElementById('custom_field_field_format').value = 'list'; change('custom_field_field_format');
+        check(!document.getElementById('filter-row').hidden && !document.getElementById('ta-pinned-grouping-control').hidden, 'multiple list keeps both controls visible');
+        document.getElementById('custom_field_is_filter').checked = true; change('custom_field_is_filter');
+        check(!document.getElementById('ta_pinned_grouping').disabled, 'multiple-value field can be pinned');
         document.getElementById('custom_field_multiple').checked = false; change('custom_field_multiple');
         document.getElementById('custom_field_field_format').value = 'text'; change('custom_field_field_format');
         check(document.getElementById('filter-row').hidden, 'unsupported format hides core filter');
@@ -94,6 +100,17 @@ async function scenario(scope) {
         document.getElementById('custom_field_is_filter').checked = true; change('custom_field_field_format');
         check(!document.getElementById('filter-row').hidden && !document.getElementById('ta_pinned_grouping').disabled, 'supported format restores controls');
         check(document.getElementById('ta_pinned_grouping').checked, 'pin intent preserved');
+        const explanation = document.getElementById('issue-explanation');
+        explanation.innerHTML = window.taIssueRowHtml({id:1,url:'/issues/1',subject:'Issue 1',hours:8,
+          loggedHours:8,groupedHours:16,valueBreakdown:[{name:'Customer <A>',hours:8},{name:'Customer B',hours:8}]},
+          {contribution:'%{logged} logged → %{grouped} across values'});
+        check(explanation.querySelector('summary').textContent === '8:00 logged → 16:00 across values', 'issue explains repeated contribution');
+        explanation.querySelector('summary').click();
+        check(explanation.querySelector('details').open, 'contribution breakdown expands');
+        check(explanation.querySelectorAll('details div').length === 2 && explanation.textContent.includes('Customer <A>: 8:00'), 'both customers shown safely');
+        check(!explanation.querySelector('a:not([href])'), 'issue link retained');
+        explanation.innerHTML = window.taIssueRowHtml({id:null,url:null,subject:'No issue',hours:8});
+        check(!explanation.querySelector('a') && explanation.textContent.includes('No issue'), 'unassigned entries have a non-clickable row');
         click('ta-add-dimension-btn'); click('ta-add-dimension-btn'); click('ta-add-dimension-btn'); await tick();
         check(document.querySelector('[data-ta-dim-pick="cf_issue_1"]'), 'first field listed');
         check(requests.length === 1, 'simultaneous picker opens share an in-flight request');

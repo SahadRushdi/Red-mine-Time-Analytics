@@ -48,6 +48,22 @@ class GroupingCustomFieldsTest < Redmine::ControllerTest
     assert_select '#ta_pinned_grouping:not([disabled])', 1
   end
 
+  test 'multiple-value fields can be created pinned and retain their admin controls' do
+    %w[IssueCustomField TimeEntryCustomField].each_with_index do |type, index|
+      post :create, params: { type: type, ta_pinned_grouping: '1', custom_field: {
+        name: "Multiple Customers #{index}", field_format: 'list', multiple: '1', is_filter: '1', possible_values: "A\nB"
+      } }
+      assert_response :redirect
+      cf = CustomField.find_by!(name: "Multiple Customers #{index}")
+      assert cf.multiple?
+      assert TaPinnedGrouping.pinned?(cf)
+      get :edit, params: { id: cf.id }
+      assert_response :success
+      assert_select '#ta-pinned-grouping-control:not([hidden])', count: 1
+      assert_select '#ta_pinned_grouping:not([disabled])[checked]', count: 1
+    end
+  end
+
   test 'AJAX format refresh includes supported grouping controls and hides unsupported controls' do
     %w[bool int float enumeration text].each do |format|
       get :new, params: { type: 'IssueCustomField', custom_field: { field_format: format } }

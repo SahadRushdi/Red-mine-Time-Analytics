@@ -13,14 +13,12 @@ module RedmineTimeAnalytics
   # join path, the SQL expression to GROUP BY, and how to turn a grouped raw value back into a
   # display label.
   #
-  # The SQL is deliberately NOT hand-rolled for custom fields. CustomField#join_for_order_statement
-  # already emits a LEFT OUTER JOIN that is role/project-visibility scoped, de-duplicated to at
-  # most one custom_values row per record (`id = (SELECT max(...))`) and filtered to
-  # `value <> ''` — so it can never inflate SUM(hours), and a blanked value falls into the
-  # no-value bucket on its own.
+  # Single values use core's visibility-scoped, latest-value join. Multiple values instead join
+  # each distinct selection once: hours deliberately contribute in full to every selected group.
   class GroupableFieldRegistry
-    # Single-value formats only. Keep this capability list shared with the admin form.
+    # Keep these capability lists shared with the admin form.
     GROUPABLE_CF_FORMATS = %w[list string date user version bool int float enumeration link progressbar].freeze
+    MULTIPLE_CF_FORMATS = %w[list user version enumeration].freeze
     NUMERIC_CF_FORMATS = %w[int float progressbar].freeze
 
     # At most one custom-field join may be active in a single grouped query. One tab groups by
@@ -54,6 +52,10 @@ module RedmineTimeAnalytics
       def numeric?
         custom_field.present? && NUMERIC_CF_FORMATS.include?(custom_field.field_format)
       end
+
+      def multiple?
+        custom_field.present? && custom_field.multiple?
+      end
     end
 
     # Issue attributes reachable through time_entries.issue_id -> issues.id.
@@ -72,7 +74,9 @@ module RedmineTimeAnalytics
       # the prerequisite before the field has been saved or enabled as a filter.
       def supported?(custom_field)
         (custom_field.is_a?(IssueCustomField) || custom_field.is_a?(TimeEntryCustomField)) &&
-          !custom_field.multiple? && custom_field.format.is_filter_supported &&
+          (!custom_field.multiple? ||
+            (MULTIPLE_CF_FORMATS.include?(custom_field.field_format) && custom_field.format.multiple_supported)) &&
+          custom_field.format.is_filter_supported &&
           GROUPABLE_CF_FORMATS.include?(custom_field.field_format) &&
           group_expression_for(custom_field).present?
       end
@@ -198,10 +202,21 @@ module RedmineTimeAnalytics
           section: section,
           group_sql: Arel.sql(expression),
           needs_issue_join: needs_issue_join,
-          join_sql: cf.join_for_order_statement,
+          join_sql: cf.multiple? ? multiple_value_join(cf) : cf.join_for_order_statement,
           custom_field: cf,
           resolver: custom_field_resolver(cf)
         )
+      end
+
+      def multiple_value_join(cf)
+        model = cf.class.customized_class
+        type = CustomValue.connection.quote(model.base_class.name)
+        # De-duplicate selections, not customized records. Repeated copies of the same value
+        # must not count twice, but different selections each receive the full logged hours.
+        "LEFT OUTER JOIN (SELECT DISTINCT customized_id, value FROM #{CustomValue.table_name}" \
+          " WHERE customized_type = #{type} AND custom_field_id = #{cf.id} AND value <> '') cf_#{cf.id}" \
+          " ON cf_#{cf.id}.customized_id = #{model.table_name}.id" \
+          " AND (#{cf.visibility_by_project_condition})"
       end
 
       # CustomField#group_statement covers list/date/record-list/integer/Boolean formats. It returns nil for `string`
@@ -210,6 +225,8 @@ module RedmineTimeAnalytics
       # COALESCE(cf_<id>.value, ''). That fallback is what makes string fields groupable here
       # without patching core. Link also uses the scalar order expression fallback.
       def group_expression_for(cf)
+        return "cf_#{cf.id}.value" if cf.multiple? && MULTIPLE_CF_FORMATS.include?(cf.field_format)
+
         # Numeric#order_statement casts to decimal(30,3), which rounds distinct float values
         # into the same bucket on MySQL/PostgreSQL. Group by the stored text instead, using
         # the alias from core's visibility-scoped, deduplicated custom-value join. That join

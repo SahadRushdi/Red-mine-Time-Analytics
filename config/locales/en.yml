@@ -64,6 +64,12 @@ en:
   label_groupable_issue_custom_fields: "Issue custom fields"
   label_ta_no_value: "— No value —"
   label_time_by_field: "Time by %{field}"
+  label_ta_total_hours: "Total Hours"
+  label_ta_hours_across_field: "Hours across %{field}"
+  label_ta_actual_logged_hours: "Actual logged hours"
+  text_ta_multiple_value_counting: "Each entry's full hours count once per selected value."
+  text_ta_multiple_value_context: "%{hours} hours actually logged. Each entry's full hours count once per selected value."
+  text_ta_multiple_value_issue: "%{logged} logged → %{grouped} across values"
 
   # Administration -> Custom fields: pin a field as a permanent grouping tab
   label_ta_pinned_grouping: "Available for grouping"

@@ -11,7 +11,7 @@
 #
 # Pinning only records the administrator's intent. Whether the field is actually groupable for a
 # given viewer is still decided by RedmineTimeAnalytics::GroupableFieldRegistry, so role
-# visibility, "Used as a filter" and the single-value format rule all continue to apply.
+# visibility, "Used as a filter" and the supported-format rules all continue to apply.
 class TaPinnedGrouping < ActiveRecord::Base
   belongs_to :custom_field
 

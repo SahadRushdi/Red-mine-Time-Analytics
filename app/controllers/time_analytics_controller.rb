@@ -2020,9 +2020,9 @@ class TimeAnalyticsController < ApplicationController
     "#{issue.tracker.name} ##{issue.id}: #{issue.subject}"
   end
 
-  def generate_time_overview_data(time_entries, grouping)
+  def generate_time_overview_data(time_entries, grouping, period_totals: nil)
     # Always group by date/period for Time Overview (consistent across all views)
-    grouped_data = group_time_entries(time_entries, grouping)
+    grouped_data = period_totals || group_time_entries(time_entries, grouping)
     
     # Fill in missing periods with 0.00 hours based on grouping
     case grouping

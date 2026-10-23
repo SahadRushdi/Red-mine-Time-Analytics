@@ -12,8 +12,9 @@
     var pin = form.querySelector('#ta_pinned_grouping');
     var unchecked = form.querySelector('#ta-pinned-grouping-unchecked');
     var formats = JSON.parse(control.getAttribute('data-grouping-formats'));
+    var multipleFormats = JSON.parse(control.getAttribute('data-multiple-grouping-formats') || '[]');
     var supported = !!(format && formats.indexOf(format.value) !== -1 &&
-      !(multiple && multiple.checked) && filter);
+      (!(multiple && multiple.checked) || multipleFormats.indexOf(format.value) !== -1) && filter);
 
     control.hidden = !supported;
     if (filter) {

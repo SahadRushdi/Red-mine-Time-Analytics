@@ -124,7 +124,7 @@
       <canvas id="<%= donut_canvas_id %>" class="chart"></canvas>
       <div id="<%= donut_center_id %>" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <span class="text-3xl font-bold text-gray-900" id="<%= donut_total_id %>">0h</span>
-        <span class="text-xs text-gray-500">Total Hours</span>
+        <span class="text-xs text-gray-500"><%= ta_grouped_hours_label %></span>
       </div>
     </div>
     <div id="<%= donut_legend_id %>" class="mt-4 space-y-1.5 text-sm ta-summary-cards-scroll"></div>
@@ -141,7 +141,8 @@
     labels: {
       loading: '<%= j l(:label_ta_row_breakdown_loading) %>',
       error: '<%= j l(:label_ta_row_breakdown_error) %>',
-      emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>'
+      emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>',
+      contribution: '<%= j l(:text_ta_multiple_value_issue, logged: '%{logged}', grouped: '%{grouped}') %>'
     }
   };
 </script>
