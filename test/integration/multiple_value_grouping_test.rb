@@ -284,4 +284,44 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
       assert_equal 16, first['groupedHours']
     end
   end
+
+  test 'team grouping tabs retain the time log table and chart controls with matching hours' do
+    cases = []
+    [[IssueCustomField, false, false], [IssueCustomField, true, true], [TimeEntryCustomField, true, false]].each_with_index do |(klass, multiple, pinned), index|
+      cf, = make_field(klass)
+      cf.update!(name: "Layout grouping #{index}", multiple: multiple)
+      TaPinnedGrouping.set_pinned(cf, true) if pinned
+      field = field_for(cf)
+      expected_hours = multiple ? '24:00' : '16:00'
+      %w[daily weekly monthly].each do |grouping|
+        %w[line bar].each do |chart_type|
+          get '/team/analytics', params: dashboard_params(field).merge(grouping: grouping, chart_type: chart_type)
+          assert_response :success
+          cases << { name: "#{klass.name}-#{multiple}-#{pinned}-#{grouping}-#{chart_type}", type: chart_type,
+                     html: response.body, analytics: css_select('.analytics-section').first.to_html,
+                     form: css_select('#team-analytics-form').first.to_html }
+          assert_select '#team-time-overview-box tbody tr', count: 1
+          assert_select '#team-time-overview-box tbody td:nth-child(3)', text: expected_hours
+          assert_select '#team-time-overview-box tbody td:nth-child(4)', text: expected_hours
+          assert_select '#team-time-overview-box tbody td:nth-child(2)', text: /1/
+          assert_select '.visualization-controls button[onclick="switchTeamChartType(\'line\')"]', text: 'Trend'
+          assert_select '.visualization-controls button[onclick="switchTeamChartType(\'bar\')"]', text: 'Stacked'
+          assert_select '#chart-container.has-chart-legend', count: chart_type == 'bar' ? 1 : 0
+          assert_select '#team-analytics-form input[name="view_mode"][value=?]', field.key
+          assert_select '#team-analytics-form input[name="team_id"][value=?]', @team.id.to_s
+          assert_select '#team-analytics-form input[name="grouping"][value=?]', grouping
+          assert_select '.visualization-controls input[onchange="toggleHolidays()"]', count: grouping == 'daily' ? 1 : 0
+        end
+      end
+    end
+  ensure
+    File.write(ENV['TA_TEAM_LAYOUT_CASES'], JSON.generate(cases)) if ENV['TA_TEAM_LAYOUT_CASES']
+  end
+
+  test 'static issue grouping uses the same team time log and chart controls' do
+    get '/team/analytics', params: dashboard_params(RedmineTimeAnalytics::GroupableFieldRegistry.find('issue_tracker'))
+    assert_response :success
+    assert_select '#team-time-overview-box tbody td:nth-child(3)', text: '16:00'
+    assert_select '.visualization-controls button', count: 2
+  end
 end
