@@ -87,6 +87,8 @@ module RedmineTimeAnalytics
         category_totals: category_totals,
         category_values: category_values,
         grand_total: grand_total,
+        logged_total: scope.except(:includes, :eager_load, :preload, :order).sum(:hours),
+        counting_mode: field.multiple? ? 'per_value' : 'single',
         raw_periods: raw_periods
       }
     end
@@ -97,7 +99,11 @@ module RedmineTimeAnalytics
       joined = apply_joins(scope, field)
 
       if raw_value.blank?
-        joined.where("#{field.group_sql} IS NULL OR #{field.group_sql} = ''")
+        # Numeric expressions cannot be compared to '' on PostgreSQL. Empty values have
+        # already been removed by core's LEFT JOIN, so NULL alone identifies that bucket.
+        condition = "#{field.group_sql} IS NULL"
+        condition += " OR #{field.group_sql} = ''" unless field.numeric?
+        joined.where(condition)
       else
         joined.where("#{field.group_sql} = ?", raw_value.to_s)
       end
@@ -109,11 +115,31 @@ module RedmineTimeAnalytics
 
     # Resolves every distinct raw value to a display label in one batched lookup, never per row.
     def self.label_map(field, raw_values, none_label)
-      present = raw_values.reject { |raw| normalize(raw) == NONE_KEY }
+      present = raw_values.reject { |raw| normalize(raw) == NONE_KEY }.uniq
       resolved = field.resolver ? field.resolver.call(present) : {}
 
       map = { NONE_KEY => none_label }
       present.each { |raw| map[raw] = resolved[raw].presence || raw.to_s }
+      if field.multiple?
+        # Reserve every original label, including the no-value bucket, before generating any
+        # suffixes. A literal name such as "Release (123)" must not collide with a generated
+        # label for another record. Check generated labels too, and use a stable allocation order.
+        duplicates = map.values.tally.select { |_, count| count > 1 }.keys
+        reserved = map.values.to_h { |label| [label, true] }
+        present.sort_by(&:to_s).each do |raw|
+          next unless duplicates.include?(map[raw])
+
+          base = "#{map[raw]} (#{raw})"
+          label = base
+          suffix = 2
+          while reserved.key?(label)
+            label = "#{base} [#{suffix}]"
+            suffix += 1
+          end
+          map[raw] = label
+          reserved[label] = true
+        end
+      end
       map
     end
 

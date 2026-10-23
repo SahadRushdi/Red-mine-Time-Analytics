@@ -50,7 +50,8 @@
   function navigateTo(viewMode) {
     // Same scroll-to-table behaviour the pinned tabs have: the dashboard reads this flag on the
     // next load and brings the analysis table into view.
-    try { sessionStorage.setItem(config.scrollFlag, 'true'); } catch (e) { /* storage blocked */ }
+    var anchor = '';
+    try { sessionStorage.setItem(config.scrollFlag, 'true'); } catch (e) { anchor = '#ta-grouping-navigation'; }
 
     var params = new URLSearchParams();
     Object.keys(config.carryParams || {}).forEach(function (name) {
@@ -58,12 +59,13 @@
       if (value !== null && value !== undefined && value !== '') { params.set(name, value); }
     });
     params.set('view_mode', viewMode);
-    window.location.href = config.basePath + '?' + params.toString();
+    window.location.href = config.basePath + '?' + params.toString() + anchor;
   }
 
   function fetchFields() {
     if (fieldsPromise) { return fieldsPromise; }
     fieldsPromise = fetch(config.fieldsPath, {
+      cache: 'no-store',
       credentials: 'same-origin',
       headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -71,7 +73,14 @@
         if (!response.ok) { throw new Error('HTTP ' + response.status); }
         return response.json();
       })
-      .then(function (data) { return data.sections || []; });
+      .then(function (data) { return data.sections || []; })
+      .then(function (sections) {
+        fieldsPromise = null;
+        return sections;
+      }, function (error) {
+        fieldsPromise = null;
+        throw error;
+      });
     return fieldsPromise;
   }
 
@@ -273,17 +282,19 @@
     menuOpen = true;
 
     filterText = '';
+    menuSections = null;
     var search = searchEl();
     if (search) { search.value = ''; }
     renderMenu();
 
     fetchFields().then(function (sections) {
       menuSections = sections;
+      reconcileSections(sections);
       if (menuOpen) { renderMenu(); }
     }).catch(function () {
       var body = bodyEl();
-      if (body) {
-        body.innerHTML = '<p class="px-4 py-3 text-sm text-red-500">' + escapeHtml(config.labels.empty) + '</p>';
+      if (body && menuOpen) {
+        body.innerHTML = '<p class="px-4 py-3 text-sm text-red-500">' + escapeHtml(config.labels.error) + '</p>';
       }
     });
 
@@ -358,32 +369,63 @@
   // The cached list is rendered first so there's no flash, then checked against the server: a
   // field that was deleted, un-ticked as "Used as a filter", or hidden from this user's roles is
   // dropped, and a renamed one gets its new label.
-  function reconcile() {
+  function reconcileSections(sections) {
     var tabs = readTabs();
     if (!tabs.length) { return; }
+    var known = {};
+    var pinnedKeys = {};
+    sections.forEach(function (section) {
+      section.fields.forEach(function (field) {
+        known[field.key] = field.label;
+        if (field.pinned) { pinnedKeys[field.key] = true; }
+      });
+    });
 
-    fetchFields().then(function (sections) {
-      var known = {};
-      var pinnedKeys = {};
-      sections.forEach(function (section) {
-        section.fields.forEach(function (field) {
-          known[field.key] = field.label;
-          if (field.pinned) { pinnedKeys[field.key] = true; }
+    // Drop anything the server no longer offers, and anything an administrator has since
+    // pinned — a pinned field is rendered as a permanent tab, so keeping the chip would show
+    // it twice.
+    var next = tabs.filter(function (t) { return known[t.key] && !pinnedKeys[t.key]; })
+                   .map(function (t) { return { key: t.key, label: known[t.key] }; });
+
+    if (JSON.stringify(next) !== JSON.stringify(tabs)) {
+      writeTabs(next);
+      renderChips();
+    }
+  }
+
+  function reconcile() {
+    if (!readTabs().length) { return; }
+    fetchFields().then(reconcileSections).catch(function () {
+      // Offline or a failed request: keep whatever is cached rather than wiping the user's tabs.
+    });
+  }
+
+  // Claim legacy navigation flags before the dashboard's pagination restorers consume them.
+  // Scroll after load and view/chart initialization so the selected tab stays above the results.
+  function restoreGroupingNavigation() {
+    var pending = window.location.hash === '#ta-grouping-navigation';
+    try {
+      pending = pending || sessionStorage.getItem(config.scrollFlag) === 'true';
+      if (pending) {
+        sessionStorage.removeItem(config.scrollFlag);
+        sessionStorage.removeItem(config.storageScope === 'team' ? 'teamScrollPosition' : 'scrollPosition');
+      }
+    } catch (e) { /* URL fragment provides a fallback when storage is blocked. */ }
+    if (!pending) { return; }
+
+    window.addEventListener('load', function () {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          var target = document.getElementById('ta-grouping-navigation');
+          if (!target) { return; }
+          target.scrollIntoView({ behavior: 'auto', block: 'start' });
+          var active = target.querySelector('.ta-view-tab-active');
+          if (active) {
+            active.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
+            active.focus({ preventScroll: true });
+          }
         });
       });
-
-      // Drop anything the server no longer offers, and anything an administrator has since
-      // pinned — a pinned field is rendered as a permanent tab, so keeping the chip would show
-      // it twice.
-      var next = tabs.filter(function (t) { return known[t.key] && !pinnedKeys[t.key]; })
-                     .map(function (t) { return { key: t.key, label: known[t.key] }; });
-
-      if (JSON.stringify(next) !== JSON.stringify(tabs)) {
-        writeTabs(next);
-        renderChips();
-      }
-    }).catch(function () {
-      // Offline or a failed request: keep whatever is cached rather than wiping the user's tabs.
     });
   }
 
@@ -450,6 +492,7 @@
         loading: body.labels.loading,
         error: body.labels.error,
         emptyIssues: body.labels.emptyIssues,
+        contribution: body.labels.contribution,
         emptyProjects: body.labels.emptyIssues
       });
 
@@ -541,6 +584,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     config = readConfig();
     if (!config) { return; }
+
+    restoreGroupingNavigation();
 
     pruneInvalidKey();
     adoptActiveKey();

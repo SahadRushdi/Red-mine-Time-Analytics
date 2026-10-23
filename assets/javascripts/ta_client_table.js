@@ -71,24 +71,33 @@
   // issue can log time under several activities so an Activity pill would be misleading, and a
   // bare list of issues has no shared total for a bar/percentage to represent a share of.
   // item: { id, subject, trackerName, url, hours, assigneeName }
-  function issueRowHtml(item) {
-    var titleHtml = '<span class="ts-tracker-badge">' + escapeHtml(item.trackerName) + '</span> ' +
+  function issueRowHtml(item, labels) {
+    var titleHtml = item.url ? '<span class="ts-tracker-badge">' + escapeHtml(item.trackerName) + '</span> ' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + escapeHtml(item.subject) + '</a>' +
-      (item.assigneeName ? ' <span class="ts-assignee-badge">' + escapeHtml(item.assigneeName) + '</span>' : '');
+      (item.assigneeName ? ' <span class="ts-assignee-badge">' + escapeHtml(item.assigneeName) + '</span>' : '') : escapeHtml(item.subject);
+    var explanation = '';
+    if (item.valueBreakdown && labels && labels.contribution) {
+      var caption = labels.contribution.replace('%{logged}', function () { return formatHours(item.loggedHours); })
+        .replace('%{grouped}', function () { return formatHours(item.groupedHours); });
+      explanation = '<details class="text-xs text-gray-500 mt-1"><summary>' + escapeHtml(caption) + '</summary>' +
+        item.valueBreakdown.map(function (value) {
+          return '<div>' + escapeHtml(value.name) + ': ' + formatHours(value.hours) + '</div>';
+        }).join('') + '</details>';
+    }
     return '<div class="bg-white hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors duration-200" data-hours="' + item.hours + '">' +
       '<div class="flex items-center justify-between gap-3">' +
         '<h3 class="text-base font-medium text-gray-900 flex-1 mr-4">' + titleHtml + '</h3>' +
         '<span class="text-base font-semibold text-gray-900 flex-shrink-0">' + formatHours(item.hours) + '</span>' +
-      '</div>' +
+      '</div>' + explanation +
     '</div>';
   }
 
   // Renders a list of issue items (from issue_breakdown's JSON response) as a single HTML
   // string. No distribution bar/percentage here — those only apply one level up, where a row
   // represents a share of the project/activity total; a bare list of issues has no such total.
-  function issueListHtml(items) {
-    return items.map(issueRowHtml).join('');
+  function issueListHtml(items, labels) {
+    return items.map(function (item) { return issueRowHtml(item, labels); }).join('');
   }
 
   // ── Project/Activity row drill-down engine (Team + Individual dashboards) ────────────────
@@ -231,7 +240,7 @@
         } else if (spec.kind === 'projects') {
           details.innerHTML = items.map(subRowHtml).join('');
         } else {
-          details.innerHTML = issueListHtml(items);
+          details.innerHTML = issueListHtml(items, labels);
         }
         details.setAttribute('data-loaded', '1');
         if (window.StatusColors) { window.StatusColors.apply(); }

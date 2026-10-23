@@ -13,7 +13,7 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
 - **Personal Time Analytics**: View your own logged time with comprehensive filtering
 - **Multiple View Modes**: Switch between Time Overview, Activity Analysis, and Project views
 - **Multiple Time Periods**: Last 7 days, last 14 days, this week, last week, this month, or custom date ranges
-- **Flexible Grouping**: Group data by daily, weekly, or monthly periods
+- **Flexible Grouping**: Group hours by issue attributes and eligible custom fields, with daily, weekly, or monthly periods
 - **Interactive Charts**: Bar, line, and pie charts powered by Chart.js with real-time switching
 - **Modern Chart Controls**: Custom-styled dropdown with hover/focus states and matching button sizes
 - **View-Specific Default Charts**: Automatic chart type selection based on view mode (Bar for Time Overview, Pie for Activity/Project)
@@ -134,6 +134,40 @@ Redmine Time Analytics is a comprehensive time tracking analytics and reporting 
    - **Toggle Button**: Switch between views using "Show Summary View" / "Show Detailed View" button
 7. **Data Table**: Detailed results below the analytics section with pagination
 8. **Export**: Export filtered data and visualizations as CSV for further analysis
+
+### Grouping by Custom Fields
+
+Both **My Time** and **My Team** support additional groupings through the **+** button beside the
+Issue/Members, Activity, and Project tabs. Use **Search fields** to find a field. The picker refreshes
+when opened, so newly created eligible fields appear without restarting Redmine.
+
+For Issue and Time Entry custom fields, enable **Used as a filter** in Administration → Custom fields.
+Supported single-value formats are String, List, Date, User, Version, Boolean, Integer, Float,
+Key/value list, Link, and Progress bar. **Multiple values** are supported for List, Key/value list,
+User, and Version fields. Long text, attachments, and unsupported formats are excluded; for these
+fields the plugin hides both **Used as a filter** and **Available for grouping**, preserving existing
+filter settings. Other custom-field types retain Redmine's normal controls.
+
+Enable **Available for grouping** to display the field as a permanent tab on both dashboards on their
+next load. This checkbox requires **Used as a filter**. For example, create an Issue custom field
+named **Customer**, enable both checkboxes, and select its tab to group logged hours by customer.
+Field and issue visibility still apply to each viewer. Missing or inaccessible values share a
+**No value** group, which counts each applicable entry once.
+Float fields group by their stored text and use it as the label to preserve every decimal digit;
+different stored forms such as `1.0` and `1.00` therefore remain separate groups.
+
+For multiple-value fields, each entry's full hours count once under **each selected value**. For
+example, Issue 1 has 8h and Customers A + B; Issue 2 has 8h and Customer A. The Customer tab shows
+A = 16h and B = 8h, with **Hours across Customer = 24h** and **16h actually logged**. Averages,
+maximum/minimum hours, period tables, charts, and CSV totals on that tab use the 24h count. Day,
+member, and issue counts remain distinct counts. Other tabs retain their normal calculations.
+Expand a customer and then an issue's contribution explanation to see its logged hours and the
+hours assigned to each value—for Issue 1, 8h logged becomes 16h across A and B. Duplicate copies of
+the same selection do not add hours. Time Entry custom fields use each entry's own selections,
+even when several entries belong to the same issue.
+
+Tabs added with **+** belong to the current browser tab; administrator-enabled permanent tabs appear
+by default. Adding or switching groups keeps the selected grouping tab visible above the results.
 
 ### Leave Mailbox Setup
 1. Go to **Administration → Leave Sync**

@@ -13,6 +13,13 @@ module RedmineTimeAnalytics
   # The checkbox is intentionally rendered *outside* params[:custom_field] (name
   # "ta_pinned_grouping"), so it can never collide with CustomField#safe_attributes.
   class PinnedGroupingHook < Redmine::Hook::ViewListener
+    def view_layouts_base_html_head(context = {})
+      controller = context[:controller]
+      return '' unless controller && controller.controller_name == 'custom_fields'
+
+      javascript_include_tag('ta_grouping_custom_fields.js', plugin: 'redmine_time_analytics')
+    end
+
     def view_custom_fields_form_issue_custom_field(context = {})
       render_checkbox(context)
     end
@@ -36,7 +43,8 @@ module RedmineTimeAnalytics
       return '' unless groupable_type?(custom_field)
 
       checked = TaPinnedGrouping.pinned?(custom_field)
-      hint = eligible?(custom_field) ? '' : l(:text_ta_pinned_grouping_requires_filter)
+      supported = GroupableFieldRegistry.supported?(custom_field)
+      eligible = GroupableFieldRegistry.eligible?(custom_field)
 
       # Built with the non-block tag helpers on purpose: a ViewListener has no output buffer, so
       # the `tag.p do ... end` block form raises NoMethodError (output_buffer=).
@@ -44,13 +52,15 @@ module RedmineTimeAnalytics
       # The paired hidden field is what makes unticking actually submit, instead of the checkbox
       # just being absent from the params.
       parts = [
-        hidden_field_tag('ta_pinned_grouping', '0', id: nil),
-        check_box_tag('ta_pinned_grouping', '1', checked),
-        label_tag('ta_pinned_grouping', l(:label_ta_pinned_grouping))
+        hidden_field_tag('ta_pinned_grouping', '0', id: 'ta-pinned-grouping-unchecked', disabled: !eligible),
+        check_box_tag('ta_pinned_grouping', '1', checked, disabled: !eligible),
+        label_tag('ta_pinned_grouping', l(:label_ta_pinned_grouping)),
+        content_tag(:em, l(:text_ta_pinned_grouping_requires_filter), class: 'info', hidden: eligible)
       ]
-      parts << content_tag(:em, hint, class: 'info') if hint.present?
 
-      content_tag(:p, safe_join(parts))
+      content_tag(:p, safe_join(parts), id: 'ta-pinned-grouping-control', hidden: !supported,
+                  data: { grouping_formats: GroupableFieldRegistry::GROUPABLE_CF_FORMATS.to_json,
+                          multiple_grouping_formats: GroupableFieldRegistry::MULTIPLE_CF_FORMATS.to_json })
     end
 
     def persist(context)
@@ -58,20 +68,14 @@ module RedmineTimeAnalytics
       custom_field = context[:custom_field]
       return unless groupable_type?(custom_field)
       return unless params.key?(:ta_pinned_grouping) || params.key?('ta_pinned_grouping')
+      # Keep existing pin intent while ineligible, but never create an unusable pin.
+      return unless GroupableFieldRegistry.eligible?(custom_field)
 
       TaPinnedGrouping.set_pinned(custom_field, params[:ta_pinned_grouping].to_s == '1')
     end
 
     def groupable_type?(custom_field)
       custom_field.is_a?(IssueCustomField) || custom_field.is_a?(TimeEntryCustomField)
-    end
-
-    # Pinning is recorded regardless, but the field only becomes a real tab once it is also
-    # groupable — so the form says as much instead of silently doing nothing.
-    def eligible?(custom_field)
-      custom_field.is_filter? &&
-        !custom_field.multiple? &&
-        GroupableFieldRegistry::GROUPABLE_CF_FORMATS.include?(custom_field.field_format)
     end
   end
 end

@@ -22,8 +22,8 @@
 %>
 <% pinned_fields.each do |field| %>
   <li class="me-2">
-    <%= link_to "#{base_path}?#{carry_params.merge(view_mode: field.key).to_query}",
-                onclick: "sessionStorage.setItem('#{scroll_flag}','true');",
+    <%= link_to "#{base_path}?#{carry_params.merge(view_mode: field.key).to_query}#ta-grouping-navigation",
+                onclick: "try { sessionStorage.setItem('#{scroll_flag}','true'); } catch (e) {}",
                 class: "ta-view-tab inline-block p-4 rounded-t-lg #{@ta_dimension&.key == field.key ? 'ta-view-tab-active' : 'text-gray-500 hover:text-gray-600 hover:bg-gray-50'}" do %>
       <span class="flex items-center gap-2">
         <span class="material-symbols-outlined" aria-hidden="true" style="font-size: 18px;">label</span>
@@ -92,6 +92,7 @@
   labels: {
     remove: l(:label_remove_grouping),
     empty: l(:label_no_groupable_fields),
+    error: l(:text_ta_groupable_fields_error),
     noMatches: l(:label_ta_no_matching_fields),
     alreadyUsed: l(:label_ta_already_used),
     confirmRemoveBody: l(:text_ta_remove_grouping_confirm, field: '%{field}')

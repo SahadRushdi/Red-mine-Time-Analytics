@@ -375,8 +375,11 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label">Total Hours</p>
+      <p class="ts-summary-card-label"><%= ta_grouped_hours_label %></p>
       <p class="ts-summary-card-value"><%= format_hours(@total_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+      <% if ta_grouped_hours_note %>
+        <p class="text-xs text-gray-500 mt-1"><%= ta_grouped_hours_note %></p>
+      <% end %>
     </div>
   </div>
 
@@ -561,7 +564,7 @@ function toggleHolidays() {
 </script>
 
 <!-- Flowbite Default Tabs -->
-<div class="mb-0" style="margin-bottom: -1px;">
+<div id="ta-grouping-navigation" class="mb-0" style="margin-bottom: -1px;">
   <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 border-b border-gray-200">
     <li class="me-2">
       <button type="button" onclick="toggleViewMode(event, 'issue')" 

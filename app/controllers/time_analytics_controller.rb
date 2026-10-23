@@ -813,8 +813,7 @@ class TimeAnalyticsController < ApplicationController
 
   # Inline Chart Helper methods
   def generate_chart_data(time_entries, grouping, chart_type, view_mode = 'time_entries', activity_view_state = 'detailed', project_view_state = 'detailed', issue_view_state = 'detailed')
-    # For bar charts, always generate stacked activity breakdown
-    # For line charts, generate simple total hours
+    # Bar charts show the selected tab's category breakdown; line charts show total hours.
     case chart_type
     when 'line'
       # Group by time period for line chart (total hours only)
@@ -832,7 +831,7 @@ class TimeAnalyticsController < ApplicationController
       
       generate_line_chart_data(grouped_data, view_mode)
     else
-      # Bar charts always show stacked activity breakdown
+      # Stack the selected Issue/Activity/Project categories.
       generate_bar_chart_data_with_activities(time_entries, grouping, view_mode)
     end
   end
@@ -889,7 +888,10 @@ class TimeAnalyticsController < ApplicationController
     end
     
     # Build the full period list so zero-hour working days still appear in the bar chart.
-    all_periods = fill_missing_periods_for_grouping(group_time_entries(time_entries, grouping), grouping).keys.sort
+    # The breakdown already uses canonical Date keys. Reuse them instead of a second SQL
+    # grouping whose adapter-specific week keys can disagree with the matrix keys.
+    periods = category_breakdown.keys.to_h { |period_key| [period_key, 0] }
+    all_periods = fill_missing_periods_for_grouping(periods, grouping).keys.sort
     
     # Return empty if no data
     return empty_chart_data('bar') if all_periods.empty?
@@ -936,7 +938,9 @@ class TimeAnalyticsController < ApplicationController
     # Colors will be assigned by chartjs-plugin-colorschemes
     datasets = categories_sorted.map do |category|
       data = all_periods.map do |period_key|
-        category_breakdown[period_key]&.[](category) || 0
+        # Redmine 7 returns Rational hours (e.g. 3/2), which JSON otherwise serializes as
+        # "3/2". Chart.js needs numeric values to calculate and draw the stacked bars.
+        (category_breakdown[period_key]&.[](category) || 0).to_f
       end
       
       # Format hours for tooltips
@@ -2020,9 +2024,9 @@ class TimeAnalyticsController < ApplicationController
     "#{issue.tracker.name} ##{issue.id}: #{issue.subject}"
   end
 
-  def generate_time_overview_data(time_entries, grouping)
+  def generate_time_overview_data(time_entries, grouping, period_totals: nil)
     # Always group by date/period for Time Overview (consistent across all views)
-    grouped_data = group_time_entries(time_entries, grouping)
+    grouped_data = period_totals || group_time_entries(time_entries, grouping)
     
     # Fill in missing periods with 0.00 hours based on grouping
     case grouping

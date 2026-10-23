@@ -244,6 +244,7 @@ class TeamAnalyticsController < ApplicationController
       # @chart_data per branch, so it must be set here too or the format.json branch below blows up
       # on JSON.parse(nil).
       ta_build_dimension_view!
+      ta_refresh_dimension_overview! if @ta_dimension.multiple?
       chart_type = normalize_team_chart_type(params[:chart_type], 'line')
       @chart_data = ta_dim_chart_data(@ta_dimension_pivot, chart_type)
     end
@@ -907,6 +908,21 @@ class TeamAnalyticsController < ApplicationController
 
     pivot_period_bucket_ranges(entries, grouping).each_with_object({}) do |(key, (bucket_start, bucket_end)), totals|
       totals[key] = entries.reorder(nil).where(spent_on: bucket_start..bucket_end).group(group_column).sum(:hours)
+    end
+  end
+
+  # Preserve the existing member counts, dates, leave-aware averages and fetched support hours.
+  # Reuse the grouped pivot's hours so multiple selections agree with the total and charts,
+  # without making another request to the external support-time service.
+  def ta_refresh_dimension_overview!
+    @time_overview_data.each do |row|
+      period = Date.parse(row.raw_period)
+      row.hours = (@ta_dimension_pivot[:period_totals][period] || 0).to_f
+      row.average = calculate_period_average(period, @grouping, row.hours, row.member_count)
+      next if row.support_hours.nil?
+
+      row.effective_time_percentage = row.hours.zero? ? nil : (row.support_hours.to_f / row.hours * 100).round(2)
+      row.effective_time_available = !row.effective_time_percentage.nil?
     end
   end
 

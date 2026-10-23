@@ -633,8 +633,11 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label">Total Hours</p>
+      <p class="ts-summary-card-label"><%= ta_grouped_hours_label %></p>
       <p class="ts-summary-card-value"><%= format_hours(@total_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
+      <% if ta_grouped_hours_note %>
+        <p class="text-xs text-gray-500 mt-1"><%= ta_grouped_hours_note %></p>
+      <% end %>
     </div>
   </div>
   <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">
@@ -678,10 +681,11 @@
 </div>
 
 <%# Dashboard Analytics Section - Summary, Time Overview, and Visualization %>
+<% chart_type = %w[line bar].include?(params[:chart_type]) ? params[:chart_type] : 'line' %>
 <div class="analytics-section">
 
   <%# Time Overview Box (Middle) - Shows Date, Team Member Count, Hours %>
-  <% if (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') && @time_overview_data&.any? %>
+  <% if @time_overview_data&.any? %>
     <div id="team-time-overview-box" class="box time-overview-box">
       <div class="relative mb-3 flex items-center">
         <h3 class="text-base font-semibold text-gray-900"><%= time_overview_header(@grouping) %></h3>
@@ -780,7 +784,7 @@
     <h3 style="display: flex; justify-content: flex-end;">
       <div class="visualization-controls flex items-center gap-3">
         <%# Toggle: hide weekend/holiday days from the Trend chart + Time Overview (daily grouping only). %>
-        <% if @grouping == 'daily' && (@view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members') %>
+        <% if @grouping == 'daily' %>
           <label class="relative inline-flex items-center gap-2 cursor-pointer select-none"
                  title="Show only working days (hides weekends &amp; holidays without logged time and amber-flagged days)">
             <input type="checkbox" class="sr-only peer" <%= 'checked' if @hide_holidays %> onchange="toggleHolidays()">
@@ -788,8 +792,6 @@
             <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Show Active Days</span>
           </label>
         <% end %>
-        <% if @view_mode == 'time_entries' || @view_mode == 'activity' || @view_mode == 'project' || @view_mode == 'members' %>
-          <% chart_type = %w[line bar].include?(params[:chart_type]) ? params[:chart_type] : 'line' %>
           <div class="inline-flex gap-2">
             <button type="button"
                     onclick="switchTeamChartType('line')"
@@ -804,7 +806,6 @@
               Stacked
             </button>
           </div>
-        <% end %>
       </div>
     </h3>
     

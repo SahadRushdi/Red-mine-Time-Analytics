@@ -71,10 +71,102 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
     end
   end
 
-  test 'only single-value groupable formats are exposed' do
+  test 'only supported groupable formats are exposed' do
     Registry.all(User.current).filter_map(&:custom_field).each do |cf|
-      assert_not cf.multiple?, "#{cf.name} is multi-value and must be excluded"
+      assert Registry.supported?(cf)
       assert_includes Registry::GROUPABLE_CF_FORMATS, cf.field_format
+    end
+  end
+
+  test 'every supported format is discovered dynamically on issues and time entries' do
+    [IssueCustomField, TimeEntryCustomField].each do |klass|
+      Registry::GROUPABLE_CF_FORMATS.each do |format|
+        attributes = { name: "TA #{klass == IssueCustomField ? 'Issue' : 'Time'} #{format}", field_format: format, is_filter: true }
+        attributes[:possible_values] = %w[Acme Globex] if format == 'list'
+        cf = klass.create!(attributes)
+        key = "#{klass == IssueCustomField ? 'cf_issue' : 'cf_te'}_#{cf.id}"
+        field = Registry.find(key, User.current)
+        assert_not_nil field, "#{klass.name} #{format} must appear immediately"
+        assert_nothing_raised { build(field) }
+        assert_includes Registry.picker_payload(User.current).flat_map { |s| s[:fields].map { |f| f[:key] } }, key
+      end
+    end
+  end
+
+  test 'hidden fields cannot be selected or pinned for an unauthorized viewer' do
+    cf = IssueCustomField.create!(name: 'TA Private', field_format: 'string', is_filter: true,
+                                  visible: false, roles: [Role.find(1)])
+    TaPinnedGrouping.set_pinned(cf, true)
+    viewer = User.anonymous
+
+    assert_nil Registry.find("cf_issue_#{cf.id}", viewer)
+    assert_not_includes Registry.pinned(viewer).map { |f| f.custom_field.id }, cf.id
+  end
+
+  test 'Boolean and enumeration groups display human readable labels' do
+    cf = IssueCustomField.create!(name: 'TA Boolean', field_format: 'bool', is_filter: true)
+    field = Registry.find("cf_issue_#{cf.id}")
+    assert_equal I18n.t(:general_text_No), field.resolver.call(['0'])['0']
+    assert_equal I18n.t(:general_text_Yes), field.resolver.call(['1'])['1']
+
+    cf = IssueCustomField.create!(name: 'TA Key Value', field_format: 'enumeration', is_filter: true)
+    choice = cf.enumerations.create!(name: 'Customer Acme')
+    assert_equal 'Customer Acme', Registry.find("cf_issue_#{cf.id}").resolver.call([choice.id.to_s])[choice.id.to_s]
+  end
+
+  test 'numeric groups partition hours including zero and missing values' do
+    %w[int float progressbar].each do |format|
+      cf = TimeEntryCustomField.create!(name: "TA Numeric #{format}", field_format: format, is_filter: true)
+      entries = scope.limit(3).to_a
+      assert_equal 3, entries.length
+      CustomValue.create!(customized: entries[0], custom_field: cf, value: '0')
+      CustomValue.create!(customized: entries[1], custom_field: cf, value: format == 'float' ? '1.25' : '25')
+      CustomValue.create!(customized: entries[2], custom_field: cf, value: '')
+      field = Registry.find("cf_te_#{cf.id}")
+      pivot = build(field)
+      assert_includes pivot[:categories], '0'
+      assert_includes pivot[:categories], '(none)'
+      total = pivot[:category_values].values.sum do |value|
+        Pivot.scope_for_value(scope, field, value).sum(:hours).to_f
+      end
+      assert_in_delta scope.sum(:hours).to_f, total, 0.001
+      assert_no_match(/= ''/, Pivot.scope_for_value(scope, field, nil).where_clause.ast.to_sql)
+    end
+  end
+
+  test 'float grouping and drill downs preserve the stored decimal precision' do
+    entries = scope.where.not(issue_id: nil).order(:id).to_a.uniq(&:issue_id).first(2)
+    assert_equal 2, entries.length
+
+    [IssueCustomField, TimeEntryCustomField].each do |klass|
+      [
+        %w[1.0001 1.0002],
+        %w[1.0000000000000001 1.0000000000000002],
+        %w[-0.0001 -0.0002],
+        %w[0.00000000000000000001 0.00000000000000000002],
+        %w[1.0 1.00]
+      ].each_with_index do |values, index|
+        issue_field = klass == IssueCustomField
+        attributes = { name: "TA Float #{issue_field ? 'Issue' : 'Time'} #{index}", field_format: 'float', is_filter: true }
+        attributes.merge!(is_for_all: true, trackers: entries.map { |entry| entry.issue.tracker }.uniq) if issue_field
+        cf = klass.create!(attributes)
+        entries.zip(values).each do |entry, value|
+          CustomValue.create!(customized: issue_field ? entry.issue : entry, custom_field: cf, value: value)
+        end
+
+        field = Registry.find("#{issue_field ? 'cf_issue' : 'cf_te'}_#{cf.id}")
+        pivot = build(field)
+        entries.zip(values).each do |entry, value|
+          assert_includes pivot[:categories], value
+          assert_equal value, pivot[:category_values][value], 'group identity must retain every stored digit'
+          expected = scope.where(issue_field ? { issue_id: entry.issue_id } : { id: entry.id })
+          actual = Pivot.scope_for_value(scope, field, pivot[:category_values][value])
+          assert_equal expected.order(:id).pluck(:id), actual.order(:id).pluck(:id),
+                       "drill down for #{value} must include only that group"
+          assert_in_delta expected.sum(:hours).to_f, pivot[:category_totals][value], 0.001
+        end
+        assert_in_delta scope.sum(:hours).to_f, pivot[:category_totals].values.sum, 0.001
+      end
     end
   end
 
@@ -89,14 +181,14 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
                    'ticking "Used as a filter" should make it groupable with no code change'
   end
 
-  test 'long text and multi-value custom fields are excluded' do
+  test 'long text is excluded while supported multi-value fields are exposed' do
     text = IssueCustomField.create!(name: 'TA Long Text', field_format: 'text',
                                     is_filter: true, is_for_all: true)
     multi = IssueCustomField.create!(name: 'TA Multi', field_format: 'list', multiple: true,
                                      possible_values: %w[a b], is_filter: true, is_for_all: true)
 
     assert_nil Registry.find("cf_issue_#{text.id}", User.current)
-    assert_nil Registry.find("cf_issue_#{multi.id}", User.current)
+    assert_not_nil Registry.find("cf_issue_#{multi.id}", User.current)
   end
 
   # Redmine's CustomField#group_statement returns nil for `string`; the registry falls back to
@@ -212,7 +304,7 @@ class GroupableFieldRegistryTest < ActiveSupport::TestCase
     assert_empty Registry.pinned(User.current), 'un-ticking "Used as a filter" must drop the tab'
 
     cf.update!(is_filter: true, multiple: true)
-    assert_empty Registry.pinned(User.current), 'making it multi-value must drop the tab'
+    assert_equal 1, Registry.pinned(User.current).size, 'making it multi-value must retain the tab'
   end
 
   test 'pins for deleted custom fields are purged' do
