@@ -97,7 +97,11 @@ module RedmineTimeAnalytics
       joined = apply_joins(scope, field)
 
       if raw_value.blank?
-        joined.where("#{field.group_sql} IS NULL OR #{field.group_sql} = ''")
+        # Numeric expressions cannot be compared to '' on PostgreSQL. Empty values have
+        # already been removed by core's LEFT JOIN, so NULL alone identifies that bucket.
+        condition = "#{field.group_sql} IS NULL"
+        condition += " OR #{field.group_sql} = ''" unless field.numeric?
+        joined.where(condition)
       else
         joined.where("#{field.group_sql} = ?", raw_value.to_s)
       end

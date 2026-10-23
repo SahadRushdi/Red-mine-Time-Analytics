@@ -67,7 +67,8 @@ en:
 
   # Administration -> Custom fields: pin a field as a permanent grouping tab
   label_ta_pinned_grouping: "Available for grouping"
-  text_ta_pinned_grouping_requires_filter: "Requires \"Used as a filter\" — single-value fields only."
+  text_ta_pinned_grouping_requires_filter: "Check \"Used as a filter\" to show this field as a permanent Time Analytics tab."
+  text_ta_groupable_fields_error: "Could not load grouping fields. Close and reopen the picker to retry."
   label_search_fields: "Search fields..."
   label_ta_already_used: "already used"
   label_ta_no_matching_fields: "No matching fields"

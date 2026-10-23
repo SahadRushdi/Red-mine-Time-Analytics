@@ -1,4 +1,4 @@
-<div class="ta-team-tabs-row flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 px-4">
+<div id="ta-grouping-navigation" class="ta-team-tabs-row flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 px-4">
   <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 -mb-px">
     <li class="me-2">
       <%= link_to team_analytics_path(params.permit(:filter, :from, :to, :grouping, :per_page, :page, :overview_page, :team_id, :chart_type, :activity_view_state, :project_view_state, :member_view_state, temp_excluded_ids: []).merge(view_mode: 'members')),

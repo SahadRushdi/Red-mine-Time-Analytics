@@ -25,6 +25,7 @@ module RedmineTimeAnalytics
     # Feeds the "+" picker. Routed separately on each dashboard so it inherits that controller's
     # own before_action chain and access checks.
     def groupable_fields
+      response.headers['Cache-Control'] = 'no-store'
       render json: { sections: GroupableFieldRegistry.picker_payload(User.current) }
     end
 

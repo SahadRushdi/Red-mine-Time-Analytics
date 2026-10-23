@@ -19,10 +19,9 @@ module RedmineTimeAnalytics
   # `value <> ''` — so it can never inflate SUM(hours), and a blanked value falls into the
   # no-value bucket on its own.
   class GroupableFieldRegistry
-    # Single-value formats only: a multi-value or long-text field doesn't produce a meaningful
-    # group. bool/int/enumeration are also single-value and groupable in core — adding them is a
-    # one-line change here.
-    GROUPABLE_CF_FORMATS = %w[list string date user version].freeze
+    # Single-value formats only. Keep this capability list shared with the admin form.
+    GROUPABLE_CF_FORMATS = %w[list string date user version bool int float enumeration link progressbar].freeze
+    NUMERIC_CF_FORMATS = %w[int float progressbar].freeze
 
     # At most one custom-field join may be active in a single grouped query. One tab groups by
     # exactly one dimension, so this is structurally satisfied today; it is asserted in
@@ -51,6 +50,10 @@ module RedmineTimeAnalytics
       def pinned?
         custom_field.present? && TaPinnedGrouping.pinned?(custom_field)
       end
+
+      def numeric?
+        custom_field.present? && NUMERIC_CF_FORMATS.include?(custom_field.field_format)
+      end
     end
 
     # Issue attributes reachable through time_entries.issue_id -> issues.id.
@@ -65,6 +68,19 @@ module RedmineTimeAnalytics
     ].freeze
 
     class << self
+      # Capability is independent of filter/visibility settings so the admin form can explain
+      # the prerequisite before the field has been saved or enabled as a filter.
+      def supported?(custom_field)
+        (custom_field.is_a?(IssueCustomField) || custom_field.is_a?(TimeEntryCustomField)) &&
+          !custom_field.multiple? && custom_field.format.is_filter_supported &&
+          GROUPABLE_CF_FORMATS.include?(custom_field.field_format) &&
+          group_expression_for(custom_field).present?
+      end
+
+      def eligible?(custom_field)
+        supported?(custom_field) && custom_field.is_filter?
+      end
+
       # Every dimension this user may group by, static first then custom fields.
       def all(user = User.current)
         static_fields + custom_fields(user)
@@ -168,7 +184,7 @@ module RedmineTimeAnalytics
       # plugin-specific admin flag, on top of role-based visibility.
       def eligible(klass, user)
         klass.visible(user).where(is_filter: true).sorted.to_a.select do |cf|
-          !cf.multiple? && GROUPABLE_CF_FORMATS.include?(cf.field_format)
+          eligible?(cf)
         end
       end
 
@@ -188,12 +204,18 @@ module RedmineTimeAnalytics
         )
       end
 
-      # CustomField#group_statement covers list/date/user/version. It returns nil for `string`
+      # CustomField#group_statement covers list/date/record-list/integer/Boolean formats. It returns nil for `string`
       # (Redmine::FieldFormat::Base#group_statement is nil and StringFormat doesn't override it),
       # but #order_statement returns exactly the right expression for that format —
       # COALESCE(cf_<id>.value, ''). That fallback is what makes string fields groupable here
-      # without patching core.
+      # without patching core. Link also uses the scalar order expression fallback.
       def group_expression_for(cf)
+        # Numeric#order_statement casts to decimal(30,3), which rounds distinct float values
+        # into the same bucket on MySQL/PostgreSQL. Group by the stored text instead, using
+        # the alias from core's visibility-scoped, deduplicated custom-value join. That join
+        # removes empty values already, leaving NULL for the no-value bucket.
+        return cf.multiple? ? nil : "cf_#{cf.id}.value" if cf.field_format == 'float'
+
         expression = cf.group_statement || cf.order_statement
         # RecordList#order_statement can return an Array of columns; only a single scalar
         # expression is usable as a GROUP BY here.
@@ -214,6 +236,18 @@ module RedmineTimeAnalytics
             values.to_h do |raw|
               record = records[raw.to_i]
               [raw, record ? record_label(record) : raw.to_s]
+            end
+          elsif cf.field_format == 'bool'
+            values.to_h { |raw| [raw, ::I18n.t(raw.to_s == '1' ? :general_text_Yes : :general_text_No)] }
+          elsif cf.field_format == 'float'
+            # A Float conversion here would merge labels beyond Ruby's floating-point
+            # precision. Keep labels identical to the stored grouping/drill-down keys.
+            values.to_h { |raw| [raw, raw.to_s] }
+          elsif NUMERIC_CF_FORMATS.include?(cf.field_format)
+            values.to_h do |raw|
+              # SUM/GROUP BY adapters can return BigDecimal; respect the field's numeric type.
+              label = cf.format.cast_single_value(cf, raw).to_s
+              [raw, label]
             end
           else
             # list/string/date store their display value directly in custom_values.value.
