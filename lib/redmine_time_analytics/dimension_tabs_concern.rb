@@ -18,7 +18,7 @@ module RedmineTimeAnalytics
 
     included do
       helper_method :ta_dimension, :ta_dimension_view_state, :ta_dimension_summary_payload,
-                    :ta_grouped_hours_label, :ta_grouped_hours_note
+                    :ta_grouped_hours_label, :ta_grouped_hours_note, :ta_customer_grouping?, :ta_total_logged_hours
     end
 
     # --- Actions -----------------------------------------------------------------------------
@@ -82,6 +82,15 @@ module RedmineTimeAnalytics
 
     def ta_dimension_view_state
       @ta_dimension_view_state
+    end
+
+    def ta_customer_grouping?
+      @ta_dimension&.custom_field.present? && @ta_dimension.label.to_s.strip.casecmp?('Customer')
+    end
+
+    # The summary card counts each time entry once, independently of group attribution.
+    def ta_total_logged_hours
+      @ta_dimension_pivot ? @ta_dimension_pivot[:logged_total] : @total_hours
     end
 
     def ta_grouped_hours_label
@@ -191,7 +200,10 @@ module RedmineTimeAnalytics
         if value
           value[:hours] += hours.to_f
         else
-          item[:valueBreakdown] << { name: name, hours: hours.to_f }
+          item[:valueBreakdown] << {
+            name: name, hours: hours.to_f, groupValue: raw,
+            noValue: DimensionPivot.normalize(raw) == DimensionPivot::NONE_KEY
+          }
         end
         item[:groupedHours] += hours.to_f
       end

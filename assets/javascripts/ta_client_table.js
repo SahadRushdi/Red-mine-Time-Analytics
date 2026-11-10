@@ -76,6 +76,25 @@
       '<a href="' + item.url + '" target="_blank" class="text-sm font-semibold !text-black hover:!text-blue-600 hover:!underline mr-1 transition-colors">#' + item.id + '</a>' +
       '<a href="' + item.url + '" target="_blank" class="text-sm font-normal !text-black hover:!text-blue-600 hover:!underline transition-colors">: ' + escapeHtml(item.subject) + '</a>' +
       (item.assigneeName ? ' <span class="ts-assignee-badge">' + escapeHtml(item.assigneeName) + '</span>' : '') : escapeHtml(item.subject);
+    if (labels && labels.customerGrouping) {
+      var values = item.valueBreakdown || [];
+      var shared = item.url && values.filter(function (value) { return !value.noValue; }).length > 1;
+      var hoursHtml = '<span class="ta-customer-ticket-hours">' + formatHours(item.hours) + '</span>';
+      if (!shared) {
+        return '<div class="ta-customer-ticket"><div class="ta-customer-ticket-line">' +
+          '<div class="ta-customer-ticket-title">' + titleHtml + '</div>' + hoursHtml + '</div></div>';
+      }
+      return '<details class="ta-customer-ticket ta-shared-ticket"><summary class="ta-customer-ticket-line">' +
+        chevronIconHtml() + '<span class="ta-customer-ticket-title">' + titleHtml +
+        ' <span class="ta-shared-badge">' + escapeHtml(labels.shared) + '</span></span>' + hoursHtml +
+        '</summary><div class="ta-customer-values">' + values.map(function (value) {
+          var color = labels.valueColor && labels.valueColor(value);
+          // Colours come from the dashboard palette, not custom-field text.
+          color = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#4E79A7';
+          return '<div class="ta-customer-value"><span class="ta-customer-dot" style="background-color:' + color +
+            '" aria-hidden="true"></span><span>' + escapeHtml(value.name) + ': ' + formatHours(value.hours) + '</span></div>';
+        }).join('') + '</div></details>';
+    }
     var explanation = '';
     if (item.valueBreakdown && labels && labels.contribution) {
       var caption = labels.contribution.replace('%{logged}', function () { return formatHours(item.loggedHours); })
@@ -263,6 +282,7 @@
     container.addEventListener('click', function(event) {
       // The whole row header is clickable (matching My Work Log's row-expand behavior) — not
       // just the chevron icon.
+      if (event.target.closest('.ta-shared-badge')) { event.preventDefault(); return; }
       var header = event.target.closest('.ts-row-header');
       if (!header) return;
 
@@ -289,6 +309,7 @@
   function collapseAllRows(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
+    container.querySelectorAll('.ta-shared-ticket[open]').forEach(function (ticket) { ticket.open = false; });
     container.querySelectorAll('.ts-expandable-row').forEach(function(rowEl) {
       var details = rowEl.querySelector(':scope > .ts-row-details');
       var chevron = rowEl.querySelector(':scope > .ts-row-header .ts-row-chevron');

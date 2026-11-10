@@ -2645,3 +2645,17 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   color: #9ca3af;
   font-size: 0.6875rem;
 }
+
+/* Customer tickets: native disclosure keeps keyboard and screen-reader behaviour. */
+.ta-customer-ticket { margin: 4px 0; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 9px; background: #fff; }
+.ta-customer-ticket-line { display: flex; align-items: center; gap: 8px; list-style: none; }
+.ta-shared-ticket > summary { cursor: pointer; }
+.ta-shared-ticket > summary::-webkit-details-marker { display: none; }
+.ta-shared-ticket > summary:focus-visible { outline: 2px solid #7c3aed; outline-offset: 3px; border-radius: 4px; }
+.ta-shared-ticket[open] > summary > .ts-row-chevron { transform: rotate(90deg); }
+.ta-customer-ticket-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ta-customer-ticket-hours { flex-shrink: 0; font-weight: 600; }
+.ta-shared-badge { display: inline-block; margin-left: 10px; padding: 3px 16px; border-radius: 999px; background: #8000df; color: #fff; font-size: 13px; font-weight: 600; vertical-align: middle; cursor: default; }
+.ta-customer-values { padding: 8px 0 2px 28px; }
+.ta-customer-value { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.ta-customer-dot { display: inline-block; flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }

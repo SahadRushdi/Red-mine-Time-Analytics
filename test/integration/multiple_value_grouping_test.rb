@@ -203,7 +203,7 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
       view_mode: field.key, grouping: 'daily', user_id: 2, team_id: @team.id }
   end
 
-  test 'both dashboards show 24 grouped hours and explain 16 across the first issues customers' do
+  test 'both dashboards show 16 logged hours in the card and 24 attributed hours in groups' do
     cf, = make_field
     field = field_for(cf)
     TaPinnedGrouping.set_pinned(cf, true)
@@ -211,9 +211,9 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
       %w[daily weekly monthly].each do |period|
         get path, params: dashboard_params(field).merge(grouping: period)
         assert_response :success
-        assert_select '.ts-summary-card--total .ts-summary-card-value', text: /24:00/
-        assert_select '.ts-summary-card--total', text: /Hours across Customers Issue list/
-        assert_select '.ts-summary-card--total', text: /16:00 hours actually logged/
+        assert_select '.ts-summary-card--total .ts-summary-card-value', text: /16:00/
+        assert_select '.ts-summary-card--total .ts-summary-card-label', text: 'Total Hours'
+        assert_select '.ts-summary-card--total p', count: 2
         payload = JSON.parse(css_select('[id$="-payload"][data-payload]').first['data-payload'])
         assert_equal 24, payload['grandTotal']
         assert_equal 16, payload['loggedTotal']
@@ -247,6 +247,31 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
       assert_includes response.body, '24:00'
       assert_includes response.body, 'Actual logged hours,16:00'
     end
+  end
+
+  test 'Customer presentation is enabled only for Customer fields on both dashboards' do
+    cf, = make_field
+    cf.update!(name: 'Customer')
+    field = field_for(cf)
+    [false, true].each do |pinned|
+      TaPinnedGrouping.set_pinned(cf, pinned)
+      %w[/my/time /team/analytics].each do |path|
+        get path, params: dashboard_params(field)
+        assert_response :success
+        assert_includes response.body, 'customerGrouping: true'
+        assert_select '.ta-analysis-donut', text: /Hours by customer/
+        assert_select '.ts-summary-card--total .ts-summary-card-label', text: 'Total Hours'
+        assert_select '.ts-summary-card--total .ts-summary-card-value', text: /16:00/
+        get "#{path}/group_breakdown", params: dashboard_params(field).merge(group_by: field.key, group_value: 'A')
+        values = JSON.parse(response.body)['items'].find { |item| item['id'] == @entries.first.issue_id }['valueBreakdown']
+        assert_equal %w[A B], values.map { |value| value['groupValue'] }.sort
+        assert values.none? { |value| value['noValue'] }
+      end
+    end
+    cf.update!(name: 'Other field')
+    get '/my/time', params: dashboard_params(field)
+    assert_includes response.body, 'customerGrouping: false'
+    assert_select '.ta-analysis-donut', text: /Hours across Other field/
   end
 
   test 'time-entry explanations combine each entries selections and include no issue rows' do

@@ -633,11 +633,8 @@
       </svg>
     </div>
     <div class="ts-summary-card-content">
-      <p class="ts-summary-card-label"><%= ta_grouped_hours_label %></p>
-      <p class="ts-summary-card-value"><%= format_hours(@total_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
-      <% if ta_grouped_hours_note %>
-        <p class="text-xs text-gray-500 mt-1"><%= ta_grouped_hours_note %></p>
-      <% end %>
+      <p class="ts-summary-card-label"><%= l(:label_ta_total_hours) %></p>
+      <p class="ts-summary-card-value"><%= format_hours(ta_total_logged_hours) %> <span class="ts-summary-card-unit">hrs</span></p>
     </div>
   </div>
   <div class="ts-summary-card ts-summary-card--active-days flex items-center gap-4">

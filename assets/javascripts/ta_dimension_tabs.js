@@ -470,11 +470,21 @@
       '#EDC948', '#B07AA1', '#FF9DA7', '#9C755F', '#BAB0AC'
     ];
 
+    // Keep Customer colours tied to the full, original donut order, never the sorted page.
+    function valueKey(value) {
+      return value.noValue ? 'none' : 'value:' + String(value.groupValue);
+    }
+    var customerColors = Object.create(null);
+    (payload.items || []).forEach(function (item, index) {
+      customerColors[valueKey(item)] = colors[index % colors.length];
+    });
+
     summaryTable = window.TaClientTable({
       getItems: function () { return payload.items || []; },
       sortValue: function (item, field) { return field === 'name' ? item.name : item.hours; },
       renderRow: function (item, index) {
-        return window.taExpandableSummaryCardHtml(item, index, payload.grandTotal, colors);
+        var colorIndex = body.customerGrouping ? (payload.items || []).indexOf(item) : index;
+        return window.taExpandableSummaryCardHtml(item, colorIndex, payload.grandTotal, colors);
       },
       container: cards,
       paginationInfo: document.getElementById(viewId + '-pagination-info'),
@@ -493,6 +503,9 @@
         error: body.labels.error,
         emptyIssues: body.labels.emptyIssues,
         contribution: body.labels.contribution,
+        customerGrouping: body.customerGrouping,
+        shared: body.labels.shared,
+        valueColor: function (value) { return customerColors[valueKey(value)]; },
         emptyProjects: body.labels.emptyIssues
       });
 
