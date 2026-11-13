@@ -72,6 +72,7 @@
       </div>
     </div>
 
+    <div id="<%= view_id %>-payload" data-payload='<%= ta_dimension_summary_payload.to_json %>' style="display:none;"></div>
     <% if pivot[:categories].any? %>
       <div id="<%= view_id %>-detailed-view" class="pivot-table-wrapper" style="<%= summary_active ? 'display: none;' : '' %>">
         <%= render 'team_analytics/activity_period_pivot_table',
@@ -93,7 +94,6 @@
       <div id="<%= view_id %>-summary-view" style="<%= summary_active ? '' : 'display: none;' %>"
            data-group-by="<%= @ta_dimension.key %>"
            <% row_context.each do |name, value| %>data-<%= name.to_s.dasherize %>="<%= value %>" <% end %>>
-        <div id="<%= view_id %>-payload" data-payload='<%= ta_dimension_summary_payload.to_json %>' style="display:none;"></div>
         <div id="<%= view_id %>-cards" class="space-y-2 px-2 pt-4 ta-summary-cards-scroll"></div>
         <div class="pagination-wrapper">
           <span id="<%= view_id %>-pagination-links"></span>
@@ -120,11 +120,20 @@
   </div>
 
   <div class="ta-analysis-donut w-80 flex-shrink-0 bg-white rounded-lg shadow-md p-4 border border-gray-200">
+    <% if ta_customer_grouping? %>
+      <div class="flex justify-end mb-4">
+        <label class="ta-customer-hours-control inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700">
+          <input id="ta-customer-hours-toggle" type="checkbox" class="sr-only peer" aria-controls="<%= donut_canvas_id %> <%= donut_legend_id %>">
+          <span class="ta-customer-hours-track relative w-9 h-5 bg-gray-200 rounded-full peer-focus:ring-4 peer-focus:ring-blue-200 peer-checked:bg-blue-600" aria-hidden="true"><span class="ta-customer-hours-thumb"></span></span>
+          <span><%= l(:label_ta_hours_by_customer) %></span>
+        </label>
+      </div>
+    <% end %>
     <div class="relative h-80 flex items-center justify-center">
       <canvas id="<%= donut_canvas_id %>" class="chart"></canvas>
       <div id="<%= donut_center_id %>" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <span class="text-3xl font-bold text-gray-900" id="<%= donut_total_id %>">0h</span>
-        <span class="text-xs text-gray-500"><%= ta_customer_grouping? ? l(:label_ta_hours_by_customer) : ta_grouped_hours_label %></span>
+        <span id="<%= donut_center_id %>-caption" class="text-xs text-gray-500"><%= ta_customer_grouping? ? l(:label_ta_total_hours) : ta_grouped_hours_label %></span>
       </div>
     </div>
     <div id="<%= donut_legend_id %>" class="mt-4 space-y-1.5 text-sm ta-summary-cards-scroll"></div>
@@ -137,10 +146,15 @@
     breakdownPath: '<%= breakdown_path %>',
     groupBy: '<%= @ta_dimension.key %>',
     customerGrouping: <%= ta_customer_grouping? ? 'true' : 'false' %>,
+    donutCaptionId: '<%= donut_center_id %>-caption',
+    donutLegendId: '<%= donut_legend_id %>',
     perPage: <%= @limit.to_i %>,
     viewState: '<%= @ta_dimension_view_state %>',
     labels: {
-      shared: '<%= j l(:label_ta_shared) %>',
+      sharedWith: '<%= j l(:label_ta_shared_with, count: '%{count}') %>',
+      close: '<%= j l(:button_close) %>',
+      totalHours: '<%= j l(:label_ta_total_hours) %>',
+      hoursByCustomer: '<%= j l(:label_ta_hours_by_customer) %>',
       loading: '<%= j l(:label_ta_row_breakdown_loading) %>',
       error: '<%= j l(:label_ta_row_breakdown_error) %>',
       emptyIssues: '<%= j l(:label_ta_row_breakdown_empty_issues) %>',

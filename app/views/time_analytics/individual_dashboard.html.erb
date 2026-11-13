@@ -1780,18 +1780,24 @@ function renderDonutFromArrays(labels, values, colors) {
     donutChartInstance = null;
   }
 
+  var customerLabels = labels, customerValues = values, customerColors = colors;
+  var customerMode = window.taCustomerDonutData && window.taCustomerDonutData(labels, values, colors, function () {
+    renderDonutFromArrays(customerLabels, customerValues, customerColors);
+  });
+  var total = customerMode ? customerMode.total : values.reduce(function(sum, val) { return sum + val; }, 0);
+  if (customerMode) {
+    labels = customerMode.labels; values = customerMode.values; colors = customerMode.colors;
+  }
+
   if (labels.length === 0 || values.length === 0) {
     renderEmptyState(donutCanvas.closest('.ta-analysis-donut'), emptyChartMessage);
     return;
   }
 
-  // Calculate total for percentages and center display
-  var total = values.reduce(function(sum, val) { return sum + val; }, 0);
-
   // Update center text with total hours
   var centerText = document.getElementById('total-hours-display');
   if (centerText) {
-    centerText.textContent = formatHours(total);
+    centerText.textContent = formatHours(customerMode ? customerMode.centerTotal : total);
   }
 
   // Create donut chart

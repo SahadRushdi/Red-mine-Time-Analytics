@@ -65,6 +65,7 @@ en:
   label_ta_no_value: "— No value —"
   label_time_by_field: "Time by %{field}"
   label_ta_shared: "Shared"
+  label_ta_shared_with: "Shared with %{count}"
   label_ta_hours_by_customer: "Hours by customer"
   label_ta_total_hours: "Total Hours"
   label_ta_hours_across_field: "Hours across %{field}"

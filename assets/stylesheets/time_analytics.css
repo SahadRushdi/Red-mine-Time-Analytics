@@ -2646,16 +2646,41 @@ body .datepicker-cell:hover:not(.disabled):not(.today):not(.selected):not(.range
   font-size: 0.6875rem;
 }
 
-/* Customer tickets: native disclosure keeps keyboard and screen-reader behaviour. */
+/* Customer tickets use a compact sharing button beside their logged hours. */
 .ta-customer-ticket { margin: 4px 0; padding: 6px 8px; border: 1px solid #e5e7eb; border-radius: 9px; background: #fff; }
 .ta-customer-ticket-line { display: flex; align-items: center; gap: 8px; list-style: none; }
-.ta-shared-ticket > summary { cursor: pointer; }
-.ta-shared-ticket > summary::-webkit-details-marker { display: none; }
-.ta-shared-ticket > summary:focus-visible { outline: 2px solid #7c3aed; outline-offset: 3px; border-radius: 4px; }
-.ta-shared-ticket[open] > summary > .ts-row-chevron { transform: rotate(90deg); }
 .ta-customer-ticket-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ta-customer-ticket-hours { flex-shrink: 0; font-weight: 600; }
-.ta-shared-badge { display: inline-block; margin-left: 10px; padding: 3px 16px; border-radius: 999px; background: #8000df; color: #fff; font-size: 13px; font-weight: 600; vertical-align: middle; cursor: default; }
-.ta-customer-values { padding: 8px 0 2px 28px; }
-.ta-customer-value { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
-.ta-customer-dot { display: inline-block; flex: 0 0 10px; width: 10px; height: 10px; border-radius: 50%; }
+/* Popovers are portaled to body so scrolling summary panels cannot clip them. */
+.ta-shared-button { white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+.ta-customer-popover { z-index: 1000; width: max-content; max-width: min(280px, calc(100vw - 24px)); padding: 12px 38px 12px 16px; font-size: 13px; color: #374151; }
+.ta-customer-popover.invisible { visibility: hidden; }
+.ta-customer-popover-close { position: absolute; top: 5px; right: 5px; width: 26px; height: 26px; border: 0; background: transparent; cursor: pointer; font-size: 20px; }
+.ta-customer-names { list-style: none; margin: 0; padding: 0; }
+.ta-customer-names li { padding: 4px 0; overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .ta-customer-ticket-line { flex-wrap: wrap; }
+  .ta-customer-ticket-title { flex-basis: 100%; }
+  .ta-customer-ticket-hours { margin-left: auto; }
+}
+
+/* Keep Flowbite control states legible over Redmine's global button styles. */
+body button.ta-shared-button { color: #1d4ed8 !important; background: #eff6ff !important; border: 1px solid #bfdbfe !important; }
+body button.ta-shared-button:hover { color: #1e40af !important; background: #dbeafe !important; }
+body button.ta-shared-button[aria-expanded="true"],
+body button.ta-shared-button:active { color: #fff !important; background: #1d4ed8 !important; border-color: #1d4ed8 !important; }
+body button.ta-customer-popover-close { color: #475569 !important; background: #f1f5f9 !important; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+body button.ta-customer-popover-close:hover,
+body button.ta-customer-popover-close:focus,
+body button.ta-customer-popover-close:active { color: #0f172a !important; background: #e2e8f0 !important; }
+body button.ta-shared-button:focus-visible,
+body button.ta-customer-popover-close:focus-visible { outline: 2px solid #2563eb !important; outline-offset: 2px; }
+.ta-customer-hours-control { padding: 6px 8px; border-radius: 8px; }
+.ta-customer-hours-control:has(input:checked) { color: #1e40af; background: #eff6ff; }
+.ta-customer-hours-control .ta-customer-hours-track { display: inline-block; position: relative; flex: 0 0 36px; width: 36px; height: 20px; background: #cbd5e1; border-radius: 999px; }
+.ta-customer-hours-control .ta-customer-hours-thumb { position: absolute; display: block; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px #0003; transition: transform 150ms; }
+.ta-customer-hours-control input:checked + .ta-customer-hours-track { background: #1d4ed8; }
+.ta-customer-hours-control input:checked + .ta-customer-hours-track .ta-customer-hours-thumb { transform: translateX(16px); }
+.ta-customer-hours-control input:focus-visible + .ta-customer-hours-track { outline: 2px solid #2563eb; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .ta-customer-hours-control .ta-customer-hours-thumb { transition: none; } }

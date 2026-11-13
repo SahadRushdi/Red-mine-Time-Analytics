@@ -84,16 +84,15 @@
         return '<div class="ta-customer-ticket"><div class="ta-customer-ticket-line">' +
           '<div class="ta-customer-ticket-title">' + titleHtml + '</div>' + hoursHtml + '</div></div>';
       }
-      return '<details class="ta-customer-ticket ta-shared-ticket"><summary class="ta-customer-ticket-line">' +
-        chevronIconHtml() + '<span class="ta-customer-ticket-title">' + titleHtml +
-        ' <span class="ta-shared-badge">' + escapeHtml(labels.shared) + '</span></span>' + hoursHtml +
-        '</summary><div class="ta-customer-values">' + values.map(function (value) {
-          var color = labels.valueColor && labels.valueColor(value);
-          // Colours come from the dashboard palette, not custom-field text.
-          color = /^#[0-9a-f]{6}$/i.test(color || '') ? color : '#4E79A7';
-          return '<div class="ta-customer-value"><span class="ta-customer-dot" style="background-color:' + color +
-            '" aria-hidden="true"></span><span>' + escapeHtml(value.name) + ': ' + formatHours(value.hours) + '</span></div>';
-        }).join('') + '</div></details>';
+      var customers = values.filter(function (value) { return !value.noValue; });
+      return '<div class="ta-customer-ticket ta-shared-ticket"><div class="ta-customer-ticket-line">' +
+        '<div class="ta-customer-ticket-title">' + titleHtml + '</div>' +
+        '<button type="button" class="ta-shared-button text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 focus:ring-4 focus:ring-blue-200 font-medium rounded-lg text-xs px-3 py-1.5" aria-expanded="false" aria-haspopup="dialog">' +
+        escapeHtml((labels.sharedWith || 'Shared with %{count}').replace('%{count}', customers.length)) + '</button>' + hoursHtml +
+        '</div><template class="ta-customer-popover-content"><ul class="ta-customer-names">' + customers.map(function (value) {
+          return '<li>' + escapeHtml(value.name) + '</li>';
+        }).join('') + '</ul></template></div>';
+
     }
     var explanation = '';
     if (item.valueBreakdown && labels && labels.contribution) {
@@ -269,6 +268,50 @@
       });
   }
 
+  // One manually triggered Flowbite popover: focus and hover must never open it.
+  var customerPopover = null;
+  var customerPopoverId = 0;
+  function toggleCustomerPopover(button, container, labels) {
+    var same = customerPopover && customerPopover.button === button;
+    if (customerPopover) customerPopover.instance.hide();
+    if (same) return;
+    var target = document.createElement('div');
+    target.id = 'ta-customer-popover-' + (++customerPopoverId);
+    target.className = 'ta-customer-popover invisible opacity-0 bg-white border border-gray-200 rounded-lg shadow-lg';
+    target.setAttribute('role', 'dialog');
+    target.setAttribute('aria-label', button.textContent);
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'ta-customer-popover-close text-gray-500 hover:bg-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500';
+    close.setAttribute('aria-label', labels.close || 'Close');
+    close.textContent = '×';
+    target.appendChild(close);
+    target.appendChild(button.closest('.ta-shared-ticket').querySelector('template').content.cloneNode(true));
+    document.body.appendChild(target);
+    button.setAttribute('aria-controls', target.id);
+    var observer = new MutationObserver(function () {
+      if (!button.isConnected || !button.getClientRects().length) instance.hide();
+    });
+    var instance = new global.Popover(target, button, {
+      triggerType: 'none', placement: 'top',
+      onShow: function () { button.setAttribute('aria-expanded', 'true'); },
+      onHide: function () {
+        var restoreFocus = target.contains(document.activeElement);
+        observer.disconnect();
+        instance.destroyAndRemoveInstance();
+        target.remove();
+        button.setAttribute('aria-expanded', 'false');
+        button.removeAttribute('aria-controls');
+        customerPopover = null;
+        if (restoreFocus && button.isConnected) button.focus();
+      }
+    });
+    customerPopover = { button: button, instance: instance };
+    observer.observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden']});
+    close.addEventListener('click', function () { instance.hide(); button.focus(); });
+    instance.show();
+  }
+
   // Delegated click handler for one Summary card container (e.g. #team-project-summary-cards
   // or #project-summary-view-cards). Rebinding is unnecessary across TaClientTable re-renders
   // since the listener lives on the container itself, not on the rows it replaces.
@@ -282,7 +325,12 @@
     container.addEventListener('click', function(event) {
       // The whole row header is clickable (matching My Work Log's row-expand behavior) — not
       // just the chevron icon.
-      if (event.target.closest('.ta-shared-badge')) { event.preventDefault(); return; }
+      var sharedButton = event.target.closest('.ta-shared-button');
+      if (sharedButton) {
+        event.preventDefault();
+        toggleCustomerPopover(sharedButton, container, labels);
+        return;
+      }
       var header = event.target.closest('.ts-row-header');
       if (!header) return;
 
@@ -309,7 +357,7 @@
   function collapseAllRows(containerId) {
     var container = document.getElementById(containerId);
     if (!container) return;
-    container.querySelectorAll('.ta-shared-ticket[open]').forEach(function (ticket) { ticket.open = false; });
+    if (customerPopover && container.contains(customerPopover.button)) customerPopover.instance.hide();
     container.querySelectorAll('.ts-expandable-row').forEach(function(rowEl) {
       var details = rowEl.querySelector(':scope > .ts-row-details');
       var chevron = rowEl.querySelector(':scope > .ts-row-header .ts-row-chevron');
