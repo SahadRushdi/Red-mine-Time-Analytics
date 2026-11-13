@@ -260,6 +260,9 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
         assert_response :success
         assert_includes response.body, 'customerGrouping: true'
         assert_select '.ta-analysis-donut', text: /Hours by customer/
+        assert_select '#ta-customer-hours-toggle:not([checked])', count: 1
+        assert_select '.ta-analysis-donut [id$="-caption"]', text: 'Total Hours'
+        assert_select '.ta-analysis-donut [id$="donut-legend"]:not([hidden])', count: 1
         assert_select '.ts-summary-card--total .ts-summary-card-label', text: 'Total Hours'
         assert_select '.ts-summary-card--total .ts-summary-card-value', text: /16:00/
         get "#{path}/group_breakdown", params: dashboard_params(field).merge(group_by: field.key, group_value: 'A')
@@ -272,6 +275,7 @@ class MultipleValueGroupingDashboardsTest < Redmine::IntegrationTest
     get '/my/time', params: dashboard_params(field)
     assert_includes response.body, 'customerGrouping: false'
     assert_select '.ta-analysis-donut', text: /Hours across Other field/
+    assert_select '#ta-customer-hours-toggle', count: 0
   end
 
   test 'time-entry explanations combine each entries selections and include no issue rows' do

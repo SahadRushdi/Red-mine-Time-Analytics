@@ -504,13 +504,39 @@
         emptyIssues: body.labels.emptyIssues,
         contribution: body.labels.contribution,
         customerGrouping: body.customerGrouping,
-        shared: body.labels.shared,
+        sharedWith: body.labels.sharedWith,
+        close: body.labels.close,
         valueColor: function (value) { return customerColors[valueKey(value)]; },
         emptyProjects: body.labels.emptyIssues
       });
 
     cards.addEventListener('click', function () { window.taDimensionUpdateCollapseAll(); });
   }
+
+  // Both dashboards use the same Customer chart mode and the existing pivot totals.
+  window.taCustomerDonutData = function (labels, values, colors, redraw) {
+    var body = window.taDimensionTabBody;
+    if (!body || !body.customerGrouping) return null;
+    var payloadEl = document.getElementById(body.viewId + '-payload');
+    if (!payloadEl) return null;
+    var payload = JSON.parse(payloadEl.getAttribute('data-payload'));
+    var toggle = document.getElementById('ta-customer-hours-toggle');
+    if (!toggle) return null;
+    toggle.onchange = redraw;
+    var attributed = toggle.checked;
+    var caption = document.getElementById(body.donutCaptionId);
+    if (caption) caption.textContent = attributed ? body.labels.hoursByCustomer : body.labels.totalHours;
+    var legend = document.getElementById(body.donutLegendId);
+    if (legend) legend.hidden = !labels.length;
+    return {
+      labels: labels.length ? labels : [body.labels.hoursByCustomer],
+      values: values.length ? values : [0],
+      colors: colors.length ? colors : ['#4E79A7'],
+      // Slice percentages always use attribution; only the center total switches.
+      total: payload.grandTotal,
+      centerTotal: attributed ? payload.grandTotal : payload.loggedTotal
+    };
+  };
 
   // ── Globals used by _dimension_tab_body.html.erb ─────────────────────────────────────────
   window.taDimensionShowView = function (mode) {

@@ -1559,6 +1559,14 @@
       teamDonutChart = null;
     }
 
+    var customerLabels = labels, customerValues = values, customerColors = colors;
+    var customerMode = window.taCustomerDonutData && window.taCustomerDonutData(labels, values, colors, function () {
+      renderTeamDonutFromArrays(customerLabels, customerValues, customerColors, serverTotal);
+    });
+    var total = customerMode ? customerMode.total : (typeof serverTotal === 'number' ? serverTotal : values.reduce(function(sum, val) { return sum + val; }, 0));
+    if (customerMode) {
+      labels = customerMode.labels; values = customerMode.values; colors = customerMode.colors;
+    }
     if (!labels.length || !values.length) {
       // No active members (e.g. all temporarily excluded): zero the centre total and disable
       // pointer events on the empty canvas container so it doesn't block the member-list toggles
@@ -1569,9 +1577,8 @@
       return;
     }
 
-    var total = typeof serverTotal === 'number' ? serverTotal : values.reduce(function(sum, val) { return sum + val; }, 0);
     var totalDisplay = document.getElementById('team-total-hours-display');
-    if (totalDisplay) totalDisplay.textContent = formatTeamHours(total);
+    if (totalDisplay) totalDisplay.textContent = formatTeamHours(customerMode ? customerMode.centerTotal : total);
 
     teamDonutChart = new Chart(donutCanvas.getContext('2d'), {
       type: 'doughnut',
